@@ -1,4 +1,4 @@
-import Image from "next/image";
+import Image from "next/image"
 //comment de co cai push
 
 export default function Home() {
@@ -100,5 +100,5 @@ export default function Home() {
         </a>
       </footer>
     </div>
-  );
+  )
 }
