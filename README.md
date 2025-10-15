@@ -4,9 +4,7 @@
 - Nếu chưa cài pnpm thì dùng lệnh dưới:
 
 ```bash
-
 npm install -g pnpm
-
 ```
 
 - Sau khi clone về nhớ checkout sang nhánh development để pull code mới nhất về (ưu tiên dùng các Git GUI Client như con rùa,... or lệnh dưới)
@@ -26,6 +24,12 @@ pnpm i
 pnpm dev
 
 # lỗi tính sau
+```
+
+- à nhớ format code
+
+```bash
+pnpm format
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.

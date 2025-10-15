@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "zod"
 
 /**
  * Schema validation cho environment variables
@@ -16,7 +16,7 @@ const envSchema = z.object({
   NODE_ENV: z
     .enum(["development", "production", "test"])
     .default("development"),
-});
+})
 
 /**
  * Validate và parse environment variables
@@ -28,24 +28,24 @@ function validateEnv() {
       DATABASE_URL: process.env.DATABASE_URL,
       JWT_SECRET: process.env.JWT_SECRET,
       NODE_ENV: process.env.NODE_ENV,
-    });
+    })
 
-    return parsed;
+    return parsed
   } catch (error) {
     if (error instanceof z.ZodError) {
       const missingVars = error.issues.map((err) => {
-        return `❌ ${err.path.join(".")}: ${err.message}`;
-      });
+        return `❌ ${err.path.join(".")}: ${err.message}`
+      })
 
-      console.error("\nEnvironment Variables Validation Failed:\n");
-      console.error(missingVars.join("\n"));
+      console.error("\nEnvironment Variables Validation Failed:\n")
+      console.error(missingVars.join("\n"))
       console.error(
         "\n💡 Please check your .env.local file and make sure all required variables are set.\n"
-      );
+      )
 
-      throw new Error("Invalid environment variables");
+      throw new Error("Invalid environment variables")
     }
-    throw error;
+    throw error
   }
 }
 
@@ -53,9 +53,9 @@ function validateEnv() {
  * Validated environment variables
  * Sử dụng trong toàn bộ app thay vì process.env trực tiếp
  */
-export const env = validateEnv();
+export const env = validateEnv()
 
 /**
  * Type-safe environment variables
  */
-export type Env = z.infer<typeof envSchema>;
+export type Env = z.infer<typeof envSchema>
