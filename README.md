@@ -32,8 +32,6 @@ pnpm dev
 pnpm format
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
 ## Setup môi trường
 
 - mở project, clone file .env.example ra và đổi tên thành .env.local
@@ -46,5 +44,7 @@ Với api:
 - code trong page/api, chức năng chia teo feature
 - mỗi file route.js tương ứng với CHỈ 1 api
 - đặt tên folder chưa file route.js theo chuẩn kebab-case, ví dụ: user/get-all-user/route.js
+
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
