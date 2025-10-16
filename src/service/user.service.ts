@@ -22,6 +22,7 @@ export async function getAllUsersAction(): Promise<User[]> {
     FROM users 
     ORDER BY created_at DESC
   `
+  console.log("Fetched users:", users) // Debug log
   return users as User[]
 }
 

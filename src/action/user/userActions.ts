@@ -15,6 +15,7 @@ export async function getAllUsers() {
  * Get user by email (protected)
  */
 export async function getUserByEmail(email: string) {
+  //
   await requireAuth()
   return getUserByEmailAction(email)
 }
