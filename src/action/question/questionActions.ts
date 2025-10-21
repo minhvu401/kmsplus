@@ -1,7 +1,7 @@
 "use server"
 
 import { requireAuth } from "@/lib/serverAuth"
-import { getAllQuestionsAction, createQuestionAction, updateQuestionAction, deleteQuestionAction, closeQuestionAction, openQuestionAction } from "@/service/question.service"
+import { getAllQuestionsAction, createQuestionAction, updateQuestionAction, deleteQuestionAction, closeQuestionAction, openQuestionAction, getActiveCategoriesAction } from "@/service/question.service"
 
 /**
  * Get all users (protected)
@@ -34,4 +34,9 @@ export async function closeQuestion(id: string){
 export async function openQuestion(id: string){
   //await requireAuth()
   return openQuestionAction(id)
+}
+
+export async function getActiveCategories(){
+  //await requierAuth()
+  return getActiveCategoriesAction()
 }
