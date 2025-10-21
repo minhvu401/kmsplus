@@ -9,18 +9,18 @@ import { redirect } from "next/navigation"
  * Type cho Question response
  */
 export type Question = {
-    id: number
-    user_id: number
-    category_id: number | null
-    title: string
-    content: string
-    view_count: number
-    answer_count: number
-    is_closed: boolean
-    is_deleted: boolean
-    deleted_at?: Date | null
-    created_at: Date
-    updated_at: Date
+  id: number
+  user_id: number
+  category_id: number | null
+  title: string
+  content: string
+  view_count: number
+  answer_count: number
+  is_closed: boolean
+  is_deleted: boolean
+  deleted_at?: Date | null
+  created_at: Date
+  updated_at: Date
 }
 
 /**
@@ -36,7 +36,7 @@ export async function getAllQuestionsAction(): Promise<Question[]> {
     ORDER BY created_at DESC
   `
   // Debug log
-  console.log("Fetched questions:", questions) 
+  console.log("Fetched questions:", questions)
 
   return questions as Question[]
 }
@@ -157,7 +157,7 @@ export async function updateQuestionAction(formData: FormData) {
 }
 
 // DELETE QUESTIONS
-export async function deleteQuestionAction(id: string){
+export async function deleteQuestionAction(id: string) {
   const deletedAt = new Date().toLocaleString()
 
   try {
@@ -177,7 +177,7 @@ export async function deleteQuestionAction(id: string){
 }
 
 // CLOSE QUESTIONS
-export async function closeQuestionAction(id: string){
+export async function closeQuestionAction(id: string) {
   const closedAt = new Date().toLocaleString()
 
   try {
@@ -197,7 +197,7 @@ export async function closeQuestionAction(id: string){
 }
 
 // OPEN QUESTIONS
-export async function openQuestionAction(id: string){
+export async function openQuestionAction(id: string) {
   const openedAt = new Date().toLocaleString()
 
   try {
@@ -214,4 +214,41 @@ export async function openQuestionAction(id: string){
   }
   revalidatePath('/questions');
   redirect('/question');
+}
+
+
+// GET CATEGORIES
+export type Category = {
+  id: number
+  name: string
+}
+
+export async function getActiveCategoriesAction(): Promise<Category[]> {
+  const result = await sql`
+    SELECT 
+      c.id AS category_id,
+      c.name AS category_name,
+      p.id AS parent_id,
+      p.name AS parent_name
+    FROM categories AS c
+    LEFT JOIN categories AS p ON c.parent_id = p.id
+    WHERE c.is_deleted = FALSE
+    ORDER BY c.id
+  `
+
+  const categories: Category[] = result.map((row: any) => {
+  if (row.parent_id) {
+    return {
+      id: row.category_id,
+      name: row.parent_name + ' - ' + row.category_name,
+    };
+  } else {
+    return {
+      id: row.category_id,
+      name: row.category_name,
+    };
+  }
+});
+
+return categories as Category[]
 }
