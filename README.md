@@ -41,7 +41,7 @@ pnpm format
 
 Với api:
 
-- code trong page/api, chức năng chia teo feature
+- code trong page/api, chức năng chia theo feature
 - mỗi file route.js tương ứng với CHỈ 1 api
 - đặt tên folder chưa file route.js theo chuẩn kebab-case, ví dụ: user/get-all-user/route.js
 
