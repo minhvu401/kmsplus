@@ -1,10 +1,11 @@
 /**
- * Server-side authentication helpers
- * Chỉ được dùng trong Server Actions/Components (có "use server")
+ * Authentication utilities for server-side operations
+ * Combines JWT handling and server authentication helpers
  */
 
+import jwt from "jsonwebtoken"
 import { cookies } from "next/headers"
-import { verifyToken } from "./jwt"
+import { env } from "./config"
 
 export type AuthUser = {
   id: string
@@ -14,7 +15,18 @@ export type AuthUser = {
 }
 
 /**
- * Get current authenticated user
+ * JWT Token utilities
+ */
+export function signToken(payload: object) {
+  return jwt.sign(payload, env.JWT_SECRET, { expiresIn: "2h" })
+}
+
+export function verifyToken(token: string) {
+  return jwt.verify(token, env.JWT_SECRET)
+}
+
+/**
+ * Get current authenticated user from cookies
  * @returns AuthUser nếu authenticated, null nếu không
  */
 export async function getCurrentUser(): Promise<AuthUser | null> {
@@ -29,19 +41,20 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
     const decoded = verifyToken(token) as AuthUser
     return decoded
   } catch (error) {
+    console.error("Error getting current user:", error)
     return null
   }
 }
 
 /**
- * Require authentication - throw error nếu không authenticated
- * Dùng trong Server Actions để protect
+ * Require authentication - throw error if not authenticated
+ * Dùng trong Server Actions
  */
 export async function requireAuth(): Promise<AuthUser> {
   const user = await getCurrentUser()
 
   if (!user) {
-    throw new Error("Authentication required. Please login first.")
+    throw new Error("Authentication required")
   }
 
   return user

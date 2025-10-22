@@ -1,8 +1,8 @@
 "use server"
 
-import { sql } from "@/lib/neonClient"
-import { signToken } from "@/lib/jwt"
-import { LoginDto } from "@/dto/auth/login.dto"
+import { sql } from "@/lib/database"
+import { signToken } from "@/lib/auth"
+import { LoginDto } from "./dto/login.dto"
 import { cookies } from "next/headers"
 
 export type LoginState = {
@@ -38,16 +38,17 @@ export async function loginAction(
   }
 
   // 🔹 Kiểm tra mật khẩu
-  // const isValid = await bcrypt.compare(password, user.password_hash);
-  // if (!isValid) {
-  //   return { success: false, message: "Invalid password" };
-  // }
-
-  // -------------bùa chút
-  const isValid = password === user.password_hash
+  const bcrypt = require("bcryptjs")
+  const isValid = await bcrypt.compare(password, user.password_hash)
   if (!isValid) {
     return { success: false, message: "Invalid password" }
   }
+
+  // -------------bùa chút
+  // const isValid = password === user.password_hash
+  // if (!isValid) {
+  //   return { success: false, message: "Invalid password" }
+  // }
 
   // 🔹 Tạo token
   const token = signToken({

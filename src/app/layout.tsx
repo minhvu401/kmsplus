@@ -1,3 +1,5 @@
+"use client"
+
 import type { Metadata } from "next"
 import { ReactNode } from "react"
 import { Geist, Geist_Mono } from "next/font/google"
@@ -16,11 +18,6 @@ const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
 })
-
-export const metadata: Metadata = {
-  title: "KMS Plus",
-  description: "Knowledge Management System",
-}
 
 export default function RootLayout({
   children,
