@@ -23,9 +23,7 @@ export type Question = {
   updated_at: Date
 }
 
-/**
- * GET ALL QUESTIONS từ database
- */
+// GET ALL QUESTIONS
 export async function getAllQuestionsAction(): Promise<Question[]> {
   const questions = await sql`
     SELECT 
@@ -221,6 +219,7 @@ export async function openQuestionAction(id: string) {
 export type Category = {
   id: number
   name: string
+  slug: string
 }
 
 export async function getActiveCategoriesAction(): Promise<Category[]> {
@@ -228,6 +227,7 @@ export async function getActiveCategoriesAction(): Promise<Category[]> {
     SELECT 
       c.id AS category_id,
       c.name AS category_name,
+      c.slug AS slug,
       p.id AS parent_id,
       p.name AS parent_name
     FROM categories AS c
@@ -237,18 +237,144 @@ export async function getActiveCategoriesAction(): Promise<Category[]> {
   `
 
   const categories: Category[] = result.map((row: any) => {
-  if (row.parent_id) {
-    return {
-      id: row.category_id,
-      name: row.parent_name + ' - ' + row.category_name,
-    };
-  } else {
-    return {
-      id: row.category_id,
-      name: row.category_name,
-    };
-  }
-});
+    if (row.parent_id) {
+      return {
+        id: row.category_id,
+        name: row.parent_name + ' - ' + row.category_name,
+        slug: row.slug
+      };
+    } else {
+      return {
+        id: row.category_id,
+        name: row.category_name,
+        slug: row.slug
+      };
+    }
+  });
 
-return categories as Category[]
+  return categories as Category[]
 }
+
+const ITEMS_PER_PAGE = 5;
+// FETCH QUESTIONS PAGES 
+export async function fetchQuestionPagesAction(query: string, category: string, status: string) {
+  try {
+
+    let sqlQuery = sql`
+      WHERE ( users.full_name ILIKE ${'%' + query + '%'} OR
+       users.email ILIKE ${'%' + query + '%'} OR
+       questions.title ILIKE ${'%' + query + '%'} OR
+       questions.content ILIKE ${'%' + query + '%'})
+    `;
+
+    // Add optional filters dynamically
+    if (category !== "any") {
+      sqlQuery = sql`
+      JOIN categories ON questions.category_id = categories.id
+      ${sqlQuery} 
+      AND categories.slug = ${category}
+      `;
+    }
+
+    if (status !== "any") {
+      let isClosed
+      if (status === "closed") {
+        isClosed = true;
+      } else if (status === "open") {
+        isClosed = false;
+      }
+      sqlQuery = sql`${sqlQuery} AND questions.is_closed = ${isClosed}`;
+    }
+
+    // Final query
+    const data = await sql`
+      SELECT COUNT(*) AS count
+      FROM questions
+      JOIN users ON questions.user_id = users.id
+      ${sqlQuery};
+    `;
+
+    const totalPages = Math.ceil(Number(data[0].count) / ITEMS_PER_PAGE);
+    return totalPages;
+  } catch (error) {
+    console.error('Database Error:', error);
+    throw new Error('Failed to fetch total number of invoices.');
+  }
+}
+
+// FETCH FILTERED QUESTIONS
+export type ListedQuestion = {
+  id: number
+  user_id: number
+  category_id: number | null
+  title: string
+  content: string
+  view_count: number
+  answer_count: number
+  is_closed: boolean
+  is_deleted: boolean
+  deleted_at?: Date | null
+  created_at: Date
+  updated_at: Date
+  user_name: string
+  category_name: string
+}
+
+export async function fetchFilteredQuestionAction(query: string, category: string, status: string, sort: string, currentPage: number) {
+
+  const offset = (currentPage - 1) * ITEMS_PER_PAGE;
+
+  try {
+
+    let sqlQuery = sql`
+      WHERE ( users.full_name ILIKE ${'%' + query + '%'} OR
+       users.email ILIKE ${'%' + query + '%'} OR
+       questions.title ILIKE ${'%' + query + '%'} OR
+       questions.content ILIKE ${'%' + query + '%'})
+    `;
+
+    // Add optional filters dynamically
+    if (category !== "any") {
+      sqlQuery = sql`
+      JOIN categories ON questions.category_id = categories.id
+      ${sqlQuery} 
+      AND categories.slug = ${category}
+      `;
+    }
+
+    if (status !== "any") {
+      let isClosed
+      if (status === "closed") {
+        isClosed = true;
+      } else if (status === "open") {
+        isClosed = false;
+      }
+      sqlQuery = sql`${sqlQuery} AND questions.is_closed = ${isClosed}`;
+    }
+
+    if (sort !== "newest") {
+      if (sort !== "most-views") {
+        sqlQuery = sql`${sqlQuery} ORDER BY questions.answer_count DESC`
+      } else {
+        sqlQuery = sql`${sqlQuery} ORDER BY questions.view_count DESC`
+      }
+    } else {
+      sqlQuery = sql`${sqlQuery} ORDER BY questions.created_at DESC`
+    }
+
+    // Final query
+    const result = (await sql`
+      SELECT questions.*, users.full_name AS user_name, categories.name AS category_name
+      FROM questions
+      JOIN users ON questions.user_id = users.id
+      ${sqlQuery}
+      LIMIT ${ITEMS_PER_PAGE} OFFSET ${offset};
+    `) as ListedQuestion[];
+
+    return result;
+  } catch (error) {
+    console.error('Database Error:', error);
+    throw new Error('Failed to fetch total number of invoices.');
+  }
+}
+
