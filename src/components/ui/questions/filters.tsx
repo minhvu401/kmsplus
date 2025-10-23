@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react';
 
 type Category = {
     id: number;
-    name: string
+    name: string;
+    slug: string;
 }
 
 export function FilterCategory({ categories }: { categories: Category[] }) {
@@ -46,12 +47,12 @@ export function FilterCategory({ categories }: { categories: Category[] }) {
             >
                 <option value="any">Any</option>
                 {categories.map((cat) => (
-                    <option key={cat.id} value={cat.id.toString()}>
-                        {cat.name}
+                    < option key = { cat.id } value = { cat.slug } >
+                    { cat.name }
                     </option>
                 ))}
-            </select>
-        </div>
+        </select>
+        </div >
     );
 }
 
@@ -98,7 +99,7 @@ export function FilterStatus() {
                 <option key='Open' value='open'>
                     Open
                 </option>
-                <option key='Closed' value='closed'>
+                <option key='Closed' value='close'>
                     Closed
                 </option>
             </select>
@@ -112,7 +113,7 @@ export function SortBy() {
     const pathname = usePathname();
     const { replace } = useRouter();
 
-    const currentSortCondition = searchParams.get('sort-by') || 'newest';
+    const currentSortCondition = searchParams.get('sort') || 'newest';
     const [selected, setSelected] = useState(currentSortCondition);
 
     useEffect(() => {
@@ -123,7 +124,7 @@ export function SortBy() {
         const params = new URLSearchParams(searchParams);
         params.set('page', '1'); // reset pagination
 
-        params.set('sort-by', value);
+        params.set('sort', value);
 
         replace(`${pathname}?${params.toString()}`);
         setSelected(value);
@@ -131,11 +132,11 @@ export function SortBy() {
 
     return (
         <div className="flex items-center gap-2">
-            <label htmlFor="sort-by" className="text-sm font-medium text-gray-700">
+            <label htmlFor="sort" className="text-sm font-medium text-gray-700">
                 Sort by:
             </label>
             <select
-                id="sort-by"
+                id="sort"
                 value={selected}
                 onChange={(e) => handleChange(e.target.value)}
                 className="block w-40 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
@@ -143,7 +144,7 @@ export function SortBy() {
                 <option key='Newest' value='newest'>
                     Newest
                 </option>
-                <option key='Most Popular' value='most-popular'>
+                <option key='Most Views' value='most-views'>
                     Most Popular
                 </option>
                 <option key='Most Answers' value='most-answers'>
