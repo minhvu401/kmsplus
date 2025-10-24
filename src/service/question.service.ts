@@ -320,7 +320,7 @@ export type ListedQuestion = {
   category_name: string
 }
 
-export async function fetchFilteredQuestionAction(query: string, category: string, status: string, sort: string, currentPage: number) {
+export async function fetchFilteredQuestionsAction(query: string, category: string, status: string, sort: string, currentPage: number) {
 
   const offset = (currentPage - 1) * ITEMS_PER_PAGE;
 
@@ -331,12 +331,12 @@ export async function fetchFilteredQuestionAction(query: string, category: strin
        users.email ILIKE ${'%' + query + '%'} OR
        questions.title ILIKE ${'%' + query + '%'} OR
        questions.content ILIKE ${'%' + query + '%'})
+      AND questions.is_deleted = FALSE
     `;
 
     // Add optional filters dynamically
     if (category !== "any") {
       sqlQuery = sql`
-      JOIN categories ON questions.category_id = categories.id
       ${sqlQuery} 
       AND categories.slug = ${category}
       `;
@@ -367,6 +367,7 @@ export async function fetchFilteredQuestionAction(query: string, category: strin
       SELECT questions.*, users.full_name AS user_name, categories.name AS category_name
       FROM questions
       JOIN users ON questions.user_id = users.id
+      JOIN categories ON questions.category_id = categories.id
       ${sqlQuery}
       LIMIT ${ITEMS_PER_PAGE} OFFSET ${offset};
     `) as ListedQuestion[];

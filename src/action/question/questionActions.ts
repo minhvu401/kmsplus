@@ -46,4 +46,9 @@ export async function fetchQuestionsPages(query: string, category: string, statu
   return service.fetchQuestionPagesAction(query, category, status)
 }
 
+export async function fetchFilteredQuestions(query: string, category:string, status:string, sort: string, currentPage: number) {
+  // await requireAuth()
+  return service.fetchFilteredQuestionsAction(query, category, status, sort, currentPage)
+}
+
 // createCommnet, editComment, getQuestionDetails, voteComment
