@@ -5,6 +5,7 @@ import { CreateQuestion } from "@/components/ui/questions/create-button"
 import { FilterCategory, FilterStatus, SortBy } from "@/components/ui/questions/filters"
 import { getActiveCategories, fetchQuestionsPages } from "@/action/question/questionActions";
 import Pagination from "@/components/ui/questions/pagination";
+import QuestionsList from "@/components/ui/questions/questions-list";
 
 export default async function Page(props: {
   searchParams?: Promise<{
@@ -37,8 +38,17 @@ export default async function Page(props: {
         <FilterStatus />
         <SortBy />
       </div>
+      <div className="mb-6">
+        <QuestionsList
+          query={query}
+          category={category}
+          status={status}
+          sort={sort}
+          currentPage={currentPage}
+        />
+      </div>
       <div className="flex justify-end items-center gap-14 mb-6">
-        <Pagination totalPages={totalPages}/>
+        <Pagination totalPages={totalPages} />
       </div>
     </PageWrapper>
   )

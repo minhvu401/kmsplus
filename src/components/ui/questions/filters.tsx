@@ -145,7 +145,7 @@ export function SortBy() {
                     Newest
                 </option>
                 <option key='Most Views' value='most-views'>
-                    Most Popular
+                    Most Views
                 </option>
                 <option key='Most Answers' value='most-answers'>
                     Most Answers
