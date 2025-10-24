@@ -45,7 +45,7 @@ export default function RootLayout({
             <div className="flex-1 flex flex-col">
               <Header
                 greeting="Good Morning"
-                userRole="Training Manager"
+                userRole="Admin"
                 userName="John Doe"
                 userAvatar=""
                 notificationCount={3}
