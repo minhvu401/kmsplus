@@ -1,74 +1,107 @@
 "use client"
 
-import React from "react"
-import { Bell } from "lucide-react"
+import { getCurrentUserAction } from "@/action/user/userActions"
+import { getCurrentUserInfor } from "@/service/user.service"
+import { Bell, User } from "lucide-react"
+import { useEffect, useState } from "react"
 
-interface HeaderProps {
-  greeting?: string
-  userRole?: string
-  userName?: string
-  userAvatar?: string
-  notificationCount?: number
-  onNotificationClick?: () => void
-  onAvatarClick?: () => void
+interface UserType {
+  id: string
+  full_name: string | null
+  email?: string
+  department?: string
+  role?: string
+  avatar_url?: string
 }
 
-const Header: React.FC<HeaderProps> = ({
-  greeting = "Good Morning",
-  userRole = "Training Manager",
-  userName = "John Doe",
-  userAvatar,
-  notificationCount = 0,
-  onNotificationClick,
-  onAvatarClick,
-}) => {
+export default function Header() {
+  const [user, setUser] = useState<UserType | null>(null)
+  const [notificationCount, setNotificationCount] = useState(0)
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const thisUser = await getCurrentUserAction()
+        if (thisUser) {
+          setUser(thisUser)
+        }
+      } catch (error) {
+        console.error("Failed to fetch user:", error)
+      }
+    }
+
+    fetchUser()
+  }, [])
+
+  console.log(user)
+
+  const handleNotificationClick = () => {
+    // Handle notification click
+    setNotificationCount(0)
+  }
+
+  const greeting = `Good ${getTimeOfDay()}`
+
+  // Get user initials for avatar fallback
+  const getUserInitials = (name: string | null | undefined) => {
+    if (!name) return "U"
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .substring(0, 2)
+  }
+
   return (
-    <header className="h-20 bg-white border-b border-gray-200 px-8 flex items-center justify-between">
+    <header className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between">
       {/* Left Section - Greeting */}
       <div>
-        <p className="text-sm text-gray-500 mb-1">{greeting}</p>
-        <h1 className="text-2xl font-bold text-gray-900">{userRole}</h1>
+        <p className="text-sm text-gray-500">{greeting},</p>
+        <h1 className="text-lg font-semibold text-gray-800">
+          {user?.full_name || "User"}
+        </h1>
       </div>
 
       {/* Right Section - Notifications & Avatar */}
-      <div className="flex items-center gap-6">
+      <div className="flex items-center gap-4">
         {/* Notification Button */}
         <button
-          onClick={onNotificationClick}
+          onClick={handleNotificationClick}
           className="relative p-2 hover:bg-gray-100 rounded-lg transition-colors"
           aria-label="Notifications"
         >
-          <Bell className="w-6 h-6 text-blue-500" />
+          <Bell className="w-5 h-5 text-gray-600" />
           {notificationCount > 0 && (
-            <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full"></span>
           )}
         </button>
 
         {/* User Avatar */}
-        <button
-          onClick={onAvatarClick}
-          className="focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-full"
-          aria-label="User menu"
-        >
-          {userAvatar ? (
-            <img
-              src={userAvatar}
-              alt={userName}
-              className="w-12 h-12 rounded-full object-cover"
-            />
-          ) : (
-            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-sky-400 flex items-center justify-center text-white font-semibold text-lg">
-              {userName
-                .split(" ")
-                .map((n) => n[0])
-                .join("")
-                .toUpperCase()}
-            </div>
-          )}
-        </button>
+        <div className="flex items-center gap-2 ml-2">
+          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-sky-400 flex items-center justify-center text-white text-xs font-medium">
+            {user?.avatar_url ? (
+              <img
+                src={user.avatar_url}
+                alt={user.full_name || "User"}
+                className="w-full h-full rounded-full object-cover"
+              />
+            ) : (
+              getUserInitials(user?.full_name)
+            )}
+          </div>
+          <span className="text-sm font-medium text-gray-700 hidden sm:inline">
+            {user?.full_name || "User"}
+          </span>
+        </div>
       </div>
     </header>
   )
 }
 
-export default Header
+function getTimeOfDay() {
+  const hour = new Date().getHours()
+  if (hour < 12) return "Morning"
+  if (hour < 18) return "Afternoon"
+  return "Evening"
+}
