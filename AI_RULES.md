@@ -23,6 +23,7 @@
 ### Code Style
 
 - ❌ **KHÔNG** thay đổi naming convention hiện tại
+- ❌ **KHÔNG** thay đổi lặp lại logic code cho cùng 1 flow xử lý cụ thể
 - ❌ **KHÔNG** refactor code mà không được yêu cầu
 - ❌ **KHÔNG** thêm comments dài dòng không cần thiết
 
