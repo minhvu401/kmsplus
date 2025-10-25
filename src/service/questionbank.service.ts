@@ -1,6 +1,6 @@
 "use server"
 
-import { sql } from "@/lib/neonClient"
+import { sql } from "@/lib/database"
 import { parse } from "path"
 
 export type Option = {

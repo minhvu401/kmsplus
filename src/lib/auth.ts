@@ -3,7 +3,7 @@
  * Combines JWT handling and server authentication helpers
  */
 
-import jwt from "jsonwebtoken"
+import { SignJWT, jwtVerify } from "jose"
 import { cookies } from "next/headers"
 import { env } from "./config"
 
@@ -14,15 +14,24 @@ export type AuthUser = {
   exp?: number
 }
 
+// Convert secret to Uint8Array for jose
+const secret = new TextEncoder().encode(env.JWT_SECRET)
+
 /**
  * JWT Token utilities
  */
-export function signToken(payload: object) {
-  return jwt.sign(payload, env.JWT_SECRET, { expiresIn: "2h" })
+export async function signToken(payload: { id: string; email: string }) {
+  const token = await new SignJWT(payload)
+    .setProtectedHeader({ alg: "HS256" })
+    .setIssuedAt()
+    .setExpirationTime("2h")
+    .sign(secret)
+  return token
 }
 
-export function verifyToken(token: string) {
-  return jwt.verify(token, env.JWT_SECRET)
+export async function verifyToken(token: string) {
+  const { payload } = await jwtVerify(token, secret)
+  return payload as AuthUser
 }
 
 /**
@@ -38,7 +47,7 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
       return null
     }
 
-    const decoded = verifyToken(token) as AuthUser
+    const decoded = await verifyToken(token)
     return decoded
   } catch (error) {
     console.error("Error getting current user:", error)
