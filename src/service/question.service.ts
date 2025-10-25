@@ -1,7 +1,7 @@
 "use server"
 
-import { sql } from "@/lib/neonClient"
-import { z } from 'zod'
+import { sql } from "@/lib/database"
+import { z } from "zod"
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 
@@ -45,13 +45,13 @@ const CreateQuestionSchema = z.object({
   title: z
     .string()
     .trim()
-    .min(3, 'Title must be at least 3 characters')
-    .max(150, 'Title must be under 150 characters'),
+    .min(3, "Title must be at least 3 characters")
+    .max(150, "Title must be under 150 characters"),
   content: z
     .string()
     .trim()
-    .min(10, 'Content must be at least 10 characters')
-    .max(3000, 'Content must be under 3000 characters'),
+    .min(10, "Content must be at least 10 characters")
+    .max(3000, "Content must be under 3000 characters"),
   category_id: z.coerce.number().int(),
   user_id: z.coerce.number().int(), // or from session later
 })
@@ -60,17 +60,17 @@ const CreateQuestionSchema = z.object({
 export async function createQuestionAction(formData: FormData) {
   // Validate input
   const validatedFields = CreateQuestionSchema.safeParse({
-    title: formData.get('title'),
-    content: formData.get('content'),
-    category_id: formData.get('category_id'),
-    user_id: formData.get('user_id'),
+    title: formData.get("title"),
+    content: formData.get("content"),
+    category_id: formData.get("category_id"),
+    user_id: formData.get("user_id"),
   })
 
   // Return validation errors if invalid
   if (!validatedFields.success) {
     return {
       errors: validatedFields.error.flatten().fieldErrors,
-      message: 'Missing or invalid fields. Failed to create question.',
+      message: "Missing or invalid fields. Failed to create question.",
     }
   }
   const { title, content, category_id, user_id } = validatedFields.data
@@ -90,15 +90,15 @@ export async function createQuestionAction(formData: FormData) {
       )
     `
   } catch (error) {
-    console.error('Error creating question:', error)
+    console.error("Error creating question:", error)
     return {
-      message: 'Database error. Failed to create question.',
+      message: "Database error. Failed to create question.",
     }
   }
 
   // Revalidate and redirect user back to the questions list
-  revalidatePath('/questions')
-  redirect('/questions')
+  revalidatePath("/questions")
+  redirect("/questions")
 }
 
 // UPDATE QUESTIONS
@@ -106,29 +106,29 @@ const UpdateQuestionSchema = z.object({
   title: z
     .string()
     .trim()
-    .min(3, 'Title must be at least 3 characters')
-    .max(150, 'Title must be under 150 characters'),
+    .min(3, "Title must be at least 3 characters")
+    .max(150, "Title must be under 150 characters"),
   content: z
     .string()
     .trim()
-    .min(10, 'Content must be at least 10 characters')
-    .max(3000, 'Content must be under 3000 characters'),
+    .min(10, "Content must be at least 10 characters")
+    .max(3000, "Content must be under 3000 characters"),
   category_id: z.coerce.number().int(),
-  id: z.coerce.number().int()
+  id: z.coerce.number().int(),
 })
 export async function updateQuestionAction(formData: FormData) {
   // Validate form data
   const validatedFields = UpdateQuestionSchema.safeParse({
-    title: formData.get('title'),
-    content: formData.get('content'),
-    category_id: formData.get('category_id'),
-    id: formData.get('id'),
+    title: formData.get("title"),
+    content: formData.get("content"),
+    category_id: formData.get("category_id"),
+    id: formData.get("id"),
   })
 
   if (!validatedFields.success) {
     return {
       errors: validatedFields.error.flatten().fieldErrors,
-      message: 'Invalid or missing fields. Failed to update question.',
+      message: "Invalid or missing fields. Failed to update question.",
     }
   }
   const { title, content, category_id, id } = validatedFields.data
@@ -146,12 +146,12 @@ export async function updateQuestionAction(formData: FormData) {
       WHERE id = ${id}
     `
   } catch (error) {
-    console.error('Error updating question:', error)
-    return { message: 'Database error. Failed to update question.' }
+    console.error("Error updating question:", error)
+    return { message: "Database error. Failed to update question." }
   }
 
-  revalidatePath('/questions')
-  redirect('/questions')
+  revalidatePath("/questions")
+  redirect("/questions")
 }
 
 // DELETE QUESTIONS
@@ -167,11 +167,11 @@ export async function deleteQuestionAction(id: string) {
       WHERE id = ${id}
     `
   } catch (error) {
-    console.error('Error deleting question:', error)
-    return { message: 'Databased error. Failed to delete question.' }
+    console.error("Error deleting question:", error)
+    return { message: "Databased error. Failed to delete question." }
   }
-  revalidatePath('/questions');
-  redirect('/question');
+  revalidatePath("/questions")
+  redirect("/question")
 }
 
 // CLOSE QUESTIONS
@@ -187,11 +187,11 @@ export async function closeQuestionAction(id: string) {
       WHERE id = ${id}
     `
   } catch (error) {
-    console.error('Error closing question:', error)
-    return { message: 'Databased error. Failed to close question.' }
+    console.error("Error closing question:", error)
+    return { message: "Databased error. Failed to close question." }
   }
-  revalidatePath('/questions');
-  redirect('/question');
+  revalidatePath("/questions")
+  redirect("/question")
 }
 
 // OPEN QUESTIONS
@@ -207,13 +207,12 @@ export async function openQuestionAction(id: string) {
       WHERE id = ${id}
     `
   } catch (error) {
-    console.error('Error opening question:', error)
-    return { message: 'Databased error. Failed to open question.' }
+    console.error("Error opening question:", error)
+    return { message: "Databased error. Failed to open question." }
   }
-  revalidatePath('/questions');
-  redirect('/question');
+  revalidatePath("/questions")
+  redirect("/question")
 }
-
 
 // GET CATEGORIES
 export type Category = {
@@ -240,32 +239,35 @@ export async function getActiveCategoriesAction(): Promise<Category[]> {
     if (row.parent_id) {
       return {
         id: row.category_id,
-        name: row.parent_name + ' - ' + row.category_name,
-        slug: row.slug
-      };
+        name: row.parent_name + " - " + row.category_name,
+        slug: row.slug,
+      }
     } else {
       return {
         id: row.category_id,
         name: row.category_name,
-        slug: row.slug
-      };
+        slug: row.slug,
+      }
     }
-  });
+  })
 
   return categories as Category[]
 }
 
-const ITEMS_PER_PAGE = 5;
-// FETCH QUESTIONS PAGES 
-export async function fetchQuestionPagesAction(query: string, category: string, status: string) {
+const ITEMS_PER_PAGE = 5
+// FETCH QUESTIONS PAGES
+export async function fetchQuestionPagesAction(
+  query: string,
+  category: string,
+  status: string
+) {
   try {
-
     let sqlQuery = sql`
-      WHERE ( users.full_name ILIKE ${'%' + query + '%'} OR
-       users.email ILIKE ${'%' + query + '%'} OR
-       questions.title ILIKE ${'%' + query + '%'} OR
-       questions.content ILIKE ${'%' + query + '%'})
-    `;
+      WHERE ( users.full_name ILIKE ${"%" + query + "%"} OR
+       users.email ILIKE ${"%" + query + "%"} OR
+       questions.title ILIKE ${"%" + query + "%"} OR
+       questions.content ILIKE ${"%" + query + "%"})
+    `
 
     // Add optional filters dynamically
     if (category !== "any") {
@@ -273,17 +275,17 @@ export async function fetchQuestionPagesAction(query: string, category: string, 
       JOIN categories ON questions.category_id = categories.id
       ${sqlQuery} 
       AND categories.slug = ${category}
-      `;
+      `
     }
 
     if (status !== "any") {
       let isClosed
       if (status === "closed") {
-        isClosed = true;
+        isClosed = true
       } else if (status === "open") {
-        isClosed = false;
+        isClosed = false
       }
-      sqlQuery = sql`${sqlQuery} AND questions.is_closed = ${isClosed}`;
+      sqlQuery = sql`${sqlQuery} AND questions.is_closed = ${isClosed}`
     }
 
     // Final query
@@ -292,13 +294,13 @@ export async function fetchQuestionPagesAction(query: string, category: string, 
       FROM questions
       JOIN users ON questions.user_id = users.id
       ${sqlQuery};
-    `;
+    `
 
-    const totalPages = Math.ceil(Number(data[0].count) / ITEMS_PER_PAGE);
-    return totalPages;
+    const totalPages = Math.ceil(Number(data[0].count) / ITEMS_PER_PAGE)
+    return totalPages
   } catch (error) {
-    console.error('Database Error:', error);
-    throw new Error('Failed to fetch total number of invoices.');
+    console.error("Database Error:", error)
+    throw new Error("Failed to fetch total number of invoices.")
   }
 }
 
@@ -320,12 +322,16 @@ export type ListedQuestion = {
   category_name: string
 }
 
-export async function fetchFilteredQuestionsAction(query: string, category: string, status: string, sort: string, currentPage: number) {
-
-  const offset = (currentPage - 1) * ITEMS_PER_PAGE;
+export async function fetchFilteredQuestionAction(
+  query: string,
+  category: string,
+  status: string,
+  sort: string,
+  currentPage: number
+) {
+  const offset = (currentPage - 1) * ITEMS_PER_PAGE
 
   try {
-
     let sqlQuery = sql`
       WHERE ( users.full_name ILIKE ${'%' + query + '%'} OR
        users.email ILIKE ${'%' + query + '%'} OR
@@ -339,17 +345,17 @@ export async function fetchFilteredQuestionsAction(query: string, category: stri
       sqlQuery = sql`
       ${sqlQuery} 
       AND categories.slug = ${category}
-      `;
+      `
     }
 
     if (status !== "any") {
       let isClosed
       if (status === "closed") {
-        isClosed = true;
+        isClosed = true
       } else if (status === "open") {
-        isClosed = false;
+        isClosed = false
       }
-      sqlQuery = sql`${sqlQuery} AND questions.is_closed = ${isClosed}`;
+      sqlQuery = sql`${sqlQuery} AND questions.is_closed = ${isClosed}`
     }
 
     if (sort !== "newest") {
@@ -370,12 +376,11 @@ export async function fetchFilteredQuestionsAction(query: string, category: stri
       JOIN categories ON questions.category_id = categories.id
       ${sqlQuery}
       LIMIT ${ITEMS_PER_PAGE} OFFSET ${offset};
-    `) as ListedQuestion[];
+    `) as ListedQuestion[]
 
-    return result;
+    return result
   } catch (error) {
-    console.error('Database Error:', error);
-    throw new Error('Failed to fetch total number of invoices.');
+    console.error("Database Error:", error)
+    throw new Error("Failed to fetch total number of invoices.")
   }
 }
-
