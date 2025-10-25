@@ -1,6 +1,6 @@
 "use server"
 
-import { requireAuth } from "@/lib/serverAuth"
+import { requireAuth } from "@/lib/auth"
 import * as service from "@/service/question.service"
 
 /**
@@ -41,7 +41,11 @@ export async function getActiveCategories() {
   return service.getActiveCategoriesAction()
 }
 
-export async function fetchQuestionsPages(query: string, category: string, status: string) {
+export async function fetchQuestionsPages(
+  query: string,
+  category: string,
+  status: string
+) {
   //await requireAuth()
   return service.fetchQuestionPagesAction(query, category, status)
 }

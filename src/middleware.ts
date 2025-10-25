@@ -17,23 +17,30 @@ const protectedRoutes = [
   PageRoute.QUESTION_BANK,
 ]
 
-export function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl
+export async function middleware(request: NextRequest) {
+  const { pathname, search } = request.nextUrl
   const token = request.cookies.get("token")?.value
 
-  const isPublicRoute = publicRoutes.some((route) => pathname.startsWith(route))
+  console.log("Middleware called for:", pathname + search)
+  console.log("Token:", token ? "exists" : "undefined")
 
   const isProtectedRoute = protectedRoutes.some((route) =>
     pathname.startsWith(route)
   )
 
-  // Nếu đã login và đang ở trang login → redirect về dashboard
-  if (token && pathname === PageRoute.LOGIN) {
+  // Nếu đã login và đang ở trang login (không có callbackUrl) → redirect về dashboard
+  if (
+    token &&
+    pathname === PageRoute.LOGIN &&
+    !search.includes("callbackUrl")
+  ) {
     try {
-      verifyToken(token) // Verify token còn valid không
+      await verifyToken(token) // Verify token còn valid không
+      console.log("Redirecting to dashboard (already logged in)")
       return NextResponse.redirect(new URL(PageRoute.DASHBOARD, request.url))
     } catch (error) {
       // Token invalid → xóa cookie
+      console.log("Token invalid, deleting cookie")
       const response = NextResponse.next()
       response.cookies.delete("token")
       return response
@@ -42,8 +49,8 @@ export function middleware(request: NextRequest) {
 
   // Nếu chưa login và truy cập protected route → redirect về login
   if (isProtectedRoute && !token) {
+    console.log("No token, redirecting to login")
     const loginUrl = new URL(PageRoute.LOGIN, request.url)
-    // Lưu URL để redirect back sau khi login
     loginUrl.searchParams.set("callbackUrl", pathname)
     return NextResponse.redirect(loginUrl)
   }
@@ -51,10 +58,12 @@ export function middleware(request: NextRequest) {
   // Nếu có token nhưng truy cập protected route → verify token
   if (isProtectedRoute && token) {
     try {
-      verifyToken(token)
+      const decoded = await verifyToken(token)
+      console.log("Token verified successfully for:", pathname)
       return NextResponse.next() // Token valid → cho qua
-    } catch (error) {
+    } catch (error: any) {
       // Token invalid/expired → redirect về login và xóa cookie
+      console.log("Token verification failed:", error?.message || error)
       const loginUrl = new URL(PageRoute.LOGIN, request.url)
       loginUrl.searchParams.set("reason", "session_expired")
       const response = NextResponse.redirect(loginUrl)

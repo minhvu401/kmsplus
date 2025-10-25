@@ -1,7 +1,9 @@
 "use server"
 
+import { verifyToken } from "@/lib/auth"
 import { sql } from "@/lib/database"
 import bcrypt from "bcryptjs"
+import { cookies } from "next/headers"
 
 /**
  * Type cho User response
@@ -10,8 +12,9 @@ export type User = {
   id: string
   email: string
   full_name: string | null
-  role?: string
-  is_active?: boolean
+  // role?: string
+  department?: string
+  avatar_url?: string
   created_at?: Date
 }
 
@@ -30,7 +33,7 @@ export type ServiceResponse = {
  */
 export async function getAllUsersAction(): Promise<User[]> {
   const users = await sql`
-    SELECT id, email, full_name, role, is_active, created_at 
+    SELECT id, email, full_name
     FROM users 
     WHERE is_deleted = false OR is_deleted IS NULL
     ORDER BY created_at DESC
@@ -47,9 +50,43 @@ export async function getUserByEmailAction(
   email: string
 ): Promise<User | null> {
   const users = await sql`
-    SELECT id, email, full_name, role, is_active, created_at 
+    SELECT id, email, full_name, created_at 
     FROM users 
     WHERE email = ${email} AND (is_deleted = false OR is_deleted IS NULL)
+  `
+  return users.length > 0 ? (users[0] as User) : null
+}
+
+export async function getCurrentUserInfor(): Promise<User | null> {
+  const cookieStore = await cookies()
+  const token = cookieStore.get("token")?.value
+
+  if (!token) {
+    return null
+  }
+
+  try {
+    const decoded = await verifyToken(token)
+    const id = decoded.id
+
+    const users = await sql`
+      SELECT email, full_name, avatar_url, department, created_at 
+      FROM users 
+      WHERE id = ${id} AND (is_deleted = false OR is_deleted IS NULL)
+    `
+    console.log("Fetched user:", users)
+    return users.length > 0 ? (users[0] as User) : null
+  } catch (error) {
+    console.error("Error verifying token:", error)
+    return null
+  }
+}
+
+export async function getUserDetail(id: string): Promise<User | null> {
+  const users = await sql`
+    SELECT  email, full_name, avatar_url, department, created_at 
+    FROM users 
+    WHERE id = ${id} AND (is_deleted = false OR is_deleted IS NULL)
   `
   return users.length > 0 ? (users[0] as User) : null
 }
@@ -61,7 +98,6 @@ export async function createUserAction(userData: {
   email: string
   password: string
   name: string
-  role: string
 }): Promise<ServiceResponse> {
   try {
     // Check if user already exists
@@ -78,8 +114,8 @@ export async function createUserAction(userData: {
 
     // Create user
     await sql`
-      INSERT INTO users (email, password, full_name, role, is_active)
-      VALUES (${userData.email}, ${hashedPassword}, ${userData.name}, ${userData.role}, true)
+      INSERT INTO users (email, password, full_name)
+      VALUES (${userData.email}, ${hashedPassword}, ${userData.name})
     `
 
     return {
@@ -102,8 +138,6 @@ export async function updateUserAction(
   email: string,
   updateData: {
     name?: string
-    role?: string
-    isActive?: boolean
   }
 ): Promise<ServiceResponse> {
   try {
@@ -121,14 +155,6 @@ export async function updateUserAction(
 
     if (updateData.name !== undefined) {
       updates.push(`full_name = '${updateData.name}'`)
-    }
-
-    if (updateData.role !== undefined) {
-      updates.push(`role = '${updateData.role}'`)
-    }
-
-    if (updateData.isActive !== undefined) {
-      updates.push(`is_active = ${updateData.isActive}`)
     }
 
     if (updates.length === 0) {

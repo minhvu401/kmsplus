@@ -1,5 +1,6 @@
+"use client"
+
 import { redirect } from "next/navigation"
-;("use client")
 
 // Đường dẫn này ĐÚNG với tên file "button.tsx"
 // import Button from "@/components/ui/button"

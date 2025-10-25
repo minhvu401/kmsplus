@@ -37,7 +37,21 @@ pnpm format
 - mở project, clone file .env.example ra và đổi tên thành .env.local
 - thông tin key ib vùng kín để nhận nhé
 
+## Vài cái cần notice
+
+- Không dùng cú pháp React.FC
+  ❌ vì nó không hỗ trợ server component
+  🟢 thay vào đó dùng cú pháp function, và nếu trang đấy cần cái gì thì khai báo interface
+
+=> Không dùng cú pháp export default
+
 ## Quy tắc đặt tên
+
+Với component 💣💀🐖🐖🐖🐖 NEW!!!!! 25/10/2025
+
+- tên component phải theo chuẩn PascalCase
+- tên component phải có ý nghĩa
+- tên component phải dễ hiểu
 
 Với api:
 

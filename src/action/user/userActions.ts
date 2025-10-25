@@ -1,6 +1,6 @@
 "use server"
 
-import { requireAuth } from "@/lib/auth"
+import { requireAuth, getCurrentUser } from "@/lib/auth"
 import {
   getAllUsersAction,
   getUserByEmailAction,
@@ -8,8 +8,18 @@ import {
   deleteUserAction,
   createUserAction,
   updateUserPasswordAction,
+  getCurrentUserInfor,
 } from "@/service/user.service"
 import { revalidatePath } from "next/cache"
+
+/**
+ * Get current logged in user
+ */
+export async function getCurrentUserAction() {
+  await requireAuth()
+  const user = await getCurrentUserInfor()
+  return user
+}
 
 /**
  * Get all users (protected)
