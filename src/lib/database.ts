@@ -1,5 +1,5 @@
 import { neon } from "@neondatabase/serverless"
-import { env } from "./env"
+import { env } from "./config"
 
 // Tạo 1 instance client duy nhất
 // tránh lặp code
