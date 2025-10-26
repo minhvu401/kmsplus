@@ -1,7 +1,7 @@
 "use server"
 
 import { sql } from "@/lib/database"
-import { z } from "zod"
+import { success, z } from "zod"
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 
@@ -52,7 +52,11 @@ const CreateQuestionSchema = z.object({
     .trim()
     .min(10, "Content must be at least 10 characters")
     .max(3000, "Content must be under 3000 characters"),
-  category_id: z.coerce.number().int(),
+  category_id: z
+    .coerce
+    .number()
+    .int()
+    .min(1, "Please select a category"),
   user_id: z.coerce.number().int(), // or from session later
 })
 
@@ -96,9 +100,11 @@ export async function createQuestionAction(formData: FormData) {
     }
   }
 
-  // Revalidate and redirect user back to the questions list
-  revalidatePath("/questions")
-  redirect("/questions")
+  return {
+    message: "Question created successfully",
+    errors: {},
+    success: true,
+  }
 }
 
 // UPDATE QUESTIONS
@@ -322,7 +328,7 @@ export type ListedQuestion = {
   category_name: string
 }
 
-export async function fetchFilteredQuestionAction(
+export async function fetchFilteredQuestionsAction(
   query: string,
   category: string,
   status: string,
