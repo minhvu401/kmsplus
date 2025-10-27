@@ -72,3 +72,12 @@ export async function loginAction(
     message: "Login successful",
   }
 }
+
+export async function logoutAction() {
+  try {
+    const cookieStore = await cookies()
+    cookieStore.delete("token")
+
+    return { success: true, message: "Logout successful" }
+  } catch (error) {}
+}
