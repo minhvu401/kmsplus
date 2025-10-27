@@ -23,7 +23,10 @@ export async function getAllQuestions() {
   return service.getAllQuestionsAction()
 }
 
-
+export async function getQuestionDetails(id: string) {
+  // await requireAuth()
+  return service.getQuestionDetailsAction(id)
+}
 
 export async function createQuestion(
   _prevState: State,
@@ -90,5 +93,7 @@ export async function fetchFilteredQuestions(
   // await requireAuth()
   return service.fetchFilteredQuestionsAction(query, category, status, sort, currentPage)
 }
+
+
 
 // createCommnet, editComment, getQuestionDetails, voteComment
