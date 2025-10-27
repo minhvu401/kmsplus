@@ -1,7 +1,7 @@
 //Course Service
 "use server"
 
-import { sql } from "@/lib/neonClient"
+import { sql } from "@/lib/database"
 
 export type Course = {
   id: number

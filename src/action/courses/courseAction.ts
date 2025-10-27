@@ -1,7 +1,7 @@
 //Course Action
 "use server"
 
-import { requireAuth } from "@/lib/serverAuth"
+import { requireAuth } from "@/lib/auth"
 import {
   getAllCoursesAction,
   getCourseByIdAction,
