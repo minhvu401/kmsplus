@@ -1,6 +1,7 @@
 // app/questions/[id]/page.tsx
 import { getQuestionDetails } from "@/action/question/questionActions";
 import PageWrapper from "@/components/page-wrapper";
+import QuestionMenu from "@/components/ui/questions/question-menu";
 
 export default async function ({
   params,
@@ -26,7 +27,12 @@ export default async function ({
   return (
     <PageWrapper>
       <div>
-        <h1 className="text-center text-2xl font-bold text-blue-600">{res.title}</h1>
+        <div className="relative flex items-center justify-center mt-6 mb-4">
+          <h1 className="text-center text-2xl font-bold text-blue-600">{res.title}</h1>
+          <div className="absolute right-0 top-0">
+            <QuestionMenu />
+          </div>
+        </div>
         <div className="items-center justify-center font-semibold text-gray-700 flex mt-4 gap-4">
           <p> by {res.user_name}</p>
           <span className="inline-flex items-center h-6 px-3 rounded bg-blue-600 text-white text-sm leading-none whitespace-nowrap">
@@ -53,7 +59,6 @@ export default async function ({
           <p>{res.content}</p>
         </div>
       </div>
-
     </PageWrapper>
   );
 }
