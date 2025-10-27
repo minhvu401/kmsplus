@@ -8,16 +8,16 @@ import {
   deleteUserAction,
   createUserAction,
   updateUserPasswordAction,
-  getCurrentUserInfor,
+  getCurrentUserInforAction,
 } from "@/service/user.service"
 import { revalidatePath } from "next/cache"
 
 /**
  * Get current logged in user
  */
-export async function getCurrentUserAction() {
+export async function getCurrentUserInfor() {
   await requireAuth()
-  const user = await getCurrentUserInfor()
+  const user = await getCurrentUserInforAction()
   return user
 }
 

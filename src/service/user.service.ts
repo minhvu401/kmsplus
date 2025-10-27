@@ -57,7 +57,7 @@ export async function getUserByEmailAction(
   return users.length > 0 ? (users[0] as User) : null
 }
 
-export async function getCurrentUserInfor(): Promise<User | null> {
+export async function getCurrentUserInforAction(): Promise<User | null> {
   const cookieStore = await cookies()
   const token = cookieStore.get("token")?.value
 
