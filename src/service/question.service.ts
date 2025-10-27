@@ -21,22 +21,42 @@ export type Question = {
   deleted_at?: Date | null
   created_at: Date
   updated_at: Date
+  user_name: string
+  category_name: string
 }
 
 // GET ALL QUESTIONS
 export async function getAllQuestionsAction(): Promise<Question[]> {
   const questions = await sql`
     SELECT 
-      id, user_id, category_id, title,
-      content, view_count, answer_count, is_closed,
-      is_deleted, deleted_at, created_at, updated_at
+      questions.id, questions.user_id, questions.category_id, questions.title,
+      questions.content, questions.view_count, questions.answer_count, questions.is_closed,
+      questions.is_deleted, questions.deleted_at, questions.created_at, questions.updated_at,
+      users.name AS user_name, categories.name AS category_name
     FROM questions
-    ORDER BY created_at DESC
+    JOIN users ON questions.user_id = users.id
+    JOIN categories ON questions.category_id = categories.id
   `
   // Debug log
   console.log("Fetched questions:", questions)
 
   return questions as Question[]
+}
+
+// GET QUESTION DETAILS
+export async function getQuestionDetailsAction(id: string): Promise<Question> {
+  const result = await sql`
+   SELECT 
+      questions.id, questions.user_id, questions.category_id, questions.title,
+      questions.content, questions.view_count, questions.answer_count, questions.is_closed,
+      questions.is_deleted, questions.deleted_at, questions.created_at, questions.updated_at,
+      users.full_name AS user_name, categories.name AS category_name
+    FROM questions
+    JOIN users ON questions.user_id = users.id
+    JOIN categories ON questions.category_id = categories.id
+    WHERE questions.id = ${id}
+  `
+  return result[0] as Question
 }
 
 // CREATE QUESTIONS
@@ -311,22 +331,6 @@ export async function fetchQuestionPagesAction(
 }
 
 // FETCH FILTERED QUESTIONS
-export type ListedQuestion = {
-  id: number
-  user_id: number
-  category_id: number | null
-  title: string
-  content: string
-  view_count: number
-  answer_count: number
-  is_closed: boolean
-  is_deleted: boolean
-  deleted_at?: Date | null
-  created_at: Date
-  updated_at: Date
-  user_name: string
-  category_name: string
-}
 
 export async function fetchFilteredQuestionsAction(
   query: string,
@@ -382,7 +386,7 @@ export async function fetchFilteredQuestionsAction(
       JOIN categories ON questions.category_id = categories.id
       ${sqlQuery}
       LIMIT ${ITEMS_PER_PAGE} OFFSET ${offset};
-    `) as ListedQuestion[]
+    `) as Question[]
 
     return result
   } catch (error) {

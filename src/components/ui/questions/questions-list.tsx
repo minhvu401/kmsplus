@@ -33,7 +33,7 @@ export default async function QuestionsList({
                             </Link>
 
                             {/* Content (truncate) */}
-                            <p className="text-gray-600 line-clamp-2">
+                            <p className="text-gray-600 line-clamp-2 whitespace-pre-wrap">
                                 {q.content}
                             </p>
                         </div>
