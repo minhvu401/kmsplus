@@ -79,6 +79,6 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     //trừ các route sau
-    "/((?!api|_next/static|_next/image|favicon.ico|.*\\..*|_next).*)",
+    "/((?!api|_next/static|_next/image|.*\\..*|_next).*)",
   ],
 }

@@ -1,39 +1,61 @@
 "use client"
 
-import { getCurrentUserAction } from "@/action/user/userActions"
-import { getCurrentUserInfor } from "@/service/user.service"
+import { getCurrentUserInfor } from "@/action/user/userActions"
+import { Dropdown, Flex, MenuProps, Typography } from "antd"
 import { Bell, User } from "lucide-react"
 import { useEffect, useState } from "react"
+import LogoutIcon from "@/components/icon/LogoutIcon"
+import { logoutAction } from "@/action/auth/authActions"
+import { PageRoute } from "@/enum/page-route.enum"
+import { useRouter } from "next/navigation"
+import useUserStore from "@/store/useUserStore"
 
-interface UserType {
-  id: string
-  full_name: string | null
-  email?: string
-  department?: string
-  role?: string
-  avatar_url?: string
-}
+// interface UserType {
+//   id: string
+//   full_name: string | null
+//   email?: string
+//   department?: string
+//   role?: string
+//   avatar_url?: string
+// }
 
 export default function Header() {
-  const [user, setUser] = useState<UserType | null>(null)
+  const { user, fetchUser } = useUserStore()
+  // const [user, setUser] = useState<UserType | null>(null)
   const [notificationCount, setNotificationCount] = useState(0)
 
-  useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const thisUser = await getCurrentUserAction()
-        if (thisUser) {
-          setUser(thisUser)
-        }
-      } catch (error) {
-        console.error("Failed to fetch user:", error)
-      }
-    }
+  const router = useRouter()
 
-    fetchUser()
-  }, [])
+  const navigateToProfile = () => {
+    router.push(PageRoute.PROFILE)
+  }
 
-  console.log(user)
+  const profileItems: MenuProps["items"] = [
+    {
+      label: <span className="text-red-600">Đăng xuất</span>,
+      icon: <LogoutIcon className="fill-red-600" />,
+      key: "logout",
+      className: "text-red-600",
+      onClick: async () => {
+        await logoutAction()
+      },
+    },
+  ]
+
+  // useEffect(() => {
+  //   const fetchUser = async () => {
+  //     try {
+  //       const thisUser = await getCurrentUserInfor()
+  //       if (thisUser) {
+  //         setUser(thisUser)
+  //       }
+  //     } catch (error) {}
+  //   }
+
+  //   fetchUser()
+  // }, [])
+
+  // console.log(user)
 
   const handleNotificationClick = () => {
     // Handle notification click
@@ -52,6 +74,13 @@ export default function Header() {
       .toUpperCase()
       .substring(0, 2)
   }
+
+  useEffect(() => {
+    if (!user) {
+      fetchUser()
+    }
+  }, [user, fetchUser])
+  console.log("user", user?.full_name)
 
   return (
     <header className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between">
@@ -78,22 +107,34 @@ export default function Header() {
         </button>
 
         {/* User Avatar */}
-        <div className="flex items-center gap-2 ml-2">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-sky-400 flex items-center justify-center text-white text-xs font-medium">
-            {user?.avatar_url ? (
-              <img
-                src={user.avatar_url}
-                alt={user.full_name || "User"}
-                className="w-full h-full rounded-full object-cover"
-              />
-            ) : (
-              getUserInitials(user?.full_name)
-            )}
-          </div>
-          <span className="text-sm font-medium text-gray-700 hidden sm:inline">
-            {user?.full_name || "User"}
-          </span>
-        </div>
+        <Dropdown
+          menu={{ items: profileItems }}
+          trigger={["hover"]}
+          placement="bottomRight"
+        >
+          <Flex
+            className="flex items-center gap-1"
+            onClick={() => {
+              navigateToProfile()
+            }}
+            role="button"
+          >
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-sky-400 flex items-center justify-center text-white text-xs font-medium">
+              {user?.avatar_url ? (
+                <img
+                  src={user.avatar_url}
+                  alt={user.full_name || "User"}
+                  className="w-full h-full rounded-full object-cover"
+                />
+              ) : (
+                getUserInitials(user?.full_name)
+              )}
+            </div>
+            <span className="text-sm font-medium text-gray-700 hidden sm:inline">
+              {user?.full_name || "User"}
+            </span>
+          </Flex>
+        </Dropdown>
       </div>
     </header>
   )
