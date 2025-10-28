@@ -23,23 +23,52 @@ const PrivateLayout: React.FC<LayoutProps> = ({ children }) => {
   }
 
   return (
-    <Layout style={{ minHeight: "100vh" }}>
+    // <Layout
+    //   style={{
+    //     // minHeight: "100vh",
+    //     height: "100%",
+    //   }}
+    // >
+    //   <AppSidebar collapsed={collapsed} />
+    //   <Layout>
+    //     <AppHeader collapsed={collapsed} onToggle={handleToggle} />
+    //     <Content
+    //       style={{
+    //         margin: "24px 16px",
+    //         position: "sticky",
+    //         top: 0,
+    //         zIndex: 1,
+    //         padding: 24,
+    //         background: colorBgContainer,
+    //         borderRadius: borderRadiusLG,
+    //       }}
+    //     >
+    //       {children}
+    //     </Content>
+    //   </Layout>
+    // </Layout>
+    <div
+      // style={{ minHeight: "100vh", display: "flex", width: "100%" }}
+      className="min-h-screen w-full flex bg-white"
+    >
       <AppSidebar collapsed={collapsed} />
-      <Layout>
-        <AppHeader collapsed={collapsed} onToggle={handleToggle} />
-        <Content
+      <div className="flex-1">
+        <AppHeader
+          collapsed={collapsed}
+          onToggle={handleToggle}
+          className="sticky top-0 z-10 bg-white border-b border-gray-200"
+        />
+        <div
+          className="p-4 min-h-[calc(100vh-112px)]"
           style={{
-            margin: "24px 16px",
-            padding: 24,
-            minHeight: 280,
             background: colorBgContainer,
             borderRadius: borderRadiusLG,
           }}
         >
           {children}
-        </Content>
-      </Layout>
-    </Layout>
+        </div>
+      </div>
+    </div>
   )
 }
 
