@@ -84,6 +84,6 @@ export async function logoutAction() {
     const { clearUser } = useUserStore.getState() // Lấy phương thức clearUser từ store
     clearUser()
 
-    redirect(PageRoute.LOGIN)
+    // redirect(PageRoute.LOGIN)
   } catch (error) {}
 }
