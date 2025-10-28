@@ -1,6 +1,6 @@
 "use server"
 
-import { sql } from "@/lib/neonClient"
+import { sql } from "@/lib/database"
 
 /**
  * Type cho User response
@@ -26,9 +26,10 @@ export async function getAllArticlesAction(): Promise<Article[]> {
   return articles as Article[]
 }
 
-export async function searchArticleAction(searchQuery: string): Promise<Article[]> {
-  
-  const query = `%${searchQuery}%`;
+export async function searchArticleAction(
+  searchQuery: string
+): Promise<Article[]> {
+  const query = `%${searchQuery}%`
 
   const articles = await sql`
     SELECT 
@@ -48,12 +49,7 @@ export async function searchArticleAction(searchQuery: string): Promise<Article[
       a.id, a.title, a.status, a.updated_at
     ORDER BY 
       a.id ASC
-  `;
-  
-  return articles as Article[];
+  `
+
+  return articles as Article[]
 }
-
-
-
-
-
