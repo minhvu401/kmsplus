@@ -1,7 +1,8 @@
 import { Geist, Geist_Mono } from "next/font/google"
 import { AntdRegistry } from "@ant-design/nextjs-registry"
-// @ts-ignore
 import "./globals.css"
+import { Metadata } from "next"
+import { Inter } from "next/font/google"
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -13,6 +14,13 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 })
 
+const inter = Inter({ subsets: ["latin"] })
+
+export const metadata: Metadata = {
+  title: "KMS Plus",
+  description: "Knowledge Management System",
+}
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -22,7 +30,6 @@ export default function RootLayout({
     <html lang="en">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-        suppressHydrationWarning={true}
       >
         <AntdRegistry>{children}</AntdRegistry>
       </body>
