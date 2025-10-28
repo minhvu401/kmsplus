@@ -96,6 +96,9 @@ const AppSidebar: React.FC<SidebarProps> = ({ collapsed }) => {
         defaultSelectedKeys={["1"]}
         defaultOpenKeys={["sub1"]}
         items={sidebarItems}
+        style={{
+          borderRight: "none",
+        }}
       />
     </Sider>
   )
