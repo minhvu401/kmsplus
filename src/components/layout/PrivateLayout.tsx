@@ -59,7 +59,7 @@ const PrivateLayout: React.FC<LayoutProps> = ({ children }) => {
           className="sticky top-0 z-10 bg-white border-b border-gray-200"
         />
         <div
-          className="p-4 min-h-[calc(100vh-112px)]"
+          className="min-h-[calc(100vh-112px)]"
           style={{
             background: colorBgContainer,
             borderRadius: borderRadiusLG,

@@ -36,6 +36,23 @@ body {
   min-height: 100%;
 }
 
+/* Custom sidebar menu styles */
+.ant-menu-item.custom-menu-item {
+  margin: 4px 8px !important;
+  border-radius: 8px !important;
+  transition: all 0.2s ease !important;
+}
+
+/* Selected menu item */
+.ant-menu-item.custom-menu-item.ant-menu-item-selected .ant-menu-title-content {
+  font-weight: 600 !important;
+}
+
+/* Hover effect */
+.ant-menu-item.custom-menu-item:hover {
+  background-color: rgba(24, 144, 255, 0.1) !important;
+}
+
 /* Custom utility classes */
 .min-h-screen {
   min-height: 100vh;

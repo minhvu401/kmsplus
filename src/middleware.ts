@@ -21,8 +21,8 @@ export async function middleware(request: NextRequest) {
   const { pathname, search } = request.nextUrl
   const token = request.cookies.get("token")?.value
 
-  console.log("Middleware called for:", pathname + search)
-  console.log("Token:", token ? "exists" : "undefined")
+  // console.log("Middleware called for:", pathname + search)
+  // console.log("Token:", token ? "exists" : "undefined")
 
   const isProtectedRoute = protectedRoutes.some((route) =>
     pathname.startsWith(route)
@@ -59,7 +59,7 @@ export async function middleware(request: NextRequest) {
   if (isProtectedRoute && token) {
     try {
       const decoded = await verifyToken(token)
-      console.log("Token verified successfully for:", pathname)
+      // console.log("Token verified successfully for:", pathname)
       return NextResponse.next() // Token valid → cho qua
     } catch (error: any) {
       // Token invalid/expired → redirect về login và xóa cookie
