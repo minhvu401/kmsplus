@@ -52,6 +52,7 @@ export default function LoginPage() {
   }
 
   return (
+    // <PublicLayout>
     <div
       style={{
         minHeight: "100vh",
@@ -59,7 +60,7 @@ export default function LoginPage() {
         alignItems: "center",
         justifyContent: "center",
         background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-        padding: "16px",
+        // padding: "16px",
       }}
     >
       <Card
@@ -178,5 +179,6 @@ export default function LoginPage() {
         </Form>
       </Card>
     </div>
+    // </PublicLayout>
   )
 }
