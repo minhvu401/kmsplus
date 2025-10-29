@@ -4,6 +4,9 @@ import { sql } from "@/lib/database"
 import { signToken } from "@/lib/auth"
 import { LoginDto } from "./dto/login.dto"
 import { cookies } from "next/headers"
+import { redirect } from "next/navigation"
+import { PageRoute } from "@/enum/page-route.enum"
+import useUserStore from "@/store/useUserStore"
 
 export type LoginState = {
   success: boolean
@@ -78,6 +81,9 @@ export async function logoutAction() {
     const cookieStore = await cookies()
     cookieStore.delete("token")
 
-    return { success: true, message: "Logout successful" }
+    const { clearUser } = useUserStore.getState() // Lấy phương thức clearUser từ store
+    clearUser()
+
+    // redirect(PageRoute.LOGIN)
   } catch (error) {}
 }
