@@ -1,30 +1,15 @@
-/*
-================================================================================
-|
-|   app/courses/create/ClientCreateCourse.tsx
-|
-|   (Bản cập nhật - Gộp Stepper 2 & 3, Bỏ Stepper 4, Bỏ trường Level)
-|
-|   - Chỉ còn 2 bước: "Basic Information" và "Advance Information".
-|   - "Advance Information" giờ bao gồm cả Status, Duration VÀ Curriculum Bank.
-|   - Trường "Level" đã bị xóa.
-|   - Nút "Save Course" xuất hiện ở cuối bước 2.
-|
-================================================================================
-*/
 "use client"
 
 import React, { useState, useMemo } from "react"
-// import { useRouter } from "next/navigation" // <-- ĐÃ VÔ HIỆU HÓA ĐỂ PREVIEW
-
-// --- Icons ---
+import { useRouter } from "next/navigation"
+import { updateCourse } from "@/action/courses/courseAction"
 import {
   GripVertical,
-  BookOpen, // Icon cho Lesson
-  FileQuestion, // Icon cho Quiz
-  Search,
+  BookOpen,
+  FileQuestion,
   Edit2,
   Trash2,
+  Search,
   X,
   Plus,
   PlusCircle,
@@ -41,19 +26,9 @@ import {
 
 const { TextArea } = Input
 
-// --- 1. ĐỊNH NGHĨA CÁC TYPES ---
-
-export type Lesson = {
-  id: number
-  title: string
-  duration_minutes: number
-}
-export type Quiz = {
-  id: number
-  title: string
-  question_count: number
-}
-
+// --- TYPES ---
+export type Lesson = { id: number; title: string; duration_minutes: number }
+export type Quiz = { id: number; title: string; question_count: number }
 export type CurriculumItem = {
   id: string
   order: number
@@ -63,37 +38,28 @@ export type CurriculumItem = {
   duration_minutes?: number
   question_count?: number
 }
-
 export type Section = {
   id: string
   title: string
   order: number
   items: CurriculumItem[]
 }
-
-type CoursePayload = {
+export type CoursePayload = {
+  id?: number
+  creator_id?: number
   title?: string
   slug?: string
   description?: string
   thumbnail_url?: string
   status?: string
   duration_hours?: number
-  language?: string
-  // level?: string // <-- VẪN GIỮ TRONG TYPE (có thể cần cho DB), NHƯNG XÓA KHỎI UI
-  price?: number | null
-  tags?: string[]
   curriculum: Section[]
 }
 
-// (THAY ĐỔI) Chỉ còn 2 bước
-const steps = [
-  "Basic Information",
-  "Advance Information", // Bước này giờ bao gồm cả Curriculum
-]
-
+const steps = ["Basic Information", "Advance Information"]
 type StepStatus = "pending" | "valid" | "invalid"
 
-// --- DỮ LIỆU GIẢ ---
+// Mock data cho content bank
 const MOCK_LESSONS: Lesson[] = [
   { id: 101, title: "Bài 1: Giới thiệu React", duration_minutes: 15 },
   { id: 102, title: "Bài 2: Components và Props", duration_minutes: 25 },
@@ -104,120 +70,113 @@ const MOCK_QUIZZES: Quiz[] = [
   { id: 202, title: "Quiz 2: Kiểm tra State", question_count: 10 },
 ]
 
-// --- 2. COMPONENT CHÍNH ---
+interface UpdateCourseFormProps {
+  initialData: CoursePayload
+}
 
-export default function ClientCreateCourse() {
-  // const router = useRouter() // <-- Vô hiệu hóa
+export default function UpdateCourseForm({
+  initialData,
+}: UpdateCourseFormProps) {
+  const router = useRouter()
   const [current, setCurrent] = useState(0)
   const [loading, setLoading] = useState(false)
-
-  const [payload, setPayload] = useState<CoursePayload>({
-    status: "draft",
-    duration_hours: 0,
-    tags: [],
-    curriculum: [],
-  })
-
-  // (THAY ĐỔI) State giờ có độ dài là 2
+  const [payload, setPayload] = useState<CoursePayload>(initialData)
   const [stepStatus, setStepStatus] = useState<StepStatus[]>(
-    new Array(steps.length).fill("pending") // steps.length giờ là 2
+    new Array(steps.length).fill("valid")
   )
 
-  // Hàm update chung (không đổi)
   function update<K extends keyof CoursePayload>(
     key: K,
     value: CoursePayload[K]
   ) {
     setPayload((p) => ({ ...p, [key]: value }))
-    if (stepStatus[current] === "invalid") {
-      setStepStatus((prevStatus) => {
-        const newStatus = [...prevStatus]
-        newStatus[current] = "pending"
-        return newStatus
-      })
-    }
+    setStepStatus((prevStatus) => {
+      const newStatus = [...prevStatus]
+      newStatus[current] = "pending"
+      return newStatus
+    })
   }
 
-  // Hàm validate (THAY ĐỔI: Gộp logic case 1 và 2 cũ, bỏ Level)
   function validateStep(stepIndex: number): boolean {
     switch (stepIndex) {
-      case 0: // Basic Information
+      case 0:
         return !!payload.title?.trim() && !!payload.slug?.trim()
-      case 1: // Advance Information (Giờ bao gồm cả Curriculum)
-        // Kiểm tra Curriculum
+      case 1:
         const isValidCurriculum =
           payload.curriculum.length > 0 &&
           payload.curriculum.every((s) => s.items.length > 0)
-        // (Không cần kiểm tra Level nữa)
-        // Bạn có thể thêm kiểm tra cho Status hoặc Duration nếu muốn
-        return isValidCurriculum // Chỉ kiểm tra Curriculum là bắt buộc ở bước này
+        return isValidCurriculum
       default:
         return false
     }
   }
 
-  // Hàm changeStep (không đổi)
   function changeStep(newIndex: number) {
-    if (newIndex === current || newIndex < 0 || newIndex >= steps.length) {
-      return
-    }
+    if (newIndex === current || newIndex < 0 || newIndex >= steps.length) return
+
     const isCurrentStepValid = validateStep(current)
-    setStepStatus((prevStatus) => {
-      const newStatus = [...prevStatus]
+    setStepStatus((prev) => {
+      const newStatus = [...prev]
       newStatus[current] = isCurrentStepValid ? "valid" : "invalid"
       return newStatus
     })
+
+    if (newIndex > current && !isCurrentStepValid) {
+      console.warn(`Step ${current + 1} is not valid.`)
+      return
+    }
+
     setCurrent(newIndex)
   }
 
   function next() {
     changeStep(current + 1)
   }
-
   function prev() {
     changeStep(current - 1)
   }
 
-  // Hàm handleSubmit (không đổi)
   async function handleSubmit() {
-    // 1. Validate tất cả các bước (giờ chỉ có 2 bước)
     const allStepsValidResults = steps.map((_, i) => validateStep(i))
     const isAllValid = allStepsValidResults.every((isValid) => isValid)
 
-    // 2. Cập nhật status UI
-    setStepStatus((prevStatus) => {
-      return prevStatus.map((status, i) =>
-        allStepsValidResults[i] ? "valid" : "invalid"
-      )
-    })
+    setStepStatus((prev) =>
+      prev.map((_, i) => (allStepsValidResults[i] ? "valid" : "invalid"))
+    )
 
-    // 3. Nếu không hợp lệ, nhảy về bước lỗi đầu tiên
     if (!isAllValid) {
       const firstInvalidStep = allStepsValidResults.findIndex((valid) => !valid)
-      if (firstInvalidStep !== -1) {
-        setCurrent(firstInvalidStep)
-      }
-      message.error(
-        "Vui lòng hoàn thành tất cả các trường bắt buộc ở mọi bước trước khi đăng."
-      )
+      if (firstInvalidStep !== -1) setCurrent(firstInvalidStep)
+      message.error("Please complete all required fields.")
       return
     }
 
-    // 4. Nếu hợp lệ, tiến hành submit
     setLoading(true)
     try {
-      console.log("Submitting payload:", JSON.stringify(payload, null, 2))
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-      console.log("Submit thành công! Đang chuyển hướng...")
-      // router.push("/manage/courses") // <-- Vô hiệu hóa
+      const formData = new FormData()
+      formData.append("id", String(payload.id!))
+      if (payload.title) formData.append("title", payload.title)
+      if (payload.slug) formData.append("slug", payload.slug)
+      if (payload.description)
+        formData.append("description", payload.description)
+      if (payload.thumbnail_url)
+        formData.append("thumbnail_url", payload.thumbnail_url)
+      if (payload.status) formData.append("status", payload.status)
+      if (payload.duration_hours !== undefined) {
+        formData.append("duration_hours", String(payload.duration_hours))
+      }
+
+      await updateCourse(formData)
+      message.success("Course updated successfully!")
+      // Redirect sẽ được xử lý bởi action
     } catch (err) {
-      console.error(err)
+      console.error("Failed to update course:", err)
+      message.error("Failed to update course. Please try again.")
     } finally {
       setLoading(false)
     }
   }
 
-  // Đếm tổng số items (không đổi)
   const totalItems = payload.curriculum.reduce(
     (acc, section) => acc + section.items.length,
     0
@@ -225,16 +184,16 @@ export default function ClientCreateCourse() {
 
   return (
     <div className="bg-white p-6 rounded shadow">
-      {/* Header (Cập nhật số bước) */}
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Create a new course</h1>
+        <h1 className="text-2xl font-semibold">
+          Update Course: {payload.title || `#${payload.id}`}
+        </h1>
         <div className="text-sm text-gray-500">
-          {/* (THAY ĐỔI) steps.length giờ là 2 */}
           Step {current + 1} / {steps.length}
         </div>
       </div>
 
-      {/* Stepper bar (Tự động cập nhật còn 2 bước) */}
+      {/* Stepper bar */}
       <div className="mb-6">
         <Steps
           current={current}
@@ -256,9 +215,8 @@ export default function ClientCreateCourse() {
         />
       </div>
 
-      {/* Vùng nội dung của Stepper */}
+      {/* Content */}
       <div>
-        {/* --- STEP 1: BASIC INFORMATION (không đổi) --- */}
         {current === 0 && (
           <section className="space-y-4">
             <div>
@@ -266,12 +224,13 @@ export default function ClientCreateCourse() {
               <Input
                 value={payload.title || ""}
                 onChange={(e) => update("title", e.target.value)}
+                maxLength={255}
                 status={
                   stepStatus[0] === "invalid" && !payload.title?.trim()
                     ? "error"
                     : ""
                 }
-                placeholder="Enter course title"
+                showCount
               />
             </div>
             <div>
@@ -279,12 +238,13 @@ export default function ClientCreateCourse() {
               <Input
                 value={payload.slug || ""}
                 onChange={(e) => update("slug", e.target.value)}
+                maxLength={255}
                 status={
                   stepStatus[0] === "invalid" && !payload.slug?.trim()
                     ? "error"
                     : ""
                 }
-                placeholder="Enter course slug"
+                showCount
               />
             </div>
             <div>
@@ -294,7 +254,8 @@ export default function ClientCreateCourse() {
               <Input
                 value={payload.thumbnail_url || ""}
                 onChange={(e) => update("thumbnail_url", e.target.value)}
-                placeholder="Enter thumbnail URL"
+                maxLength={500}
+                showCount
               />
             </div>
             <div>
@@ -304,19 +265,16 @@ export default function ClientCreateCourse() {
               <TextArea
                 value={payload.description || ""}
                 onChange={(e) => update("description", e.target.value)}
+                maxLength={500}
                 rows={4}
-                placeholder="Enter course description"
+                showCount
               />
             </div>
           </section>
         )}
 
-        {/* --- STEP 2: ADVANCE INFORMATION (Gộp nội dung cũ của Step 2 & 3, bỏ Level) --- */}
         {current === 1 && (
           <section className="space-y-6">
-            {" "}
-            {/* Tăng khoảng cách giữa các phần */}
-            {/* Phần Thông tin cũ của Step 2 (Bỏ Level) */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1">Status</label>
@@ -337,17 +295,17 @@ export default function ClientCreateCourse() {
                 </label>
                 <Input
                   type="number"
-                  value={String(payload.duration_hours ?? 0)}
+                  value={String(payload.duration_hours ?? "")}
                   onChange={(e) =>
-                    update("duration_hours", Number(e.target.value))
+                    update(
+                      "duration_hours",
+                      e.target.value === "" ? undefined : Number(e.target.value)
+                    )
                   }
                 />
               </div>
-              {/* Trường Level đã bị xóa */}
             </div>
-            {/* Đường kẻ ngang phân cách */}
             <hr className="my-6 border-gray-200" />
-            {/* Phần Curriculum (Nội dung cũ của Step 3) */}
             <div>
               <CurriculumContentBank
                 availableLessons={MOCK_LESSONS}
@@ -357,12 +315,12 @@ export default function ClientCreateCourse() {
                   update("curriculum", newCurriculum)
                 }
                 hasError={
-                  stepStatus[1] === "invalid" && // (THAY ĐỔI) Kiểm tra status của bước hiện tại (1)
+                  stepStatus[1] === "invalid" &&
                   (payload.curriculum.length === 0 ||
                     payload.curriculum.some((s) => s.items.length === 0))
                 }
               />
-              {stepStatus[1] === "invalid" && ( // (THAY ĐỔI) Kiểm tra status của bước hiện tại (1)
+              {stepStatus[1] === "invalid" && (
                 <p className="mt-2 text-sm text-red-600">
                   Curriculum must have at least one section, and each section
                   must have at least one item (lesson or quiz).
@@ -373,24 +331,22 @@ export default function ClientCreateCourse() {
         )}
       </div>
 
-      {/* Nút điều hướng (THAY ĐỔI: Logic hiển thị nút cuối) */}
+      {/* Navigation buttons */}
       <div className="mt-6 flex items-center justify-between">
         <div>{current > 0 && <Button onClick={prev}>Back</Button>}</div>
         <div>
-          {/* Nếu chưa phải bước cuối (Advance Info), hiển thị "Next" */}
-          {current < steps.length - 1 ? ( // steps.length - 1 giờ là 1
+          {current < steps.length - 1 ? (
             <Button type="primary" onClick={next}>
               Next
             </Button>
           ) : (
-            // Nếu đang ở bước cuối (Advance Info), hiển thị "Save Course"
             <Button
               type="primary"
               onClick={handleSubmit}
               loading={loading}
               style={{ backgroundColor: "#10b981" }}
             >
-              Save Course
+              Save Changes
             </Button>
           )}
         </div>
@@ -399,7 +355,7 @@ export default function ClientCreateCourse() {
   )
 }
 
-// --- Component CurriculumContentBank (Không thay đổi) ---
+// --- CurriculumContentBank Component ---
 interface CurriculumContentBankProps {
   value: Section[]
   onChange: (value: Section[]) => void
@@ -419,18 +375,12 @@ function CurriculumContentBank({
     type: "Section"
     sectionId?: string
   } | null>(null)
-
   const [activeTab, setActiveTab] = useState<"lessons" | "quizzes">("lessons")
   const [searchTerm, setSearchTerm] = useState("")
 
-  // --- Hàm xử lý Section ---
-  const handleAddSection = () => {
-    setModalState({ type: "Section" })
-  }
-
-  const handleEditSection = (sectionId: string) => {
+  const handleAddSection = () => setModalState({ type: "Section" })
+  const handleEditSection = (sectionId: string) =>
     setModalState({ type: "Section", sectionId })
-  }
 
   const handleSaveSection = (title: string) => {
     if (modalState?.sectionId) {
@@ -452,10 +402,13 @@ function CurriculumContentBank({
   }
 
   const handleDeleteSection = (sectionId: string) => {
-    onChange(sections.filter((s) => s.id !== sectionId))
+    if (
+      confirm("Are you sure you want to delete this section and all its items?")
+    ) {
+      onChange(sections.filter((s) => s.id !== sectionId))
+    }
   }
 
-  // --- Hàm xử lý Item ---
   const handleAddItemToSection = (
     sectionId: string,
     item: Lesson | Quiz,
@@ -492,7 +445,6 @@ function CurriculumContentBank({
     )
   }
 
-  // --- Logic lọc ---
   const filteredLessons = useMemo(
     () =>
       availableLessons.filter((l) =>
@@ -500,7 +452,6 @@ function CurriculumContentBank({
       ),
     [availableLessons, searchTerm]
   )
-
   const filteredQuizzes = useMemo(
     () =>
       availableQuizzes.filter((q) =>
@@ -515,7 +466,7 @@ function CurriculumContentBank({
         hasError ? "border-red-500" : "border-gray-200"
       }`}
     >
-      {/* CỘT TRÁI */}
+      {/* Left Column */}
       <div className="bg-gray-50 p-4 rounded border h-[600px] flex flex-col">
         <h3 className="text-lg font-semibold mb-4">Available Content</h3>
         <div className="relative mb-2">
@@ -562,16 +513,13 @@ function CurriculumContentBank({
                 title={lesson.title}
                 meta={`${lesson.duration_minutes} min`}
                 onAdd={() => {
-                  if (sections.length > 0) {
-                    // (THAY ĐỔI) Thêm vào section cuối cùng thay vì section[0]
+                  if (sections.length > 0)
                     handleAddItemToSection(
                       sections[sections.length - 1].id,
                       lesson,
                       "lesson"
                     )
-                  } else {
-                    console.warn("Vui lòng tạo Section trước khi thêm nội dung")
-                  }
+                  else alert("Please add a section first.")
                 }}
               />
             ))}
@@ -583,23 +531,20 @@ function CurriculumContentBank({
                 title={quiz.title}
                 meta={`${quiz.question_count} questions`}
                 onAdd={() => {
-                  if (sections.length > 0) {
-                    // (THAY ĐỔI) Thêm vào section cuối cùng thay vì section[0]
+                  if (sections.length > 0)
                     handleAddItemToSection(
                       sections[sections.length - 1].id,
                       quiz,
                       "quiz"
                     )
-                  } else {
-                    console.warn("Vui lòng tạo Section trước khi thêm nội dung")
-                  }
+                  else alert("Please add a section first.")
                 }}
               />
             ))}
         </div>
       </div>
 
-      {/* CỘT PHẢI */}
+      {/* Right Column */}
       <div className="bg-white rounded h-[600px] flex flex-col">
         <h3 className="text-lg font-semibold mb-4">Course Curriculum</h3>
         <div className="flex-1 overflow-y-auto space-y-4">
@@ -607,7 +552,10 @@ function CurriculumContentBank({
             <div key={section.id} className="bg-white border rounded">
               <div className="flex items-center justify-between p-3 border-b bg-gray-50">
                 <div className="flex items-center gap-2">
-                  <GripVertical size={18} className="text-gray-400" />
+                  <GripVertical
+                    size={18}
+                    className="text-gray-400 cursor-grab"
+                  />
                   <span className="font-medium">{section.title}</span>
                 </div>
                 <div className="flex items-center gap-3">
@@ -632,7 +580,10 @@ function CurriculumContentBank({
                     className="flex items-center justify-between p-2 border rounded hover:bg-gray-50"
                   >
                     <div className="flex items-center gap-2">
-                      <GripVertical size={16} className="text-gray-400" />
+                      <GripVertical
+                        size={16}
+                        className="text-gray-400 cursor-grab"
+                      />
                       {item.type === "lesson" ? (
                         <BookOpen size={16} className="text-gray-500" />
                       ) : (
@@ -657,7 +608,7 @@ function CurriculumContentBank({
                 ))}
                 {section.items.length === 0 && (
                   <p className="text-sm text-gray-500 px-2 py-4 text-center">
-                    (Kéo hoặc thả nội dung từ cột trái vào đây)
+                    (Use '+' button on left to add content)
                   </p>
                 )}
               </div>
@@ -665,7 +616,7 @@ function CurriculumContentBank({
           ))}
           {sections.length === 0 && (
             <p className="text-sm text-gray-500 px-2 py-16 text-center">
-              Click "Add Section" to start building your curriculum.
+              Click "Add Section" below to start.
             </p>
           )}
         </div>
@@ -681,7 +632,6 @@ function CurriculumContentBank({
         </div>
       </div>
 
-      {/* MODAL */}
       {modalState?.type === "Section" && (
         <FormModal
           title={modalState.sectionId ? "Edit Section Name" : "Add New Section"}
@@ -700,7 +650,6 @@ function CurriculumContentBank({
   )
 }
 
-// --- Component ContentBankItem (Không thay đổi) ---
 function ContentBankItem({
   icon,
   title,
@@ -728,7 +677,6 @@ function ContentBankItem({
   )
 }
 
-// --- Component FormModal (Không thay đổi) ---
 function FormModal({
   title,
   label,
@@ -745,12 +693,10 @@ function FormModal({
   onSave: (value: string) => void
 }) {
   const [value, setValue] = useState(initialValue)
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     onSave(value)
   }
-
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-md">

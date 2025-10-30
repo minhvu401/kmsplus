@@ -1,5 +1,3 @@
-"use server"
-
 import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 import {
@@ -8,6 +6,7 @@ import {
 } from "@/service/course.service"
 import type { Course } from "@/service/course.service"
 import Link from "next/link"
+import { Button, Tabs, Card, Image } from "antd"
 
 type Props = {
   params: { id: string }
@@ -56,11 +55,11 @@ export default async function CourseDetailPage({ params }: Props) {
                 <div className="md:col-span-2">
                   {/* Thumbnail or video preview */}
                   {course.thumbnail_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
+                    <Image
                       src={course.thumbnail_url}
                       alt={course.title}
                       className="w-full h-72 object-cover rounded"
+                      preview
                     />
                   ) : (
                     <div className="w-full h-72 bg-gray-100 rounded flex items-center justify-center text-gray-400">
@@ -70,100 +69,114 @@ export default async function CourseDetailPage({ params }: Props) {
                 </div>
 
                 <aside className="bg-gray-50 p-4 rounded">
-                  <div className="text-xl font-semibold">
+                  {/* <div className="text-xl font-semibold">
                     {course.status === "published" ? "$99" : "$0"}
-                  </div>
+                  </div> */}
                   <div className="text-sm text-gray-600 mt-2">
                     Course Duration: {course.duration_hours ?? "-"} hours
                   </div>
                   <div className="mt-4">
-                    <button className="w-full px-4 py-2 bg-sky-600 text-white rounded">
-                      Add To Cart
-                    </button>
-                    <button className="w-full px-4 py-2 mt-2 border rounded">
+                    <Button type="primary" size="large" block>
+                      Enroll Now
+                    </Button>
+                    {/* <Button size="large" block className="mt-2">
                       Buy Now
-                    </button>
+                    </Button> */}
                   </div>
                 </aside>
               </div>
 
               {/* Tabs: Overview / Curriculum / Instructor / Review */}
               <div className="mt-6 border-t pt-4">
-                <nav className="flex gap-4 text-sm text-gray-600">
-                  <a className="px-3 py-2 border-b-2 border-sky-600">
-                    Overview
-                  </a>
-                  <a className="px-3 py-2">Curriculum</a>
-                  <a className="px-3 py-2">Instructor</a>
-                  <a className="px-3 py-2">Review</a>
-                </nav>
-
-                {/* Overview content */}
-                <section className="mt-6">
-                  <h2 className="text-lg font-semibold mb-2">Description</h2>
-                  <p className="text-gray-700 whitespace-pre-line">
-                    {course.description ?? "No description provided."}
-                  </p>
-                </section>
-
-                {/* Curriculum placeholder */}
-                <section className="mt-8">
-                  <h3 className="text-lg font-semibold mb-2">Curriculum</h3>
-                  <div className="bg-white p-4 rounded shadow">
-                    <p className="text-sm text-gray-600">
-                      Curriculum items coming from DB — implement course
-                      sections/lectures table and query them to display real
-                      data.
-                    </p>
-                  </div>
-                </section>
-
-                {/* Instructors placeholder */}
-                <section className="mt-8">
-                  <h3 className="text-lg font-semibold mb-2">
-                    Course instructor
-                  </h3>
-                  <div className="bg-white p-4 rounded shadow">
-                    <p className="text-sm text-gray-600">
-                      Instructor info not yet modeled in DB — currently showing
-                      creator id #{course.creator_id}.
-                    </p>
-                  </div>
-                </section>
-
-                {/* Reviews placeholder */}
-                <section className="mt-8">
-                  <h3 className="text-lg font-semibold mb-2">
-                    Students Feedback
-                  </h3>
-                  <div className="space-y-4">
-                    <div className="bg-white p-4 rounded shadow">
-                      No reviews yet.
-                    </div>
-                  </div>
-                </section>
+                <Tabs
+                  defaultActiveKey="1"
+                  items={[
+                    {
+                      key: "1",
+                      label: "Overview",
+                      children: (
+                        <section>
+                          <h2 className="text-lg font-semibold mb-2">
+                            Description
+                          </h2>
+                          <p className="text-gray-700 whitespace-pre-line">
+                            {course.description ?? "No description provided."}
+                          </p>
+                        </section>
+                      ),
+                    },
+                    {
+                      key: "2",
+                      label: "Curriculum",
+                      children: (
+                        <section>
+                          <h3 className="text-lg font-semibold mb-2">
+                            Curriculum
+                          </h3>
+                          <Card>
+                            <p className="text-sm text-gray-600">
+                              Curriculum items coming from DB — implement course
+                              sections/lectures table and query them to display
+                              real data.
+                            </p>
+                          </Card>
+                        </section>
+                      ),
+                    },
+                    {
+                      key: "3",
+                      label: "Instructor",
+                      children: (
+                        <section>
+                          <h3 className="text-lg font-semibold mb-2">
+                            Course instructor
+                          </h3>
+                          <Card>
+                            <p className="text-sm text-gray-600">
+                              Instructor info not yet modeled in DB — currently
+                              showing creator id #{course.creator_id}.
+                            </p>
+                          </Card>
+                        </section>
+                      ),
+                    },
+                    {
+                      key: "4",
+                      label: "Review",
+                      children: (
+                        <section>
+                          <h3 className="text-lg font-semibold mb-2">
+                            Students Feedback
+                          </h3>
+                          <div className="space-y-4">
+                            <Card>No reviews yet.</Card>
+                          </div>
+                        </section>
+                      ),
+                    },
+                  ]}
+                />
               </div>
             </div>
           </div>
 
           {/* Related / right column for smaller screens we already show price box inside header */}
           <div className="lg:col-span-1">
-            <div className="bg-white p-4 rounded shadow">
-              <h4 className="font-semibold">Related Courses</h4>
+            <Card title="Related Courses">
               <div className="mt-3 space-y-3">
                 {related.map((r) => (
                   <Link
                     key={r.id}
                     href={`/courses/${r.id}`}
-                    className="flex items-center gap-3"
+                    className="flex items-center gap-3 hover:bg-gray-50 p-2 rounded transition-colors"
                   >
                     <div className="w-14 h-10 bg-gray-100 rounded overflow-hidden">
                       {r.thumbnail_url ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
+                        <Image
                           src={r.thumbnail_url}
                           alt={r.title}
                           className="w-full h-full object-cover"
+                          preview={false}
                         />
                       ) : null}
                     </div>
@@ -171,7 +184,7 @@ export default async function CourseDetailPage({ params }: Props) {
                   </Link>
                 ))}
               </div>
-            </div>
+            </Card>
           </div>
         </div>
       </div>

@@ -16,6 +16,7 @@ type GetAllCoursesParams = {
   query?: string
   page?: number
   limit?: number
+  sort?: "trending" | "newest" | "popular"
 }
 
 /**
@@ -51,10 +52,10 @@ export async function createCourse(formData: FormData) {
   await requireAuth()
 
   const creator_id = Number(formData.get("creator_id"))
-  const title = (formData.get("title") as string) || ""
-  const slug = (formData.get("slug") as string) || ""
-  const description = (formData.get("description") as string) || undefined
-  const thumbnail_url = (formData.get("thumbnail_url") as string) || undefined
+  let title = (formData.get("title") as string) || ""
+  let slug = (formData.get("slug") as string) || ""
+  let description = (formData.get("description") as string) || undefined
+  let thumbnail_url = (formData.get("thumbnail_url") as string) || undefined
   const status = (formData.get("status") as string) || "draft"
   let duration_hours: number | undefined = Number(
     formData.get("duration_hours")
@@ -64,6 +65,12 @@ export async function createCourse(formData: FormData) {
   if (!creator_id || !title || !slug) {
     throw new Error("Missing required fields: creator_id, title, slug")
   }
+
+  // Truncate fields to match database constraints (varchar(500))
+  if (title.length > 255) title = title.substring(0, 255)
+  if (slug.length > 255) slug = slug.substring(0, 255)
+  if (description && description.length > 500) description = description.substring(0, 500)
+  if (thumbnail_url && thumbnail_url.length > 500) thumbnail_url = thumbnail_url.substring(0, 500)
 
   await createCourseAction({
     creator_id,
@@ -83,7 +90,7 @@ export async function createCourse(formData: FormData) {
  * Cập nhật một khóa học từ FormData gửi lên.
  * - FormData expected fields: id, title, slug, description, thumbnail_url, status, duration_hours
  * - Nếu duration_hours không hợp lệ (NaN) sẽ bỏ qua
- * - Sau khi cập nhật sẽ revalidate các path liên quan và redirect về /courses
+ * - Sau khi cập nhật sẽ revalidate các path liên quan và redirect về /courses/manage
  * - Yêu cầu xác thực (requireAuth)
  */
 export async function updateCourse(formData: FormData) {
@@ -92,15 +99,22 @@ export async function updateCourse(formData: FormData) {
   const id = Number(formData.get("id"))
   if (!id) throw new Error("Course ID is required")
 
-  const title = (formData.get("title") as string) || undefined
-  const slug = (formData.get("slug") as string) || undefined
-  const description = (formData.get("description") as string) || undefined
-  const thumbnail_url = (formData.get("thumbnail_url") as string) || undefined
+  // Validate and truncate fields to prevent database constraint violations
+  let title = (formData.get("title") as string) || undefined
+  let slug = (formData.get("slug") as string) || undefined
+  let description = (formData.get("description") as string) || undefined
+  let thumbnail_url = (formData.get("thumbnail_url") as string) || undefined
   const status = (formData.get("status") as string) || undefined
   let duration_hours: number | undefined = Number(
     formData.get("duration_hours")
   )
   if (isNaN(duration_hours)) duration_hours = undefined
+
+  // Truncate fields to match database constraints (varchar(500))
+  if (title && title.length > 255) title = title.substring(0, 255)
+  if (slug && slug.length > 255) slug = slug.substring(0, 255)
+  if (description && description.length > 500) description = description.substring(0, 500)
+  if (thumbnail_url && thumbnail_url.length > 500) thumbnail_url = thumbnail_url.substring(0, 500)
 
   await updateCourseAction(id, {
     title,
@@ -113,7 +127,8 @@ export async function updateCourse(formData: FormData) {
 
   revalidatePath(`/courses/${id}`)
   revalidatePath("/courses")
-  redirect("/courses")
+  revalidatePath("/courses/manage")
+  redirect("/courses/manage")
 }
 
 /**
@@ -127,4 +142,5 @@ export async function deleteCourse(formData: FormData) {
   if (!id) throw new Error("Course ID is required")
   await deleteCourseAction(id)
   revalidatePath("/courses")
+  revalidatePath("/courses/manage")
 }
