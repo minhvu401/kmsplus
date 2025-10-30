@@ -1,8 +1,11 @@
 'use client';
 
-import { useActionState, useState } from 'react';
-import Link from 'next/link';
+import { useState, useActionState, startTransition } from 'react';
+import { Form, Input, Select, Button, Typography, Flex, Modal, Divider } from 'antd';
 import { State, createQuestion } from '@/action/question/questionActions';
+
+const { Text, Title } = Typography;
+const { TextArea } = Input;
 
 export default function CreateQuestionForm({
     categories,
@@ -11,115 +14,161 @@ export default function CreateQuestionForm({
     categories: { id: number; name: string }[];
     userId: number;
 }) {
+    const [form] = Form.useForm();
+    const [isLeaveVisible, setLeaveVisible] = useState(false);
+    const [isSubmitVisible, setSubmitVisible] = useState(false);
+    const [titleCount, setTitleCount] = useState(0);
+    const [contentCount, setContentCount] = useState(0);
+
     const initialState: State = { message: null, errors: {} };
     const [state, createQuestionAction] = useActionState(createQuestion, initialState);
 
-    const [title, setTitle] = useState('');
-    const [content, setContent] = useState('');
+    const handleLeave = () => {
+        setLeaveVisible(false);
+        window.location.href = '/questions';
+    };
 
-    const MAX_TITLE = 150;
-    const MAX_CONTENT = 3000;
+    const handleSubmit = () => {
+        setSubmitVisible(false);
+        form.submit();
+    };
 
     return (
-        <form action={createQuestionAction} className="w-full space-y-10 text-gray-700">
-            <input type="hidden" name="user_id" value={userId} />
+        <>
+            <Flex vertical gap={15} style={{ width: '1100px', background: '#fff' }}>
+                <Title level={3} style={{ color: '#1677ff', marginBottom: 0 }}>
+                    Ask a Question
+                </Title>
 
-            {/* Heading */}
-            <h1 className="text-3xl font-bold text-blue-600">Ask a Question</h1>
-            <hr className="border-gray-300" />
+                <Divider style={{ margin: '8px 0 16px' }} />
 
-            {/* Title */}
-            <div className="grid grid-cols-[180px_1fr] gap-4 items-start">
-                <label className="text-base font-semibold pt-2">Title</label>
-                <div className="w-full">
-                    <input
-                        type="text"
+                <Form
+                    form={form}
+                    layout="vertical"
+                    style={{ width: '100%' }}
+                    onFinish={async (values) => {
+                        const formData = new FormData();
+                        formData.append('user_id', String(userId));
+                        formData.append('title', values.title);
+                        formData.append('content', values.content);
+                        formData.append('category_id', values.category_id);
+
+                        startTransition(() => {
+                            createQuestionAction(formData);
+                        });
+                    }}
+                >
+                    <Form.Item
+                        label={<Text strong>Title:</Text>}
                         name="title"
-                        maxLength={MAX_TITLE}
-                        value={title}
-                        onChange={(e) => setTitle(e.target.value)}
-                        placeholder="Write your question title here..."
-                        className="w-full border border-gray-300 rounded-md p-3 text-base outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                    <div className="flex justify-between text-sm text-gray-500 mt-1">
-                        <span>Character limit</span>
-                        <span>{title.length} / {MAX_TITLE}</span>
-                    </div>
-                    {state.errors?.title?.map((err: string) => (
-                        <p key={err} className="text-red-500 text-sm mt-1">{err}</p>
-                    ))}
-                </div>
-            </div>
+                        rules={[{ required: true, message: 'Please enter a title' }]}
+                    >
+                        <Input
+                            placeholder="Write your question title here..."
+                            maxLength={150}
+                            onChange={(e) => setTitleCount(e.target.value.length)}
+                            style={{ height: 40 }}
+                        />
+                    </Form.Item>
+                    <Text type="secondary">Character limit {titleCount} / 150</Text>
 
-            <hr className="border-gray-300" />
+                    <Divider style={{ margin: '8px 0 16px' }} />
 
-            {/* Content */}
-            <div className="grid grid-cols-[180px_1fr] gap-4 items-start">
-                <label className="text-base font-semibold pt-2">Content</label>
-                <div className="w-full">
-                    <textarea
+                    <Form.Item
+                        label={<Text strong>Content:</Text>}
                         name="content"
-                        rows={8}
-                        maxLength={MAX_CONTENT}
-                        value={content}
-                        onChange={(e) => setContent(e.target.value)}
-                        placeholder="Provide more details about your question..."
-                        className="w-full border border-gray-300 rounded-md p-3 text-base outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                    <div className="flex justify-between text-sm text-gray-500 mt-1">
-                        <span>Character limit</span>
-                        <span>{content.length} / {MAX_CONTENT}</span>
-                    </div>
-                    {state.errors?.content?.map((err: string) => (
-                        <p key={err} className="text-red-500 text-sm mt-1">{err}</p>
-                    ))}
-                </div>
-            </div>
+                        rules={[{ required: true, message: 'Please provide more details' }]}
+                    >
+                        <TextArea
+                            rows={8}
+                            placeholder="Provide more details about your question..."
+                            maxLength={3000}
+                            onChange={(e) => setContentCount(e.target.value.length)}
+                            style={{ resize: 'none' }}
+                        />
+                    </Form.Item>
+                    <Text type="secondary">Character limit {contentCount} / 3000</Text>
 
-            <hr className="border-gray-300" />
+                    <Divider style={{ margin: '8px 0 16px' }} />
 
-            {/* Category */}
-            <div className="grid grid-cols-[180px_1fr] gap-4 items-center">
-                <label className="text-base font-semibold">Category</label>
-                <select
-                    name="category_id"
-                    defaultValue=""
-                    className="border border-gray-300 rounded-md p-3 text-base bg-white outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                    <option value="" disabled>Select category</option>
-                    {categories.map((cat) => (
-                        <option key={cat.id} value={cat.id}>
-                            {cat.name}
-                        </option>
-                    ))}
-                </select>
-                {state.errors?.category_id?.map((err: string) => (
-                    <p key={err} className="text-red-500 text-sm mt-1">{err}</p>
-                ))}
-            </div>
+                    <Form.Item
+                        label={<Text strong>Category:</Text>}
+                        name="category_id"
+                        rules={[{ required: true, message: 'Please select a category' }]}
+                    >
+                        <Select
+                            placeholder="Select category"
+                            options={categories.map((cat) => ({
+                                label: cat.name,
+                                value: cat.id,
+                            }))}
+                            allowClear
+                            size="large"
+                        />
+                    </Form.Item>
 
-            <hr className="border-gray-300" />
 
-            {/* Footer Buttons */}
-            <div className="flex justify-end gap-4 pt-2">
-                <Link
-                    href="/questions"
-                    className="px-6 py-2 rounded-md border border-red-500 text-red-500 hover:bg-red-50 text-base font-medium"
-                >
-                    Leave
-                </Link>
+                    <Flex justify="end" gap={16} style={{ marginTop: 32 }}>
+                        <Button danger size="large" onClick={() => setLeaveVisible(true)}>
+                            Leave
+                        </Button>
+                        <Button type="primary" size="large" onClick={() => setSubmitVisible(true)}>
+                            Submit
+                        </Button>
+                    </Flex>
 
-                <button
-                    type="submit"
-                    className="px-6 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 text-base font-medium"
-                >
-                    Submit
-                </button>
-            </div>
+                    {state.message && (
+                        <>
+                            <Text type="danger" style={{ display: 'block', marginTop: 16 }}>
+                                {state.message}
+                            </Text>
+                            {state.errors?.title?.map((err) => (
+                                <Text key={err} type="danger" style={{ display: 'block' }}>- {err}</Text>
+                            ))}
+                            {state.errors?.content?.map((err) => (
+                                <Text key={err} type="danger" style={{ display: 'block' }}>- {err}</Text>
+                            ))}
+                            {state.errors?.category_id?.map((err) => (
+                                <Text key={err} type="danger" style={{ display: 'block' }}>- {err}</Text>
+                            ))}
+                        </>
+                    )}
+                </Form>
+            </Flex>
 
-            {state.message && (
-                <p className="text-base text-red-500 mt-4">{state.message}</p>
-            )}
-        </form>
+            <Modal
+                title="Confirmation"
+                open={isLeaveVisible}
+                onCancel={() => setLeaveVisible(false)}
+                footer={[
+                    <Button key="cancel" onClick={() => setLeaveVisible(false)}>
+                        Cancel
+                    </Button>,
+                    <Button key="leave" danger onClick={handleLeave}>
+                        Leave
+                    </Button>,
+                ]}
+            >
+                <Text>Are you sure you want to leave this page?</Text>
+                <br />
+                <Text type="secondary">Your question will not be saved.</Text>
+            </Modal>
+
+            <Modal
+                title="Confirmation"
+                open={isSubmitVisible}
+                onCancel={() => setSubmitVisible(false)}
+                footer={[
+                    <Button key="cancel" onClick={() => setSubmitVisible(false)}>
+                        Cancel
+                    </Button>,
+                    <Button key="submit" type="primary" onClick={handleSubmit}>
+                        Submit
+                    </Button>,
+                ]}
+            >
+                <Text>Are you sure you want to ask this question?</Text>
+            </Modal>
+        </>
     );
 }

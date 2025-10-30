@@ -1,76 +1,92 @@
-import { fetchFilteredQuestions } from '@/action/question/questionActions';
+'use client';
+
+import { Flex, Typography, Tag, Divider } from 'antd';
 import Link from 'next/link';
-import { formatDistanceToNowStrict } from "date-fns";
+import { formatDistanceToNowStrict } from 'date-fns';
 
-export default async function QuestionsList({
-    query,
-    category,
-    status,
-    sort,
-    currentPage,
-}: {
-    query: string;
-    category: string;
-    status: string;
-    sort: string;
-    currentPage: number;
-}) {
+const { Text, Title } = Typography;
 
-    const questions = await fetchFilteredQuestions(query, category, status, sort, currentPage);
+export type Question = {
+    id: number
+    user_id: number
+    category_id: number | null
+    title: string
+    content: string
+    view_count: number
+    answer_count: number
+    is_closed: boolean
+    is_deleted: boolean
+    deleted_at?: Date | null
+    created_at: Date
+    updated_at: Date
+    user_name: string
+    category_name: string
+}
 
+export default function QuestionsList({ questions }: { questions: Question[] }) {
     return (
-        <div className="space-y-8">
-            {questions.map(q => (
-                <div
-                    key={q.id}
-                    className="border-b pb-6 flex flex-col gap-3"
-                >
-                    <div className="flex justify-between items-start gap-4">
-                        <div>
-                            {/* Title */}
-                            <Link href={`/questions/${q.id}`} className="text-xl font-semibold text-blue-600 hover:underline">
-                                {q.title}
+        <Flex vertical gap="large">
+            {questions.map((q) => (
+                <Flex key={q.id} vertical gap="small">
+                    {/* Top row: Title + counts */}
+                    <Flex justify="space-between" align="flex-start">
+                        <Flex vertical gap="medium" style={{ flex: 1 }}>
+                            <Link href={`/questions/${q.id}`} className="hover:underline">
+                                <Title
+                                    level={4}
+                                    style={{
+                                        color: '#1677ff',
+                                        marginBottom: 0,
+                                        transition: 'text-decoration 0.2s ease',
+                                    }}
+                                >
+                                    {q.title}
+                                </Title>
                             </Link>
 
-                            {/* Content (truncate) */}
-                            <p className="text-gray-600 line-clamp-2 whitespace-pre-wrap">
-                                {q.content}
-                            </p>
-                        </div>
+                            {/* Two-line text clamp */}
+                            <Text
+                                type="secondary"
+                                style={{
+                                    display: '-webkit-box',
+                                    WebkitLineClamp: 2,
+                                    WebkitBoxOrient: 'vertical',
+                                    overflow: 'hidden',
+                                }}
+                            >
+                                <p className="text-gray-600 line-clamp-2 whitespace-pre-wrap">
+                                    {q.content}
+                                </p>
+                            </Text>
+                        </Flex>
 
                         {/* Right side: Answer + view count */}
-                        <div className="text-right shrink-0">
-                            <p className="font-semibold text-gray-700">
-                                {q.answer_count} answers
-                            </p>
-                            <p className="font-semibold text-gray-700">
-                                {q.view_count} views
-                            </p>
-                        </div>
-                    </div>
+                        <Flex vertical align="flex-end" style={{ minWidth: 80 }}>
+                            <Text strong>{q.answer_count} answers</Text>
+                            <Text strong>{q.view_count} views</Text>
+                        </Flex>
+                    </Flex>
 
-                    <div className="font-bold flex justify-between items-center mt-4 text-sm text-gray-600">
-                        {/* Category + Status */}
-                        <div className="flex gap-3 items-center">
-                            <span className="inline-flex items-center h-6 px-3 rounded bg-blue-600 text-white text-sm leading-none whitespace-nowrap">
-                                {q.category_name}
-                            </span>
-                            <span
-                                className={`inline-flex items-center h-6 px-3 rounded text-white text-sm leading-none whitespace-nowrap ${q.is_closed ? "bg-red-500" : "bg-green-500"
-                                    }`}
-                            >
-                                {q.is_closed ? "Closed" : "Open"}
-                            </span>
-                        </div>
+                    {/* Bottom row: tags + user info */}
+                    <Flex justify="space-between" align="center">
+                        <Flex gap={8}>
+                            <Tag color="blue">{q.category_name}</Tag>
+                            <Tag color={q.is_closed ? 'red' : 'green'}>
+                                {q.is_closed ? 'Closed' : 'Open'}
+                            </Tag>
+                        </Flex>
 
-                        {/* Username */}
-                        <span className="font-bold text-gray-700 self-center">
-                            {q.user_name} asked {formatDistanceToNowStrict(new Date(q.created_at), { addSuffix: true})}
-                        </span>
+                        <Text type="secondary" strong>
+                            {q.user_name} asked{' '}
+                            {formatDistanceToNowStrict(new Date(q.created_at), {
+                                addSuffix: true,
+                            })}
+                        </Text>
+                    </Flex>
 
-                    </div>
-                </div>
+                    <Divider style={{ margin: '12px 0' }} />
+                </Flex>
             ))}
-        </div>
+        </Flex>
     );
 }
