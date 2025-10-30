@@ -96,4 +96,4 @@ export async function fetchFilteredQuestions(
 
 
 
-// createCommnet, editComment, getQuestionDetails, voteComment
+// createCommnet, editComment, voteComment

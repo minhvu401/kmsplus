@@ -1,9 +1,9 @@
 // List questions in Q&A Forum
-import PageWrapper from "@/components/page-wrapper"
+import PageWrapper from "@/components/ui/questions/page-wrapper"
 import Search from "@/components/ui/questions/search"
 import { CreateQuestion } from "@/components/ui/questions/create-button"
-import { FilterCategory, FilterStatus, SortBy } from "@/components/ui/questions/filters"
-import { getActiveCategories, fetchQuestionsPages } from "@/action/question/questionActions";
+import { FilterCategory, FilterStatus, QuestionsSortBy } from "@/components/ui/questions/filters"
+import { getActiveCategories, fetchQuestionsPages, fetchFilteredQuestions } from "@/action/question/questionActions";
 import Pagination from "@/components/ui/questions/pagination";
 import QuestionsList from "@/components/ui/questions/questions-list";
 
@@ -26,6 +26,8 @@ export default async function Page(props: {
   const totalPages = await fetchQuestionsPages(query, category, status);
 
   const categories = await getActiveCategories();
+  const questions = await fetchFilteredQuestions(query, category, status, sort, currentPage);
+
 
   return (
     <PageWrapper>
@@ -36,16 +38,10 @@ export default async function Page(props: {
       <div className="flex items-center gap-14 mb-6">
         <FilterCategory categories={categories} />
         <FilterStatus />
-        <SortBy />
+        <QuestionsSortBy />
       </div>
       <div className="mb-6">
-        <QuestionsList
-          query={query}
-          category={category}
-          status={status}
-          sort={sort}
-          currentPage={currentPage}
-        />
+        <QuestionsList questions={questions} />
       </div>
       <div className="flex justify-end items-center gap-14 mb-6">
         <Pagination totalPages={totalPages} />

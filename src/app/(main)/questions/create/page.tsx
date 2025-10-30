@@ -1,4 +1,4 @@
-import PageWrapper from "@/components/page-wrapper"
+import PageWrapper from "@/components/ui/questions/page-wrapper"
 import CreateQuestionForm from "@/components/forms/create-question-form";
 import { getActiveCategories } from "@/action/question/questionActions";
 
