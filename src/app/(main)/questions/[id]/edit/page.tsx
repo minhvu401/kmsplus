@@ -10,7 +10,7 @@ export default async function Page({
 }) {
   // const categories = await getActiveCategories();
   // const userId = 1; // Replace with actual user ID retrieval logic
-  const id = await params.id;
+  const id = params.id;
   const res = await getQuestionDetails(id);
 
   return (
