@@ -1,15 +1,16 @@
 import PageWrapper from "@/components/ui/questions/page-wrapper"
 import CreateQuestionForm from "@/components/forms/create-question-form";
 import { getActiveCategories } from "@/action/question/questionActions";
+import { Flex } from "antd";
 
 export default async function Page() {
   const categories = await getActiveCategories();
   const userId = 1; // Replace with actual user ID retrieval logic
   return (
     <PageWrapper>
-      <div className="flex items-center gap-7 mb-6">
+      <Flex align="center" gap={56}>
         <CreateQuestionForm categories={categories} userId={userId} />
-      </div>
+      </Flex>
     </PageWrapper>
   )
 }
