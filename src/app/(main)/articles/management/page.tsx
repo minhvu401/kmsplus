@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Edit2, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 // === SỬA ĐỔI 1: Import hàm 'searchArticle' ===
-import { searchArticle } from '@/action/articles/articlesManagementAction'; 
+import { filterByTag, getAllTags } from '@/action/articles/articlesManagementAction'; 
 // Bỏ import getAllArticles
 
 // === THÊM MỚI 1: Hook 'useDebounce' ===
@@ -41,16 +41,19 @@ export default function ArticleManagement() {
   const [loadingArticles, setLoadingArticles] = useState(false);
   const [articlesError, setArticlesError] = useState<string | null>(null);
 
+  // Tags state
+  const [tags, setTags] = useState<any[]>([]);
+  const [loadingTags, setLoadingTags] = useState(false);
+
   // === SỬA ĐỔI 2: Đây là thay đổi quan trọng nhất ===
-  // useEffect này sẽ tự động chạy lại mỗi khi 'debouncedSearchQuery' thay đổi
+  // useEffect này sẽ tự động chạy lại mỗi khi 'debouncedSearchQuery' hoặc 'selectedTag' thay đổi
   useEffect(() => {
     (async () => {
       setArticlesError(null);
       setLoadingArticles(true);
       try {
-        // Gọi hàm searchArticle với query đã được trì hoãn
-        // Nếu query rỗng, action của mày sẽ trả về tất cả
-        const res = await searchArticle(debouncedSearchQuery); 
+        // Gọi hàm searchArticle với query và tag filter
+        const res = await filterByTag(debouncedSearchQuery, selectedTag); 
         setArticles((res as any[]) || []);
       } catch (err: any) {
         setArticlesError(err?.message || String(err));
@@ -59,7 +62,23 @@ export default function ArticleManagement() {
         setLoadingArticles(false);
       }
     })();
-  }, [debouncedSearchQuery]); // <-- Lắng nghe sự thay đổi của debouncedSearchQuery
+  }, [debouncedSearchQuery, selectedTag]); // <-- Lắng nghe cả debouncedSearchQuery và selectedTag
+
+  // Load tags từ database khi component mount
+  useEffect(() => {
+    (async () => {
+      setLoadingTags(true);
+      try {
+        const res = await getAllTags();
+        setTags((res as any[]) || []);
+      } catch (err: any) {
+        console.error('Error loading tags:', err);
+        setTags([]);
+      } finally {
+        setLoadingTags(false);
+      }
+    })();
+  }, []); // Chỉ chạy 1 lần khi component mount
 
   const totalPages = 50; // Mày nên lấy số này từ server
   
@@ -90,23 +109,26 @@ export default function ArticleManagement() {
                     value={searchQuery}
                     // Input này chỉ cập nhật 'searchQuery', không gọi API
                     onChange={(e) => setSearchQuery(e.target.value)} 
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
                   />
                 </div>
               </div>
 
               {/* ... (Phần Tags và Nút Create Article giữ nguyên) ... */}
               <div className="w-64">
-                <label className="block text-sm text-gray-600 mb-1.5">Tags:</label>
+                <label className="block text-sm text-gray-900 mb-1.5">Tags:</label>
                 <select
                   value={selectedTag}
                   onChange={(e) => setSelectedTag(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                  disabled={loadingTags}
                 >
-                  <option>All Tags</option>
-                  <option>Fun Fact</option>
-                  <option>Tutorial</option>
-                  <option>News</option>
+                  <option className="text-gray-900" value="All Tags">All Tags</option>
+                  {tags.map((tag) => (
+                    <option key={tag.id} className="text-gray-900" value={tag.name}>
+                      {tag.name}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div className="flex items-end">
