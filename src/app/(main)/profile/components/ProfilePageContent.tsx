@@ -11,6 +11,7 @@ import {
 } from "@ant-design/icons"
 import { getCurrentUserInfor } from "@/action/user/userActions"
 import ActivityTabContent from "./ActivityTabContent"
+import useUserStore from "@/store/useUserStore"
 
 interface UserType {
   id: string
@@ -27,20 +28,21 @@ interface UserType {
 export default function ProfilePageContent() {
   const { Title, Text } = Typography
 
-  const [user, setUser] = useState<UserType | null>(null)
+  // const [user, setUser] = useState<UserType | null>(null)
+  const { user } = useUserStore()
 
-  useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const thisUser = await getCurrentUserInfor()
-        if (thisUser) {
-          setUser(thisUser)
-        }
-      } catch (error) {}
-    }
+  // useEffect(() => {
+  //   const fetchUser = async () => {
+  //     try {
+  //       const thisUser = await getCurrentUserInfor()
+  //       if (thisUser) {
+  //         setUser(thisUser)
+  //       }
+  //     } catch (error) {}
+  //   }
 
-    fetchUser()
-  }, [])
+  //   fetchUser()
+  // }, [])
 
   return (
     <Layout
