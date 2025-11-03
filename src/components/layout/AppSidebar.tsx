@@ -13,8 +13,13 @@ interface SidebarProps {
 }
 
 const AppSidebar: React.FC<SidebarProps> = ({ collapsed }) => {
-  // Lấy danh sách items từ custom hook
   const sidebarItems = useSidebarItems()
+
+  const router = useRouter()
+
+  const handleBackToHomePage = () => {
+    router.push(PageRoute.DASHBOARD)
+  }
 
   return (
     <Sider
@@ -44,6 +49,10 @@ const AppSidebar: React.FC<SidebarProps> = ({ collapsed }) => {
             overflow: "hidden",
             whiteSpace: "nowrap",
             textOverflow: "ellipsis",
+            cursor: "pointer",
+          }}
+          onClick={() => {
+            handleBackToHomePage()
           }}
         >
           {collapsed ? "KMS" : "KMSPlus"}
