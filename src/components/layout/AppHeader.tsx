@@ -24,6 +24,7 @@ import { useRouter } from "next/navigation"
 import { PageRoute } from "@/enum/page-route.enum"
 import LogoutIcon from "@/components/icon/LogoutIcon"
 import { logoutAction } from "@/action/auth/authActions"
+import useUserStore from "@/store/useUserStore"
 
 const { Header } = Layout
 const { Text } = Typography
@@ -46,8 +47,9 @@ export default function AppHeader({ collapsed, onToggle }: HeaderProps) {
   const {
     token: { colorBgContainer },
   } = theme.useToken()
+  const { user, clearUser, fetchUser } = useUserStore()
 
-  const [user, setUser] = useState<UserType | null>(null)
+  // const [user, setUser] = useState<UserType | null>(null)
 
   const profileItems: MenuProps["items"] = [
     {
@@ -63,6 +65,7 @@ export default function AppHeader({ collapsed, onToggle }: HeaderProps) {
 
   const HandleLogout = async () => {
     await logoutAction()
+    clearUser()
     router.push(PageRoute.LOGIN)
   }
 
@@ -83,17 +86,23 @@ export default function AppHeader({ collapsed, onToggle }: HeaderProps) {
   }
 
   useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const thisUser = await getCurrentUserInfor()
-        if (thisUser) {
-          setUser(thisUser)
-        }
-      } catch (error) {}
+    if (!user) {
+      fetchUser()
     }
+  }, [user, fetchUser])
 
-    fetchUser()
-  }, [])
+  // useEffect(() => {
+  //   const fetchUser = async () => {
+  //     try {
+  //       const thisUser = await getCurrentUserInfor()
+  //       if (thisUser) {
+  //         setUser(thisUser)
+  //       }
+  //     } catch (error) {}
+  //   }
+
+  //   fetchUser()
+  // }, [])
 
   return (
     <Header
