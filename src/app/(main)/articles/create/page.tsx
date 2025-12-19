@@ -1,154 +1,225 @@
 'use client';
 
-import React, { useState } from 'react';
-// Import các icon cho thanh toolbar
-import { Bold, Italic, Underline, List } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Form, Input, Select, Button, Card, Space, Flex, Typography, Divider, message } from 'antd';
+import {
+  BoldOutlined,
+  ItalicOutlined,
+  UnderlineOutlined,
+  UnorderedListOutlined,
+  CloseOutlined,
+  SendOutlined,
+} from '@ant-design/icons';
+import { useRouter } from 'next/navigation';
+import { getAllTags, createArticle } from '@/action/articles/articlesManagementAction';
+import type { Tag } from '@/service/articles.service';
+
+const { Title, Text } = Typography;
+const { TextArea } = Input;
 
 export default function CreateArticlePage() {
-  // State cho các trường input
-  const [title, setTitle] = useState('');
-  const [content, setContent] = useState('');
-  const [category, setCategory] = useState('Technology');
+  const [form] = Form.useForm();
+  const [titleLength, setTitleLength] = useState(0);
+  const [contentLength, setContentLength] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [tags, setTags] = useState<Tag[]>([]);
+  const [loadingTags, setLoadingTags] = useState(false);
+  const router = useRouter();
 
-  // Hàm render thanh toolbar (giả lập theo UI)
-  const renderToolbar = () => (
-    <div className="flex items-center gap-4 mt-2">
-      <button className="p-1 text-gray-600 hover:text-gray-900">
-        <Bold className="w-4 h-4" />
-      </button>
-      <button className="p-1 text-gray-600 hover:text-gray-900">
-        <Italic className="w-4 h-4" />
-      </button>
-      <button className="p-1 text-gray-600 hover:text-gray-900">
-        <Underline className="w-4 h-4" />
-      </button>
-      <button className="p-1 text-gray-600 hover:text-gray-900">
-        <List className="w-4 h-4" />
-      </button>
-    </div>
+  // Load tags từ database khi component mount
+  useEffect(() => {
+    (async () => {
+      setLoadingTags(true);
+      try {
+        const res = await getAllTags();
+        setTags(res || []);
+      } catch (err: any) {
+        console.error('Error loading tags:', err);
+        message.error('Failed to load categories');
+        setTags([]);
+      } finally {
+        setLoadingTags(false);
+      }
+    })();
+  }, []);
+
+  const handleSubmit = async (values: any) => {
+    console.log('Form values:', values);
+    setLoading(true);
+    
+    try {
+      // Tạo FormData để gửi lên server
+      const formData = new FormData();
+      formData.append('title', values.title);
+      formData.append('content', values.content);
+      formData.append('category', values.category);
+
+      console.log('Sending data:', {
+        title: values.title,
+        content: values.content,
+        category: values.category
+      });
+
+      // Gọi server action
+      const result = await createArticle(formData);
+      
+      console.log('Create article result:', result);
+
+      if (result.success) {
+        message.success(result.message || 'Article created successfully!');
+        form.resetFields();
+        setTitleLength(0);
+        setContentLength(0);
+        
+        // Redirect về trang management sau 1 giây
+        setTimeout(() => {
+          router.push('/articles/management');
+        }, 1000);
+      } else {
+        console.error('Failed to create article:', result.message);
+        message.error(result.message || 'Failed to create article');
+      }
+    } catch (error: any) {
+      console.error('Error creating article:', error);
+      message.error(error?.message || 'An error occurred');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const ToolbarButtons = () => (
+    <Space size="small">
+      <Button type="text" icon={<BoldOutlined />} size="small" />
+      <Button type="text" icon={<ItalicOutlined />} size="small" />
+      <Button type="text" icon={<UnderlineOutlined />} size="small" />
+      <Button type="text" icon={<UnorderedListOutlined />} size="small" />
+    </Space>
   );
 
   return (
-    // Dùng layout và padding giống trang ArticleManagement của mày
-    <div className="flex-1 flex flex-col">
+    <Flex vertical className="flex-1">
       <main className="flex-1 overflow-auto px-8 py-6">
-        {/* Box trắng chứa toàn bộ form */}
-        <div className="bg-white rounded-lg shadow-sm p-6 lg:p-8 max-w-4xl mx-auto">
-          {/* Tiêu đề chính của trang */}
-          <h1 className="text-2xl font-semibold text-gray-900 mb-6">
+        <Card className="max-w-4xl mx-auto">
+          <Title level={2} className="!mb-6">
             Create An Article
-          </h1>
+          </Title>
 
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              // Xử lý logic submit ở đây
-              console.log({ title, content, category });
-            }}
-            className="space-y-6"
+          <Form
+            form={form}
+            layout="vertical"
+            onFinish={handleSubmit}
           >
-            {/* 1. PHẦN TITLE */}
-            <div>
-              <label htmlFor="title" className="block text-base font-medium text-gray-800 mb-2">
-                Title
-              </label>
-              <input
-                id="title"
-                type="text"
+            {/* Title Field */}
+            <Form.Item
+              label={<Text strong className="text-base">Title</Text>}
+              name="title"
+              rules={[
+                { required: true, message: 'Please enter a title' },
+                { max: 150, message: 'Title must be less than 150 characters' },
+              ]}
+            >
+              <Input
                 placeholder="Type something here..."
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                maxLength={150} // Set max length
-                // Style input cơ bản, không viền, focus có viền xanh
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                maxLength={150}
+                onChange={(e) => setTitleLength(e.target.value.length)}
+                size="large"
               />
-              <div className="flex justify-between items-center mt-2">
-                {renderToolbar()}
-                <span className="text-sm text-gray-500">
-                  {title.length} / 150
-                </span>
-              </div>
-            </div>
+            </Form.Item>
 
-            {/* Đường kẻ ngang phân cách */}
-            <hr className="border-t border-gray-200" />
+            <Flex justify="space-between" align="center" className="mt-2 mb-4">
+              <ToolbarButtons />
+              <Text type="secondary" className="text-sm">
+                {titleLength} / 150
+              </Text>
+            </Flex>
 
-            {/* 2. PHẦN CONTENT */}
-            <div>
-              <label htmlFor="content" className="block text-base font-medium text-gray-800 mb-2">
-                Content
-              </label>
-              <textarea
-                id="content"
+            <Divider />
+
+            {/* Content Field */}
+            <Form.Item
+              label={<Text strong className="text-base">Content</Text>}
+              name="content"
+              rules={[
+                { required: true, message: 'Please enter content' },
+                { max: 3000, message: 'Content must be less than 3000 characters' },
+              ]}
+            >
+              <TextArea
                 placeholder="Type something here..."
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                maxLength={3000} // Set max length
-                rows={10} // Chiều cao mặc định
-                // Style giống input
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                maxLength={3000}
+                rows={10}
+                onChange={(e) => setContentLength(e.target.value.length)}
+                size="large"
               />
-              <div className="flex justify-between items-center mt-2">
-                {renderToolbar()}
-                <span className="text-sm text-gray-500">
-                  {content.length} / 3,000
-                </span>
-              </div>
-            </div>
+            </Form.Item>
 
-            {/* Đường kẻ ngang phân cách */}
-            <hr className="border-t border-gray-200" />
+            <Flex justify="space-between" align="center" className="mt-2 mb-4">
+              <ToolbarButtons />
+              <Text type="secondary" className="text-sm">
+                {contentLength} / 3,000
+              </Text>
+            </Flex>
 
-            {/* 3. PHẦN CATEGORY */}
-            <div>
-              <label htmlFor="category" className="block text-base font-medium text-gray-800 mb-2">
-                Category
-              </label>
-              <select
-                id="category"
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                // Style select giống ArticleManagement
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-              >
-                <option value="Technology">Technology</option>
-                <option value="Fun Fact">Fun Fact</option>
-                <option value="Tutorial">Tutorial</option>
-                <option value="News">News</option>
-              </select>
-            </div>
+            <Divider />
 
-            {/* 4. PHẦN NÚT BẤM (ACTIONS) */}
-            <div className="flex justify-end items-center gap-4 pt-4">
-              <button
-                type="button" // type="button" để không submit form
-                className="px-6 py-2 text-red-500 font-medium rounded-lg hover:bg-red-50"
-              >
-                Leave
-              </button>
-              <button
-                type="submit"
-                // Style nút "Post" giống nút "Create Article" của mày
-                className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-              >
-                Post
-              </button>
-            </div>
-          </form>
-        </div>
+            {/* Category Field */}
+            <Form.Item
+              label={<Text strong className="text-base">Category</Text>}
+              name="category"
+              rules={[{ required: true, message: 'Please select a category' }]}
+            >
+              <Select
+                options={tags.map(tag => ({ label: tag.name, value: tag.name }))}
+                size="large"
+                loading={loadingTags}
+                placeholder="Select a category"
+              />
+            </Form.Item>
+
+            {/* Action Buttons */}
+            <Form.Item className="!mb-0">
+              <Flex justify="flex-end" gap="middle" className="pt-4">
+                <Button
+                  size="large"
+                  danger
+                  icon={<CloseOutlined />}
+                  onClick={() => {
+                    form.resetFields();
+                    setTitleLength(0);
+                    setContentLength(0);
+                  }}
+                  disabled={loading}
+                >
+                  Leave
+                </Button>
+                <Button
+                  type="primary"
+                  htmlType="submit"
+                  size="large"
+                  icon={<SendOutlined />}
+                  loading={loading}
+                >
+                  Post
+                </Button>
+              </Flex>
+            </Form.Item>
+          </Form>
+        </Card>
       </main>
 
-      {/* Footer (Copy từ code ArticleManagement của mày) */}
-      <footer className="bg-white border-t px-8 py-4 mt-auto">
-        <div className="flex justify-between items-center text-sm text-gray-600">
-          <p>© 2025 - KMSPlus. Designed by <span className="font-medium">KMS Team</span>. All rights reserved</p>
-          <div className="flex gap-6">
-            <a href="#" className="hover:text-gray-900">FAQs</a>
-            <a href="#" className="hover:text-gray-900">Privacy Policy</a>
-            <a href="#" className="hover:text-gray-900">Terms & Condition</a>
-          </div>
-        </div>
+      {/* Footer */}
+      <footer className="bg-white border-t px-8 py-4">
+        <Flex justify="space-between" align="center">
+          <Text type="secondary" className="text-sm">
+            © 2025 - KMSPlus. Designed by <Text strong>KMS Team</Text>. All rights reserved
+          </Text>
+          <Space size="large">
+            <a href="#" className="text-sm text-gray-600 hover:text-gray-900">FAQs</a>
+            <a href="#" className="text-sm text-gray-600 hover:text-gray-900">Privacy Policy</a>
+            <a href="#" className="text-sm text-gray-600 hover:text-gray-900">Terms & Condition</a>
+          </Space>
+        </Flex>
       </footer>
-    </div>
+    </Flex>
   );
 }
