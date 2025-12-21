@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, startTransition } from 'react';
 import {
   EllipsisOutlined,
   EditOutlined,
@@ -9,8 +9,11 @@ import {
   LockOutlined,
   UnlockOutlined,
 } from '@ant-design/icons';
-import { Dropdown, Menu, Button, message } from 'antd';
+import { Dropdown, Menu, Button, message, Modal, Typography } from 'antd';
 import Link from 'next/link';
+import { deleteQuestion, closeQuestion, openQuestion } from '@/action/question/questionActions';
+
+const { Text } = Typography;
 
 export default function QuestionMenu({
   userId,
@@ -23,7 +26,16 @@ export default function QuestionMenu({
   postId: number;
   status: string;
 }) {
+
+  // Visibility state for the dropdown menu
   const [open, setOpen] = useState(false);
+  // Visibility state for the delete confirmation modal
+  const [isDeleteVisible, setDeleteVisible] = useState(false);
+  // Visibility state for the close confirmation modal
+  const [isCloseVisible, setCloseVisible] = useState(false);
+  // Visibility state for the open confirmation modal
+  const [isOpenVisible, setOpenVisible] = useState(false);
+  // Message API for notifications
   const [messageApi, contextHolder] = message.useMessage(); // 👈 Add this
 
   const handleShare = async () => {
@@ -40,40 +52,55 @@ export default function QuestionMenu({
   const items = [
     ...(Number(userId) === Number(posterId)
       ? [
-          {
-            key: 'edit',
+        {
+          key: 'edit',
+          label: (
+            <Link href={`/questions/${postId}/edit`}>
+              <EditOutlined /> Edit question
+            </Link>
+          ),
+        },
+        {
+          key: 'delete',
+          label: (
+            <span
+              onClick={() => {
+                setDeleteVisible(true);
+                setOpen(false);
+              }}
+            >
+              <DeleteOutlined /> Delete question
+            </span>
+          ),
+        },
+        status === 'closed'
+          ? {
+            key: 'open',
             label: (
-              <Link href={`/questions/${postId}/edit`}>
-                <EditOutlined /> Edit question
-              </Link>
+              <span
+                onClick={() => {
+                  setOpenVisible(true);
+                  setOpen(false);
+                }}
+              >
+                <UnlockOutlined /> Open question
+              </span>
             ),
-          },
-          {
-            key: 'delete',
+          }
+          : {
+            key: 'close',
             label: (
-              <span onClick={() => messageApi.info('Delete clicked')}>
-                <DeleteOutlined /> Delete question
+              <span
+                onClick={() => {
+                  setCloseVisible(true);
+                  setOpen(false);
+                }}
+              >
+                <LockOutlined /> Close question
               </span>
             ),
           },
-          status === 'closed'
-            ? {
-                key: 'open',
-                label: (
-                  <span onClick={() => messageApi.success('Question reopened')}>
-                    <UnlockOutlined /> Open question
-                  </span>
-                ),
-              }
-            : {
-                key: 'close',
-                label: (
-                  <span onClick={() => messageApi.warning('Question closed')}>
-                    <LockOutlined /> Close question
-                  </span>
-                ),
-              },
-        ]
+      ]
       : []),
     {
       key: 'share',
@@ -84,6 +111,30 @@ export default function QuestionMenu({
       ),
     },
   ];
+
+  const handleDelete = () => {
+    setDeleteVisible(false);
+
+    startTransition(() => {
+      deleteQuestion(postId.toString());
+    });
+  };
+
+  const handleClose = () => {
+    setCloseVisible(false);
+
+    startTransition(() => {
+      closeQuestion(postId.toString());
+    });
+  };
+
+  const handleOpen = () => {
+    setOpenVisible(false);
+
+    startTransition(() => {
+      openQuestion(postId.toString());
+    });
+  };
 
   return (
     <>
@@ -100,6 +151,62 @@ export default function QuestionMenu({
           icon={<EllipsisOutlined style={{ fontSize: 20 }} />}
         />
       </Dropdown>
+
+      <Modal
+        title="Confirmation"
+        open={isDeleteVisible}
+        onCancel={() => setDeleteVisible(false)}
+        footer={[
+          <Button key="cancel" onClick={() => setDeleteVisible(false)}>
+            Cancel
+          </Button>,
+          <Button key="delete" danger onClick={handleDelete}>
+            Delete
+          </Button>,
+        ]}
+      >
+        <Text>Are you sure you want to delete this post?</Text>
+        <br />
+        <Text type="secondary">Your post will be permanently deleted.</Text>
+      </Modal>
+
+      <Modal
+        title="Confirmation"
+        open={isCloseVisible}
+        onCancel={() => setCloseVisible(false)}
+        footer={[
+          <Button key="cancel" onClick={() => setCloseVisible(false)}>
+            Cancel
+          </Button>,
+          <Button key="close" danger onClick={handleClose}>
+            Confirm
+          </Button>,
+        ]}
+      >
+        <Text>Are you sure you want to close this post?</Text>
+        <br />
+        <Text type="secondary">Your post will be closed. No new comments will be allowed.</Text>
+      </Modal>
+
+      <Modal
+        title="Confirmation"
+        open={isOpenVisible}
+        onCancel={() => setOpenVisible(false)}
+        footer={[
+          <Button key="cancel" onClick={() => setOpenVisible(false)}>
+            Cancel
+          </Button>,
+          <Button key="open" danger onClick={handleOpen}>
+            Confirm
+          </Button>,
+        ]}
+      >
+        <Text>Are you sure you want to open this post?</Text>
+        <br />
+        <Text type="secondary">Your post will be opened. New comments will be allowed.</Text>
+      </Modal>
+
+
     </>
   );
 }

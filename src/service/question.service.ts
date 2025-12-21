@@ -14,10 +14,8 @@ export type Question = {
   category_id: number | null
   title: string
   content: string
-  view_count: number
   answer_count: number
   is_closed: boolean
-  is_deleted: boolean
   deleted_at?: Date | null
   created_at: Date
   updated_at: Date
@@ -30,8 +28,8 @@ export async function getAllQuestionsAction(): Promise<Question[]> {
   const questions = await sql`
     SELECT 
       questions.id, questions.user_id, questions.category_id, questions.title,
-      questions.content, questions.view_count, questions.answer_count, questions.is_closed,
-      questions.is_deleted, questions.deleted_at, questions.created_at, questions.updated_at,
+      questions.content, questions.answer_count, questions.is_closed,
+      questions.deleted_at, questions.created_at, questions.updated_at,
       users.name AS user_name, categories.name AS category_name
     FROM questions
     JOIN users ON questions.user_id = users.id
@@ -48,8 +46,8 @@ export async function getQuestionDetailsAction(id: string): Promise<Question> {
   const result = await sql`
    SELECT 
       questions.id, questions.user_id, questions.category_id, questions.title,
-      questions.content, questions.view_count, questions.answer_count, questions.is_closed,
-      questions.is_deleted, questions.deleted_at, questions.created_at, questions.updated_at,
+      questions.content, questions.answer_count, questions.is_closed,
+      questions.deleted_at, questions.created_at, questions.updated_at,
       users.full_name AS user_name, categories.name AS category_name
     FROM questions
     JOIN users ON questions.user_id = users.id
@@ -106,11 +104,11 @@ export async function createQuestionAction(formData: FormData) {
     // Insert question into DB
     await sql`
       INSERT INTO questions (
-        user_id, category_id, title, content, view_count, answer_count,
-        is_closed, is_deleted, created_at, updated_at, deleted_at
+        user_id, category_id, title, content, answer_count,
+        is_closed, created_at, updated_at, deleted_at
       ) VALUES (
-        ${user_id}, ${category_id}, ${title}, ${content}, 0, 0, 
-        false, false, ${createdAt}, ${createdAt}, NULL
+        ${user_id}, ${category_id}, ${title}, ${content}, 0, 
+        false, ${createdAt}, ${createdAt}, NULL
       )
     `
   } catch (error) {
@@ -188,16 +186,21 @@ export async function deleteQuestionAction(id: string) {
     await sql`
       UPDATE questions
       SET
-        is_deleted = TRUE,
         deleted_at = ${deletedAt}
       WHERE id = ${id}
     `
   } catch (error) {
     console.error("Error deleting question:", error)
-    return { message: "Databased error. Failed to delete question." }
+    return {
+      message: "Database error. Failed to delete question.",
+    }
   }
-  revalidatePath("/questions")
-  redirect("/question")
+  
+  return {
+    message: "Question deleted successfully",
+    errors: {},
+    success: true,
+  }
 }
 
 // CLOSE QUESTIONS
@@ -214,10 +217,16 @@ export async function closeQuestionAction(id: string) {
     `
   } catch (error) {
     console.error("Error closing question:", error)
-    return { message: "Databased error. Failed to close question." }
+    return {
+      message: "Database error. Failed to close question.",
+    }
   }
-  revalidatePath("/questions")
-  redirect("/question")
+
+  return {
+    message: "Question closed successfully",
+    errors: {},
+    success: true,
+  }
 }
 
 // OPEN QUESTIONS
@@ -234,17 +243,22 @@ export async function openQuestionAction(id: string) {
     `
   } catch (error) {
     console.error("Error opening question:", error)
-    return { message: "Databased error. Failed to open question." }
+    return {
+      message: "Database error. Failed to open question.",
+    }
   }
-  revalidatePath("/questions")
-  redirect("/question")
+
+  return {
+    message: "Question opened successfully",
+    errors: {},
+    success: true,
+  }
 }
 
 // GET CATEGORIES
 export type Category = {
   id: number
   name: string
-  slug: string
 }
 
 export async function getActiveCategoriesAction(): Promise<Category[]> {
@@ -252,7 +266,6 @@ export async function getActiveCategoriesAction(): Promise<Category[]> {
     SELECT 
       c.id AS category_id,
       c.name AS category_name,
-      c.slug AS slug,
       p.id AS parent_id,
       p.name AS parent_name
     FROM categories AS c
@@ -266,13 +279,11 @@ export async function getActiveCategoriesAction(): Promise<Category[]> {
       return {
         id: row.category_id,
         name: row.parent_name + " - " + row.category_name,
-        slug: row.slug,
       }
     } else {
       return {
         id: row.category_id,
         name: row.category_name,
-        slug: row.slug,
       }
     }
   })
@@ -280,7 +291,7 @@ export async function getActiveCategoriesAction(): Promise<Category[]> {
   return categories as Category[]
 }
 
-const ITEMS_PER_PAGE = 5
+const ITEMS_PER_PAGE = 10
 // FETCH QUESTIONS PAGES
 export async function fetchQuestionPagesAction(
   query: string,
@@ -300,7 +311,7 @@ export async function fetchQuestionPagesAction(
       sqlQuery = sql`
       JOIN categories ON questions.category_id = categories.id
       ${sqlQuery} 
-      AND categories.slug = ${category}
+      AND categories.id = ${category}
       `
     }
 
@@ -331,7 +342,6 @@ export async function fetchQuestionPagesAction(
 }
 
 // FETCH FILTERED QUESTIONS
-
 export async function fetchFilteredQuestionsAction(
   query: string,
   category: string,
@@ -347,14 +357,14 @@ export async function fetchFilteredQuestionsAction(
        users.email ILIKE ${'%' + query + '%'} OR
        questions.title ILIKE ${'%' + query + '%'} OR
        questions.content ILIKE ${'%' + query + '%'})
-      AND questions.is_deleted = FALSE
+      AND questions.deleted_at IS NULL
     `;
 
     // Add optional filters dynamically
     if (category !== "any") {
       sqlQuery = sql`
       ${sqlQuery} 
-      AND categories.slug = ${category}
+      AND categories.id = ${category}
       `
     }
 
@@ -368,12 +378,8 @@ export async function fetchFilteredQuestionsAction(
       sqlQuery = sql`${sqlQuery} AND questions.is_closed = ${isClosed}`
     }
 
-    if (sort !== "newest") {
-      if (sort !== "most-views") {
-        sqlQuery = sql`${sqlQuery} ORDER BY questions.answer_count DESC`
-      } else {
-        sqlQuery = sql`${sqlQuery} ORDER BY questions.view_count DESC`
-      }
+    if (sort !== "newest") {    
+      sqlQuery = sql`${sqlQuery} ORDER BY questions.answer_count DESC`
     } else {
       sqlQuery = sql`${sqlQuery} ORDER BY questions.created_at DESC`
     }

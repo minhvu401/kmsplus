@@ -2,6 +2,7 @@
 import { getQuestionDetails } from "@/action/question/questionActions";
 import PageWrapper from "@/components/ui/questions/page-wrapper";
 import QuestionDetails from "@/components/ui/questions/question-details";
+import { QuestionDetailsNotification } from "@/components/ui/questions/questions-notification";
 
 export default async function Page({
   params,
@@ -11,6 +12,8 @@ export default async function Page({
   searchParams?: {
     sort?: string;
     page?: string;
+    opened?: string;
+    closed?: string;
   };
 }) {
   const id = params.id;
@@ -19,9 +22,13 @@ export default async function Page({
 
   // Fetch question details
   const question = await getQuestionDetails(id);
-  
+
   return (
     <PageWrapper>
+      <QuestionDetailsNotification
+        id={id}
+        key={`${id}-${searchParams?.closed}-${searchParams?.opened}`}
+      />
       <QuestionDetails question={question} />
     </PageWrapper>
   );
