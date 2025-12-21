@@ -4,9 +4,10 @@ import Search from "@/components/ui/questions/search"
 import { CreateQuestion } from "@/components/ui/questions/create-button"
 import { FilterCategory, FilterStatus, QuestionsSortBy } from "@/components/ui/questions/filters"
 import { getActiveCategories, fetchQuestionsPages, fetchFilteredQuestions } from "@/action/question/questionActions";
+import QuestionsNotification from "@/components/ui/questions/questions-notification";
 import Pagination from "@/components/ui/questions/pagination";
 import QuestionsList from "@/components/ui/questions/questions-list";
-import { Flex } from "antd"; // ✅ Import AntD Flex
+import { Flex } from "antd";
 
 export default async function Page(props: {
   searchParams?: Promise<{
@@ -30,6 +31,9 @@ export default async function Page(props: {
 
   return (
     <PageWrapper>
+
+      <QuestionsNotification />
+
       <Flex align="center" gap={28} style={{ marginBottom: 24 }}>
         <Search placeholder="Search questions..." />
         <CreateQuestion />

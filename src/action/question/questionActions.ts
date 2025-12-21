@@ -44,7 +44,7 @@ export async function createQuestion(
 
   if (result?.success) {
     revalidatePath("/questions");
-    redirect("/questions");
+    redirect("/questions?created=1");
   }
 
   return { message: null, errors: {} };
@@ -57,17 +57,59 @@ export async function updateQuestion(formData: FormData) {
 
 export async function deleteQuestion(id: string) {
   //await requireAuth()
-  return service.deleteQuestionAction(id)
+  const result = await service.deleteQuestionAction(id);
+
+  if (result?.errors && Object.keys(result.errors).length > 0) {
+    return {
+      message: result.message ?? "Validation failed",
+      errors: result.errors,
+    };
+  }
+
+  if (result?.success) {
+    revalidatePath("/questions");
+    redirect("/questions?deleted=1");
+  }
+
+  return { message: null, errors: {} };
 }
 
 export async function closeQuestion(id: string) {
   //await requireAuth()
-  return service.closeQuestionAction(id)
+  const result = await service.closeQuestionAction(id);
+
+  if (result?.errors && Object.keys(result.errors).length > 0) {
+    return {
+      message: result.message ?? "Validation failed",
+      errors: result.errors,
+    };
+  }
+
+  if (result?.success) {
+    revalidatePath("/questions/" + id);
+    redirect("/questions/" + id + "?closed=1");
+  }
+
+  return { message: null, errors: {} };
 }
 
 export async function openQuestion(id: string) {
   //await requireAuth()
-  return service.openQuestionAction(id)
+   const result = await service.openQuestionAction(id);
+
+  if (result?.errors && Object.keys(result.errors).length > 0) {
+    return {
+      message: result.message ?? "Validation failed",
+      errors: result.errors,
+    };
+  }
+
+  if (result?.success) {
+    revalidatePath("/questions/" + id);
+    redirect("/questions/" + id + "?opened=1");
+  }
+
+  return { message: null, errors: {} };
 }
 
 export async function getActiveCategories() {

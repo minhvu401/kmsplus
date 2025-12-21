@@ -10,10 +10,8 @@ export type Question = {
     category_id: number | null
     title: string
     content: string
-    view_count: number
     answer_count: number
     is_closed: boolean
-    is_deleted: boolean
     deleted_at?: Date | null
     created_at: Date
     updated_at: Date
@@ -65,7 +63,6 @@ export default function QuestionDetails({ question }: { question: Question }) {
                 ) : (
                     <Text>last updated on {updatedAt.toLocaleDateString()}</Text>
                 )}
-                <Text>{question.view_count} views</Text>
             </Flex>
 
             <Divider style={{ borderColor: "#d1d5db", width: "100%" }} />

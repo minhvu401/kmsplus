@@ -61,7 +61,9 @@ export default function CreateQuestionForm({
                     <Form.Item
                         label={<Text strong>Title:</Text>}
                         name="title"
-                        rules={[{ required: true, message: 'Please enter a title' }]}
+                        rules={[{ required: true, message: 'Please enter a title' },
+                            { min: 3, message: 'Title must be at least 3 characters' }
+                        ]}
                     >
                         <Input
                             placeholder="Write your question title here..."
@@ -77,7 +79,9 @@ export default function CreateQuestionForm({
                     <Form.Item
                         label={<Text strong>Content:</Text>}
                         name="content"
-                        rules={[{ required: true, message: 'Please provide more details' }]}
+                        rules={[{ required: true, message: 'Please provide more details' },
+                            { min: 10, message: 'Content must be at least 10 characters' }
+                        ]}
                     >
                         <TextArea
                             rows={8}

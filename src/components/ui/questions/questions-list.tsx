@@ -12,10 +12,8 @@ export type Question = {
     category_id: number | null
     title: string
     content: string
-    view_count: number
     answer_count: number
     is_closed: boolean
-    is_deleted: boolean
     deleted_at?: Date | null
     created_at: Date
     updated_at: Date
@@ -24,6 +22,15 @@ export type Question = {
 }
 
 export default function QuestionsList({ questions }: { questions: Question[] }) {
+    
+    if (!questions || questions.length === 0) {
+        return (
+            <Flex justify="center" align="center" style={{ padding: '40px 0' }}>
+                <Text type="secondary">No question found</Text>
+            </Flex>
+        );
+    }
+    
     return (
         <Flex vertical gap="large">
             {questions.map((q) => (
@@ -63,7 +70,6 @@ export default function QuestionsList({ questions }: { questions: Question[] }) 
                         {/* Right side: Answer + view count */}
                         <Flex vertical align="flex-end" style={{ minWidth: 80 }}>
                             <Text strong>{q.answer_count} answers</Text>
-                            <Text strong>{q.view_count} views</Text>
                         </Flex>
                     </Flex>
 

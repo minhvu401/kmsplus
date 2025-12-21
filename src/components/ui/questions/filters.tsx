@@ -6,7 +6,6 @@ import { Select, Flex, Typography } from 'antd';
 type Category = {
     id: number;
     name: string;
-    slug: string;
 }
 
 const { Text } = Typography;
@@ -48,7 +47,7 @@ export function FilterCategory({ categories }: { categories: Category[] }) {
                 size="middle"
                 options={[
                     { label: 'Any', value: 'any' },
-                    ...categories.map((cat) => ({ label: cat.name, value: cat.slug })),
+                    ...categories.map((cat) => ({ label: cat.name, value: cat.id })),
                 ]}
             />
         </Flex>
@@ -132,7 +131,6 @@ export function QuestionsSortBy() {
         size="middle"
         options={[
           { label: 'Newest', value: 'newest' },
-          { label: 'Most Views', value: 'most-views' },
           { label: 'Most Answers', value: 'most-answers' },
         ]}
       />
