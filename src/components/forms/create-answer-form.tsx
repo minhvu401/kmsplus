@@ -52,7 +52,7 @@ export default function CreateAnswerForm({
                         ]}
                     >
                         <TextArea
-                            rows={6}
+                            rows={4}
                             placeholder="Enter your answer here..."
                             maxLength={600}
                             onChange={(e) => {

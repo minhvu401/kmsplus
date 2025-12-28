@@ -20,7 +20,7 @@ export default function QuestionMenu({
   posterId,
   postId,
   status,
-}: {
+} : {
   userId: number;
   posterId: number;
   postId: number;

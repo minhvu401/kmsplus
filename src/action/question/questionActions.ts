@@ -179,9 +179,9 @@ export async function createAnswer(
   return { message: null, errors: {} };
 }
 
-export async function deleteAnswer(id: number) {
+export async function deleteAnswer(asnwerId: number, questionId: number) {
   //await requireAuth()
-  const result = await service.deleteAnswerAction(id);
+  const result = await service.deleteAnswerAction(asnwerId);
 
   if (result?.errors && Object.keys(result.errors).length > 0) {
     return {
@@ -191,8 +191,30 @@ export async function deleteAnswer(id: number) {
   }
 
   if (result?.success) {
-    revalidatePath("/questions");
-    redirect("/questions/" + id + "?answerDeleted=1");
+    revalidatePath("/questions/" + questionId);
+    redirect("/questions/" + questionId + "?answerDeleted=1");
+  }
+
+  return { message: null, errors: {} };
+}
+
+export async function updateAnswer(
+  _prevState: State,
+  formData: FormData
+): Promise<State> {
+  const result = await service.updateAnswerAction(formData);
+  const questionId = formData.get("question_id");
+
+  if (result?.errors && Object.keys(result.errors).length > 0) {
+    return {
+      message: result.message ?? "Validation failed",
+      errors: result.errors,
+    };
+  }
+
+  if (result?.success) {
+    revalidatePath("/questions/" + questionId);
+    redirect("/questions/" + questionId + "?answerUpdated=1");
   }
 
   return { message: null, errors: {} };
