@@ -60,7 +60,7 @@ export function QuestionDetailsNotification({ id }: { id: string }) {
         placement: 'topRight',
         duration: 3,
         onClose: () => {
-          router.replace(`/questions/${id}`);
+          router.replace(`/questions/${id}`, { scroll: false });
         },
       });
     }
@@ -72,7 +72,7 @@ export function QuestionDetailsNotification({ id }: { id: string }) {
         placement: 'topRight',
         duration: 3,
         onClose: () => {
-          router.replace(`/questions/${id}`);
+          router.replace(`/questions/${id}`, { scroll: false });
         },
       });
     }
@@ -84,11 +84,11 @@ export function QuestionDetailsNotification({ id }: { id: string }) {
         placement: 'topRight',
         duration: 3,
         onClose: () => {
-          router.replace(`/questions/${id}`);
+          router.replace(`/questions/${id}`, { scroll: false });
         },
       });
     }
-     if (searchParams.get('answerCreated') === '1') {
+    if (searchParams.get('answerCreated') === '1') {
       hasShownRef.current = true;
       notificationApi.success({
         message: 'Answer created',
@@ -96,7 +96,7 @@ export function QuestionDetailsNotification({ id }: { id: string }) {
         placement: 'topRight',
         duration: 3,
         onClose: () => {
-          router.replace(`/questions/${id}`);
+          router.replace(`/questions/${id}`, { scroll: false });
         },
       });
     }
@@ -108,7 +108,7 @@ export function QuestionDetailsNotification({ id }: { id: string }) {
         placement: 'topRight',
         duration: 3,
         onClose: () => {
-          router.replace(`/questions/${id}`);
+          router.replace(`/questions/${id}`, { scroll: false });
         },
       });
     }

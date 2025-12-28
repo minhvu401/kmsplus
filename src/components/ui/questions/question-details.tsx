@@ -69,7 +69,7 @@ export default function QuestionDetails({ question }: { question: Question }) {
 
             {/* Content */}
             <Flex justify="center" style={{ padding: "0 80px" }}>
-                <Text style={{ color: "#374151", fontSize: 16, whiteSpace: "pre-wrap" }}>
+                <Text style={{ color: "#374151", fontSize: 18, whiteSpace: "pre-wrap" }}>
                     {question.content}
                 </Text>
             </Flex>
