@@ -29,6 +29,8 @@ export default async function Page(props: {
   const categories = await getActiveCategories();
   const questions = await fetchFilteredQuestions(query, category, status, sort, currentPage);
 
+  const noSearchResults = query !== '' && questions.length === 0;
+
   return (
     <PageWrapper>
 
@@ -46,7 +48,7 @@ export default async function Page(props: {
       </Flex>
 
       <div style={{ marginBottom: 24 }}>
-        <QuestionsList questions={questions} />
+        <QuestionsList questions={questions} noSearchResults={noSearchResults} />
       </div>
 
       <Flex justify="end" align="center" style={{ marginBottom: 24 }}>

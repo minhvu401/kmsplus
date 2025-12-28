@@ -73,6 +73,7 @@ export default function QuestionDetails({ question }: { question: Question }) {
                     {question.content}
                 </Text>
             </Flex>
+            <Divider style={{ borderColor: "#d1d5db", width: "100%" }} />
         </Flex>
     );
 }

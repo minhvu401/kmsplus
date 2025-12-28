@@ -21,12 +21,12 @@ export type Question = {
     category_name: string
 }
 
-export default function QuestionsList({ questions }: { questions: Question[] }) {
+export default function QuestionsList({ questions, noSearchResults }: { questions: Question[]; noSearchResults: boolean }) {
     
     if (!questions || questions.length === 0) {
         return (
             <Flex justify="center" align="center" style={{ padding: '40px 0' }}>
-                <Text type="secondary">No question found</Text>
+                <Text type="secondary">{noSearchResults ? "No results match your search." : "No questions found"}</Text>
             </Flex>
         );
     }
