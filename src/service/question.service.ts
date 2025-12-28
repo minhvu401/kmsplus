@@ -5,9 +5,7 @@ import { success, z } from "zod"
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 
-/**
- * Type cho Question response
- */
+//TYPE FOR 'QUESTION' RESPONSE
 export type Question = {
   id: number
   user_id: number
@@ -21,7 +19,18 @@ export type Question = {
   updated_at: Date
   user_name: string
   category_name: string
-}
+};
+
+//TYPE FOR 'ANSWER' RESPONSE
+export type Answer = {
+  id: number
+  question_id: number
+  user_id: number
+  content: string
+  created_at: Date
+  updated_at: Date
+  user_name: string
+};
 
 // GET ALL QUESTIONS
 export async function getAllQuestionsAction(): Promise<Question[]> {
@@ -65,11 +74,16 @@ const CreateQuestionSchema = z.object({
     .trim()
     .min(3, "Title must be at least 3 characters")
     .max(150, "Title must be under 150 characters"),
-  content: z
-    .string()
-    .trim()
-    .min(10, "Content must be at least 10 characters")
-    .max(3000, "Content must be under 3000 characters"),
+  content: z.preprocess(
+    (val) => {
+      if (typeof val !== 'string') return val;
+      return val.replace(/\r\n/g, '\n');
+    },
+    z
+      .string()
+      .min(10, "Content must be at least 10 characters")
+      .max(3000, "Content must be under 3000 characters")
+  ),
   category_id: z
     .coerce
     .number()
@@ -132,11 +146,16 @@ const UpdateQuestionSchema = z.object({
     .trim()
     .min(3, "Title must be at least 3 characters")
     .max(150, "Title must be under 150 characters"),
-  content: z
-    .string()
-    .trim()
-    .min(10, "Content must be at least 10 characters")
-    .max(3000, "Content must be under 3000 characters"),
+  content: z.preprocess(
+    (val) => {
+      if (typeof val !== 'string') return val;
+      return val.replace(/\r\n/g, '\n');
+    },
+    z
+      .string()
+      .min(10, "Content must be at least 10 characters")
+      .max(3000, "Content must be under 3000 characters")
+  ),
   category_id: z.coerce.number().int(),
   id: z.coerce.number().int(),
 })
@@ -171,11 +190,16 @@ export async function updateQuestionAction(formData: FormData) {
     `
   } catch (error) {
     console.error("Error updating question:", error)
-    return { message: "Database error. Failed to update question." }
+    return {
+      message: "Database error. Failed to update question.",
+    }
   }
 
-  revalidatePath("/questions")
-  redirect("/questions")
+  return {
+    message: "Question updated successfully",
+    errors: {},
+    success: true,
+  }
 }
 
 // DELETE QUESTIONS
@@ -195,7 +219,7 @@ export async function deleteQuestionAction(id: string) {
       message: "Database error. Failed to delete question.",
     }
   }
-  
+
   return {
     message: "Question deleted successfully",
     errors: {},
@@ -260,7 +284,6 @@ export type Category = {
   id: number
   name: string
 }
-
 export async function getActiveCategoriesAction(): Promise<Category[]> {
   const result = await sql`
     SELECT 
@@ -291,7 +314,7 @@ export async function getActiveCategoriesAction(): Promise<Category[]> {
   return categories as Category[]
 }
 
-const ITEMS_PER_PAGE = 10
+const QUESTIONS_PER_PAGE = 10
 // FETCH QUESTIONS PAGES
 export async function fetchQuestionPagesAction(
   query: string,
@@ -333,7 +356,7 @@ export async function fetchQuestionPagesAction(
       ${sqlQuery};
     `
 
-    const totalPages = Math.ceil(Number(data[0].count) / ITEMS_PER_PAGE)
+    const totalPages = Math.ceil(Number(data[0].count) / QUESTIONS_PER_PAGE)
     return totalPages
   } catch (error) {
     console.error("Database Error:", error)
@@ -349,7 +372,7 @@ export async function fetchFilteredQuestionsAction(
   sort: string,
   currentPage: number
 ) {
-  const offset = (currentPage - 1) * ITEMS_PER_PAGE
+  const offset = (currentPage - 1) * QUESTIONS_PER_PAGE
 
   try {
     let sqlQuery = sql`
@@ -378,7 +401,7 @@ export async function fetchFilteredQuestionsAction(
       sqlQuery = sql`${sqlQuery} AND questions.is_closed = ${isClosed}`
     }
 
-    if (sort !== "newest") {    
+    if (sort !== "newest") {
       sqlQuery = sql`${sqlQuery} ORDER BY questions.answer_count DESC`
     } else {
       sqlQuery = sql`${sqlQuery} ORDER BY questions.created_at DESC`
@@ -391,7 +414,7 @@ export async function fetchFilteredQuestionsAction(
       JOIN users ON questions.user_id = users.id
       JOIN categories ON questions.category_id = categories.id
       ${sqlQuery}
-      LIMIT ${ITEMS_PER_PAGE} OFFSET ${offset};
+      LIMIT ${QUESTIONS_PER_PAGE} OFFSET ${offset};
     `) as Question[]
 
     return result
@@ -400,3 +423,201 @@ export async function fetchFilteredQuestionsAction(
     throw new Error("Failed to fetch total number of invoices.")
   }
 }
+
+// ===================================== ANSWERS =====================================
+
+// GET ANSWERS FOR A QUESTION
+export async function getAnswersForQuestionAction(id: number): Promise<Answer[]> {
+
+  const result = await sql`
+    SELECT 
+      answers.id, answers.question_id, answers.user_id, answers.content,
+      answers.created_at, answers.updated_at,
+      users.full_name AS user_name
+    FROM answers
+    JOIN users ON answers.user_id = users.id
+    WHERE answers.question_id = ${id}
+    ORDER BY answers.created_at ASC
+  `
+
+  return result as Answer[];
+};
+
+// CREATE ANSWER
+const CreateAnswerSchema = z.object({
+  content: z.preprocess(
+    (val) => {
+      if (typeof val !== 'string') return val;
+      return val.replace(/\r\n/g, '\n');
+    },
+    z
+      .string()
+      .min(15, "Content must be at least 15 characters")
+      .max(600, "Content must be under 600 characters")
+  ),
+  user_id: z.coerce.number().int(), // or from session later
+  question_id: z.coerce.number().int(),
+})
+
+export async function createAnswerAction(formData: FormData) {
+  const validatedFields = CreateAnswerSchema.safeParse({
+    content: formData.get("content"),
+    user_id: formData.get("user_id"),
+    question_id: formData.get("question_id"),
+  })
+
+  if (!validatedFields.success) {
+    return {
+      errors: validatedFields.error.flatten().fieldErrors,
+      message: "Missing or invalid fields. Failed to create answer.",
+    }
+  }
+
+  const { content, user_id, question_id } = validatedFields.data
+  const createdAt = new Date().toLocaleString()
+
+  try {
+    // await sql`
+    //   INSERT INTO answers (
+    //     question_id, user_id, content, created_at, updated_at
+    //   ) VALUES (
+    //     ${question_id}, ${user_id}, ${content}, ${createdAt}, ${createdAt}
+    //   )
+
+    //   UPDATE questions
+    //   SET answer_count = answer_count + 1
+    //   WHERE id = ${question_id}
+    // `
+    await sql`
+      WITH inserted_answer AS (
+        INSERT INTO answers (
+          question_id, user_id, content, created_at, updated_at
+        ) VALUES (
+          ${question_id}, ${user_id}, ${content}, ${createdAt}, ${createdAt}
+        )
+        RETURNING question_id
+      )
+      UPDATE questions
+      SET answer_count = answer_count + 1
+      WHERE id = (SELECT question_id FROM inserted_answer)
+    `
+
+  } catch (error) {
+    console.error("Error creating answer:", error)
+    return {
+      message: "Database error. Failed to create answer.",
+    }
+  }
+
+  return {
+    message: "Answer created successfully",
+    errors: {},
+    success: true,
+  }
+}
+
+// UPDATE ANSWER
+const UpdateAnswerSchema = z.object({
+  content: z.preprocess(
+    (val) => {
+      if (typeof val !== 'string') return val;
+      return val.replace(/\r\n/g, '\n');
+    },
+    z
+      .string()
+      .min(15, "Content must be at least 15 characters")
+      .max(600, "Content must be under 600 characters")
+  ),
+  answer_id: z.coerce.number().int(),
+})
+export async function updateAnswerAction(formData: FormData) {
+  // Validate form data
+  const validatedFields = UpdateAnswerSchema.safeParse({
+    content: formData.get("content"),
+    answer_id: formData.get("answer_id"),
+  })
+
+  if (!validatedFields.success) {
+    return {
+      errors: validatedFields.error.flatten().fieldErrors,
+      message: "Invalid or missing fields. Failed to update question.",
+    }
+  }
+  const { content, answer_id } = validatedFields.data
+
+  const updatedAt = new Date().toLocaleString()
+
+  try {
+    await sql`
+      UPDATE answers
+      SET
+        content = ${content},
+        updated_at = ${updatedAt}
+      WHERE id = ${answer_id}
+    `
+  } catch (error) {
+    console.error("Error updating answer:", error)
+    return {
+      message: "Database error. Failed to update answer.",
+    }
+  }
+
+  return {
+    message: "Answer updated successfully",
+    errors: {},
+    success: true,
+  }
+}
+
+// DELETE ANSWER
+export async function deleteAnswerAction(id: number) {
+  try {
+    await sql`
+      WITH deleted_answer AS (
+        DELETE FROM answers
+        WHERE id = ${id}
+        RETURNING question_id
+      )
+      UPDATE questions
+      SET answer_count = answer_count - 1
+      WHERE id = (SELECT question_id FROM deleted_answer)
+    `
+  } catch (error) {
+    console.error("Error deleting question:", error)
+    return {
+      message: "Database error. Failed to delete question.",
+    }
+  }
+
+  return {
+    message: "Question deleted successfully",
+    errors: {},
+    success: true,
+  }
+};
+
+// FETCH FILTERED ANSWERS
+export async function fetchFilteredAnswersAction(currentPage: number, questionId: number) {
+  const offset = (currentPage - 1) * 5;
+  try {
+    const data = await sql`
+    SELECT
+      a.id,
+      a.question_id,
+      a.user_id,
+      a.content,
+      a.created_at,
+      a.updated_at,
+      u.full_name AS user_name
+    FROM answers a
+    JOIN users u ON a.user_id = u.id
+    WHERE a.question_id = ${questionId}
+    ORDER BY a.created_at DESC
+    LIMIT 5 OFFSET ${offset};
+  `;
+    return data as Answer[];
+  } catch (error) {
+    console.error("Database Error:", error)
+    throw new Error("Failed to fetch total number of invoices.")
+  }
+};

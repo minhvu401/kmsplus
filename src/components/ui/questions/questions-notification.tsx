@@ -76,6 +76,42 @@ export function QuestionDetailsNotification({ id }: { id: string }) {
         },
       });
     }
+    if (searchParams.get('updated') === '1') {
+      hasShownRef.current = true;
+      notificationApi.success({
+        message: 'Post updated',
+        description: 'Your question has been updated successfully.',
+        placement: 'topRight',
+        duration: 3,
+        onClose: () => {
+          router.replace(`/questions/${id}`);
+        },
+      });
+    }
+     if (searchParams.get('answerCreated') === '1') {
+      hasShownRef.current = true;
+      notificationApi.success({
+        message: 'Answer created',
+        description: 'Your answer has been posted successfully.',
+        placement: 'topRight',
+        duration: 3,
+        onClose: () => {
+          router.replace(`/questions/${id}`);
+        },
+      });
+    }
+    if (searchParams.get('answerDeleted') === '1') {
+      hasShownRef.current = true;
+      notificationApi.success({
+        message: 'Answer deleted',
+        description: 'Your answer has been deleted successfully.',
+        placement: 'topRight',
+        duration: 3,
+        onClose: () => {
+          router.replace(`/questions/${id}`);
+        },
+      });
+    }
   }, [searchParams, router, notificationApi, id]);
 
   return <>{contextHolder}</>;
