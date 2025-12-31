@@ -74,7 +74,6 @@ export async function getCurrentUserInforAction(): Promise<User | null> {
       FROM users 
       WHERE id = ${id} AND (is_deleted = false OR is_deleted IS NULL)
     `
-    console.log("Fetched user:", users)
     return users.length > 0 ? (users[0] as User) : null
   } catch (error) {
     console.error("Error verifying token:", error)
@@ -114,8 +113,8 @@ export async function createUserAction(userData: {
 
     // Create user
     await sql`
-      INSERT INTO users (email, password, full_name)
-      VALUES (${userData.email}, ${hashedPassword}, ${userData.name})
+      INSERT INTO users (email, hash_password, full_name, created_at)
+      VALUES (${userData.email}, ${hashedPassword}, ${userData.name}, NOW())
     `
 
     return {
@@ -262,7 +261,6 @@ export async function deleteUserAction(
       }
     }
 
-    // Soft delete user - set is_deleted = true and deleted_at timestamp
     await sql`
       UPDATE users 
       SET is_deleted = true, deleted_at = NOW()

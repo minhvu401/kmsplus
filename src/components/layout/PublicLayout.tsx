@@ -12,7 +12,7 @@ export default function PublicLayout({
 }) {
   return (
     <Layout className="w-full h-full">
-      <Content className="">{children}</Content>
+      <Content style={{ padding: "0 0px" }}>{children}</Content>
     </Layout>
   )
 }

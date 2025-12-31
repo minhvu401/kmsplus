@@ -1,13 +1,14 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { Search, Edit2, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
-// === SỬA ĐỔI 1: Import hàm 'searchArticle' ===
-import { searchArticle } from '@/action/articles/articlesManagementAction'; 
-// Bỏ import getAllArticles
+import { useState, useEffect } from 'react';
+import { Table, Input, Select, Button, Space, Flex, Typography, Tag, Card, Alert } from 'antd';
+import { SearchOutlined, PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
+import type { ColumnsType } from 'antd/es/table';
+import { filterByTag, getAllTags } from '@/action/articles/articlesManagementAction';
+import type { Article } from '@/service/articles.service';
 
-// === THÊM MỚI 1: Hook 'useDebounce' ===
-// Hook này giúp trì hoãn việc search cho đến khi người dùng gõ xong
+const { Text } = Typography;
+
 function useDebounce(value: string, delay: number) {
   const [debouncedValue, setDebouncedValue] = useState(value);
 
@@ -16,7 +17,6 @@ function useDebounce(value: string, delay: number) {
       setDebouncedValue(value);
     }, delay);
 
-    // Hủy timeout nếu value thay đổi (người dùng gõ tiếp)
     return () => {
       clearTimeout(handler);
     };
@@ -25,33 +25,31 @@ function useDebounce(value: string, delay: number) {
   return debouncedValue;
 }
 
+interface TagOption {
+  id: string;
+  name: string;
+}
+
 export default function ArticleManagement() {
   const [searchQuery, setSearchQuery] = useState('');
-  
-  // === THÊM MỚI 2: Tạo state "debounced" ===
-  // Chỉ search khi người dùng ngừng gõ 300ms
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
-
   const [selectedTag, setSelectedTag] = useState('All Tags');
   const [currentPage, setCurrentPage] = useState(1);
-  // ... (các state không cần thiết như users, loadingUsers có thể bỏ đi nếu không dùng)
 
-  // Articles state
-  const [articles, setArticles] = useState<any[]>([]);
+  const [articles, setArticles] = useState<Article[]>([]);
   const [loadingArticles, setLoadingArticles] = useState(false);
   const [articlesError, setArticlesError] = useState<string | null>(null);
 
-  // === SỬA ĐỔI 2: Đây là thay đổi quan trọng nhất ===
-  // useEffect này sẽ tự động chạy lại mỗi khi 'debouncedSearchQuery' thay đổi
+  const [tags, setTags] = useState<TagOption[]>([]);
+  const [loadingTags, setLoadingTags] = useState(false);
+
   useEffect(() => {
     (async () => {
       setArticlesError(null);
       setLoadingArticles(true);
       try {
-        // Gọi hàm searchArticle với query đã được trì hoãn
-        // Nếu query rỗng, action của mày sẽ trả về tất cả
-        const res = await searchArticle(debouncedSearchQuery); 
-        setArticles((res as any[]) || []);
+        const res = await filterByTag(debouncedSearchQuery, selectedTag);
+        setArticles(res || []);
       } catch (err: any) {
         setArticlesError(err?.message || String(err));
         setArticles([]);
@@ -59,132 +57,165 @@ export default function ArticleManagement() {
         setLoadingArticles(false);
       }
     })();
-  }, [debouncedSearchQuery]); // <-- Lắng nghe sự thay đổi của debouncedSearchQuery
+  }, [debouncedSearchQuery, selectedTag]);
 
-  const totalPages = 50; // Mày nên lấy số này từ server
-  
-  // ... (hàm renderPageNumbers giữ nguyên) ...
-  const renderPageNumbers = () => {
-    const pages = [];
-    if (currentPage > 1) pages.push(currentPage - 1);
-    pages.push(currentPage);
-    if (currentPage < totalPages) pages.push(currentPage + 1);
-    return pages;
-  };
+  useEffect(() => {
+    (async () => {
+      setLoadingTags(true);
+      try {
+        const res = await getAllTags();
+        setTags((res as TagOption[]) || []);
+      } catch (err: any) {
+        console.error('Error loading tags:', err);
+        setTags([]);
+      } finally {
+        setLoadingTags(false);
+      }
+    })();
+  }, []);
+
+  const columns: ColumnsType<Article> = [
+    {
+      title: 'ID',
+      dataIndex: 'id',
+      key: 'id',
+      width: 80,
+    },
+    {
+      title: 'Article Title',
+      dataIndex: 'title',
+      key: 'title',
+      ellipsis: true,
+    },
+    {
+      title: 'Tag',
+      dataIndex: 'article_tags',
+      key: 'article_tags',
+      width: 150,
+      render: (tag: string) => <Tag color="blue">{tag}</Tag>,
+    },
+    {
+      title: 'Status',
+      dataIndex: 'status',
+      key: 'status',
+      width: 120,
+      render: (status: string) => <Tag color="success">{status}</Tag>,
+    },
+    {
+      title: 'Last Updated',
+      dataIndex: 'updated_at',
+      key: 'updated_at',
+      width: 150,
+      render: (date: Date) => (
+        <Text type="warning">{new Date(date).toLocaleDateString()}</Text>
+      ),
+    },
+    {
+      title: 'Action',
+      key: 'action',
+      width: 100,
+      render: (_, record) => (
+        <Space size="small">
+          <Button
+            type="text"
+            icon={<EditOutlined />}
+            size="small"
+          />
+          <Button
+            type="text"
+            danger
+            icon={<DeleteOutlined />}
+            size="small"
+          />
+        </Space>
+      ),
+    },
+  ];
+
+  const tagOptions = [
+    { label: 'All Tags', value: 'All Tags' },
+    ...tags.map(tag => ({ label: tag.name, value: tag.name })),
+  ];
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      <div className="flex-1 flex flex-col">
-        <div className="flex-1 overflow-auto px-8 py-6">
-          <div className="bg-white rounded-lg shadow-sm p-6">
-            
-            {/* Search and Filter Bar */}
-            <div className="flex gap-4 mb-6">
-              <div className="flex-1 relative">
-                <label className="block text-sm text-gray-600 mb-1.5">Search:</label>
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  <input
-                    type="text"
-                    placeholder="Search any ..."
-                    value={searchQuery}
-                    // Input này chỉ cập nhật 'searchQuery', không gọi API
-                    onChange={(e) => setSearchQuery(e.target.value)} 
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-              </div>
+    <Flex vertical className="flex-1 bg-gray-50">
+      <main className="flex-1 overflow-auto px-8 py-6">
+        <Card>
+          {/* Search and Filter Bar */}
+          <Space direction="vertical" size="middle" className="w-full mb-4">
+            <Flex gap="middle" align="end">
+              <Space direction="vertical" className="flex-1">
+                <Text type="secondary">Search:</Text>
+                <Input
+                  placeholder="Search any ..."
+                  prefix={<SearchOutlined />}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  size="large"
+                  allowClear
+                />
+              </Space>
 
-              {/* ... (Phần Tags và Nút Create Article giữ nguyên) ... */}
-              <div className="w-64">
-                <label className="block text-sm text-gray-600 mb-1.5">Tags:</label>
-                <select
+              <Space direction="vertical" style={{ width: 250 }}>
+                <Text type="secondary">Tags:</Text>
+                <Select
                   value={selectedTag}
-                  onChange={(e) => setSelectedTag(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option>All Tags</option>
-                  <option>Fun Fact</option>
-                  <option>Tutorial</option>
-                  <option>News</option>
-                </select>
-              </div>
-              <div className="flex items-end">
-                <button className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors">
-                  Create Article
-                </button>
-              </div>
-            </div>
+                  onChange={setSelectedTag}
+                  options={tagOptions}
+                  loading={loadingTags}
+                  size="large"
+                  className="w-full"
+                />
+              </Space>
 
-            {/* Table */}
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                {/* ... (Phần <thead> giữ nguyên) ... */}
-                <thead>
-                  <tr className="bg-blue-500 text-white">
-                    <th className="px-4 py-3 text-left text-sm font-medium">ID</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium">Article Title</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium">Tag</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium">Status</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium">Last Updated</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium">Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {/* === SỬA ĐỔI 3: Thêm logic loading và error === */}
-                  {loadingArticles && (
-                    <tr>
-                      <td colSpan={6} className="text-center py-4">Loading...</td>
-                    </tr>
-                  )}
-                  {articlesError && (
-                    <tr>
-                      <td colSpan={6} className="text-center py-4 text-red-500">{articlesError}</td>
-                    </tr>
-                  )}
-                  {!loadingArticles && !articlesError && articles.map((article, idx) => (
-                    // === SỬA ĐỔI 4: Dùng `article.id` làm key (tốt hơn `idx`) ===
-                    <tr key={article.id} className="border-b hover:bg-gray-50">
-                      <td className="px-4 py-3 text-sm text-gray-700">{article.id}</td>
-                      <td className="px-4 py-3 text-sm text-gray-700">{article.title}</td>
-                      <td className="px-4 py-3">
-                        {/* Mày đã sửa tên cột này đúng rồi */}
-                        <span className="text-sm text-blue-500">{article.article_tags}</span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="text-sm text-green-600 font-medium">{article.status}</span>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-orange-500">
-                        {/* Mày đã sửa cột này đúng rồi */}
-                        {new Date(article.updated_at).toLocaleDateString()}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex gap-2">
-                          <button className="p-1.5 hover:bg-gray-100 rounded">
-                            <Edit2 className="w-4 h-4 text-gray-600" />
-                          </button>
-                          <button className="p-1.5 hover:bg-gray-100 rounded">
-                            <Trash2 className="w-4 h-4 text-gray-600" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+              <Button type="primary" icon={<PlusOutlined />} size="large">
+                Create Article
+              </Button>
+            </Flex>
+          </Space>
 
-            {/* ... (Phần Pagination và Footer giữ nguyên) ... */}
-            <div className="flex justify-between items-center mt-6">
-              {/* ... */}
-            </div>
-          </div>
-        </div>
+          {/* Error Alert */}
+          {articlesError && (
+            <Alert
+              message="Error"
+              description={articlesError}
+              type="error"
+              showIcon
+              closable
+              className="mb-4"
+            />
+          )}
 
-        <footer className="bg-white border-t px-8 py-4">
-          {/* ... */}
-        </footer>
-      </div>
-    </div>
+          {/* Table */}
+          <Table
+            columns={columns}
+            dataSource={articles}
+            loading={loadingArticles}
+            rowKey="id"
+            pagination={{
+              current: currentPage,
+              pageSize: 10,
+              total: articles.length,
+              onChange: setCurrentPage,
+              showSizeChanger: false,
+            }}
+          />
+        </Card>
+      </main>
+
+      {/* Footer */}
+      <footer className="bg-white border-t px-8 py-4">
+        <Flex justify="space-between" align="center">
+          <Text type="secondary" className="text-sm">
+            © 2025 - KMSPlus. Designed by <Text strong>KMS Team</Text>. All rights reserved
+          </Text>
+          <Space size="large">
+            <a href="#" className="text-sm text-gray-600 hover:text-gray-900">FAQs</a>
+            <a href="#" className="text-sm text-gray-600 hover:text-gray-900">Privacy Policy</a>
+            <a href="#" className="text-sm text-gray-600 hover:text-gray-900">Terms & Condition</a>
+          </Space>
+        </Flex>
+      </footer>
+    </Flex>
   );
 }
