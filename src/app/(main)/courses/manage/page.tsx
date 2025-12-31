@@ -9,14 +9,15 @@ export const metadata: Metadata = {
 }
 
 type Props = {
-  searchParams?: { [key: string]: string | string[] | undefined }
+  searchParams?: Promise<{ [key: string]: string | string[] | undefined }>
 }
 
 export default async function ManagerCoursesPage({ searchParams }: Props) {
-  const page = Number(searchParams?.page || "1") || 1
-  const query = Array.isArray(searchParams?.query)
-    ? searchParams?.query[0]
-    : (searchParams?.query as string) || ""
+  const params = await searchParams
+  const page = Number(params?.page || "1") || 1
+  const query = Array.isArray(params?.query)
+    ? params?.query[0]
+    : (params?.query as string) || ""
   const limit = 10
 
   const { courses = [], totalCount = 0 } =
