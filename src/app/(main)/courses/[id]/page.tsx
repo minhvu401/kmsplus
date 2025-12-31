@@ -10,22 +10,24 @@ import type { Course } from "@/service/course.service"
 import Link from "next/link"
 
 type Props = {
-  params: { id: string }
+  params: Promise<{ id: string }>
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const id = Number(params.id)
-  if (!id || Number.isNaN(id)) return { title: "Course" }
-  const course = await getCourseByIdAction(id)
+  const { id } = await params
+  const numId = Number(id)
+  if (!numId || Number.isNaN(numId)) return { title: "Course" }
+  const course = await getCourseByIdAction(numId)
   return { title: course ? course.title : "Course" }
 }
 
 export default async function CourseDetailPage({ params }: Props) {
-  const id = Number(params.id)
-  if (!id || Number.isNaN(id)) return notFound()
+  const { id } = await params
+  const numId = Number(id)
+  if (!numId || Number.isNaN(numId)) return notFound()
 
   // Fetch course from DB (server-side). Using service directly to read from Neon.
-  const course: Course | null = await getCourseByIdAction(id)
+  const course: Course | null = await getCourseByIdAction(numId)
   if (!course) return notFound()
 
   // Optional: fetch related courses for the bottom section
