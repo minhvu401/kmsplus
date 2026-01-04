@@ -3,24 +3,10 @@
 import QuestionMenu from "@/components/ui/questions/question-menu";
 import { Flex, Typography, Tag, Divider } from "antd";
 const { Title, Text } = Typography;
-
-export type Question = {
-    id: number
-    user_id: number
-    category_id: number | null
-    title: string
-    content: string
-    answer_count: number
-    is_closed: boolean
-    deleted_at?: Date | null
-    created_at: Date
-    updated_at: Date
-    user_name: string
-    category_name: string
-}
+import{ Question } from "@/service/question.service";
 
 export default function QuestionDetails({ question }: { question: Question }) {
-    const userId = 1; // Replace with actual user ID retrieval logic
+    const userId = 1; // TEMP; Replace with actual user ID retrieval logic
     const createdAt = new Date(question.created_at);
     const updatedAt = new Date(question.updated_at);
 

@@ -7,6 +7,7 @@ import { Answer } from "@/service/question.service";
 import LockedAnswerBox from "./locked-answer-box";
 import AnswerMenu from "./answer-menu";
 import Pagination from "@/components/ui/questions/pagination";
+import { formatDistanceToNowStrict } from 'date-fns/formatDistanceToNowStrict';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -74,7 +75,11 @@ export default function AnswerSection({
                             <Card
                                 key={answer.id}
                                 style={{ width: "100%" }}
-                                bodyStyle={{ padding: "16px 16px" }}
+                                styles={{
+                                    body: {
+                                        padding: "16px 16px",
+                                    },
+                                }}
                             >
                                 {/* Header */}
                                 <Flex justify="space-between" align="center">
@@ -86,11 +91,13 @@ export default function AnswerSection({
                                         <Text strong>
                                             {answer.user_name}
                                         </Text>
-                                    </Flex>
 
-                                    <Text type="secondary" style={{ fontSize: 12 }}>
-                                        {/* timestamp */}
-                                    </Text>
+                                        <Text type="secondary">
+                                            {formatDistanceToNowStrict(new Date(answer.created_at), {
+                                                addSuffix: true,
+                                            })}
+                                        </Text>
+                                    </Flex>
 
                                     <Flex
                                         style={{
@@ -98,7 +105,7 @@ export default function AnswerSection({
                                             pointerEvents: Number(answer.user_id) === userId ? 'auto' : 'none',
                                         }}
                                     >
-                                        <AnswerMenu answerId={answer.id} questionId={questionId} />
+                                        <AnswerMenu answer={answer} />
                                     </Flex>
                                 </Flex>
 

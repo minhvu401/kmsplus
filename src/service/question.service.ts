@@ -1,9 +1,7 @@
 "use server"
 
 import { sql } from "@/lib/database"
-import { success, z } from "zod"
-import { revalidatePath } from "next/cache"
-import { redirect } from "next/navigation"
+import { z } from "zod"
 
 //TYPE FOR 'QUESTION' RESPONSE
 export type Question = {
@@ -442,6 +440,19 @@ export async function getAnswersForQuestionAction(id: number): Promise<Answer[]>
 
   return result as Answer[];
 };
+
+export async function getAnswerDetailsAction(id: number): Promise<Answer> {
+  const result = await sql`
+    SELECT 
+      answers.id, answers.question_id, answers.user_id, answers.content,
+      answers.created_at, answers.updated_at,
+      users.full_name AS user_name
+    FROM answers
+    JOIN users ON answers.user_id = users.id
+    WHERE answers.id = ${id}
+  `
+  return result[0] as Answer
+}
 
 // CREATE ANSWER
 const CreateAnswerSchema = z.object({

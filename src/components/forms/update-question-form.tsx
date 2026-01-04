@@ -37,7 +37,7 @@ export default function UpdateQuestionForm({
     const initialState: State = { message: null, errors: {} };
     const [state, updateQuestionAction] = useActionState(updateQuestion, initialState);
 
-    const userId = 1; // Replace with actual user ID retrieval logic
+    const userId = 1; // TEMP; Replace with actual user ID retrieval logic
     // ALSO ADD VERIFYING USER IS THE RIGHTFUL OWNER BEFORE ALLOWING EDITS
 
     const handleLeave = () => {
