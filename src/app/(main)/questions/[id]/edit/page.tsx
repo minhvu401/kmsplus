@@ -9,7 +9,6 @@ export default async function Page({
 }: {
   params: { id: string };
 }) {
-  // const userId = 1; // Replace with actual user ID retrieval logic
   const id = params.id;
   const currentData = await getQuestionDetails(id);
   const categories = await getActiveCategories();

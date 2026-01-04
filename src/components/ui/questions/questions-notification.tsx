@@ -112,6 +112,18 @@ export function QuestionDetailsNotification({ id }: { id: string }) {
         },
       });
     }
+    if (searchParams.get('answerUpdated') === '1') {
+      hasShownRef.current = true;
+      notificationApi.success({
+        message: 'Answer updated',
+        description: 'Your answer has been updated successfully.',
+        placement: 'topRight',
+        duration: 3,
+        onClose: () => {
+          router.replace(`/questions/${id}`, { scroll: false });
+        },
+      });
+    }
   }, [searchParams, router, notificationApi, id]);
 
   return <>{contextHolder}</>;

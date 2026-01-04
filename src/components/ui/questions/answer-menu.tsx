@@ -1,22 +1,24 @@
 'use client'
 
-import { startTransition, useState } from 'react';
+import { startTransition, useState, useEffect, useActionState } from 'react';
 import { EditOutlined, DeleteOutlined, EllipsisOutlined } from '@ant-design/icons';
-import { Dropdown, Menu, Button, Modal, Typography } from 'antd';
+import { Dropdown, Menu, Button, Modal, Typography, Form, Input } from 'antd';
 import { deleteAnswer, updateAnswer } from '@/action/question/questionActions';
+import { Answer, updateAnswerAction } from '@/service/question.service';
 
 const { Text } = Typography;
 
 export default function AnswerMenu({
-    answerId,
-    questionId
-} : {
-    answerId: number,
-    questionId: number
+    answer
+}: {
+    answer: Answer
 }) {
+    const [form] = Form.useForm();
     const [open, setOpen] = useState(false);
+    const [contentCount, setContentCount] = useState(0);
     const [isDeleteVisible, setDeleteVisible] = useState(false);
     const [isUpdateVisible, setUpdateVisible] = useState(false);
+    const [state, updateAnswerAction] = useActionState(updateAnswer, { message: null, errors: {} });
 
     const items = [
         {
@@ -52,9 +54,21 @@ export default function AnswerMenu({
         setDeleteVisible(false);
 
         startTransition(() => {
-            deleteAnswer(answerId, questionId);
+            deleteAnswer(answer.id, answer.question_id);
         });
     };
+
+    const handleUpdate = () => {
+        setUpdateVisible(false);
+        form.submit();
+    }
+
+    useEffect(() => {
+        form.setFieldsValue({
+            content: answer.content,
+        });
+        setContentCount(answer.content.length);
+    }, [form]);
 
     return (
         <>
@@ -93,16 +107,43 @@ export default function AnswerMenu({
                 title="Edit answer"
                 open={isUpdateVisible}
                 onCancel={() => setUpdateVisible(false)}
-                footer={[
-                    <Button key="cancel" onClick={() => setUpdateVisible(false)}>
-                        Cancel
-                    </Button>,
-                    <Button key="delete" danger>
-                        Confirm
-                    </Button>,
-                ]}
+                onOk={handleUpdate}
+                okText="Submit"
+                width={700}
             >
-                <Text>hello</Text>
+                <Form
+                    form={form}
+                    layout="vertical"
+                    onFinish={async (values) => {
+                        const formData = new FormData();
+                        formData.append('content', values.content);
+                        formData.append('answer_id', answer.id.toString());
+                        formData.append('question_id', answer.question_id.toString());
+
+                        startTransition(() => {
+                            updateAnswerAction(formData);
+                        });
+                    }}
+                >
+                    <Form.Item
+                        name="content"
+                        rules={[
+                            { required: true, message: 'Please enter content' },
+                            { min: 15, message: 'Minimum 15 characters' }
+                        ]}
+                    >
+                        <Input.TextArea
+                            rows={4}
+                            placeholder="Enter your answer here..."
+                            maxLength={600}
+                            onChange={(e) => {
+                                setContentCount(e.target.value.length);
+                            }}
+                            style={{ resize: 'none' }}
+                        />
+                    </Form.Item>
+                    <Text type="secondary">Character limit {contentCount} / 600</Text>
+                </Form>
             </Modal>
 
         </>

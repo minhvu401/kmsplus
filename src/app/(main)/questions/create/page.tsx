@@ -5,7 +5,7 @@ import { Flex } from "antd";
 
 export default async function Page() {
   const categories = await getActiveCategories();
-  const userId = 1; // Replace with actual user ID retrieval logic
+  const userId = 1; // TEMP; Replace with actual user ID retrieval logic
   return (
     <PageWrapper>
       <Flex align="center" gap={56}>

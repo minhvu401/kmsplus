@@ -155,6 +155,11 @@ export async function getAnswersForQuestion(id: number) {
   return service.getAnswersForQuestionAction(id);
 }
 
+export async function getAnswerDetails (id: number) {
+  // await requireAuth()
+  return service.getAnswerDetailsAction(id);
+}
+
 export async function createAnswer(
   _prevState: State,
   formData: FormData
