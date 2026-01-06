@@ -1,68 +1,33 @@
 "use server"
-
 import { requireAuth } from "@/lib/auth"
-import {
-  createQuizQuestionAction,
-  getAllQuizQuestionsAction,
-  updateQuizQuestionAction,
-  deleteQuizQuestionAction,
-} from "@/service/questionbank.service"
-import type { Option } from "@/service/questionbank.service"
-import { th } from "zod/locales"
-// 1 kiểu type cho tham số luôn, đỡ bị nhiều
-type getAllQuizQuestionsParams = {
-  query?: string
-  categoryId?: string | null
-  page?: number
-  limit?: number
-}
+import * as service from "@/service/questionbank.service"
 
-export async function getAllQuizQuestions(params: getAllQuizQuestionsParams) {
+export async function getQuestions(page: number = 1, limit: number = 10) {
   // await requireAuth()
-  return getAllQuizQuestionsAction(params)
+  return service.getQuestionsAction(page, limit)
 }
 
-export async function createQuizQuestion(
-  question_text: string,
-  question_type: "multiple_choice" | "checkboxes",
-  difficulty_level: string,
-  category_id: string,
-  options: Option[]
-) {
-  if (!options || options.length !== 4) {
-    throw new Error("Question must have exactly 4 options.")
-  }
-
-  const user = await requireAuth()
-  const creator_id = user.id
-  return createQuizQuestionAction(
-    creator_id,
-    question_text,
-    question_type,
-    difficulty_level,
-    category_id,
-    options
-  )
+export async function getCategories() {
+  // await requireAuth()
+  return service.getCategoriesAction()
 }
 
-export async function updateQuizQuestion(
-  id: string,
-  question_text: string,
-  question_type: string,
-  difficulty_level: string,
-  category_id: string
-) {
-  await requireAuth()
-  return updateQuizQuestionAction(
-    id,
-    question_text,
-    question_type,
-    difficulty_level,
-    category_id
-  )
+export async function createQuestion(questionData: any) {
+  // await requireAuth()
+  return service.createQuestionAction(questionData)
 }
 
-export async function deleteQuizQuestion(id: string) {
-  await requireAuth()
-  return deleteQuizQuestionAction(id)
+export async function getQuestionById(id: string) {
+  // await requireAuth()
+  return service.getQuestionByIdAction(id)
+}
+
+export async function updateQuestionAction(id: string, questionData: any) {
+  // await requireAuth()
+  return service.updateQuestionAction(id, questionData)
+}
+
+export async function deleteQuestion(id: string) {
+  // await requireAuth()
+  return service.deleteQuestionAction(id)
 }
