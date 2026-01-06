@@ -14,7 +14,6 @@ export type LoginState = {
     id: string
     email: string
     full_name: string
-    department: string
     avatar_url: string
     created_at: Date
   }
@@ -39,7 +38,7 @@ export async function loginAction(
 
   // Kiểm tra user tồn tại
   const users = await sql`
-    SELECT id, email, full_name, department, avatar_url, created_at, password_hash FROM users WHERE email = ${email}
+    SELECT id, email, full_name, avatar_url, created_at, password_hash FROM users WHERE email = ${email}
   `
   const user = users[0]
   if (!user) {
@@ -85,7 +84,6 @@ export async function loginAction(
       id: user.id,
       email: user.email,
       full_name: user.full_name,
-      department: user.department,
       avatar_url: user.avatar_url,
       created_at: user.created_at,
     },
