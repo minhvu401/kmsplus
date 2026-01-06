@@ -14,9 +14,9 @@ export async function startQuizAttemptAction(quizId: number) {
     // totalQuestions should come from DB, not frontend
     const result = await sql`
     SELECT COUNT(*)::int AS count
-    FROM question_bank
-    JOIN quiz_questions qq ON question_bank.id = qq.question_id
-    WHERE quiz_id = ${quizId};
+    FROM question_bank qb
+    JOIN quiz_questions qq ON qb.id = qq.question_id
+    WHERE qq.quiz_id = ${quizId} AND qb.deleted_at IS NULL;
   `;
 
     const totalQuestions = result[0].count;

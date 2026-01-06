@@ -1,7 +1,9 @@
 'use client'
 
+import { useState } from 'react';
+import { startQuizAttemptAction } from "@/action/quiz/quizActions";
 import { Quiz } from "@/service/quiz.service";
-import { Card, Row, Col, Typography, Statistic, Space, Divider } from 'antd'
+import { Card, Row, Col, Typography, Statistic, Space, Divider, message, Button, Modal } from 'antd'
 const { Title, Text } = Typography;
 import { format } from 'date-fns'
 
@@ -55,26 +57,17 @@ export default function QuizDetails({ quiz }: { quiz: Quiz }) {
 
             {/* Stats Rectangle */}
             <Card
-                variant="outlined"
+                // variant="outlined"
                 style={{
                     width: '100%',
-                    border: '1px solid #343333ff',
-                    borderRadius: 8,
+                    // border: '1px solid #343333ff',
+                    // borderRadius: 8,
                 }}
                 styles={{
                     body: {
                         padding: 32,
                     },
                 }}
-            // style={{
-            //     width: '100%',
-            //     border: '1px solid #343333ff',
-            // }}
-            // styles={{
-            //     body: {
-            //         padding: 0, // IMPORTANT
-            //     },
-            // }}
             >
                 <Row align="middle" justify="center" style={{ textAlign: 'center' }}>
                     {/* Time Limit */}
@@ -130,6 +123,65 @@ export default function QuizDetails({ quiz }: { quiz: Quiz }) {
                     </Col>
                 </Row>
             </Card>
+
+            {/* Start Quiz */}
+            <Card style={{ width: '100%' }} styles={{ body: { padding: 24 } }}>
+                <Space direction="vertical" size={12}>
+                    <StartQuizButton quizId={quiz.id} />
+                </Space>
+            </Card>
+
         </Space>
     )
+}
+
+export function StartQuizButton({
+    quizId,
+}: {
+    quizId: number;
+}) {
+
+    const [messageApi, contextHolder] = message.useMessage();
+    const [open, setOpen] = useState(false);
+    const [loading, setLoading] = useState(false);
+
+    async function handleConfirmStart() {
+        try {
+            setLoading(true);
+            const attemptId = await startQuizAttemptAction(quizId);
+            window.location.href = `/quizzes/attempt/${attemptId.id}`;
+        } catch (err) {
+            messageApi.error(
+                err instanceof Error ? err.message : 'Failed to start quiz'
+            );
+            setLoading(false);
+            setOpen(false);
+        }
+    }
+
+    return (
+        <>
+            {contextHolder}
+
+            <Button
+                type="primary"
+                size="large"
+                onClick={() => setOpen(true)}
+            >
+                Start Quiz
+            </Button>
+
+            <Modal
+                open={open}
+                title="Start quiz?"
+                okText="Start Quiz"
+                cancelText="Cancel"
+                confirmLoading={loading}
+                onOk={handleConfirmStart}
+                onCancel={() => setOpen(false)}
+            >
+                <p>Once you start the quiz, the timer will begin immediately</p>
+            </Modal>
+        </>
+    );
 }
