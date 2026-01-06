@@ -56,6 +56,26 @@ type QuestionRow = {
     correct_answer: any;
 };
 
+export type QuestionResult = {
+    id: number;
+    questionText: string;
+    type: 'single_choice' | 'multiple_choice';
+    options: string[];
+    selectedAnswers: number[];      // indexes
+    correctAnswers: number[];       // indexes
+    explanation?: string | null;
+};
+
+export type AttemptResult = {
+    title: string;
+    attempt_number: number;
+    time_spent_seconds: number;
+    score: number;
+    //   total_score: number;
+    //   passed: boolean;
+    questions: QuestionResult[];
+};
+
 export async function getQuizDetails(id: number): Promise<Quiz> {
     const result = await sql`
         SELECT * 
@@ -74,6 +94,31 @@ export async function startQuizAttempt(quiz_id: number, user_id: number, total_q
     `
     if (existingAttempt.length > 0) {
         return existingAttempt[0] as QuizAttempt;
+    }
+
+    const quizResult = await sql`
+        SELECT max_attempts
+        FROM quizzes
+        WHERE id = ${quiz_id}
+    `
+
+    if (quizResult.length === 0) {
+        throw new Error('Quiz not found');
+    }
+
+    const { max_attempts } = quizResult[0];
+
+    if (max_attempts !== null) {
+        const attemptCount = await sql`
+            SELECT COUNT(*)::int AS count
+            FROM quiz_attempts
+            WHERE quiz_id = ${quiz_id}
+                AND user_id = ${user_id};
+        `;
+
+        if (attemptCount[0].count >= max_attempts) {
+            throw new Error('You have reached the maximum number of attempts for this quiz.');
+        }
     }
 
     // Create new attempt if not
@@ -205,7 +250,7 @@ export async function saveAttemptAnswer(
         isCorrect = selectedAnswer === correct_answer;
 
     } else if (type === 'multiple_choice') {
-        
+
         const selectedArray = Array.isArray(selectedAnswer)
             ? selectedAnswer
             : [selectedAnswer];
@@ -272,11 +317,78 @@ export async function getTimeLimitForAttempt(attemptId: number): Promise<number 
 }
 
 export async function getSavedAnswers(attemptId: number) {
-  return sql`
+    return sql`
     SELECT
       question_id,
       selected_option_id
     FROM attempt_answers
     WHERE attempt_id = ${attemptId};
   `;
+}
+
+export async function getQuizDetailsByAttempt(attemptId: number): Promise<Quiz> {
+    const result = await sql`
+        SELECT q.*
+        FROM quizzes q
+        JOIN quiz_attempts qa ON qa.quiz_id = q.id
+        WHERE qa.id = ${attemptId} AND q.deleted_at IS NULL
+    `;
+    return result[0] as Quiz
+}
+
+export async function getAttemptResult(
+    attemptId: number
+): Promise<AttemptResult> {
+    // 1. Get attempt + quiz info
+    const attemptResult = await sql`
+    SELECT
+      q.title,
+      qa.attempt_number,
+      qa.time_spent_seconds,
+      qa.score
+    FROM quiz_attempts qa
+    JOIN quizzes q ON q.id = qa.quiz_id
+    WHERE qa.id = ${attemptId} AND qa.status = 'submitted'
+  `;
+
+    //   a.total_score,
+    //   a.passed
+
+    if (attemptResult.length === 0) {
+        throw new Error('Attempt not found');
+    }
+
+    // 2. Get question-level results
+    const questionResults = await sql`
+    SELECT
+      qb.id AS question_id,
+      qb.question_text,
+      qb.type,
+      qb.options,
+      aa.selected_option_id as selected_answers,
+      qb.correct_answer as correct_answers,
+      qb.explanation
+    FROM attempt_answers aa
+    JOIN question_bank qb ON qb.id = aa.question_id
+    WHERE aa.attempt_id = ${attemptId}
+    ORDER BY qb.id
+  `;
+
+    return {
+        title: attemptResult[0].title,
+        attempt_number: attemptResult[0].attempt_number,
+        time_spent_seconds: attemptResult[0].time_spent_seconds,
+        score: attemptResult[0].score,
+        // total_score: attemptResult[0].total_score,
+        // passed: attemptResult[0].passed,
+        questions: questionResults.map((q) => ({
+            id: q.question_id,
+            questionText: q.question_text,
+            type: q.type,
+            options: q.options,
+            selectedAnswers: q.selected_answers,
+            correctAnswers: q.correct_answers,
+            explanation: q.explanation,
+        })),
+    };
 }

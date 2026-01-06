@@ -1,7 +1,6 @@
 import { getQuizDetails } from "@/service/quiz.service";
 import QuizDetails from "@/components/ui/quizzes/quiz-details";
 import PageWrapper from "@/components/ui/questions/page-wrapper";
-import StartQuizButton from "@/components/ui/quizzes/buttons";
 
 export default async function Page({
     params
@@ -13,7 +12,6 @@ export default async function Page({
     return (
         <PageWrapper>
             <QuizDetails quiz={quiz} />
-            <StartQuizButton quizId={Number(id)} />
         </PageWrapper>  
     );
 }
