@@ -1,44 +1,132 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Form, Input, Select, Button, Card, Space, Flex, Typography, Divider, message } from 'antd';
+import { useState, useEffect, useRef, type KeyboardEvent, type ClipboardEvent } from 'react';
+import { Form, Select, Button, Card, Space, Flex, Typography, Divider, message } from 'antd';
 import {
+  CloseOutlined,
+  SendOutlined,
   BoldOutlined,
   ItalicOutlined,
   UnderlineOutlined,
   UnorderedListOutlined,
-  CloseOutlined,
-  SendOutlined,
+  OrderedListOutlined,
 } from '@ant-design/icons';
 import { useRouter } from 'next/navigation';
-import { getAllTags, createArticle } from '@/action/articles/articlesManagementAction';
+import { getAllTags, createArticle, getAllCategories } from '@/action/articles/articlesManagementAction';
 import type { Tag } from '@/service/articles.service';
+import './editor.css';
 
 const { Title, Text } = Typography;
-const { TextArea } = Input;
 
 export default function CreateArticlePage() {
   const [form] = Form.useForm();
-  const [titleLength, setTitleLength] = useState(0);
-  const [contentLength, setContentLength] = useState(0);
+  const [titleContent, setTitleContent] = useState('');
+  const [contentValue, setContentValue] = useState('');
   const [loading, setLoading] = useState(false);
   const [tags, setTags] = useState<Tag[]>([]);
+  const [categories, setCategories] = useState<{ id: number; name: string }[]>([]);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [loadingTags, setLoadingTags] = useState(false);
+  const [loadingCategories, setLoadingCategories] = useState(false);
+  const [submitStatus, setSubmitStatus] = useState<'draft' | 'published'>('published');
+  const titleEditorRef = useRef<HTMLDivElement>(null);
+  const contentEditorRef = useRef<HTMLDivElement>(null);
+  const savedSelectionRef = useRef<Range | null>(null);
   const router = useRouter();
 
-  // Load tags từ database khi component mount
+  const saveSelection = () => {
+    const selection = window.getSelection();
+    if (selection && selection.rangeCount > 0) {
+      savedSelectionRef.current = selection.getRangeAt(0);
+      return true;
+    }
+    return false;
+  };
+
+  const restoreSelection = () => {
+    const selection = window.getSelection();
+    if (selection && savedSelectionRef.current) {
+      try {
+        selection.removeAllRanges();
+        selection.addRange(savedSelectionRef.current);
+      } catch (e) {
+        console.log('Could not restore selection');
+      }
+    }
+  };
+
+  const focusEditor = (editorRef: React.RefObject<HTMLDivElement>) => {
+    editorRef.current?.focus({ preventScroll: true });
+  };
+
+  const applyFormat = (command: string, editorRef: React.RefObject<HTMLDivElement>) => {
+    restoreSelection();
+    document.execCommand(command, false);
+    focusEditor(editorRef);
+  };
+
+  const applyHeading = (level: string, editorRef: React.RefObject<HTMLDivElement>) => {
+    restoreSelection();
+    document.execCommand('formatBlock', false, level);
+    focusEditor(editorRef);
+  };
+
+  const applyQuote = (editorRef: React.RefObject<HTMLDivElement>) => {
+    restoreSelection();
+    document.execCommand('formatBlock', false, '<blockquote>');
+    focusEditor(editorRef);
+  };
+
+  const handleTitleInput = () => {
+    if (titleEditorRef.current) {
+      setTitleContent(titleEditorRef.current.innerText);
+    }
+  };
+
+  const handleTitleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      return;
+    }
+    saveSelection();
+  };
+
+  const handleTitlePaste = (event: ClipboardEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    const text = event.clipboardData.getData('text/plain').replace(/\s+/g, ' ').trim();
+    document.execCommand('insertText', false, text);
+  };
+
+  const handleContentInput = () => {
+    if (contentEditorRef.current) {
+      setContentValue(contentEditorRef.current.innerHTML);
+    }
+  };
+
+  const handleContentSelectionChange = () => {
+    saveSelection();
+  };
+
+  // Load tags & categories từ database khi component mount
   useEffect(() => {
     (async () => {
       setLoadingTags(true);
+      setLoadingCategories(true);
       try {
-        const res = await getAllTags();
-        setTags(res || []);
+        const [tagsRes, categoriesRes] = await Promise.all([
+          getAllTags(),
+          getAllCategories(),
+        ]);
+        setTags(tagsRes || []);
+        setCategories(categoriesRes || []);
       } catch (err: any) {
-        console.error('Error loading tags:', err);
-        message.error('Failed to load categories');
+        console.error('Error loading tags/categories:', err);
+        message.error('Failed to load tags or categories');
         setTags([]);
+        setCategories([]);
       } finally {
         setLoadingTags(false);
+        setLoadingCategories(false);
       }
     })();
   }, []);
@@ -50,14 +138,18 @@ export default function CreateArticlePage() {
     try {
       // Tạo FormData để gửi lên server
       const formData = new FormData();
-      formData.append('title', values.title);
-      formData.append('content', values.content);
-      formData.append('category', values.category);
+      formData.append('title', titleContent);
+      formData.append('content', contentValue);
+      formData.append('status', submitStatus);
+      formData.append('tags', JSON.stringify(selectedTags));
+      formData.append('category_id', values?.categoryId ? String(values.categoryId) : '');
 
       console.log('Sending data:', {
-        title: values.title,
-        content: values.content,
-        category: values.category
+        title: titleContent,
+        content: contentValue,
+        status: submitStatus,
+        tags: selectedTags,
+        category_id: values?.categoryId ?? null,
       });
 
       // Gọi server action
@@ -67,9 +159,11 @@ export default function CreateArticlePage() {
 
       if (result.success) {
         message.success(result.message || 'Article created successfully!');
+        setTitleContent('');
+        setContentValue('');
+        setSelectedTags([]);
         form.resetFields();
-        setTitleLength(0);
-        setContentLength(0);
+        setSubmitStatus('published');
         
         // Redirect về trang management sau 1 giây
         setTimeout(() => {
@@ -87,15 +181,6 @@ export default function CreateArticlePage() {
     }
   };
 
-  const ToolbarButtons = () => (
-    <Space size="small">
-      <Button type="text" icon={<BoldOutlined />} size="small" />
-      <Button type="text" icon={<ItalicOutlined />} size="small" />
-      <Button type="text" icon={<UnderlineOutlined />} size="small" />
-      <Button type="text" icon={<UnorderedListOutlined />} size="small" />
-    </Space>
-  );
-
   return (
     <Flex vertical className="flex-1">
       <main className="flex-1 overflow-auto px-8 py-6">
@@ -108,55 +193,154 @@ export default function CreateArticlePage() {
             form={form}
             layout="vertical"
             onFinish={handleSubmit}
+            validateTrigger="onBlur"
           >
             {/* Title Field */}
             <Form.Item
               label={<Text strong className="text-base">Title</Text>}
               name="title"
               rules={[
-                { required: true, message: 'Please enter a title' },
-                { max: 150, message: 'Title must be less than 150 characters' },
+                { 
+                  required: true, 
+                  validator: (_, value) => {
+                    const textContent = titleContent.replace(/<[^>]*>/g, '').trim();
+                    if (!textContent) {
+                      return Promise.reject('Please enter a title');
+                    }
+                    if (textContent.length > 150) {
+                      return Promise.reject('Title must be less than 150 characters');
+                    }
+                    return Promise.resolve();
+                  }
+                },
               ]}
             >
-              <Input
-                placeholder="Type something here..."
-                maxLength={150}
-                onChange={(e) => setTitleLength(e.target.value.length)}
-                size="large"
-              />
+              <div>
+                <div
+                  ref={titleEditorRef}
+                  contentEditable
+                  onInput={handleTitleInput}
+                  onMouseDown={() => saveSelection()}
+                  onKeyDown={handleTitleKeyDown}
+                  onPaste={handleTitlePaste}
+                  className="border border-gray-300 rounded p-3 min-h-[60px] focus:outline-none focus:border-blue-500"
+                  style={{ backgroundColor: 'white' }}
+                  data-placeholder="Type something here..."
+                />
+              </div>
             </Form.Item>
 
-            <Flex justify="space-between" align="center" className="mt-2 mb-4">
-              <ToolbarButtons />
+            <Flex justify="flex-end" align="center" className="mt-2 mb-4">
               <Text type="secondary" className="text-sm">
-                {titleLength} / 150
+                {titleContent.replace(/<[^>]*>/g, '').trim().length} / 150
               </Text>
             </Flex>
-
-            <Divider />
 
             {/* Content Field */}
             <Form.Item
               label={<Text strong className="text-base">Content</Text>}
               name="content"
               rules={[
-                { required: true, message: 'Please enter content' },
-                { max: 3000, message: 'Content must be less than 3000 characters' },
+                { 
+                  required: true, 
+                  validator: (_, value) => {
+                    const textContent = contentValue.replace(/<[^>]*>/g, '').trim();
+                    if (!textContent) {
+                      return Promise.reject('Please enter content');
+                    }
+                    if (textContent.length > 3000) {
+                      return Promise.reject('Content must be less than 3000 characters');
+                    }
+                    return Promise.resolve();
+                  }
+                },
               ]}
             >
-              <TextArea
-                placeholder="Type something here..."
-                maxLength={3000}
-                rows={10}
-                onChange={(e) => setContentLength(e.target.value.length)}
-                size="large"
-              />
+              <div>
+                <Space size="small" className="mb-2" wrap>
+                  <Select
+                    style={{ width: 140 }}
+                    size="small"
+                    placeholder="Heading"
+                    options={[
+                      { label: 'Normal', value: 'p' },
+                      { label: 'H1', value: 'h1' },
+                      { label: 'H2', value: 'h2' },
+                      { label: 'H3', value: 'h3' },
+                    ]}
+                    onChange={(value) => applyHeading(`<${value}>`, contentEditorRef)}
+                    dropdownMatchSelectWidth={false}
+                  />
+                  <Button 
+                    type="text" 
+                    size="small" 
+                    icon={<BoldOutlined />}
+                    onClick={() => applyFormat('bold', contentEditorRef)}
+                    title="Bold"
+                    aria-label="Bold"
+                  />
+                  <Button 
+                    type="text" 
+                    size="small" 
+                    icon={<ItalicOutlined />}
+                    onClick={() => applyFormat('italic', contentEditorRef)}
+                    title="Italic"
+                    aria-label="Italic"
+                  />
+                  <Button 
+                    type="text" 
+                    size="small" 
+                    icon={<UnderlineOutlined />}
+                    onClick={() => applyFormat('underline', contentEditorRef)}
+                    title="Underline"
+                    aria-label="Underline"
+                  />
+                  <Button 
+                    type="text" 
+                    size="small" 
+                    icon={<OrderedListOutlined />}
+                    onClick={() => applyFormat('insertOrderedList', contentEditorRef)}
+                    title="Numbered List"
+                    aria-label="Numbered list"
+                  />
+                  <Button 
+                    type="text" 
+                    size="small" 
+                    icon={<UnorderedListOutlined />}
+                    onClick={() => applyFormat('insertUnorderedList', contentEditorRef)}
+                    title="Bullet List"
+                    aria-label="Bullet list"
+                  />
+                  <Button 
+                    type="text" 
+                    size="small"
+                    onClick={() => applyQuote(contentEditorRef)}
+                    title="Quote"
+                    aria-label="Quote"
+                  >
+                    &quot;
+                  </Button>
+                </Space>
+                <div
+                  ref={contentEditorRef}
+                  contentEditable
+                  onInput={handleContentInput}
+                  onMouseDown={handleContentSelectionChange}
+                  onMouseUp={handleContentSelectionChange}
+                  onClick={handleContentSelectionChange}
+                  onKeyDown={handleContentSelectionChange}
+                  onKeyUp={handleContentSelectionChange}
+                  onFocus={handleContentSelectionChange}
+                  className="border border-gray-300 rounded p-3 min-h-[300px] focus:outline-none focus:border-blue-500"
+                  style={{ backgroundColor: 'white' }}
+                  data-placeholder="Type something here..."
+                />
+              </div>
             </Form.Item>
 
-            <Flex justify="space-between" align="center" className="mt-2 mb-4">
-              <ToolbarButtons />
+            <Flex justify="flex-end" align="center" className="mt-2 mb-4">
               <Text type="secondary" className="text-sm">
-                {contentLength} / 3,000
+                {contentValue.replace(/<[^>]*>/g, '').trim().length} / 3,000
               </Text>
             </Flex>
 
@@ -165,14 +349,41 @@ export default function CreateArticlePage() {
             {/* Category Field */}
             <Form.Item
               label={<Text strong className="text-base">Category</Text>}
-              name="category"
+              name="categoryId"
               rules={[{ required: true, message: 'Please select a category' }]}
             >
               <Select
+                size="large"
+                placeholder="Select a category"
+                loading={loadingCategories}
+                options={categories.map((cat) => ({ label: cat.name, value: cat.id }))}
+                optionFilterProp="label"
+                showSearch
+                allowClear
+              />
+            </Form.Item>
+
+            <Divider />
+
+            {/* Tags Field */}
+            <Form.Item
+              label={<Text strong className="text-base">Tags</Text>}
+              name="tags"
+            >
+              <Select
+                mode="tags"
                 options={tags.map(tag => ({ label: tag.name, value: tag.name }))}
                 size="large"
                 loading={loadingTags}
-                placeholder="Select a category"
+                placeholder="Type to search or add new tags"
+                value={selectedTags}
+                onChange={setSelectedTags}
+                maxTagCount="responsive"
+                showSearch
+                tokenSeparators={[',']}
+                filterOption={(input, option) =>
+                  (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                }
               />
             </Form.Item>
 
@@ -181,12 +392,23 @@ export default function CreateArticlePage() {
               <Flex justify="flex-end" gap="middle" className="pt-4">
                 <Button
                   size="large"
+                  icon={<SendOutlined />}
+                  onClick={() => setSubmitStatus('draft')}
+                  htmlType="submit"
+                  loading={loading}
+                >
+                  Save Draft
+                </Button>
+                <Button
+                  size="large"
                   danger
                   icon={<CloseOutlined />}
                   onClick={() => {
                     form.resetFields();
-                    setTitleLength(0);
-                    setContentLength(0);
+                    setTitleContent('');
+                    setContentValue('');
+                    setSelectedTags([]);
+                    setSubmitStatus('published');
                   }}
                   disabled={loading}
                 >
@@ -197,6 +419,7 @@ export default function CreateArticlePage() {
                   htmlType="submit"
                   size="large"
                   icon={<SendOutlined />}
+                  onClick={() => setSubmitStatus('published')}
                   loading={loading}
                 >
                   Post

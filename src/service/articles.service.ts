@@ -10,6 +10,7 @@ export type Article = {
   id: string
   title: string
   article_tags: string | null
+  category_name?: string | null
   status: string
   updated_at: Date
 }
@@ -22,42 +23,30 @@ export type Tag = {
 export type CreateArticleInput = {
   title: string
   content: string
-  category: string
+  tags: string[]
   author_id: number
+  status: 'draft' | 'pending' | 'published'
+  category_id?: number | null
 }
 
 export async function createArticleAction(input: CreateArticleInput): Promise<{ success: boolean; message: string; articleId?: string }> {
   try {
-    const { title, content, category, author_id } = input
+    const { title, content, tags, author_id, status, category_id } = input
 
-    // 1. Tìm tag_id từ category name
-    const tagResult = await sql`
-      SELECT id FROM tags WHERE name = ${category} LIMIT 1
-    `
-    
-    if (tagResult.length === 0) {
-      return { success: false, message: `Tag "${category}" not found in database` }
-    }
-    
-    const tagId = tagResult[0].id
+    // Only allow known statuses to avoid invalid DB values
+    const normalizedStatus = status === 'draft' || status === 'pending' || status === 'published'
+      ? status
+      : 'draft'
 
-    // 2. Tạo slug từ title (lowercase, replace spaces với dashes)
-    const slug = title
-      .toLowerCase()
-      .replace(/[^a-z0-9\s-]/g, '') // Loại bỏ ký tự đặc biệt
-      .replace(/\s+/g, '-')          // Thay spaces bằng dashes
-      .replace(/-+/g, '-')           // Loại bỏ dashes trùng
-      .trim()
-
-    // 3. Insert article mới với slug
+    // 1. Insert article mới
     const articleResult = await sql`
-      INSERT INTO articles (title, content, slug, author_id, status, created_at, updated_at)
+      INSERT INTO articles (title, content, author_id, status, category_id, created_at, updated_at)
       VALUES (
         ${title},
         ${content},
-        ${slug},
         ${author_id},
-        'published',
+        ${normalizedStatus},
+        ${category_id ?? null},
         NOW(),
         NOW()
       )
@@ -66,11 +55,42 @@ export async function createArticleAction(input: CreateArticleInput): Promise<{ 
     
     const articleId = articleResult[0].id
 
-    // 3. Insert vào bảng article_tags (many-to-many relationship)
-    await sql`
-      INSERT INTO article_tags (article_id, tag_id)
-      VALUES (${articleId}, ${tagId})
-    `
+    // 2. Insert tags vào bảng article_tags (tự tạo tag mới nếu chưa có)
+    if (tags && tags.length > 0) {
+      // Lấy category mặc định cho tag mới (dùng category đầu tiên chưa bị xóa)
+      let defaultCategoryId: number | null = null
+      const catRes = await sql`SELECT id FROM categories WHERE is_deleted = false ORDER BY id ASC LIMIT 1`
+      if (catRes.length > 0) {
+        defaultCategoryId = catRes[0].id
+      }
+
+      for (const tagName of tags) {
+        // Nếu không có category mặc định, bỏ qua tag mới
+        const tagResult = await sql`
+          SELECT id FROM tags WHERE name = ${tagName} LIMIT 1
+        `
+        let tagId: number | null = null
+
+        if (tagResult.length > 0) {
+          tagId = tagResult[0].id
+        } else if (defaultCategoryId !== null) {
+          // Tạo tag mới với category mặc định
+          const newTagResult = await sql`
+            INSERT INTO tags (name, category_id, created_at)
+            VALUES (${tagName}, ${defaultCategoryId}, NOW())
+            RETURNING id
+          `
+          tagId = newTagResult[0].id
+        }
+
+        if (tagId !== null) {
+          await sql`
+            INSERT INTO article_tags (article_id, tag_id)
+            VALUES (${articleId}, ${tagId})
+          `
+        }
+      }
+    }
 
     return { 
       success: true, 
@@ -109,56 +129,71 @@ export async function getAllTagsAction(): Promise<Tag[]> {
 
 export async function filterByTagAction(
   searchQuery: string,
-  tagFilter?: string
+  tagFilter?: string,
+  categoryId?: number,
+  statusFilter?: string
 ): Promise<Article[]> {
   const query = `%${searchQuery}%`
 
-  // Nếu có tag filter và không phải "All Tags"
-  if (tagFilter && tagFilter !== "All Tags") {
-    const articles = await sql`
-      SELECT 
-        a.id, 
-        a.title, 
-        a.status, 
-        a.updated_at,
-        STRING_AGG(t.name, ', ') as article_tags
-      FROM articles a
-      LEFT JOIN article_tags at ON a.id = at.article_id
-      LEFT JOIN tags t ON at.tag_id = t.id
-      
-      WHERE a.title ILIKE ${query}
-      
-      GROUP BY 
-        a.id, a.title, a.status, a.updated_at
-      
-      -- Filter theo tag sau khi GROUP BY
-      HAVING STRING_AGG(t.name, ', ') ILIKE ${`%${tagFilter}%`}
-      
-      ORDER BY 
-        a.id ASC
-    `
-    return articles as Article[]
-  }
-
-  // Không có tag filter hoặc "All Tags"
   const articles = await sql`
     SELECT 
       a.id, 
       a.title, 
       a.status, 
       a.updated_at,
-      STRING_AGG(t.name, ', ') as article_tags
+      STRING_AGG(t.name, ', ') as article_tags,
+      c.name as category_name
     FROM articles a
     LEFT JOIN article_tags at ON a.id = at.article_id
     LEFT JOIN tags t ON at.tag_id = t.id
+    LEFT JOIN categories c ON a.category_id = c.id
     
-    WHERE a.title ILIKE ${query} 
+    WHERE a.title ILIKE ${query}
+      ${categoryId ? sql`AND a.category_id = ${categoryId}` : sql``}
+      ${statusFilter && statusFilter !== 'All' ? sql`AND a.status = ${statusFilter}` : sql``}
     
     GROUP BY 
-      a.id, a.title, a.status, a.updated_at
+      a.id, a.title, a.status, a.updated_at, c.name
     ORDER BY 
       a.id ASC
   `
 
+  // Nếu có tag filter và không phải "All Tags"
+  if (tagFilter && tagFilter !== "All Tags") {
+    return (articles as Article[]).filter((a: any) =>
+      (a.article_tags || '').toLowerCase().includes(tagFilter.toLowerCase())
+    ) as Article[]
+  }
+
   return articles as Article[]
+}
+
+export async function getAllCategoriesAction(): Promise<{ id: number; name: string }[]> {
+  const categories = await sql`
+    SELECT id, name 
+    FROM categories
+    WHERE is_deleted = false
+    ORDER BY name ASC
+  `
+  return categories as { id: number; name: string }[]
+}
+
+export async function deleteArticleAction(articleId: number): Promise<{ success: boolean; message: string }> {
+  try {
+    const result = await sql`
+      UPDATE articles
+      SET status = 'archived', updated_at = NOW()
+      WHERE id = ${articleId}
+      RETURNING id
+    `
+
+    if (result.length === 0) {
+      return { success: false, message: 'Article not found' }
+    }
+
+    return { success: true, message: 'Article archived successfully' }
+  } catch (error: any) {
+    console.error('Error archiving article:', error)
+    return { success: false, message: error?.message || 'Failed to archive article' }
+  }
 }
