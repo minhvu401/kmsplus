@@ -6,7 +6,6 @@ interface User {
   id: string
   email: string
   full_name: string | null
-  department?: string
   avatar_url?: string
   created_at?: Date
 }
