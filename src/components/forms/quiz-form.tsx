@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from 'react';
 import { Card, Button, Typography, Radio, Space, Checkbox, Divider, Modal, message } from 'antd';
-import { saveAttemptAnswerAction, submitQuizAttemptAction } from '@/action/quiz/quizActions';
+import { saveAttemptAnswer, submitQuizAttempt } from '@/action/quiz/quizActions';
 import { Question } from '@/service/quiz.service';
 
 const { Text } = Typography;
@@ -54,7 +54,7 @@ export default function QuizForm({
         }));
 
         startTransition(() => {
-            saveAttemptAnswerAction({
+            saveAttemptAnswer({
                 attemptId,
                 questionId,
                 selectedAnswer: value,
@@ -68,7 +68,7 @@ export default function QuizForm({
         submittedRef.current = true;
 
         try {
-            await submitQuizAttemptAction(attemptId);
+            await submitQuizAttempt(attemptId);
             window.location.href = `/quizzes/result/${attemptId}`;
         } catch {
             submittedRef.current = false;

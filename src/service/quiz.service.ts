@@ -287,7 +287,7 @@ export async function deleteQuizAction(id: number) {
   }
 }
 
-export async function getQuizDetails(id: number): Promise<Quiz> {
+export async function getQuizDetailsAction(id: number): Promise<Quiz> {
   const result = await sql`
         SELECT * 
         FROM quizzes
@@ -296,7 +296,7 @@ export async function getQuizDetails(id: number): Promise<Quiz> {
   return result[0] as Quiz
 }
 
-export async function startQuizAttempt(quiz_id: number, user_id: number, total_questions: number): Promise<QuizAttempt> {
+export async function startQuizAttemptAction(quiz_id: number, user_id: number, total_questions: number): Promise<QuizAttempt> {
   // Check for existing in-progress attempt
   const existingAttempt = await sql`
         SELECT * FROM quiz_attempts
@@ -355,7 +355,7 @@ export async function startQuizAttempt(quiz_id: number, user_id: number, total_q
   return newAttempt[0] as QuizAttempt
 }
 
-export async function submitQuizAttempt(
+export async function submitQuizAttemptAction(
   attemptId: number,
   userId: number
 ) {
@@ -418,7 +418,7 @@ export async function submitQuizAttempt(
   }
 }
 
-export async function saveAttemptAnswer(
+export async function saveAttemptAnswerAction(
   attemptId: number,
   userId: number,
   questionId: number,
@@ -506,7 +506,7 @@ export async function saveAttemptAnswer(
   `;
 }
 
-export async function getQuestionsForAttempt(attemptId: number): Promise<Question[]> {
+export async function getQuestionsForAttemptAction(attemptId: number): Promise<Question[]> {
   const result = await sql`
         SELECT qb.id, qb.question_text, qb.type, qb.options
         FROM question_bank qb
@@ -517,7 +517,7 @@ export async function getQuestionsForAttempt(attemptId: number): Promise<Questio
   return result as Question[];
 }
 
-export async function getTimeLimitForAttempt(attemptId: number): Promise<number | null> {
+export async function getTimeLimitForAttemptAction(attemptId: number): Promise<number | null> {
   const result = await sql`
         SELECT q.time_limit_minutes
         FROM quizzes q
@@ -527,7 +527,7 @@ export async function getTimeLimitForAttempt(attemptId: number): Promise<number 
   return result[0]?.time_limit_minutes || null;
 }
 
-export async function getSavedAnswers(attemptId: number) {
+export async function getSavedAnswersAction(attemptId: number) {
   return sql`
     SELECT
       question_id,
@@ -537,7 +537,7 @@ export async function getSavedAnswers(attemptId: number) {
   `;
 }
 
-export async function getQuizDetailsByAttempt(attemptId: number): Promise<Quiz> {
+export async function getQuizDetailsByAttemptAction(attemptId: number): Promise<Quiz> {
   const result = await sql`
         SELECT q.*
         FROM quizzes q
@@ -547,7 +547,7 @@ export async function getQuizDetailsByAttempt(attemptId: number): Promise<Quiz> 
   return result[0] as Quiz
 }
 
-export async function getAttemptResult(
+export async function getAttemptResultAction(
   attemptId: number
 ): Promise<AttemptResult> {
   // 1. Get attempt + quiz info
