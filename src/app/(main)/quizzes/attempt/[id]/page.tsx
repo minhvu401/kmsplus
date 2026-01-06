@@ -1,6 +1,6 @@
 import QuizForm from '@/components/forms/quiz-form';
 import PageWrapper from '@/components/ui/questions/page-wrapper';
-import { getQuestionsForAttempt, getTimeLimitForAttempt, getSavedAnswers } from '@/service/quiz.service';
+import { getQuestionsForAttemptAction, getTimeLimitForAttemptAction, getSavedAnswersAction } from '@/service/quiz.service';
 
 export default async function Page({
   params,
@@ -13,9 +13,9 @@ export default async function Page({
     throw new Error('Invalid attempt ID');
   }
 
-  const questions = await getQuestionsForAttempt(attemptId);
-  const timeLimit = await getTimeLimitForAttempt(attemptId);
-  const savedAnswers = await getSavedAnswers(attemptId);
+  const questions = await getQuestionsForAttemptAction(attemptId);
+  const timeLimit = await getTimeLimitForAttemptAction(attemptId);
+  const savedAnswers = await getSavedAnswersAction(attemptId);
   
   const initialAnswers = Object.fromEntries(
     savedAnswers.map(a => [

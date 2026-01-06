@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react';
-import { startQuizAttemptAction } from "@/action/quiz/quizActions";
+import { startQuizAttempt } from "@/action/quiz/quizActions";
 import { Quiz } from "@/service/quiz.service";
 import { Card, Row, Col, Typography, Statistic, Space, Divider, message, Button, Modal } from 'antd'
 const { Title, Text } = Typography;
@@ -148,7 +148,7 @@ export function StartQuizButton({
     async function handleConfirmStart() {
         try {
             setLoading(true);
-            const attemptId = await startQuizAttemptAction(quizId);
+            const attemptId = await startQuizAttempt(quizId);
             window.location.href = `/quizzes/attempt/${attemptId.id}`;
         } catch (err) {
             messageApi.error(

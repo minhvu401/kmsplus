@@ -10,9 +10,9 @@ import {
   createQuizAction,
   updateQuizAction,
   deleteQuizAction,
-  startQuizAttempt,
-  submitQuizAttempt,
-  saveAttemptAnswer
+  startQuizAttemptAction,
+  submitQuizAttemptAction,
+  saveAttemptAnswerAction
 } from "@/service/quiz.service"
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
@@ -228,7 +228,7 @@ export async function deleteQuiz(id: number) {
   revalidatePath("/quizzes")
 }
 
-export async function startQuizAttemptAction(quizId: number) {
+export async function startQuizAttempt(quizId: number) {
   const user = await requireAuth();
 
   // totalQuestions should come from DB, not frontend
@@ -241,13 +241,13 @@ export async function startQuizAttemptAction(quizId: number) {
 
   const totalQuestions = result[0].count;
 
-  return startQuizAttempt(quizId, Number(user.id), totalQuestions);
+  return startQuizAttemptAction(quizId, Number(user.id), totalQuestions);
 }
 
-export async function submitQuizAttemptAction(attemptId: number) {
+export async function submitQuizAttempt(attemptId: number) {
   const user = await requireAuth();
 
-  return submitQuizAttempt(attemptId, Number(user.id));
+  return submitQuizAttemptAction(attemptId, Number(user.id));
 }
 
 const SaveAnswerSchema = z.object({
@@ -258,7 +258,7 @@ const SaveAnswerSchema = z.object({
     z.array(z.coerce.number().int()),
   ]),
 });
-export async function saveAttemptAnswerAction(input: unknown) {
+export async function saveAttemptAnswer(input: unknown) {
   // 1️⃣ Validate payload
   const parsed = SaveAnswerSchema.safeParse(input);
   if (!parsed.success) {
@@ -271,7 +271,7 @@ export async function saveAttemptAnswerAction(input: unknown) {
   const user = await requireAuth();
 
   // 3️⃣ Save answer
-  await saveAttemptAnswer(
+  await saveAttemptAnswerAction(
     attemptId,
     Number(user.id),
     questionId,
