@@ -9,7 +9,7 @@ import { format } from 'date-fns'
 
 export default function QuizDetails({ quiz }: { quiz: Quiz }) {
     const hasFrom = !!quiz.available_from
-    const hasTo = !!quiz.available_to
+    const hasTo = !!quiz.available_until
 
     const formatDate = (date?: string | Date | null) => {
         if (!date) return null
@@ -48,7 +48,7 @@ export default function QuizDetails({ quiz }: { quiz: Quiz }) {
 
                         {hasTo && (
                             <Text type="secondary">
-                                Available to <strong>{formatDate(quiz.available_to)}</strong>
+                                Available to <strong>{formatDate(quiz.available_until)}</strong>
                             </Text>
                         )}
                     </Space>
