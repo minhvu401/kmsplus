@@ -41,7 +41,7 @@ export async function createArticle(formData: FormData) {
     
     const title = formData.get('title') as string
     const content = formData.get('content') as string
-    const status = (formData.get('status') as string) || 'draft'
+    const status = ((formData.get('status') as string) || 'draft') as 'draft' | 'pending' | 'published'
     const tags = formData.get('tags') as string
     const categoryIdRaw = formData.get('category_id') as string | null
     const category_id = categoryIdRaw ? parseInt(categoryIdRaw, 10) : null
