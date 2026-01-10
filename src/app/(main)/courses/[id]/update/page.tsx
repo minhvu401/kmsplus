@@ -39,7 +39,7 @@ export default async function UpdateCoursePage({
   const [course, lessonsRes, quizzesRes] = await Promise.all([
     getCourseByIdAction(courseId),
     getAllLessonsAction({ limit: 1000 }), // Lấy số lượng lớn để hiện trong bank
-    getAllQuizzesAction(),
+    getAllQuizzesAction({}),
   ])
   if (!course) notFound()
   // 👇 3. MAP DỮ LIỆU VỀ ĐÚNG ĐỊNH DẠNG CỦA UI
@@ -49,7 +49,7 @@ export default async function UpdateCoursePage({
     duration_minutes: l.duration_minutes || 0,
   }))
 
-  const availableQuizzes: Quiz[] = (quizzesRes?.data || []).map((q: any) => ({
+  const availableQuizzes: Quiz[] = (quizzesRes?.quizzes || []).map((q: any) => ({
     id: q.id,
     title: q.title,
     question_count: q.question_count || 0, // Giả sử DB trả về field này
