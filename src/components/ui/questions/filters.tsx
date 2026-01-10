@@ -1,6 +1,7 @@
 "use client"
 import { useSearchParams, useRouter, usePathname } from "next/navigation"
 import { useState, useEffect } from "react"
+import { Typography } from "antd"
 
 type Category = {
   id: number
