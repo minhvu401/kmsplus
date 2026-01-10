@@ -1,14 +1,14 @@
-'use client';
+"use client"
 
-import React, { useState } from 'react';
+import React, { useState } from "react"
 // Import các icon cho thanh toolbar
-import { Bold, Italic, Underline, List } from 'lucide-react';
+import { Bold, Italic, Underline, List } from "lucide-react"
 
 export default function CreateArticlePage() {
   // State cho các trường input
-  const [title, setTitle] = useState('');
-  const [content, setContent] = useState('');
-  const [category, setCategory] = useState('Technology');
+  const [title, setTitle] = useState("")
+  const [content, setContent] = useState("")
+  const [category, setCategory] = useState("Technology")
 
   // Hàm render thanh toolbar (giả lập theo UI)
   const renderToolbar = () => (
@@ -26,7 +26,7 @@ export default function CreateArticlePage() {
         <List className="w-4 h-4" />
       </button>
     </div>
-  );
+  )
 
   return (
     // Dùng layout và padding giống trang ArticleManagement của mày
@@ -41,15 +41,18 @@ export default function CreateArticlePage() {
 
           <form
             onSubmit={(e) => {
-              e.preventDefault();
+              e.preventDefault()
               // Xử lý logic submit ở đây
-              console.log({ title, content, category });
+              console.log({ title, content, category })
             }}
             className="space-y-6"
           >
             {/* 1. PHẦN TITLE */}
             <div>
-              <label htmlFor="title" className="block text-base font-medium text-gray-800 mb-2">
+              <label
+                htmlFor="title"
+                className="block text-base font-medium text-gray-800 mb-2"
+              >
                 Title
               </label>
               <input
@@ -75,7 +78,10 @@ export default function CreateArticlePage() {
 
             {/* 2. PHẦN CONTENT */}
             <div>
-              <label htmlFor="content" className="block text-base font-medium text-gray-800 mb-2">
+              <label
+                htmlFor="content"
+                className="block text-base font-medium text-gray-800 mb-2"
+              >
                 Content
               </label>
               <textarea
@@ -101,7 +107,10 @@ export default function CreateArticlePage() {
 
             {/* 3. PHẦN CATEGORY */}
             <div>
-              <label htmlFor="category" className="block text-base font-medium text-gray-800 mb-2">
+              <label
+                htmlFor="category"
+                className="block text-base font-medium text-gray-800 mb-2"
+              >
                 Category
               </label>
               <select
@@ -141,14 +150,23 @@ export default function CreateArticlePage() {
       {/* Footer (Copy từ code ArticleManagement của mày) */}
       <footer className="bg-white border-t px-8 py-4 mt-auto">
         <div className="flex justify-between items-center text-sm text-gray-600">
-          <p>© 2025 - KMSPlus. Designed by <span className="font-medium">KMS Team</span>. All rights reserved</p>
+          <p>
+            © 2025 - KMSPlus. Designed by{" "}
+            <span className="font-medium">KMS Team</span>. All rights reserved
+          </p>
           <div className="flex gap-6">
-            <a href="#" className="hover:text-gray-900">FAQs</a>
-            <a href="#" className="hover:text-gray-900">Privacy Policy</a>
-            <a href="#" className="hover:text-gray-900">Terms & Condition</a>
+            <a href="#" className="hover:text-gray-900">
+              FAQs
+            </a>
+            <a href="#" className="hover:text-gray-900">
+              Privacy Policy
+            </a>
+            <a href="#" className="hover:text-gray-900">
+              Terms & Condition
+            </a>
           </div>
         </div>
       </footer>
     </div>
-  );
+  )
 }

@@ -5,21 +5,22 @@ import React from "react"
 
 // Định nghĩa kiểu cho các tham số tìm kiếm trên URL
 interface QuestionBankPageProps {
-  searchParams: {
+  searchParams: Promise<{
     page?: string
     limit?: string
     query?: string
-  }
+  }>
 }
 
 // Page component này chạy hoàn toàn trên server
 export default async function QuestionBankPage({
   searchParams,
 }: QuestionBankPageProps) {
+  const params = await searchParams
   // Lấy các tham số từ URL, nếu không có thì dùng giá trị mặc định
-  const page = Number(searchParams.page) || 1
-  const limit = Number(searchParams.limit) || 10
-  const query = searchParams.query || ""
+  const page = Number(params.page) || 1
+  const limit = Number(params.limit) || 10
+  const query = params.query || ""
 
   // Gọi Server Action để lấy dữ liệu từ database
   const { quizQuestion, totalCount } = await getAllQuizQuestions({

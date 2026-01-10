@@ -70,7 +70,7 @@ export async function getCurrentUserInforAction(): Promise<User | null> {
     const id = decoded.id
 
     const users = await sql`
-      SELECT email, full_name, avatar_url, department, created_at 
+      SELECT email, full_name, avatar_url, department_id, created_at 
       FROM users 
       WHERE id = ${id} AND (is_deleted = false OR is_deleted IS NULL)
     `

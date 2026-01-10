@@ -12,6 +12,8 @@
 - ❌ **KHÔNG** merge/split files mà không được yêu cầu
 - ❌ **KHÔNG** thay đổi middleware logic
 - ❌ **KHÔNG** tạo file ngoài folder `src` mà không hỏi
+- ❌ **KHÔNG** thay đổi cấu trúc các file ngoài folder `src` mà không hỏi
+- ❌ **KHÔNG** thay đổi cấu hình tổng của project như metadata, tsconfig, next.config, ...
 
 ### Import & Dependencies
 
