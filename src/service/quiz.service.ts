@@ -120,12 +120,12 @@ export async function getQuizByIdAction(id: number) {
 
 /**
  * Tạo mới một bài thi.
- * 
+ *
  * Functional Requirements (FR-01):
  * - User Action: Click vào ô "Quiz Title" và nhập text
  * - System Behavior: Validate độ dài (Max 255 ký tự). Cập nhật biến state title.
  * - Post-conditions: Dữ liệu Title và Description được lưu trong DB
- * 
+ *
  * Accepts sanitized data từ server action (quizActions.ts)
  */
 export async function createQuizAction(data: {
