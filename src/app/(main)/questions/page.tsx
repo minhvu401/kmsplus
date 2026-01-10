@@ -1,5 +1,5 @@
 // List questions in Q&A Forum
-import PageWrapper from "@/components/page-wrapper"
+import PageWrapper from "@/components/ui/questions/page-wrapper"
 import Search from "@/components/ui/questions/search"
 import { CreateQuestion } from "@/components/ui/questions/create-button"
 import {
@@ -34,18 +34,26 @@ export default async function Page(props: {
 
   return (
     <PageWrapper>
-      <div className="flex items-center gap-7 mb-6">
+
+      <QuestionsNotification />
+
+      <Flex align="center" gap={28} style={{ marginBottom: 24 }}>
         <Search placeholder="Search questions..." />
         <CreateQuestion />
-      </div>
-      <div className="flex items-center gap-14 mb-6">
+      </Flex>
+
+      <Flex align="center" gap={56} style={{ marginBottom: 24 }}>
         <FilterCategory categories={categories} />
         <FilterStatus />
-        <SortBy />
+        <QuestionsSortBy />
+      </Flex>
+
+      <div style={{ marginBottom: 24 }}>
+        <QuestionsList questions={questions} noSearchResults={noSearchResults} />
       </div>
       <div className="flex justify-end items-center gap-14 mb-6">
         <Pagination totalPages={totalPages} />
       </div>
     </PageWrapper>
-  )
+  );
 }
