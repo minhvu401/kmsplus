@@ -42,6 +42,63 @@ type GetAllQuizzesParams = {
   course_id?: number
 }
 
+export type QuizAttempt = {
+  id: number,
+  quiz_id: number,
+  user_id: number,
+  attempt_number: number,
+  status: 'in_progress' | 'completed' | 'abandoned',
+  score: number | null,
+  total_questions: number,
+  correct_answers: number | null,
+  time_spent_seconds: number | null,
+  started_at: Date,
+  submitted_at: Date | null,
+}
+
+export type Question = {
+  id: number;
+  question_text: string;
+  type: 'single_choice' | 'multiple_choice';
+  options: string[];
+};
+
+type AttemptRow = {
+  id: number;
+  status: 'in_progress' | 'submitted';
+  started_at: Date;
+}
+
+type AttemptStats = {
+  correct_answers: number;
+  score: number;
+}
+
+type QuestionRow = {
+  type: 'single_choice' | 'multiple_choice';
+  correct_answer: any;
+};
+
+export type QuestionResult = {
+  id: number;
+  questionText: string;
+  type: 'single_choice' | 'multiple_choice';
+  options: string[];
+  selectedAnswers: number[];      // indexes
+  correctAnswers: number[];       // indexes
+  explanation?: string | null;
+};
+
+export type AttemptResult = {
+  title: string;
+  attempt_number: number;
+  time_spent_seconds: number;
+  score: number;
+  //   total_score: number;
+  //   passed: boolean;
+  questions: QuestionResult[];
+};
+
 /**
  * Lấy danh sách bài thi có phân trang và tìm kiếm.
  * - Hỗ trợ tìm kiếm theo title

@@ -8,6 +8,9 @@ type Category = {
   slug: string
 }
 
+const { Text } = Typography;
+
+//------------------------------- CATEGORY FILTER ---------------------------------
 export function FilterCategory({ categories }: { categories: Category[] }) {
   const searchParams = useSearchParams()
   const pathname = usePathname()
@@ -56,6 +59,7 @@ export function FilterCategory({ categories }: { categories: Category[] }) {
   )
 }
 
+// -------------------- STATUS FILTER --------------------
 export function FilterStatus() {
   const searchParams = useSearchParams()
   const pathname = usePathname()
