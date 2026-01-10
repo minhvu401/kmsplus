@@ -194,7 +194,7 @@ export function CreateCourseClient({
 
   // --- CÁC HÀM XỬ LÝ ---
 
-  const handleUpload = async (file: File) => {
+  const handleUploadThumbnail = async (file: File) => {
     const hide = message.loading("Đang tải ảnh lên...", 0)
     try {
       const formData = new FormData()
@@ -470,7 +470,7 @@ export function CreateCourseClient({
                 <Upload
                   accept="image/*"
                   showUploadList={false}
-                  beforeUpload={handleUpload}
+                  beforeUpload={handleUploadThumbnail}
                 >
                   <Button icon={<PlusOutlined />}>Upload Image</Button>
                 </Upload>
