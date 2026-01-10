@@ -6,8 +6,6 @@ interface User {
   id: string
   email: string
   full_name: string | null
-  // role?: string
-  department?: string
   avatar_url?: string
   created_at?: Date
 }
@@ -21,22 +19,25 @@ interface UserStore {
 
 const useUserStore = create<UserStore>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       user: null,
-      setUser: (user) => set({ user }), // Cập nhật thông tin user trong store
+      setUser: (user) => set({ user }),
       fetchUser: async () => {
-        try {
-          const user = await getCurrentUserInfor() // Lấy thông tin người dùng từ API
-          set({ user })
-        } catch (error) {
-          console.error("Error fetching user:", error)
+        // Nếu đã có user trong store (localStorage), không cần fetch lại
+        if (!get().user) {
+          try {
+            const user = await getCurrentUserInfor() // API gọi khi không có user
+            set({ user })
+          } catch (error) {
+            console.error("Error fetching user:", error)
+          }
         }
       },
-      clearUser: () => set({ user: null }), // Xóa thông tin user khỏi store
+      clearUser: () => set({ user: null }),
     }),
     {
-      name: "user-storage", // key để lưu trong localStorage
-      partialize: (state) => ({ user: state.user }), // Chỉ lưu field 'user'
+      name: "user-storage", // Lưu trong localStorage
+      partialize: (state) => ({ user: state.user }), // Chỉ lưu user trong localStorage
     }
   )
 )

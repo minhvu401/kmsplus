@@ -13,7 +13,6 @@ export type User = {
   email: string
   full_name: string | null
   // role?: string
-  department?: string
   avatar_url?: string
   created_at?: Date
 }
@@ -70,7 +69,7 @@ export async function getCurrentUserInforAction(): Promise<User | null> {
     const id = decoded.id
 
     const users = await sql`
-      SELECT email, full_name, avatar_url, department_id, created_at 
+      SELECT email, full_name, avatar_url, created_at 
       FROM users 
       WHERE id = ${id} AND (is_deleted = false OR is_deleted IS NULL)
     `
@@ -83,7 +82,7 @@ export async function getCurrentUserInforAction(): Promise<User | null> {
 
 export async function getUserDetail(id: string): Promise<User | null> {
   const users = await sql`
-    SELECT  email, full_name, avatar_url, department, created_at 
+    SELECT  email, full_name, avatar_url, created_at 
     FROM users 
     WHERE id = ${id} AND (is_deleted = false OR is_deleted IS NULL)
   `

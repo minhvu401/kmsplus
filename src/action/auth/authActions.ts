@@ -4,14 +4,19 @@ import { sql } from "@/lib/database"
 import { signToken } from "@/lib/auth"
 import { LoginDto } from "./dto/login.dto"
 import { cookies } from "next/headers"
-import { redirect } from "next/navigation"
-import { PageRoute } from "@/enum/page-route.enum"
 import useUserStore from "@/store/useUserStore"
 
 export type LoginState = {
   success: boolean
   message: string
   errors?: Record<string, string[]>
+  user?: {
+    id: string
+    email: string
+    full_name: string
+    avatar_url: string
+    created_at: Date
+  }
 }
 
 export async function loginAction(
@@ -33,7 +38,7 @@ export async function loginAction(
 
   // Kiểm tra user tồn tại
   const users = await sql`
-    SELECT id, email, password_hash FROM users WHERE email = ${email}
+    SELECT id, email, full_name, avatar_url, created_at, password_hash FROM users WHERE email = ${email}
   `
   const user = users[0]
   if (!user) {
@@ -44,13 +49,13 @@ export async function loginAction(
   if (user.email === "admin@company.com") {
     const isValid = password === user.password_hash
     if (!isValid) {
-      return { success: false, message: "Invalid password" }
+      return { success: false, message: "Mật khẩu không chính xác" }
     }
   } else {
     const bcrypt = require("bcryptjs")
     const isValid = await bcrypt.compare(password, user.password_hash)
     if (!isValid) {
-      return { success: false, message: "Invalid password" }
+      return { success: false, message: "Mật khẩu không chính xác" }
     }
   }
 
@@ -70,9 +75,18 @@ export async function loginAction(
     maxAge: 60 * 60 * 24, // 1 day
   })
 
+  // console.log("User logged in:", token)
+
   return {
     success: true,
     message: "Login successful",
+    user: {
+      id: user.id,
+      email: user.email,
+      full_name: user.full_name,
+      avatar_url: user.avatar_url,
+      created_at: user.created_at,
+    },
   }
 }
 
