@@ -2,6 +2,7 @@
 import { useSearchParams, useRouter, usePathname } from "next/navigation"
 import { useDebouncedCallback } from "use-debounce"
 import { SearchOutlined } from "@ant-design/icons"
+import { Input, Flex } from "antd"
 
 export default function Search({ placeholder }: { placeholder: string }) {
   // These give access to:
@@ -33,6 +34,6 @@ export default function Search({ placeholder }: { placeholder: string }) {
         defaultValue={searchParams.get("query")?.toString()}
       />
       <SearchOutlined className="absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-gray-500 peer-focus:text-gray-900" />
-    </div>
+    </Flex>
   )
 }
