@@ -79,13 +79,13 @@ export default function CreateArticlePage() {
     }
   }
 
-  const focusEditor = (editorRef: React.RefObject<HTMLDivElement>) => {
+  const focusEditor = (editorRef: React.RefObject<HTMLDivElement | null>) => {
     editorRef.current?.focus({ preventScroll: true })
   }
 
   const applyFormat = (
     command: string,
-    editorRef: React.RefObject<HTMLDivElement>
+    editorRef: React.RefObject<HTMLDivElement | null>
   ) => {
     restoreSelection()
     document.execCommand(command, false)
@@ -94,14 +94,14 @@ export default function CreateArticlePage() {
 
   const applyHeading = (
     level: string,
-    editorRef: React.RefObject<HTMLDivElement>
+    editorRef: React.RefObject<HTMLDivElement | null>
   ) => {
     restoreSelection()
     document.execCommand("formatBlock", false, level)
     focusEditor(editorRef)
   }
 
-  const applyQuote = (editorRef: React.RefObject<HTMLDivElement>) => {
+  const applyQuote = (editorRef: React.RefObject<HTMLDivElement | null>) => {
     restoreSelection()
     document.execCommand("formatBlock", false, "<blockquote>")
     focusEditor(editorRef)

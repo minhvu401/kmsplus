@@ -59,6 +59,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     const newLesson = await createLessonAction({
       course_id: null,
       title: title.trim(),
+      content: "",
       duration_minutes,
     })
 
