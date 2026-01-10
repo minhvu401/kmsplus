@@ -1,6 +1,5 @@
 "use client"
 
-import React, { useEffect, useState } from "react"
 import { Layout, Avatar, Typography, Row, Col, Button, Tabs, Space } from "antd"
 import {
   UserOutlined,
@@ -9,8 +8,8 @@ import {
   HistoryOutlined,
   SettingOutlined,
 } from "@ant-design/icons"
-import { getCurrentUserInfor } from "@/action/user/userActions"
 import ActivityTabContent from "./ActivityTabContent"
+import useUserStore from "@/store/useUserStore"
 
 interface UserType {
   id: string
@@ -21,26 +20,9 @@ interface UserType {
   avatar_url?: string
 }
 
-/**
- * Trang Profile chính
- */
 export default function ProfilePageContent() {
   const { Title, Text } = Typography
-
-  const [user, setUser] = useState<UserType | null>(null)
-
-  useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const thisUser = await getCurrentUserInfor()
-        if (thisUser) {
-          setUser(thisUser)
-        }
-      } catch (error) {}
-    }
-
-    fetchUser()
-  }, [])
+  const { user } = useUserStore()
 
   return (
     <Layout

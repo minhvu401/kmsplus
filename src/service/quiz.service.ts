@@ -1,14 +1,27 @@
-// @/service/quiz.service.ts
-// Quiz Service - Chứa logic xử lý quiz
+// Quiz Service
 "use server"
 
-import { sql } from "../lib/database"
-import { revalidatePath } from "next/cache"
+import { sql } from "@/lib/database"
 
+/**
+ * Quiz type theo DB schema actual:
+ * - id: BIGSERIAL PRIMARY KEY
+ * - course_id: BIGINT NOT NULL (FOREIGN KEY)
+ * - title: VARCHAR(500) NOT NULL
+ * - description: TEXT (nullable)
+ * - time_limit_minutes: INTEGER (nullable)
+ * - passing_score: NUMERIC(5, 2) DEFAULT 70.00
+ * - max_attempts: SMALLINT DEFAULT 3
+ * - available_from: TIMESTAMP (nullable)
+ * - available_until: TIMESTAMP (nullable)
+ * - is_deleted: BOOLEAN DEFAULT false
+ * - deleted_at: TIMESTAMP (nullable)
+ * - created_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+ * - updated_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+ */
 export type Quiz = {
   id: number
-  course_id: number | null
-  lesson_id: number | null
+  course_id: number
   title: string
   description: string | null
   time_limit_minutes: number | null
@@ -20,190 +33,199 @@ export type Quiz = {
   deleted_at: Date | null
   created_at: Date
   updated_at: Date
-  // Computed field
-  question_count?: number
+}
+
+type GetAllQuizzesParams = {
+  query?: string
+  page?: number
+  limit?: number
+  course_id?: number
 }
 
 /**
- * Lấy tất cả quiz
+ * Lấy danh sách bài thi có phân trang và tìm kiếm.
+ * - Hỗ trợ tìm kiếm theo title
+ * - Hỗ trợ filter theo course_id
+ * - Phân trang theo page và limit
  */
-type QuizFromDB = {
-  id: number
-  title: string
-  description: string | null
-  time_limit: number | null
-  passing_score: number | null
-  max_attempts: number | null
-  question_count: string | number
-}
+// ...existing code...
 
-type GetAllQuizzesResult = {
-  success: boolean
-  data?: Array<Omit<QuizFromDB, "question_count"> & { question_count: number }>
-  error?: string
-}
+export async function getAllQuizzesAction({
+  query = "",
+  page = 1,
+  limit = 10,
+  course_id,
+}: GetAllQuizzesParams) {
+  const offset = (page - 1) * limit
 
-export async function getAllQuizzesAction(): Promise<GetAllQuizzesResult> {
   try {
-    const result = await sql`
-      SELECT 
-        q.id, 
-        q.title, 
-        q.description,
-        q.time_limit_minutes,
-        q.passing_score,
-        q.max_attempts,
-        q.available_from,
-        q.available_until,
-        (
-          SELECT COUNT(*) 
-          FROM quiz_questions qq 
-          WHERE qq.quiz_id = q.id
-        ) as question_count
-      FROM quizzes q
-      WHERE q.is_deleted = false
-      ORDER BY q.created_at DESC
+    let whereConditions: string[] = ["is_deleted = FALSE"]
+    const params: any[] = []
+
+    if (query) {
+      whereConditions.push(`title ILIKE $${params.length + 1}`)
+      params.push("%" + query + "%")
+    }
+
+    if (course_id) {
+      whereConditions.push(`course_id = $${params.length + 1}`)
+      params.push(course_id)
+    }
+
+    const whereClause =
+      whereConditions.length > 0 ? `WHERE ${whereConditions.join(" AND ")}` : ""
+
+    // Fetch data
+    const dataQuery = `
+      SELECT *
+      FROM quizzes
+      ${whereClause}
+      ORDER BY created_at DESC
+      LIMIT $${params.length + 1} OFFSET $${params.length + 2}
     `
 
+    const rows = await (sql as any)(dataQuery, [...params, limit, offset])
+
+    // Count total
+    const countQuery = `SELECT COUNT(*) FROM quizzes ${whereClause}`
+    const totalResult = await (sql as any)(countQuery, params)
+
+    const totalCount = parseInt(totalResult[0].count as string, 10)
+
     return {
-      success: true,
-      data: result.map((quiz) => ({
-        id: quiz.id,
-        title: quiz.title,
-        description: quiz.description,
-        time_limit: quiz.time_limit,
-        passing_score: quiz.passing_score,
-        max_attempts: quiz.max_attempts,
-        question_count: Number(quiz.question_count) || 0,
-      })),
+      quizzes: rows as Quiz[],
+      totalCount,
     }
   } catch (error) {
-    console.error("Error fetching quizzes:", error)
-    return {
-      success: false,
-      error: "Failed to fetch quizzes",
-    }
+    console.error("getAllQuizzesAction error:", error)
+    throw new Error("Failed to fetch quizzes")
   }
 }
 
 /**
- * Lấy quiz theo ID
+ * Lấy chi tiết một bài thi theo ID.
  */
 export async function getQuizByIdAction(id: number) {
   try {
+    const rows = await sql`
+      SELECT * FROM quizzes
+      WHERE id = ${id} AND is_deleted = FALSE
+    `
+    return rows.length > 0 ? (rows[0] as Quiz) : null
+  } catch (error) {
+    console.error("getQuizByIdAction error:", error)
+    throw new Error("Failed to fetch quiz")
+  }
+}
+
+/**
+ * Tạo mới một bài thi.
+ *
+ * Functional Requirements (FR-01):
+ * - User Action: Click vào ô "Quiz Title" và nhập text
+ * - System Behavior: Validate độ dài (Max 255 ký tự). Cập nhật biến state title.
+ * - Post-conditions: Dữ liệu Title và Description được lưu trong DB
+ *
+ * Accepts sanitized data từ server action (quizActions.ts)
+ */
+export async function createQuizAction(data: {
+  course_id: number
+  title: string
+  description?: string
+  status?: string
+  time_limit_minutes?: number
+  passing_score?: number
+  max_attempts?: number
+}) {
+  try {
+    await sql`BEGIN`
+
     const result = await sql`
-      SELECT 
-        id, 
+      INSERT INTO quizzes (
+        course_id, 
         title, 
-        description,
-        time_limit_minutes,
-        passing_score,
+        description, 
+        time_limit_minutes, 
+        passing_score, 
         max_attempts,
-        (
-          SELECT COUNT(*) 
-          FROM quiz_questions qq 
-          WHERE qq.quiz_id = quizzes.id
-        ) as question_count
-      FROM quizzes
-      WHERE id = ${id} AND deleted_at IS NULL
+        is_deleted
+      ) VALUES (
+        ${data.course_id}, 
+        ${data.title}, 
+        ${data.description || null}, 
+        ${data.time_limit_minutes || null}, 
+        ${data.passing_score || 70}, 
+        ${data.max_attempts || 3},
+        false
+      ) RETURNING *
     `
 
-    if (result.length === 0) {
-      return {
-        success: false,
-        error: "Quiz not found",
+    await sql`COMMIT`
+    return result[0] as Quiz
+  } catch (err) {
+    await sql`ROLLBACK`
+    console.error("createQuizAction transaction failed:", err)
+    throw new Error("Failed to create quiz")
+  }
+}
+
+/**
+ * Cập nhật một bài thi.
+ */
+// ...existing code...
+
+/**
+ * Cập nhật một bài thi.
+ */
+export async function updateQuizAction(
+  id: number,
+  data: Partial<Omit<Quiz, "id" | "created_at" | "updated_at">>
+) {
+  try {
+    const updates: string[] = []
+    const values: any[] = []
+    let paramIndex = 1
+
+    Object.entries(data).forEach(([key, value]) => {
+      if (key !== "id" && key !== "created_at" && key !== "updated_at") {
+        updates.push(`${key} = $${paramIndex}`)
+        values.push(value)
+        paramIndex++
       }
-    }
+    })
 
-    return {
-      success: true,
-      data: {
-        ...result[0],
-        question_count: Number(result[0].question_count) || 0,
-      },
-    }
+    if (updates.length === 0) return { id } as Quiz
+
+    const query = `
+      UPDATE quizzes
+      SET ${updates.join(", ")}, updated_at = NOW()
+      WHERE id = $${paramIndex}
+      RETURNING *
+    `
+    values.push(id)
+
+    const result = await (sql as any)(query, values)
+    return result.length > 0 ? (result[0] as Quiz) : null
   } catch (error) {
-    console.error(`Error fetching quiz ${id}:`, error)
-    return {
-      success: false,
-      error: "Failed to fetch quiz",
-    }
+    console.error("updateQuizAction error:", error)
+    throw new Error("Failed to update quiz")
   }
 }
 
 /**
- * Attach quiz to lesson
+ * Xóa một bài thi (soft delete).
  */
-export async function attachQuizToLessonAction(
-  quizId: number,
-  lessonId: number
-) {
+export async function deleteQuizAction(id: number) {
   try {
-    // Kiểm tra quiz tồn tại và published (giả sử có status, nhưng hiện tại không có, có thể thêm sau)
-    const [quiz] = await sql`
-      SELECT id FROM quizzes WHERE id = ${quizId} AND is_deleted = false
-    `
-    if (!quiz) {
-      throw new Error("Quiz not found or not available")
-    }
-
-    // Kiểm tra lesson tồn tại
-    const [lesson] = await sql`
-      SELECT id FROM lessons WHERE id = ${lessonId} AND deleted_at IS NULL
-    `
-    if (!lesson) {
-      throw new Error("Lesson not found")
-    }
-
-    // Update quiz với lesson_id
-    await sql`
+    const result = await sql`
       UPDATE quizzes
-      SET lesson_id = ${lessonId}, updated_at = NOW()
-      WHERE id = ${quizId}
+      SET is_deleted = TRUE, deleted_at = NOW(), updated_at = NOW()
+      WHERE id = ${id}
+      RETURNING *
     `
-
-    revalidatePath(`/lessons/${lessonId}`)
-    return { success: true }
+    return result.length > 0 ? (result[0] as Quiz) : null
   } catch (error) {
-    console.error("Error attaching quiz to lesson:", error)
-    throw new Error("Failed to attach quiz to lesson")
-  }
-}
-
-/**
- * Detach quiz from lesson
- */
-export async function detachQuizFromLessonAction(quizId: number) {
-  try {
-    await sql`
-      UPDATE quizzes
-      SET lesson_id = NULL, updated_at = NOW()
-      WHERE id = ${quizId}
-    `
-
-    return { success: true }
-  } catch (error) {
-    console.error("Error detaching quiz from lesson:", error)
-    throw new Error("Failed to detach quiz from lesson")
-  }
-}
-
-/**
- * Update quiz course_id
- */
-export async function updateQuizCourseIdAction(
-  quizId: number,
-  courseId: number | null
-) {
-  try {
-    await sql`
-      UPDATE quizzes
-      SET course_id = ${courseId}, updated_at = NOW()
-      WHERE id = ${quizId}
-    `
-    return { success: true }
-  } catch (error) {
-    console.error("Error updating quiz course_id:", error)
-    throw new Error("Failed to update quiz course_id")
+    console.error("deleteQuizAction error:", error)
+    throw new Error("Failed to delete quiz")
   }
 }

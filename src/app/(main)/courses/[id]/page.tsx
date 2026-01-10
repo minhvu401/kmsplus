@@ -21,29 +21,20 @@ type Props = {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params
-  const courseId = Number(id)
-  if (isNaN(courseId)) {
-    return { title: "Invalid Course" }
-  }
-  const course = await getCourseByIdAction(courseId)
-  return {
-    title: course?.title || "Course Details",
-  }
+  const numId = Number(id)
+  if (!numId || Number.isNaN(numId)) return { title: "Course" }
+  const course = await getCourseByIdAction(numId)
+  return { title: course ? course.title : "Course" }
 }
 
 export default async function CourseDetailPage({ params }: Props) {
   const { id } = await params
-  const courseId = Number(id)
+  const numId = Number(id)
+  if (!numId || Number.isNaN(numId)) return notFound()
 
-  if (isNaN(courseId)) {
-    notFound()
-  }
-
-  // 1. Lấy thông tin chi tiết khóa học hiện tại
-  const course = await getCourseByIdAction(courseId)
-  if (!course) {
-    notFound()
-  }
+  // Fetch course from DB (server-side). Using service directly to read from Neon.
+  const course: Course | null = await getCourseByIdAction(numId)
+  if (!course) return notFound()
 
   // 2. (FIX LỖI) Lấy danh sách khóa học liên quan (related)
   // Ví dụ: Lấy 6 khóa mới nhất, sau đó lọc bỏ khóa hiện tại

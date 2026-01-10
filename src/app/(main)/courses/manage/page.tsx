@@ -15,20 +15,15 @@ export const metadata: Metadata = {
 }
 
 type Props = {
-  searchParams?: { [key: string]: string | string[] | undefined }
+  searchParams?: Promise<{ [key: string]: string | string[] | undefined }>
 }
 
 export default async function ManagerCoursesPage({ searchParams }: Props) {
-  // ⚠️ QUAN TRỌNG: Phải await searchParams trước khi dùng
   const params = await searchParams
-
-  // 2. Sửa logic lấy page và query từ biến 'params' đã await
   const page = Number(params?.page || "1") || 1
-
   const query = Array.isArray(params?.query)
     ? params?.query[0]
     : (params?.query as string) || ""
-
   const limit = 10
 
   // 3. Gọi API lấy dữ liệu (Giữ nguyên)
