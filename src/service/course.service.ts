@@ -261,24 +261,6 @@ export async function createCourseAction(courseData: CreateCoursePayload) {
   }
 }
 
-// export async function updateCourseAction(
-//   id: number,
-//   data: Partial<Omit<Course, "id" | "created_at" | "updated_at">>
-// ) {
-//   const result = await sql`
-//     UPDATE courses
-//     SET
-//       title = COALESCE(${data.title}, title),
-//       description = COALESCE(${data.description}, description),
-//       thumbnail_url = COALESCE(${data.thumbnail_url}, thumbnail_url),
-//       status = COALESCE(${data.status}, status),
-//       duration_hours = COALESCE(${data.duration_hours}, duration_hours),
-//       updated_at = NOW()
-//     WHERE id = ${id}
-//     RETURNING *
-//   `
-//   return result.length > 0 ? (result[0] as Course) : null
-// }
 export async function updateFullCourseAction(id: number, data: any) {
   try {
     // Sử dụng sqlTransaction đã khởi tạo ở đầu file để thực hiện Transaction
@@ -340,9 +322,12 @@ export async function deleteCourseAction(id: number) {
       UPDATE courses
       SET deleted_at = NOW()
       WHERE id = ${id}
+        AND deleted_at IS NULL  -- ✅ THÊM: Chỉ xóa nếu chưa bị xóa
       RETURNING id
-    ` // Kiểm tra xem có xóa được dòng nào không
+    `
+
     if (result.length === 0) {
+      // Message chính xác hơn: Không tìm thấy hoặc đã bị xóa trước đó
       return { success: false, error: "Course not found or already deleted" }
     }
 
@@ -357,7 +342,7 @@ export async function deleteCourseAction(id: number) {
 }
 
 export async function approveCourseAction(id: number, approvedBy: number) {
-  console.log("approveCourseAction called with:", { id, approvedBy }) // Debug log
+  console.log("approveCourseAction called with:", { id, approvedBy })
   try {
     const result = await sql`
       UPDATE courses
@@ -368,12 +353,13 @@ export async function approveCourseAction(id: number, approvedBy: number) {
         updated_at = NOW()
       WHERE id = ${id} 
         AND (status = 'pending_approval' OR status = 'draft')
+        AND deleted_at IS NULL -- ✅ QUAN TRỌNG: Không được approve khóa học đang trong thùng rác
       RETURNING *
     `
-    console.log("Update result:", result) // Debug log
+    console.log("Update result:", result)
     return result.length > 0 ? (result[0] as Course) : null
   } catch (error) {
-    console.error("Error in approveCourseAction:", error) // Debug log
+    console.error("Error in approveCourseAction:", error)
     throw error
   }
 }
