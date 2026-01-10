@@ -30,9 +30,9 @@ export default async function CreateCoursePage() {
 
   // 5. Lấy danh sách Quiz thật từ DB
   try {
-    const quizzesResult = await getAllQuizzesAction()
-    if (quizzesResult && quizzesResult.data) {
-      initialQuizzes = quizzesResult.data
+    const quizzesResult = await getAllQuizzesAction({})
+    if (quizzesResult && quizzesResult.quizzes) {
+      initialQuizzes = quizzesResult.quizzes
     }
   } catch (error) {
     console.error("Error fetching quizzes:", error)

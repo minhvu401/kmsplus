@@ -45,7 +45,7 @@ export default async function CourseDetailPage({ params }: Props) {
   })
 
   // Lọc bỏ khóa học đang xem khỏi danh sách gợi ý
-  const related = allCourses.filter((c) => c.id !== courseId).slice(0, 5)
+  const related = allCourses.filter((c) => c.id !== course.id).slice(0, 5)
 
   return (
     <main className="min-h-screen bg-gray-50 py-8">

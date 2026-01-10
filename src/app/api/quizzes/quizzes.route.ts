@@ -13,21 +13,21 @@ interface QuizResponse {
 
 export async function GET() {
   try {
-    const result = await getAllQuizzesAction()
-    if (!result.success || !result.data) {
+    const result = await getAllQuizzesAction({})
+    if (!result.quizzes || result.quizzes.length === 0) {
       return NextResponse.json(
-        { success: false, error: result.error || "No data available" },
+        { success: false, error: "No data available" },
         { status: 500 }
       )
     }
-    const quizzes: QuizResponse[] = result.data.map((quiz) => ({
+    const quizzes: QuizResponse[] = result.quizzes.map((quiz: any) => ({
       id: quiz.id,
       title: quiz.title,
       description: quiz.description,
-      time_limit: quiz.time_limit,
-      passing_score: quiz.passing_score,
-      max_attempts: quiz.max_attempts,
-      question_count: quiz.question_count,
+      time_limit: quiz.time_limit ?? null,
+      passing_score: quiz.passing_score ?? null,
+      max_attempts: quiz.max_attempts ?? null,
+      question_count: quiz.question_count ?? 0,
     }))
     return NextResponse.json({
       success: true,

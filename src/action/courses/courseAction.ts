@@ -26,7 +26,12 @@ type GetAllCoursesParams = {
 
 // Định nghĩa kiểu trả về chuẩn cho API
 type APIResponse =
-  | { success: true; courseId?: number }
+  | { success: true; courseId: number }
+  | { success: false; error: string }
+
+// Response type cho update operations (không cần courseId)
+type UpdateAPIResponse =
+  | { success: true }
   | { success: false; error: string }
 
 // --- FETCH ACTIONS ---
@@ -107,11 +112,14 @@ export async function createCourseAPI(
       duration_hours: data.duration_hours || 0,
     }
     const result = await createCourseAction(courseData)
-    if (result.success) {
+    if (result.success && "courseId" in result) {
       revalidatePath("/courses")
       return { success: true, courseId: result.courseId }
     }
-    return { success: false, error: result.error || "Failed to create course" }
+    if (!result.success && "error" in result) {
+      return { success: false, error: result.error || "Failed to create course" }
+    }
+    return { success: false, error: "Failed to create course" }
   } catch (error) {
     console.error("Create API Error:", error)
     return {
@@ -146,7 +154,7 @@ export async function createCourseAPI(
 export async function updateCourseAPI(
   courseId: number,
   data: Partial<CreateCoursePayload>
-): Promise<APIResponse> {
+): Promise<UpdateAPIResponse> {
   try {
     const user = await requireAuth()
     if (!user?.id) throw new Error("Unauthorized")
@@ -163,7 +171,7 @@ export async function updateCourseAPI(
       return { success: true }
     }
 
-    return { success: false, error: result.error || "Update failed" }
+    return { success: false, error: "error" in result ? result.error : "Update failed" }
   } catch (error) {
     console.error("API Update Error:", error)
     return { success: false, error: "Hệ thống gặp lỗi khi lưu dữ liệu" }
