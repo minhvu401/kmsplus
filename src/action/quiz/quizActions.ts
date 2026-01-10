@@ -231,23 +231,13 @@ export async function deleteQuiz(id: number) {
 export async function startQuizAttempt(quizId: number) {
   const user = await requireAuth();
 
-  // totalQuestions should come from DB, not frontend
-  const result = await sql`
-    SELECT COUNT(*)::int AS count
-    FROM question_bank qb
-    JOIN quiz_questions qq ON qb.id = qq.question_id
-    WHERE qq.quiz_id = ${quizId} AND qb.deleted_at IS NULL;
-  `;
-
-  const totalQuestions = result[0].count;
-
-  return startQuizAttemptAction(quizId, Number(user.id), totalQuestions);
+  return startQuizAttemptAction(quizId, Number(user.id));
 }
 
 export async function submitQuizAttempt(attemptId: number) {
   const user = await requireAuth();
 
-  return submitQuizAttemptAction(attemptId, Number(user.id));
+  return submitQuizAttemptAction(attemptId);
 }
 
 const SaveAnswerSchema = z.object({
@@ -273,7 +263,6 @@ export async function saveAttemptAnswer(input: unknown) {
   // 3️⃣ Save answer
   await saveAttemptAnswerAction(
     attemptId,
-    Number(user.id),
     questionId,
     selectedAnswer
   );
