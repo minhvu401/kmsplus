@@ -1,7 +1,11 @@
 "use server"
 
 import { requireAuth } from "@/lib/auth"
-import { getAllArticlesAction, filterByTagAction, getAllTagsAction } from "@/service/articles.service"
+import {
+  getAllArticlesAction,
+  filterByTagAction,
+  getAllTagsAction,
+} from "@/service/articles.service"
 
 export async function getAllArticles() {
   await requireAuth()
@@ -17,5 +21,3 @@ export async function filterByTag(searchQuery: string, tagFilter?: string) {
   await requireAuth()
   return filterByTagAction(searchQuery, tagFilter)
 }
-
-
