@@ -1,9 +1,9 @@
 export enum Role {
-  EMPLOYEE = "EMPLOYEE",
-  CONTRIBUTOR = "CONTRIBUTOR",
-  TRAINING_MANAGER = "TRAINING_MANAGER",
-  ADMIN = "ADMIN",
-  DASHBOARD_VIEWER = "DASHBOARD_VIEWER",
+  EMPLOYEE = "Employee",
+  CONTRIBUTOR = "Contributor",
+  TRAINING_MANAGER = "TrainingManager",
+  ADMIN = "Admin",
+  DASHBOARD_VIEWER = "DashboardViewer",
 }
 
 export const RoleConfig = {
