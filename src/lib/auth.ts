@@ -21,7 +21,7 @@ const secret = new TextEncoder().encode(env.JWT_SECRET)
 /**
  * JWT Token utilities
  */
-export async function signToken(payload: { id: string; email: string }) {
+export async function signToken(payload: { id: string; email: string; role?: string }) {
   const token = await new SignJWT(payload)
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
