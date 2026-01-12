@@ -10,6 +10,7 @@ import { env } from "./config"
 export type AuthUser = {
   id: string
   email: string
+  role?: string // Role của user
   iat?: number
   exp?: number
 }
@@ -67,4 +68,12 @@ export async function requireAuth(): Promise<AuthUser> {
   }
 
   return user
+}
+
+/**
+ * Get user's role từ current session
+ */
+export async function getUserRole(): Promise<string | null> {
+  const user = await getCurrentUser()
+  return user?.role || null
 }
