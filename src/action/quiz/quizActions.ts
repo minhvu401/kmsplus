@@ -4,6 +4,8 @@
 import { sql } from "@/lib/database"
 import { z } from "zod"
 import { requireAuth } from "@/lib/auth"
+import { requirePermission } from "@/lib/requirePermission"
+import { Permission } from "@/enum/permission.enum"
 import {
   getAllQuizzesAction,
   getQuizByIdAction,
@@ -112,10 +114,11 @@ export async function getQuizById(id: number) {
  * - Validate với Zod schema
  * - Sanitize input để chống XSS
  * - Sau khi tạo xong sẽ revalidate /quizzes và redirect về /quizzes
- * - Yêu cầu xác thực (requireAuth)
+ * - Yêu cầu xác thực (requireAuth) + quyền CREATE_COURSE
  */
 export async function createQuiz(formData: FormData) {
-  await requireAuth()
+  // ✅ Kiểm tra user có quyền CREATE_COURSE không
+  const user = await requirePermission(Permission.CREATE_COURSE)
 
   const course_id = Number(formData.get("course_id"))
   const title = (formData.get("title") as string) || ""
