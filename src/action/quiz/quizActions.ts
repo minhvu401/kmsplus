@@ -27,7 +27,7 @@ import { sanitizeTitle, sanitizeDescription } from "@/utils/sanitize"
  * AC1: Trường Title là bắt buộc (Required)
  * AC2: Trường Description là tùy chọn (Optional)
  */
-export const QuizMetadataDto = z.object({
+const QuizMetadataDto = z.object({
   title: z
     .string()
     .min(1, "Vui lòng nhập tên bài thi")
@@ -39,13 +39,13 @@ export const QuizMetadataDto = z.object({
     .default(""),
 })
 
-export type QuizMetadataDtoType = z.infer<typeof QuizMetadataDto>
+type QuizMetadataDtoType = z.infer<typeof QuizMetadataDto>
 
 /**
  * Full Quiz schema (cho lúc submit hoàn toàn)
  * Bao gồm: title, description, course_id, status
  */
-export const QuizCreateDto = z.object({
+const QuizCreateDto = z.object({
   title: z
     .string()
     .min(1, "Vui lòng nhập tên bài thi")
@@ -62,7 +62,7 @@ export const QuizCreateDto = z.object({
   max_attempts: z.number().positive().default(3),
 })
 
-export type QuizCreateDtoType = z.infer<typeof QuizCreateDto>
+type QuizCreateDtoType = z.infer<typeof QuizCreateDto>
 
 // ============================================
 // SERVER ACTIONS
