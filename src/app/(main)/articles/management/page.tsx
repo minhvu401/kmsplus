@@ -93,13 +93,13 @@ const restoreSelection = (ref: React.MutableRefObject<Range | null>) => {
   }
 }
 
-const focusEditor = (editorRef: React.RefObject<HTMLDivElement | null>) => {
+const focusEditor = (editorRef: React.RefObject<HTMLDivElement>) => {
   editorRef.current?.focus({ preventScroll: true })
 }
 
 const applyFormat = (
   command: string,
-  editorRef: React.RefObject<HTMLDivElement | null>,
+  editorRef: React.RefObject<HTMLDivElement>,
   selectionRef: React.MutableRefObject<Range | null>
 ) => {
   restoreSelection(selectionRef)
@@ -109,7 +109,7 @@ const applyFormat = (
 
 const applyHeading = (
   level: string,
-  editorRef: React.RefObject<HTMLDivElement | null>,
+  editorRef: React.RefObject<HTMLDivElement>,
   selectionRef: React.MutableRefObject<Range | null>
 ) => {
   restoreSelection(selectionRef)
@@ -118,7 +118,7 @@ const applyHeading = (
 }
 
 const applyQuote = (
-  editorRef: React.RefObject<HTMLDivElement | null>,
+  editorRef: React.RefObject<HTMLDivElement>,
   selectionRef: React.MutableRefObject<Range | null>
 ) => {
   restoreSelection(selectionRef)
