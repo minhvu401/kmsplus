@@ -1,11 +1,8 @@
 "use server"
-import { Permission } from "@/enum/permission.enum"
 import { requireAuth } from "@/lib/auth"
-import { requirePermission } from "@/lib/requirePermission"
 import * as service from "@/service/questionbank.service"
 
 export async function getQuestions(page: number = 1, limit: number = 10) {
-  await requirePermission(Permission.CREATE_QUESTION)
   // await requireAuth()
   return service.getQuestionsAction(page, limit)
 }
