@@ -637,7 +637,6 @@ export default function ArticleManagement() {
                     setTitleContent(titleEditorRef.current.innerText)
                   }
                 }}
-                onMouseDown={() => saveSelection(savedSelectionRef)}
                 onKeyDown={(e: KeyboardEvent<HTMLDivElement>) => {
                   if (e.key === "Enter") {
                     e.preventDefault()
@@ -674,6 +673,9 @@ export default function ArticleManagement() {
               </Text>
             }
             name="content"
+            valuePropName="value"
+            trigger="onChange"
+            getValueFromEvent={(...args) => args?.[0]?.text ?? ''}
             rules={[
               {
                 required: true,

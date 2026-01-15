@@ -1,7 +1,7 @@
 "use server"
 
 import { requireAuth } from "@/lib/auth"
-import { getAllArticlesAction, filterByTagAction, getAllTagsAction, createArticleAction, deleteArticleAction, getAllCategoriesAction } from "@/service/articles.service"
+import { getAllArticlesAction, filterByTagAction, getAllTagsAction, createArticleAction, deleteArticleAction, getAllCategoriesAction, getArticleByIdAction, updateArticleAction } from "@/service/articles.service"
 
 export async function getAllArticles() {
   await requireAuth()
@@ -45,8 +45,9 @@ export async function createArticle(formData: FormData) {
     const tags = formData.get('tags') as string
     const categoryIdRaw = formData.get('category_id') as string | null
     const category_id = categoryIdRaw ? parseInt(categoryIdRaw, 10) : null
+    const image_url = (formData.get('image_url') as string) || null
 
-    console.log('Form data:', { title, content, status, tags, category_id })
+    console.log('Form data:', { title, content, status, tags, category_id, image_url })
 
     // Validate input
     if (!title || !content) {
@@ -77,7 +78,8 @@ export async function createArticle(formData: FormData) {
       tags: parsedTags,
       author_id: authorId,
       status,
-      category_id
+      category_id,
+      image_url
     })
 
     console.log('Create article result:', result)
@@ -93,6 +95,64 @@ export async function createArticle(formData: FormData) {
     return { 
       success: false, 
       message: `Error: ${error?.message || 'Failed to create article'}` 
+    }
+  }
+}
+
+export async function getArticleById(id: number) {
+  try {
+    await requireAuth()
+    return await getArticleByIdAction(id)
+  } catch (error: any) {
+    console.error('Error fetching article:', error)
+    return { 
+      success: false, 
+      message: error?.message || 'Failed to fetch article' 
+    }
+  }
+}
+
+export async function updateArticle(formData: FormData) {
+  try {
+    await requireAuth()
+    
+    const id = formData.get('id') as string
+    const title = formData.get('title') as string
+    const content = formData.get('content') as string
+    const tags = formData.get('tags') as string
+    const categoryIdRaw = formData.get('category_id') as string | null
+    const category_id = categoryIdRaw ? parseInt(categoryIdRaw, 10) : null
+
+    if (!title || !content) {
+      return { 
+        success: false, 
+        message: 'Title and content are required' 
+      }
+    }
+
+    let parsedTags: string[] = []
+    if (tags) {
+      try {
+        parsedTags = JSON.parse(tags)
+      } catch (e) {
+        console.error('Error parsing tags:', e)
+      }
+    }
+
+    const result = await updateArticleAction({
+      id: parseInt(id),
+      title,
+      content,
+      tags: parsedTags,
+      category_id
+    })
+
+    return result
+  } catch (error: any) {
+    console.error('Error in updateArticle action:', error)
+    return { 
+      success: false, 
+      message: error?.message || 'Failed to update article' 
     }
   }
 }
