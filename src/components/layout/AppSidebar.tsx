@@ -2,8 +2,10 @@ import React from "react"
 import { Layout, Menu, Typography } from "antd"
 import { useRouter } from "next/navigation"
 import { useSidebarItems } from "@/config/SidebarConfig" // Đảm bảo đúng đường dẫn
+import useUserStore from "@/store/useUserStore"
 import type { MenuProps } from "antd"
 import { PageRoute } from "@/enum/page-route.enum"
+import { Role } from "@/enum/role.enum"
 
 const { Sider } = Layout
 const { Title } = Typography
@@ -13,7 +15,8 @@ interface SidebarProps {
 }
 
 const AppSidebar: React.FC<SidebarProps> = ({ collapsed }) => {
-  const sidebarItems = useSidebarItems()
+  const userRole = useUserStore((state) => state.userRole) as Role | undefined
+  const sidebarItems = useSidebarItems(userRole)
 
   const router = useRouter()
 
