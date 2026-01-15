@@ -7,4 +7,5 @@ export enum PageRoute {
   QUESTIONS = "/questions",
   QUIZZES = "/quizzes",
   QUESTION_BANK = "/question-bank",
+  USER_MANAGEMENT = "/user-management",
 }
