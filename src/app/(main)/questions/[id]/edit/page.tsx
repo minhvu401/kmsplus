@@ -1,3 +1,5 @@
+// edit question informaton
+
 import PageWrapper from "@/components/ui/questions/page-wrapper"
 import UpdateQuestionForm from "@/components/forms/update-question-form";
 import { getActiveCategories } from "@/action/question/questionActions";

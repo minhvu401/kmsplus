@@ -1,4 +1,5 @@
 // app/questions/[id]/page.tsx
+// view question details & answers
 import { getQuestionDetails, getAnswersForQuestion, fetchFilteredAnswers } from "@/action/question/questionActions";
 import AnswerSection from "@/components/ui/questions/answer-section";
 import PageWrapper from "@/components/ui/questions/page-wrapper";
