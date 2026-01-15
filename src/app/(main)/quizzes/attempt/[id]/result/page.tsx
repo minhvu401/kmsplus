@@ -5,10 +5,11 @@ import QuizResult from "@/components/ui/quizzes/quiz-result";
 export default async function Page({
     params
 }: {
-    params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
 
-    const attemptId = Number(params.id);
+    const { id } = await params;
+    const attemptId = Number(id);
     const result = await getAttemptResultAction(attemptId);
 
     return (
