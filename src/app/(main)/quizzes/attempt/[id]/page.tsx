@@ -5,9 +5,10 @@ import { getQuestionsForAttemptAction, getTimeLimitForAttemptAction, getSavedAns
 export default async function Page({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
-  const attemptId = Number(params.id);
+  const { id } = await params;
+  const attemptId = Number(id);
 
   if (!Number.isInteger(attemptId)) {
     throw new Error('Invalid attempt ID');
