@@ -69,7 +69,7 @@ export default function QuizForm({
 
         try {
             await submitQuizAttempt(attemptId);
-            window.location.href = `/quizzes/result/${attemptId}`;
+            window.location.href = `/quizzes/attempt/${attemptId}/result`;
         } catch {
             submittedRef.current = false;
             message.error('Failed to submit quiz');
