@@ -47,9 +47,9 @@ export default async function Page(props: {
         <QuestionsSortBy />
       </Flex>
 
-      <div style={{ marginBottom: 24 }}>
+      <Flex style={{ marginBottom: 24 }}>
         <QuestionsList questions={questions} noSearchResults={noSearchResults} />
-      </div>
+      </Flex>
 
       <Flex justify="end" align="center" style={{ marginBottom: 24 }}>
         <Pagination totalPages={totalPages} />
