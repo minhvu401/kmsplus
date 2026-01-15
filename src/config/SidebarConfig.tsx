@@ -1,12 +1,16 @@
 import { useRouter } from "next/navigation"
-import { useMemo } from "react"
+import { useMemo, useEffect, useState } from "react"
 import {
   DashboardOutlined,
   ThunderboltOutlined,
   SafetyCertificateOutlined,
   SettingOutlined,
+  UserOutlined,
 } from "@ant-design/icons"
 import { PageRoute } from "@/enum/page-route.enum"
+import { Role } from "@/enum/role.enum"
+import { Permission } from "@/enum/permission.enum"
+import { hasPermission } from "@/config/RolePermission.config"
 import type { MenuProps } from "antd"
 
 export type MenuItem = Required<MenuProps>["items"][number] & {
@@ -24,8 +28,11 @@ const useNavigation = () => {
   return { navigate }
 }
 
-const createMenuItems = (navigate: (route: string) => void): MenuItem[] => {
-  return [
+const createMenuItems = (
+  navigate: (route: string) => void,
+  userRole?: Role
+): MenuItem[] => {
+  const baseItems: MenuItem[] = [
     {
       key: PageRoute.DASHBOARD,
       icon: <DashboardOutlined />,
@@ -75,16 +82,32 @@ const createMenuItems = (navigate: (route: string) => void): MenuItem[] => {
       route: PageRoute.QUESTION_BANK,
       onClick: () => navigate(PageRoute.QUESTION_BANK),
     },
-  ] as MenuItem[]
+  ]
+
+  // Add User Management menu if user has permission
+  if (userRole && hasPermission(userRole, Permission.MANAGE_USERS)) {
+    baseItems.push({
+      key: PageRoute.USER_MANAGEMENT,
+      icon: <UserOutlined />,
+      label: "User Management",
+      route: PageRoute.USER_MANAGEMENT,
+      onClick: () => navigate(PageRoute.USER_MANAGEMENT),
+    })
+  }
+
+  return baseItems as MenuItem[]
 }
 
-export const useSidebarItems = () => {
+export const useSidebarItems = (userRole?: Role) => {
   const { navigate } = useNavigation()
-  const items = useMemo(() => createMenuItems(navigate), [navigate])
+  const items = useMemo(
+    () => createMenuItems(navigate, userRole),
+    [navigate, userRole]
+  )
   return items
 }
 
 // 5. Export hàm thô (nếu cần)
-export const getSidebarItems = (): MenuItem[] => {
-  return createMenuItems(() => {}) // Hàm không cần sử dụng navigate ở đây
+export const getSidebarItems = (userRole?: Role): MenuItem[] => {
+  return createMenuItems(() => {}, userRole) // Hàm không cần sử dụng navigate ở đây
 }
