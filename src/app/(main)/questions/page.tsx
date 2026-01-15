@@ -61,15 +61,13 @@ export default async function Page(props: {
         <SortBy />
       </Flex>
 
-      <div style={{ marginBottom: 24 }}>
-        <QuestionsList
-          questions={questions}
-          noSearchResults={noSearchResults}
-        />
-      </div>
-      <div className="flex justify-end items-center gap-14 mb-6">
+      <Flex style={{ marginBottom: 24 }}>
+        <QuestionsList questions={questions} noSearchResults={noSearchResults} />
+      </Flex>
+
+      <Flex justify="end" align="center" style={{ marginBottom: 24 }}>
         <Pagination totalPages={totalPages} />
-      </div>
+      </Flex>
     </PageWrapper>
   )
 }
