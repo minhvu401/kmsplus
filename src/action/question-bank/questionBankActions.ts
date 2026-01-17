@@ -6,7 +6,7 @@ import * as service from "@/service/questionbank.service"
 
 export async function getQuestions(page: number = 1, limit: number = 10) {
   await requirePermission(Permission.CREATE_QUESTION)
-  // await requireAuth()
+  await requireAuth()
   return service.getQuestionsAction(page, limit)
 }
 
