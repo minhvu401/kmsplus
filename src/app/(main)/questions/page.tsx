@@ -15,7 +15,7 @@ import {
 
 import Pagination from "@/components/ui/questions/pagination"
 import QuestionsList from "@/components/ui/questions/questions-list"
-import {Flex} from "antd"
+import { Flex } from "antd"
 export default async function Page(props: {
   searchParams?: Promise<{
     query?: string
@@ -33,18 +33,23 @@ export default async function Page(props: {
   const currentPage = Number(searchParams?.page) || 1
   const totalPages = await fetchQuestionsPages(query, category, status)
 
-  const questions = await fetchFilteredQuestions(query, category, status, sort, currentPage)
+  const questions = await fetchFilteredQuestions(
+    query,
+    category,
+    status,
+    sort,
+    currentPage
+  )
   const noSearchResults = questions.length === 0
 
   const categoriesData = await getActiveCategories()
-  const categories = categoriesData.map(cat => ({
+  const categories = categoriesData.map((cat) => ({
     ...cat,
-    slug: cat.name.toLowerCase().replace(/\s+/g, '-')
+    slug: cat.name.toLowerCase().replace(/\s+/g, "-"),
   }))
 
   return (
     <PageWrapper>
-
       <Flex align="center" gap={28} style={{ marginBottom: 24 }}>
         <Search placeholder="Search questions..." />
         <CreateQuestion />
@@ -57,11 +62,14 @@ export default async function Page(props: {
       </Flex>
 
       <div style={{ marginBottom: 24 }}>
-        <QuestionsList questions={questions} noSearchResults={noSearchResults} />
+        <QuestionsList
+          questions={questions}
+          noSearchResults={noSearchResults}
+        />
       </div>
       <div className="flex justify-end items-center gap-14 mb-6">
         <Pagination totalPages={totalPages} />
       </div>
     </PageWrapper>
-  );
+  )
 }
