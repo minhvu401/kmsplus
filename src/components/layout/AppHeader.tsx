@@ -53,6 +53,17 @@ export default function AppHeader({ collapsed, onToggle }: HeaderProps) {
 
   const profileItems: MenuProps["items"] = [
     {
+      label: "Profile",
+      key: "profile",
+      icon: <UserOutlined />,
+      onClick: () => {
+        navigateToProfile()
+      },
+    },
+    {
+      type: "divider",
+    },
+    {
       label: <span className="text-red-600">Đăng xuất</span>,
       icon: <LogoutIcon className="fill-red-600" />,
       key: "logout",
@@ -129,12 +140,11 @@ export default function AppHeader({ collapsed, onToggle }: HeaderProps) {
         </Badge>
         <Dropdown
           menu={{ items: profileItems }}
-          trigger={["hover"]}
+          trigger={["click"]}
           placement="bottomRight"
         >
           <Flex
             vertical={false}
-            onClick={navigateToProfile}
             className="cursor-pointer flex items-center gap-2"
           >
             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-sky-400 flex items-center justify-center text-white text-xs font-medium">
