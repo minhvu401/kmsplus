@@ -6,8 +6,12 @@ import { getActiveCategories } from "@/action/question/questionActions"
 import { getQuestionDetails } from "@/action/question/questionActions"
 import { Flex } from "antd"
 
-export default async function Page({ params }: { params: { id: string } }) {
-  const id = params.id
+export default async function Page({
+  params,
+}: {
+  params: Promise<{ id: string }>
+}) {
+  const { id } = await params
   const currentData = await getQuestionDetails(id)
   const categories = await getActiveCategories()
 

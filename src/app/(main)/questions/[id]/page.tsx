@@ -15,8 +15,8 @@ export default async function Page({
   params,
   searchParams,
 }: {
-  params: { id: string }
-  searchParams?: {
+  params: Promise<{ id: string }>
+  searchParams?: Promise<{
     sort?: string
     page?: string
     opened?: string
@@ -24,10 +24,11 @@ export default async function Page({
     updated?: string
     answerCreated?: string
     answerDeleted?: string
-  }
+  }>
 }) {
-  const id = params.id
-  const currentPage = Number(searchParams?.page) || 1
+  const { id } = await params
+  const resolvedSearchParams = await searchParams
+  const currentPage = Number(resolvedSearchParams?.page) || 1
 
   // Fetch question details
   const question = await getQuestionDetails(id)
@@ -42,7 +43,7 @@ export default async function Page({
     <PageWrapper>
       <QuestionDetailsNotification
         id={id}
-        key={`${id}-${searchParams?.closed}-${searchParams?.opened}-${searchParams?.updated}-${searchParams?.answerCreated}-${searchParams?.answerDeleted}`}
+        key={`${id}-${resolvedSearchParams?.closed}-${resolvedSearchParams?.opened}-${resolvedSearchParams?.updated}-${resolvedSearchParams?.answerCreated}-${resolvedSearchParams?.answerDeleted}`}
       />
       <QuestionDetails question={question} />
       <AnswerSection
