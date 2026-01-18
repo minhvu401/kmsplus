@@ -27,10 +27,23 @@ export default async function Page(props: {
   const categories = await getActiveCategories();
 
   return (
-    <PageWrapper>
+    <div className="p-6">
+      {/* Header */}
+      <div className="mb-6">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-3xl font-bold">Hỏi & Đáp</h1>
+            <p className="text-gray-600 mt-2">
+              Diễn đàn câu hỏi và trả lời của cộng đồng
+            </p>
+          </div>
+          <CreateQuestion />
+        </div>
+      </div>
+
+      {/* Filters and Search */}
       <div className="flex items-center gap-7 mb-6">
         <Search placeholder="Search questions..." />
-        <CreateQuestion />
       </div>
       <div className="flex items-center gap-14 mb-6">
         <FilterCategory categories={categories} />
@@ -40,6 +53,6 @@ export default async function Page(props: {
       <div className="flex justify-end items-center gap-14 mb-6">
         <Pagination totalPages={totalPages}/>
       </div>
-    </PageWrapper>
+    </div>
   )
 }

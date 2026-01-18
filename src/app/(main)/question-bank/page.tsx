@@ -34,13 +34,18 @@ export default async function QuestionBankPage(props: {
     const totalPages = Math.ceil(totalItems / pageSize);
 
     return (
-        <div className="p-4">
+        <div className="p-6">
             {/* Header */}
-            <div className="flex justify-between items-center mb-6">
-                <h2 className="text-lg font-semibold m-0">
-                    Question Bank
-                </h2>
-                <CreateQuestionModalWrapper />
+            <div className="mb-6">
+                <div className="flex items-center justify-between mb-6">
+                    <div>
+                        <h1 className="text-3xl font-bold">Ngân hàng câu hỏi</h1>
+                        <p className="text-gray-600 mt-2">
+                            Quản lý tất cả các câu hỏi và chủ đề trong hệ thống
+                        </p>
+                    </div>
+                    <CreateQuestionModalWrapper />
+                </div>
             </div>
 
             {/* Table */}

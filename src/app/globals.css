@@ -6,6 +6,7 @@
   --foreground-rgb: 0, 0, 0;
   --background-start-rgb: 214, 219, 220;
   --background-end-rgb: 255, 255, 255;
+  --font-lato: 'Lato', sans-serif;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -24,6 +25,115 @@ body {
       rgb(var(--background-end-rgb))
     )
     rgb(var(--background-start-rgb));
+  font-family: var(--font-lato), sans-serif;
+}
+
+/* ===== Login Page Animations ===== */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slide-right {
+  from {
+    opacity: 0;
+    transform: translateX(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes bounce-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  70% {
+    transform: scale(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes scale-in {
+  from {
+    transform: scale(1.1);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+@keyframes pulse-slow {
+  0%, 100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.8s ease-out forwards;
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.6s ease-out forwards;
+}
+
+.animate-slide-up {
+  opacity: 0;
+  animation: slide-up 0.6s ease-out forwards;
+}
+
+.animate-slide-right {
+  opacity: 0;
+  animation: slide-right 0.5s ease-out forwards;
+}
+
+.animate-bounce-in {
+  animation: bounce-in 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards;
+}
+
+.animate-scale-in {
+  animation: scale-in 1.2s ease-out forwards;
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 4s ease-in-out infinite;
 }
 
 /* Ant Design overrides */
@@ -36,21 +146,152 @@ body {
   min-height: 100%;
 }
 
-/* Custom sidebar menu styles */
-.ant-menu-item.custom-menu-item {
+/* ===== Custom Sidebar Menu Styles ===== */
+.custom-sidebar-menu {
+  font-size: 14px !important;
+}
+
+/* Menu items */
+.custom-sidebar-menu .ant-menu-item {
   margin: 4px 8px !important;
-  border-radius: 8px !important;
+  border-radius: 10px !important;
+  height: 44px !important;
+  line-height: 44px !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  color: #475569 !important;
+  font-weight: 400 !important;
+}
+
+.custom-sidebar-menu .ant-menu-item .ant-menu-item-icon {
+  font-size: 18px !important;
+  color: #64748b !important;
   transition: all 0.2s ease !important;
 }
 
-/* Selected menu item */
-.ant-menu-item.custom-menu-item.ant-menu-item-selected .ant-menu-title-content {
-  font-weight: 600 !important;
+/* Hover effect */
+.custom-sidebar-menu .ant-menu-item:hover {
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%) !important;
+  color: #2563eb !important;
 }
 
-/* Hover effect */
-.ant-menu-item.custom-menu-item:hover {
-  background-color: rgba(24, 144, 255, 0.1) !important;
+.custom-sidebar-menu .ant-menu-item:hover .ant-menu-item-icon {
+  color: #3b82f6 !important;
+  transform: scale(1.1);
+}
+
+/* Selected/Active menu item */
+.custom-sidebar-menu .ant-menu-item-selected {
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%) !important;
+  color: white !important;
+  font-weight: 500 !important;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.35) !important;
+}
+
+.custom-sidebar-menu .ant-menu-item-selected .ant-menu-item-icon {
+  color: white !important;
+}
+
+.custom-sidebar-menu .ant-menu-item-selected::after {
+  display: none !important;
+}
+
+/* Menu group titles */
+.custom-sidebar-menu .ant-menu-item-group-title {
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+  color: #94a3b8 !important;
+  padding: 16px 16px 8px !important;
+}
+
+/* Dividers */
+.custom-sidebar-menu .ant-menu-item-divider {
+  margin: 8px 16px !important;
+  background-color: #e2e8f0 !important;
+}
+
+/* Submenu styles */
+.custom-sidebar-menu .ant-menu-submenu-title {
+  margin: 4px 8px !important;
+  border-radius: 10px !important;
+  height: 44px !important;
+  line-height: 44px !important;
+  color: #475569 !important;
+}
+
+.custom-sidebar-menu .ant-menu-submenu-title:hover {
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%) !important;
+  color: #2563eb !important;
+}
+
+.custom-sidebar-menu .ant-menu-submenu .ant-menu-item {
+  padding-left: 48px !important;
+}
+
+.custom-sidebar-menu .ant-menu-submenu-arrow {
+  color: #94a3b8 !important;
+}
+
+/* Collapsed state */
+.collapsed-menu .ant-menu-item {
+  padding: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin: 6px auto !important;
+  width: 56px !important;
+  height: 56px !important;
+  border-radius: 12px !important;
+}
+
+.collapsed-menu .ant-menu-item .ant-menu-item-icon {
+  font-size: 22px !important;
+  margin: 0 !important;
+}
+
+.collapsed-menu .ant-menu-item .ant-menu-title-content {
+  display: none !important;
+  width: 0 !important;
+  overflow: hidden !important;
+}
+
+.collapsed-menu .ant-menu-item-group-title {
+  display: none !important;
+}
+
+.collapsed-menu .ant-menu-item-divider {
+  display: none !important;
+}
+
+.collapsed-menu .ant-menu-item-group > .ant-menu-item-group-list {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+}
+
+/* Collapsed menu selected state */
+.collapsed-menu .ant-menu-item-selected {
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%) !important;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4) !important;
+}
+
+/* Ant Design inline collapsed menu tooltip */
+.ant-menu-inline-collapsed-tooltip {
+  pointer-events: auto !important;
+}
+
+.ant-menu-inline-collapsed-tooltip .ant-tooltip-inner {
+  background: linear-gradient(135deg, #1e293b 0%, #334155 100%) !important;
+  padding: 8px 14px !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2) !important;
+}
+
+.ant-menu-inline-collapsed-tooltip .ant-tooltip-arrow::before {
+  background: #1e293b !important;
 }
 
 /* Custom utility classes */
@@ -64,4 +305,45 @@ body {
 
 .h-full {
   height: 100%;
+}
+
+/* Custom scrollbar for sidebar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Hide scrollbar when not hovering */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+.custom-scrollbar:hover {
+  scrollbar-color: #cbd5e1 transparent;
+}
+
+@keyframes page-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-page-fade-in {
+  animation: page-fade-in 0.5s ease-out;
 }

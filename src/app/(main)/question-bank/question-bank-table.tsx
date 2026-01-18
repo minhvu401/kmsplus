@@ -35,18 +35,18 @@ interface QuestionBankTableProps {
 export function QuestionBankTable({ questions, currentPage, categories }: QuestionBankTableProps) {
     const columns: TableProps<QuestionType>['columns'] = [
         {
-            title: 'Content',
+            title: 'Nội dung',
             dataIndex: 'question_text',
             render: (text: string) => truncateText(text, 50),
             width: 300,
         },
         {
-            title: 'Topic',
+            title: 'Chủ đề',
             dataIndex: 'name',
             render: (name: string) => <Tag color="blue">{name}</Tag>,
         },
         {
-            title: 'Type',
+            title: 'Thể loại',
             dataIndex: 'type',
             render: (type: string) => {
                 const label = getTypeLabel(type);
@@ -55,26 +55,26 @@ export function QuestionBankTable({ questions, currentPage, categories }: Questi
             },
         },
                 {
-            title: 'Explanation',
+            title: 'Giải thích',
             dataIndex: 'explanation',
             render: (text: string) => text ? truncateText(text, 60) : <span className="text-gray-400">-</span>,
             width: 250,
 
         },
         {
-            title: 'Created Date',
+            title: 'Ngày tạo',
             dataIndex: 'created_at',
             render: (date: string) => formatDate(date),
             width: 120,
         },
         {
-            title: 'Updated Date',
+            title: 'Ngày cập nhật',
             dataIndex: 'updated_at',
             render: (date: string) => formatDate(date),
             width: 140,
         },
         {
-            title: 'Actions',
+            title: 'Hành động',
             key: 'action',
             width: 100,
             render: (text, record) => <ActionCell record={record} categories={categories} />,
@@ -88,7 +88,7 @@ export function QuestionBankTable({ questions, currentPage, categories }: Questi
             rowKey="id"
             scroll={{ x: 1200 }}
             pagination={false}
-            locale={{ emptyText: 'No data found' }}
+            locale={{ emptyText: 'Không tìm thấy dữ liệu' }}
         />
     );
 }
