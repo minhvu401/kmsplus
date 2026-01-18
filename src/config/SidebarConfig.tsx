@@ -15,6 +15,9 @@ import {
   FolderOpenOutlined,
 } from "@ant-design/icons"
 import { PageRoute } from "@/enum/page-route.enum"
+import { Role } from "@/enum/role.enum"
+import { Permission } from "@/enum/permission.enum"
+import { hasPermission } from "@/config/RolePermission.config"
 import type { MenuProps } from "antd"
 
 export type MenuItem = Required<MenuProps>["items"][number] & {
@@ -32,8 +35,11 @@ const useNavigation = () => {
   return { navigate }
 }
 
-const createMenuItems = (navigate: (route: string) => void): MenuItem[] => {
-  return [
+const createMenuItems = (
+  navigate: (route: string) => void,
+  userRole?: Role
+): MenuItem[] => {
+  const baseItems: MenuItem[] = [
     {
       key: PageRoute.DASHBOARD,
       icon: <DashboardOutlined />,
@@ -113,9 +119,12 @@ const createMenuItems = (navigate: (route: string) => void): MenuItem[] => {
   ] as MenuItem[]
 }
 
-export const useSidebarItems = () => {
+export const useSidebarItems = (userRole?: Role) => {
   const { navigate } = useNavigation()
-  const items = useMemo(() => createMenuItems(navigate), [navigate])
+  const items = useMemo(
+    () => createMenuItems(navigate, userRole),
+    [navigate, userRole]
+  )
   return items
 }
 

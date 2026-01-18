@@ -1,6 +1,8 @@
 // Quiz Actions
 "use server"
 
+import { sql } from "@/lib/database"
+import { z } from "zod"
 import { requireAuth } from "@/lib/auth"
 import {
   getAllQuizzesAction,
@@ -10,6 +12,9 @@ import {
   deleteQuizAction,
   getQuizQuestionsAction,
   updateQuizQuestionsAction,
+  startQuizAttemptAction,
+  submitQuizAttemptAction,
+  saveAttemptAnswerAction,
 } from "@/service/quiz.service"
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
@@ -50,24 +55,62 @@ export async function getQuizById(id: number) {
 
 /**
  * Tạo mới một bài thi từ FormData gửi lên.
- * 
+ *
  * Functional Requirements:
  * - FR-01: Quiz Identity Form
  * - Sanitization: Input text cần được làm sạch để chống XSS
  * - Validation độ dài (Max 255 ký tự cho Title, 1000 cho Description)
  * - Tạo liên kết giữa quiz và questions
- * 
+ *
  * Pre-conditions: Người dùng đã đăng nhập với quyền Manager/Admin
  * Post-conditions: Dữ liệu Title, Description, và liên kết Questions được lưu trong DB
- * 
+ *
  * - FormData expected fields: course_id, title, description, status, question_ids (JSON array)
  * - Kiểm tra các trường bắt buộc và chuyển đổi kiểu
  * - Validate với Zod schema
  * - Sanitize input để chống XSS
  * - Sau khi tạo xong sẽ revalidate /quizzes và redirect về /quizzes
- * - Yêu cầu xác thực (requireAuth)
+ * - Yêu cầu xác thực (requireAuth) + quyền CREATE_COURSE
  */
 export async function createQuiz(formData: FormData) {
+  const course_id = Number(formData.get("course_id"))
+  const title = (formData.get("title") as string) || ""
+  const description = (formData.get("description") as string) || ""
+  const status = (formData.get("status") as string) || "draft"
+  const time_limit_minutes = formData.get("time_limit_minutes")
+    ? Number(formData.get("time_limit_minutes"))
+    : undefined
+  const passing_score = formData.get("passing_score")
+    ? Number(formData.get("passing_score"))
+    : 70
+  const max_attempts = formData.get("max_attempts")
+    ? Number(formData.get("max_attempts"))
+    : 3
+
+  if (!course_id) {
+    throw new Error("Course ID is required")
+  }
+
+  // Sanitize inputs
+  const sanitizedTitle = sanitizeTitle(title)
+  const sanitizedDescription = sanitizeDescription(description)
+
+  // Validate với Zod
+  const validationResult = QuizCreateDto.safeParse({
+    title: sanitizedTitle,
+    description: sanitizedDescription,
+    course_id,
+    status,
+    time_limit_minutes,
+    passing_score,
+    max_attempts,
+  })
+
+  if (!validationResult.success) {
+    throw new Error(
+      validationResult.error.issues.map((e) => e.message).join(", ")
+    )
+  }
   console.log("[createQuiz] Starting...")
   await requireAuth()
   console.log("[createQuiz] Auth verified")
@@ -172,4 +215,43 @@ export async function updateQuizQuestions(quizId: number, questionIds: number[])
   await updateQuizQuestionsAction(quizId, questionIds)
   revalidatePath(`/quizzes/${quizId}`)
   revalidatePath("/quizzes")
+}
+
+export async function startQuizAttempt(quizId: number) {
+  const user = await requireAuth()
+
+  return startQuizAttemptAction(quizId, Number(user.id))
+}
+
+export async function submitQuizAttempt(attemptId: number) {
+  const user = await requireAuth()
+
+  return submitQuizAttemptAction(attemptId)
+}
+
+const SaveAnswerSchema = z.object({
+  attemptId: z.coerce.number().int(),
+  questionId: z.coerce.number().int(),
+  selectedAnswer: z.union([
+    z.coerce.number().int(),
+    z.array(z.coerce.number().int()),
+  ]),
+})
+export async function saveAttemptAnswer(input: unknown) {
+  // 1️⃣ Validate payload
+  const parsed = SaveAnswerSchema.safeParse(input)
+  if (!parsed.success) {
+    throw new Error("Invalid answer payload")
+  }
+
+  const { attemptId, questionId, selectedAnswer } = parsed.data
+
+  // 2️⃣ Auth
+  const user = await requireAuth()
+
+  // 3️⃣ Save answer
+  await saveAttemptAnswerAction(attemptId, questionId, selectedAnswer)
+
+  // 4️⃣ Minimal response
+  return { success: true }
 }

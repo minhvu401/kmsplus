@@ -2,6 +2,9 @@ import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { verifyToken } from "@/lib/auth"
 import { PageRoute } from "@/enum/page-route.enum"
+import { Role } from "@/enum/role.enum"
+import { hasPermission } from "@/config/RolePermission.config"
+import { Permission } from "@/enum/permission.enum"
 
 // Danh sách routes public (không cần login)
 const publicRoutes = [PageRoute.LOGIN]
@@ -15,6 +18,7 @@ const protectedRoutes = [
   PageRoute.QUESTIONS,
   PageRoute.QUIZZES,
   PageRoute.QUESTION_BANK,
+  PageRoute.USER_MANAGEMENT,
 ]
 
 export async function middleware(request: NextRequest) {
@@ -59,6 +63,18 @@ export async function middleware(request: NextRequest) {
   if (isProtectedRoute && token) {
     try {
       const decoded = await verifyToken(token)
+
+      // Kiểm tra quyền truy cập user-management
+      if (pathname.startsWith(PageRoute.USER_MANAGEMENT)) {
+        const userRole = decoded.role as Role
+        if (!hasPermission(userRole, Permission.MANAGE_USERS)) {
+          console.log("User does not have MANAGE_USERS permission")
+          return NextResponse.redirect(
+            new URL(PageRoute.DASHBOARD, request.url)
+          )
+        }
+      }
+
       // console.log("Token verified successfully for:", pathname)
       return NextResponse.next() // Token valid → cho qua
     } catch (error: any) {
