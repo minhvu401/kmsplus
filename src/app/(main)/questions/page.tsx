@@ -70,6 +70,6 @@ export default async function Page(props: {
       <div className="flex justify-end items-center gap-14 mb-6">
         <Pagination totalPages={totalPages} />
       </div>
-    </PageWrapper>
+    </div>
   )
 }
