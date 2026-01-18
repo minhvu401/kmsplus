@@ -2,12 +2,7 @@
 import { useSearchParams, useRouter, usePathname } from "next/navigation"
 import { useState, useEffect } from "react"
 import { Typography } from "antd"
-
-type Category = {
-  id: number
-  name: string
-  slug: string
-}
+import { Category } from "@/service/question.service"
 
 const { Text } = Typography;
 
@@ -51,7 +46,7 @@ export function FilterCategory({ categories }: { categories: Category[] }) {
       >
         <option value="any">Any</option>
         {categories.map((cat) => (
-          <option key={cat.id} value={cat.slug}>
+          <option key={cat.id} value={cat.id}>
             {cat.name}
           </option>
         ))}
@@ -147,9 +142,6 @@ export function SortBy() {
       >
         <option key="Newest" value="newest">
           Newest
-        </option>
-        <option key="Most Views" value="most-views">
-          Most Popular
         </option>
         <option key="Most Answers" value="most-answers">
           Most Answers
