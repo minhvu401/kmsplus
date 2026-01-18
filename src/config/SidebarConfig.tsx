@@ -117,6 +117,8 @@ const createMenuItems = (
       onClick: () => navigate("/settings"),
     },
   ] as MenuItem[]
+
+  return baseItems
 }
 
 export const useSidebarItems = (userRole?: Role) => {
