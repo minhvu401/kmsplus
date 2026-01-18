@@ -2,6 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation"
 import { loginAction } from "@/action/auth/authActions"
+import { getUserRoleAction } from "@/action/user/userActions"
 import { Form, Input, Button, Alert, Checkbox, Typography } from "antd"
 import useUserStore from "@/store/useUserStore"
 import {
@@ -65,8 +66,19 @@ export default function LoginForm({
       }
 
       if (result.success && result.user) {
-        const { setUser } = useUserStore.getState()
+        const { setUser, setUserRole } = useUserStore.getState()
         setUser(result.user)
+
+        // Get user role from server
+        try {
+          const role = await getUserRoleAction()
+          if (role) {
+            setUserRole(role)
+          }
+        } catch (error) {
+          console.error("Error getting user role:", error)
+        }
+
         if (onSuccess) {
           onSuccess()
         } else {

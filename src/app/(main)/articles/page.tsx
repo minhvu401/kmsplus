@@ -1,75 +1,94 @@
-'use client';
+"use client"
 
-import { useState } from 'react';
-import { Card, Tag, Avatar, Button, Pagination, Space, Typography, Flex } from 'antd';
-import { MessageOutlined, PlusOutlined } from '@ant-design/icons';
+import { useState } from "react"
+import {
+  Card,
+  Tag,
+  Avatar,
+  Button,
+  Pagination,
+  Space,
+  Typography,
+  Flex,
+} from "antd"
+import { MessageOutlined, PlusOutlined } from "@ant-design/icons"
 
-const { Text, Title, Paragraph } = Typography;
+const { Text, Title, Paragraph } = Typography
 
 const mockArticles = [
   {
     id: 1,
-    date: '23/10/2025',
-    title: 'Tại sao Trái Đất hình tròn?',
-    snippet: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit...',
-    authorName: 'Nguyễn Văn A',
-    authorAvatar: 'https://i.pravatar.cc/150?img=1',
+    date: "23/10/2025",
+    title: "Tại sao Trái Đất hình tròn?",
+    snippet:
+      "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit...",
+    authorName: "Nguyễn Văn A",
+    authorAvatar: "https://i.pravatar.cc/150?img=1",
     commentCount: 7,
-    tag: 'Funny Fact',
-    imageUrl: 'https://images.unsplash.com/photo-1506748686214-e9df14d4d9d0?w=400&h=300&fit=crop'
+    tag: "Funny Fact",
+    imageUrl:
+      "https://images.unsplash.com/photo-1506748686214-e9df14d4d9d0?w=400&h=300&fit=crop",
   },
   {
     id: 2,
-    date: '23/10/2025',
-    title: 'Tại sao Trái Đất hình tròn?',
-    snippet: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit...',
-    authorName: 'Nguyễn Văn A',
-    authorAvatar: 'https://i.pravatar.cc/150?img=1',
+    date: "23/10/2025",
+    title: "Tại sao Trái Đất hình tròn?",
+    snippet:
+      "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit...",
+    authorName: "Nguyễn Văn A",
+    authorAvatar: "https://i.pravatar.cc/150?img=1",
     commentCount: 7,
-    tag: 'Funny Fact',
-    imageUrl: 'https://images.unsplash.com/photo-1470770841072-f978cf4d019e?w=400&h=300&fit=crop'
+    tag: "Funny Fact",
+    imageUrl:
+      "https://images.unsplash.com/photo-1470770841072-f978cf4d019e?w=400&h=300&fit=crop",
   },
   {
     id: 3,
-    date: '23/10/2025',
-    title: 'Tại sao Trái Đất hình tròn?',
-    snippet: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit...',
-    authorName: 'Nguyễn Văn A',
-    authorAvatar: 'https://i.pravatar.cc/150?img=1',
+    date: "23/10/2025",
+    title: "Tại sao Trái Đất hình tròn?",
+    snippet:
+      "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit...",
+    authorName: "Nguyễn Văn A",
+    authorAvatar: "https://i.pravatar.cc/150?img=1",
     commentCount: 7,
-    tag: 'Funny Fact',
-    imageUrl: 'https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=400&h=300&fit=crop'
+    tag: "Funny Fact",
+    imageUrl:
+      "https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=400&h=300&fit=crop",
   },
   {
     id: 4,
-    date: '23/10/2025',
-    title: 'Tại sao Trái Đất hình tròn?',
-    snippet: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit...',
-    authorName: 'Nguyễn Văn A',
-    authorAvatar: 'https://i.pravatar.cc/150?img=1',
+    date: "23/10/2025",
+    title: "Tại sao Trái Đất hình tròn?",
+    snippet:
+      "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit...",
+    authorName: "Nguyễn Văn A",
+    authorAvatar: "https://i.pravatar.cc/150?img=1",
     commentCount: 7,
-    tag: 'Funny Fact',
-    imageUrl: 'https://images.unsplash.com/photo-1472214103451-9374bd1c798e?w=400&h=300&fit=crop'
+    tag: "Funny Fact",
+    imageUrl:
+      "https://images.unsplash.com/photo-1472214103451-9374bd1c798e?w=400&h=300&fit=crop",
   },
   {
     id: 5,
-    date: '23/10/2025',
-    title: 'Tại sao Trái Đất hình tròn?',
-    snippet: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit...',
-    authorName: 'Nguyễn Văn A',
-    authorAvatar: 'https://i.pravatar.cc/150?img=1',
+    date: "23/10/2025",
+    title: "Tại sao Trái Đất hình tròn?",
+    snippet:
+      "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit...",
+    authorName: "Nguyễn Văn A",
+    authorAvatar: "https://i.pravatar.cc/150?img=1",
     commentCount: 7,
-    tag: 'Funny Fact',
-    imageUrl: 'https://images.unsplash.com/photo-1444703686981-a3abbc4d4fe3?w=400&h=300&fit=crop'
+    tag: "Funny Fact",
+    imageUrl:
+      "https://images.unsplash.com/photo-1444703686981-a3abbc4d4fe3?w=400&h=300&fit=crop",
   },
-];
+]
 
-const TAGS = ['Technical', 'Skills', 'Funny Fact'];
+const TAGS = ["Technical", "Skills", "Funny Fact"]
 
 export default function ViewArticlePage() {
-  const [activeTag, setActiveTag] = useState('Funny Fact');
-  const [currentPage, setCurrentPage] = useState(2);
-  const totalPages = 50;
+  const [activeTag, setActiveTag] = useState("Funny Fact")
+  const [currentPage, setCurrentPage] = useState(2)
+  const totalPages = 50
 
   return (
     <div className="p-6">
@@ -94,7 +113,7 @@ export default function ViewArticlePage() {
               RELATED TAGS
             </Text>
             <Space>
-              {TAGS.map(tag => (
+              {TAGS.map((tag) => (
                 <Tag.CheckableTag
                   key={tag}
                   checked={activeTag === tag}
@@ -110,7 +129,7 @@ export default function ViewArticlePage() {
 
         {/* Article List */}
         <Space direction="vertical" size="large" className="w-full">
-          {mockArticles.map(article => (
+          {mockArticles.map((article) => (
             <Card key={article.id} hoverable>
               <Flex gap="large" align="start">
                 {/* Content */}
@@ -118,7 +137,10 @@ export default function ViewArticlePage() {
                   <Text type="secondary" className="text-sm">
                     {article.date}
                   </Text>
-                  <Title level={4} className="!mb-0 hover:text-blue-600 cursor-pointer">
+                  <Title
+                    level={4}
+                    className="!mb-0 hover:text-blue-600 cursor-pointer"
+                  >
                     {article.title}
                   </Title>
                   <Paragraph
@@ -128,7 +150,7 @@ export default function ViewArticlePage() {
                   >
                     {article.snippet}
                   </Paragraph>
-                  
+
                   {/* Footer */}
                   <Flex justify="space-between" align="center" className="mt-2">
                     <Space size="large">
@@ -148,7 +170,7 @@ export default function ViewArticlePage() {
                     <Tag color="blue">{article.tag}</Tag>
                   </Flex>
                 </Flex>
-                
+
                 {/* Image */}
                 <img
                   src={article.imageUrl}
@@ -176,15 +198,22 @@ export default function ViewArticlePage() {
       <footer className="bg-white border-t px-8 py-4">
         <Flex justify="space-between" align="center">
           <Text type="secondary" className="text-sm">
-            2025 - KMSPlus. Designed by <Text strong>KMS Team</Text>. All rights reserved
+            2025 - KMSPlus. Designed by <Text strong>KMS Team</Text>. All rights
+            reserved
           </Text>
           <Space size="large">
-            <a href="#" className="text-sm text-gray-600 hover:text-gray-900">FAQs</a>
-            <a href="#" className="text-sm text-gray-600 hover:text-gray-900">Privacy Policy</a>
-            <a href="#" className="text-sm text-gray-600 hover:text-gray-900">Terms & Condition</a>
+            <a href="#" className="text-sm text-gray-600 hover:text-gray-900">
+              FAQs
+            </a>
+            <a href="#" className="text-sm text-gray-600 hover:text-gray-900">
+              Privacy Policy
+            </a>
+            <a href="#" className="text-sm text-gray-600 hover:text-gray-900">
+              Terms & Condition
+            </a>
           </Space>
         </Flex>
       </footer>
     </Flex>
-  );
+  )
 }

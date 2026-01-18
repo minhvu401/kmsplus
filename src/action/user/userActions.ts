@@ -1,6 +1,7 @@
 "use server"
 
-import { requireAuth, getCurrentUser } from "@/lib/auth"
+import { requireAuth, getCurrentUser, verifyToken } from "@/lib/auth"
+import { cookies } from "next/headers"
 import {
   getAllUsersAction,
   getUserByEmailAction,
@@ -19,6 +20,26 @@ export async function getCurrentUserInfor() {
   await requireAuth()
   const user = await getCurrentUserInforAction()
   return user
+}
+
+/**
+ * Get current user role
+ */
+export async function getUserRoleAction(): Promise<string | null> {
+  try {
+    const cookieStore = await cookies()
+    const token = cookieStore.get("token")?.value
+
+    if (!token) {
+      return null
+    }
+
+    const decoded = await verifyToken(token)
+    return decoded.role ?? null
+  } catch (error) {
+    console.error("Error getting user role:", error)
+    return null
+  }
 }
 
 /**
@@ -92,7 +113,7 @@ export async function updateUserPassword(email: string, formData: FormData) {
     newPassword: formData.get("newPassword") as string,
   }
 
-  const result = await updateUserPasswordAction(email, passwordData)
+  const result = await updateUserPasswordAction(passwordData)
 
   if (result.success) {
     revalidatePath("/profile")
