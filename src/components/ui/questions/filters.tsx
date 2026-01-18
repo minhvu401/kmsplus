@@ -5,7 +5,6 @@ import { useState, useEffect } from 'react';
 type Category = {
     id: number;
     name: string;
-    slug: string;
 }
 
 export function FilterCategory({ categories }: { categories: Category[] }) {
@@ -47,12 +46,12 @@ export function FilterCategory({ categories }: { categories: Category[] }) {
             >
                 <option value="any">Any</option>
                 {categories.map((cat) => (
-                    < option key = { cat.id } value = { cat.slug } >
-                    { cat.name }
+                    <option key={cat.id} value={String(cat.id)}>
+                        {cat.name}
                     </option>
                 ))}
-        </select>
-        </div >
+            </select>
+        </div>
     );
 }
 

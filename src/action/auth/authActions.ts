@@ -39,7 +39,7 @@ export async function loginAction(
 
   // Kiểm tra user tồn tại
   const users = await sql`
-    SELECT id, email, full_name, department, avatar_url, created_at, password_hash FROM users WHERE email = ${email}
+    SELECT id, email, full_name, avatar_url, created_at, password_hash FROM users WHERE email = ${email}
   `
   const user = users[0]
   if (!user) {

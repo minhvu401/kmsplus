@@ -129,66 +129,67 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-800">
-      {/* 1. Header (Đã sửa <a> và <img>) */}
+    <div className="min-h-screen bg-white">
+      {/* 1. Header */}
       <Header />
 
-      {/* 2. Tiêu đề chính */}
-      <div className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-screen-xl mx-auto px-4 py-4">
-          <h1 className="text-2xl font-bold text-center text-gray-900">
-            Welcome To KMS Plus Course
-          </h1>
+      {/* 2. Main Content */}
+      <div className="p-6">
+        {/* Page Title Section */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold">Khóa Học</h1>
+          <p className="text-gray-600 mt-2">
+            Danh sách các khóa học có sẵn trong hệ thống
+          </p>
         </div>
-      </div>
 
-      {/* 3. Main Content (Sidebar + Grid) */}
-      <div className="max-w-screen-xl mx-auto px-4 py-8 flex flex-col lg:flex-row gap-8">
-        {/* 3.1. Sidebar (Component tĩnh) */}
-        <Sidebar />
+        {/* 3. Main Content (Sidebar + Grid) */}
+        <div className="flex flex-col lg:flex-row gap-8">
+          {/* 3.1. Sidebar (Component tĩnh) */}
+          <Sidebar />
 
-        {/* 3.2. Phần nội dung chính */}
-        <main className="flex-1">
-          {/* 1. Thanh Filter, Search, Sort */}
-          <div className="flex justify-between items-center mb-6">
-            <button className="flex items-center gap-2 px-4 py-2 border rounded-md shadow-sm bg-white text-sm font-medium hover:bg-gray-50">
-              <Filter size={16} />
-              <span>Filter</span>
-            </button>
+          {/* 3.2. Phần nội dung chính */}
+          <main className="flex-1">
+            {/* 1. Thanh Filter, Search, Sort */}
+            <div className="flex justify-between items-center mb-6">
+              <button className="flex items-center gap-2 px-4 py-2 border rounded-md shadow-sm bg-white text-sm font-medium hover:bg-gray-50">
+                <Filter size={16} />
+                <span>Filter</span>
+              </button>
 
-            <div className="flex items-center gap-4">
-              <form onSubmit={handleSearchSubmit} className="relative w-64">
-                <input
-                  type="text"
-                  placeholder="Search Course..."
-                  value={searchInputValue}
-                  onChange={(e) => setSearchInputValue(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border rounded-full bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-                <SearchIcon
-                  size={18}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-                />
-              </form>
+              <div className="flex items-center gap-4">
+                <form onSubmit={handleSearchSubmit} className="relative w-64">
+                  <input
+                    type="text"
+                    placeholder="Search Course..."
+                    value={searchInputValue}
+                    onChange={(e) => setSearchInputValue(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 border rounded-full bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <SearchIcon
+                    size={18}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                  />
+                </form>
 
-              <div className="flex items-center gap-2 text-sm">
-                <span className="text-gray-600">Sort by:</span>
-                <select
-                  value={sort}
-                  onChange={handleSortChange}
-                  className="border rounded-md bg-white px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="trending">Trending</option>
-                  <option value="popular">Popular</option>
-                  <option value="newest">Newest</option>
-                </select>
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="text-gray-600">Sort by:</span>
+                  <select
+                    value={sort}
+                    onChange={handleSortChange}
+                    className="border rounded-md bg-white px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="trending">Trending</option>
+                    <option value="popular">Popular</option>
+                    <option value="newest">Newest</option>
+                  </select>
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* 2. Course Grid (Đã sửa <CourseCard>) */}
-          {paginatedCourses.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {/* 2. Course Grid (Đã sửa <CourseCard>) */}
+            {paginatedCourses.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {paginatedCourses.map((course) => (
                 <CourseCard key={course.id} course={course} />
               ))}
@@ -212,6 +213,7 @@ export default function App() {
             </div>
           )}
         </main>
+        </div>
       </div>
     </div>
   )

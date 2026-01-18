@@ -1,7 +1,6 @@
 // Quiz Actions
 "use server"
 
-import { z } from "zod"
 import { requireAuth } from "@/lib/auth"
 import {
   getAllQuizzesAction,
@@ -9,56 +8,13 @@ import {
   createQuizAction,
   updateQuizAction,
   deleteQuizAction,
+  getQuizQuestionsAction,
+  updateQuizQuestionsAction,
 } from "@/service/quiz.service"
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 import { sanitizeTitle, sanitizeDescription } from "@/utils/sanitize"
-
-// ============================================
-// DTO & VALIDATION SCHEMAS (Zod)
-// ============================================
-
-/**
- * Validation schema cho Quiz metadata (Title + Description)
- * AC1: Trường Title là bắt buộc (Required)
- * AC2: Trường Description là tùy chọn (Optional)
- */
-export const QuizMetadataDto = z.object({
-  title: z
-    .string()
-    .min(1, "Vui lòng nhập tên bài thi")
-    .max(255, "Tên bài thi không vượt quá 255 ký tự"),
-  description: z
-    .string()
-    .max(1000, "Mô tả không vượt quá 1000 ký tự")
-    .optional()
-    .default(""),
-})
-
-export type QuizMetadataDtoType = z.infer<typeof QuizMetadataDto>
-
-/**
- * Full Quiz schema (cho lúc submit hoàn toàn)
- * Bao gồm: title, description, course_id, status
- */
-export const QuizCreateDto = z.object({
-  title: z
-    .string()
-    .min(1, "Vui lòng nhập tên bài thi")
-    .max(255, "Tên bài thi không vượt quá 255 ký tự"),
-  description: z
-    .string()
-    .max(1000, "Mô tả không vượt quá 1000 ký tự")
-    .optional()
-    .default(""),
-  course_id: z.number().positive("Invalid course ID"),
-  status: z.enum(["draft", "published", "archived"]).default("draft"),
-  time_limit_minutes: z.number().positive().optional(),
-  passing_score: z.number().min(0).max(100).default(70),
-  max_attempts: z.number().positive().default(3),
-})
-
-export type QuizCreateDtoType = z.infer<typeof QuizCreateDto>
+import { QuizMetadataDto, parseAndValidateQuizFormData } from "./quizHelper"
 
 // ============================================
 // SERVER ACTIONS
@@ -99,11 +55,12 @@ export async function getQuizById(id: number) {
  * - FR-01: Quiz Identity Form
  * - Sanitization: Input text cần được làm sạch để chống XSS
  * - Validation độ dài (Max 255 ký tự cho Title, 1000 cho Description)
+ * - Tạo liên kết giữa quiz và questions
  * 
  * Pre-conditions: Người dùng đã đăng nhập với quyền Manager/Admin
- * Post-conditions: Dữ liệu Title và Description được lưu trong DB
+ * Post-conditions: Dữ liệu Title, Description, và liên kết Questions được lưu trong DB
  * 
- * - FormData expected fields: course_id, title, description, status
+ * - FormData expected fields: course_id, title, description, status, question_ids (JSON array)
  * - Kiểm tra các trường bắt buộc và chuyển đổi kiểu
  * - Validate với Zod schema
  * - Sanitize input để chống XSS
@@ -111,57 +68,27 @@ export async function getQuizById(id: number) {
  * - Yêu cầu xác thực (requireAuth)
  */
 export async function createQuiz(formData: FormData) {
+  console.log("[createQuiz] Starting...")
   await requireAuth()
+  console.log("[createQuiz] Auth verified")
 
-  const course_id = Number(formData.get("course_id"))
-  const title = (formData.get("title") as string) || ""
-  const description = (formData.get("description") as string) || ""
-  const status = (formData.get("status") as string) || "draft"
-  const time_limit_minutes = formData.get("time_limit_minutes")
-    ? Number(formData.get("time_limit_minutes"))
-    : undefined
-  const passing_score = formData.get("passing_score")
-    ? Number(formData.get("passing_score"))
-    : 70
-  const max_attempts = formData.get("max_attempts")
-    ? Number(formData.get("max_attempts"))
-    : 3
+  // Parse and validate FormData
+  const parsedData = parseAndValidateQuizFormData(formData)
 
-  if (!course_id) {
-    throw new Error("Course ID is required")
-  }
-
-  // Sanitize inputs
-  const sanitizedTitle = sanitizeTitle(title)
-  const sanitizedDescription = sanitizeDescription(description)
-
-  // Validate với Zod
-  const validationResult = QuizCreateDto.safeParse({
-    title: sanitizedTitle,
-    description: sanitizedDescription,
-    course_id,
-    status,
-    time_limit_minutes,
-    passing_score,
-    max_attempts,
-  })
-
-  if (!validationResult.success) {
-    throw new Error(
-      validationResult.error.issues.map((e) => e.message).join(", ")
-    )
-  }
+  console.log("[createQuiz] Data validated, calling createQuizAction...")
 
   await createQuizAction({
-    course_id: validationResult.data.course_id,
-    title: validationResult.data.title,
-    description: validationResult.data.description,
-    status: validationResult.data.status,
-    time_limit_minutes: validationResult.data.time_limit_minutes,
-    passing_score: validationResult.data.passing_score,
-    max_attempts: validationResult.data.max_attempts,
+    course_id: parsedData.course_id,
+    title: parsedData.title,
+    description: parsedData.description,
+    status: parsedData.status,
+    time_limit_minutes: parsedData.time_limit_minutes,
+    passing_score: parsedData.passing_score,
+    max_attempts: parsedData.max_attempts,
+    questionIds: parsedData.questionIds,
   })
 
+  console.log("[createQuiz] Quiz created successfully, revalidating and redirecting...")
   revalidatePath("/quizzes")
   redirect("/quizzes")
 }
@@ -221,5 +148,28 @@ export async function updateQuiz(formData: FormData) {
 export async function deleteQuiz(id: number) {
   await requireAuth()
   await deleteQuizAction(id)
+  revalidatePath("/quizzes")
+}
+
+/**
+ * Lấy danh sách câu hỏi của một quiz.
+ * - Tham số: quizId (number)
+ * - Trả về danh sách câu hỏi với thông tin chi tiết
+ * - Yêu cầu xác thực (requireAuth)
+ */
+export async function getQuizQuestions(quizId: number) {
+  await requireAuth()
+  return getQuizQuestionsAction(quizId)
+}
+
+/**
+ * Cập nhật danh sách câu hỏi của một quiz.
+ * - Tham số: quizId (number), questionIds (number[])
+ * - Yêu cầu xác thực (requireAuth)
+ */
+export async function updateQuizQuestions(quizId: number, questionIds: number[]) {
+  await requireAuth()
+  await updateQuizQuestionsAction(quizId, questionIds)
+  revalidatePath(`/quizzes/${quizId}`)
   revalidatePath("/quizzes")
 }

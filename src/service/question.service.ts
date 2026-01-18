@@ -218,7 +218,6 @@ export async function openQuestionAction(id: string) {
 export type Category = {
   id: number
   name: string
-  slug: string
 }
 
 export async function getActiveCategoriesAction(): Promise<Category[]> {
@@ -226,7 +225,6 @@ export async function getActiveCategoriesAction(): Promise<Category[]> {
     SELECT 
       c.id AS category_id,
       c.name AS category_name,
-      c.slug AS slug,
       p.id AS parent_id,
       p.name AS parent_name
     FROM categories AS c
@@ -240,13 +238,11 @@ export async function getActiveCategoriesAction(): Promise<Category[]> {
       return {
         id: row.category_id,
         name: row.parent_name + " - " + row.category_name,
-        slug: row.slug,
       }
     } else {
       return {
         id: row.category_id,
         name: row.category_name,
-        slug: row.slug,
       }
     }
   })
@@ -270,11 +266,13 @@ export async function fetchQuestionPagesAction(
     `
 
     // Add optional filters dynamically
-    if (category !== "any") {
+    // Only filter by category if it's a valid numeric ID
+    const categoryId = parseInt(category, 10)
+    if (category !== "any" && !isNaN(categoryId)) {
       sqlQuery = sql`
       JOIN categories ON questions.category_id = categories.id
       ${sqlQuery} 
-      AND categories.slug = ${category}
+      AND categories.id = ${categoryId}
       `
     }
 
@@ -340,11 +338,13 @@ export async function fetchFilteredQuestionAction(
     `
 
     // Add optional filters dynamically
-    if (category !== "any") {
+    // Only filter by category if it's a valid numeric ID
+    const categoryId = parseInt(category, 10)
+    if (category !== "any" && !isNaN(categoryId)) {
       sqlQuery = sql`
       JOIN categories ON questions.category_id = categories.id
       ${sqlQuery} 
-      AND categories.slug = ${category}
+      AND categories.id = ${categoryId}
       `
     }
 

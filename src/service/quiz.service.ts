@@ -48,8 +48,6 @@ type GetAllQuizzesParams = {
  * - Hỗ trợ filter theo course_id
  * - Phân trang theo page và limit
  */
-// ...existing code...
-
 export async function getAllQuizzesAction({
   query = "",
   page = 1,
@@ -59,36 +57,64 @@ export async function getAllQuizzesAction({
   const offset = (page - 1) * limit
 
   try {
-    let whereConditions: string[] = ["is_deleted = FALSE"]
-    const params: any[] = []
-
-    if (query) {
-      whereConditions.push(`title ILIKE $${params.length + 1}`)
-      params.push("%" + query + "%")
+    let rows
+    let totalResult
+    
+    if (query && course_id) {
+      const searchPattern = `%${query}%`
+      rows = await sql`
+        SELECT * FROM quizzes
+        WHERE is_deleted = FALSE 
+          AND title ILIKE ${searchPattern}
+          AND course_id = ${course_id}
+        ORDER BY created_at DESC
+        LIMIT ${limit} OFFSET ${offset}
+      `
+      totalResult = await sql`
+        SELECT COUNT(*) FROM quizzes
+        WHERE is_deleted = FALSE 
+          AND title ILIKE ${searchPattern}
+          AND course_id = ${course_id}
+      `
+    } else if (query) {
+      const searchPattern = `%${query}%`
+      rows = await sql`
+        SELECT * FROM quizzes
+        WHERE is_deleted = FALSE 
+          AND title ILIKE ${searchPattern}
+        ORDER BY created_at DESC
+        LIMIT ${limit} OFFSET ${offset}
+      `
+      totalResult = await sql`
+        SELECT COUNT(*) FROM quizzes
+        WHERE is_deleted = FALSE 
+          AND title ILIKE ${searchPattern}
+      `
+    } else if (course_id) {
+      rows = await sql`
+        SELECT * FROM quizzes
+        WHERE is_deleted = FALSE 
+          AND course_id = ${course_id}
+        ORDER BY created_at DESC
+        LIMIT ${limit} OFFSET ${offset}
+      `
+      totalResult = await sql`
+        SELECT COUNT(*) FROM quizzes
+        WHERE is_deleted = FALSE 
+          AND course_id = ${course_id}
+      `
+    } else {
+      rows = await sql`
+        SELECT * FROM quizzes
+        WHERE is_deleted = FALSE
+        ORDER BY created_at DESC
+        LIMIT ${limit} OFFSET ${offset}
+      `
+      totalResult = await sql`
+        SELECT COUNT(*) FROM quizzes
+        WHERE is_deleted = FALSE
+      `
     }
-
-    if (course_id) {
-      whereConditions.push(`course_id = $${params.length + 1}`)
-      params.push(course_id)
-    }
-
-    const whereClause =
-      whereConditions.length > 0 ? `WHERE ${whereConditions.join(" AND ")}` : ""
-
-    // Fetch data
-    const dataQuery = `
-      SELECT *
-      FROM quizzes
-      ${whereClause}
-      ORDER BY created_at DESC
-      LIMIT $${params.length + 1} OFFSET $${params.length + 2}
-    `
-
-    const rows = await (sql as any)(dataQuery, [...params, limit, offset])
-
-    // Count total
-    const countQuery = `SELECT COUNT(*) FROM quizzes ${whereClause}`
-    const totalResult = await (sql as any)(countQuery, params)
 
     const totalCount = parseInt(totalResult[0].count as string, 10)
 
@@ -120,13 +146,6 @@ export async function getQuizByIdAction(id: number) {
 
 /**
  * Tạo mới một bài thi.
- * 
- * Functional Requirements (FR-01):
- * - User Action: Click vào ô "Quiz Title" và nhập text
- * - System Behavior: Validate độ dài (Max 255 ký tự). Cập nhật biến state title.
- * - Post-conditions: Dữ liệu Title và Description được lưu trong DB
- * 
- * Accepts sanitized data từ server action (quizActions.ts)
  */
 export async function createQuizAction(data: {
   course_id: number
@@ -136,10 +155,9 @@ export async function createQuizAction(data: {
   time_limit_minutes?: number
   passing_score?: number
   max_attempts?: number
+  questionIds?: number[]
 }) {
   try {
-    await sql`BEGIN`
-
     const result = await sql`
       INSERT INTO quizzes (
         course_id, 
@@ -160,19 +178,30 @@ export async function createQuizAction(data: {
       ) RETURNING *
     `
 
-    await sql`COMMIT`
-    return result[0] as Quiz
+    const quiz = result[0] as Quiz
+    const quizId = quiz.id
+
+    // Nếu có question IDs, tạo liên kết
+    if (data.questionIds && data.questionIds.length > 0) {
+      for (let i = 0; i < data.questionIds.length; i++) {
+        const questionId = data.questionIds[i]
+        try {
+          await sql`
+            INSERT INTO quiz_questions (quiz_id, question_id, question_order)
+            VALUES (${quizId}, ${questionId}, ${i + 1})
+          `
+        } catch (insertError) {
+          console.error("Failed to insert question link:", insertError)
+        }
+      }
+    }
+
+    return quiz
   } catch (err) {
-    await sql`ROLLBACK`
-    console.error("createQuizAction transaction failed:", err)
+    console.error("createQuizAction failed:", err)
     throw new Error("Failed to create quiz")
   }
 }
-
-/**
- * Cập nhật một bài thi.
- */
-// ...existing code...
 
 /**
  * Cập nhật một bài thi.
@@ -182,29 +211,26 @@ export async function updateQuizAction(
   data: Partial<Omit<Quiz, "id" | "created_at" | "updated_at">>
 ) {
   try {
-    const updates: string[] = []
-    const values: any[] = []
-    let paramIndex = 1
+    const title = data.title
+    const description = data.description
+    const time_limit_minutes = data.time_limit_minutes
+    const passing_score = data.passing_score
+    const max_attempts = data.max_attempts
+    const course_id = data.course_id
 
-    Object.entries(data).forEach(([key, value]) => {
-      if (key !== "id" && key !== "created_at" && key !== "updated_at") {
-        updates.push(`${key} = $${paramIndex}`)
-        values.push(value)
-        paramIndex++
-      }
-    })
-
-    if (updates.length === 0) return { id } as Quiz
-
-    const query = `
+    const result = await sql`
       UPDATE quizzes
-      SET ${updates.join(", ")}, updated_at = NOW()
-      WHERE id = $${paramIndex}
+      SET 
+        title = COALESCE(${title}, title),
+        description = COALESCE(${description}, description),
+        time_limit_minutes = COALESCE(${time_limit_minutes}, time_limit_minutes),
+        passing_score = COALESCE(${passing_score}, passing_score),
+        max_attempts = COALESCE(${max_attempts}, max_attempts),
+        course_id = COALESCE(${course_id}, course_id),
+        updated_at = NOW()
+      WHERE id = ${id}
       RETURNING *
     `
-    values.push(id)
-
-    const result = await (sql as any)(query, values)
     return result.length > 0 ? (result[0] as Quiz) : null
   } catch (error) {
     console.error("updateQuizAction error:", error)
@@ -229,3 +255,71 @@ export async function deleteQuizAction(id: number) {
     throw new Error("Failed to delete quiz")
   }
 }
+
+/**
+ * Lấy danh sách câu hỏi của một quiz.
+ */
+export async function getQuizQuestionsAction(quizId: number) {
+  try {
+    const rows = await sql`
+      SELECT 
+        qq.id as quiz_question_id,
+        qq.question_id,
+        qq.question_order,
+        qb.question_text,
+        qb.type,
+        qb.explanation
+      FROM quiz_questions qq
+      JOIN question_bank qb ON qq.question_id = qb.id
+      WHERE qq.quiz_id = ${quizId}
+      ORDER BY qq.question_order ASC, qq.id ASC
+    `
+    return rows
+  } catch (error) {
+    console.error("getQuizQuestionsAction error:", error)
+    return []
+  }
+}
+
+/**
+ * Cập nhật danh sách câu hỏi của một quiz.
+ * - Xóa tất cả câu hỏi cũ
+ * - Thêm lại câu hỏi mới (batch insert)
+ */
+// ...existing code...
+
+/**
+ * Cập nhật danh sách câu hỏi của một quiz.
+ */
+export async function updateQuizQuestionsAction(quizId: number, questionIds: number[]) {
+  try {
+    // Xóa tất cả câu hỏi hiện tại của quiz
+    await sql`
+      DELETE FROM quiz_questions
+      WHERE quiz_id = ${quizId}
+    `
+    
+    if (questionIds.length === 0) {
+      return true
+    }
+
+    // Insert từng câu một (chậm hơn nhưng ổn định hơn)
+    for (let i = 0; i < questionIds.length; i++) {
+      const questionId = questionIds[i]
+      const order = i + 1
+      
+      await sql`
+        INSERT INTO quiz_questions (quiz_id, question_id, question_order)
+        VALUES (${quizId}, ${questionId}, ${order})
+        ON CONFLICT (quiz_id, question_id) 
+        DO UPDATE SET question_order = EXCLUDED.question_order
+      `
+    }
+    
+    return true
+  } catch (error) {
+    console.error("updateQuizQuestionsAction error:", error)
+    throw new Error("Failed to update quiz questions")
+  }
+}
+
