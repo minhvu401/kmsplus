@@ -15,6 +15,7 @@ import {
 
 import Pagination from "@/components/ui/questions/pagination"
 import QuestionsList from "@/components/ui/questions/questions-list"
+import QuestionsNotification from "@/components/ui/questions/questions-notification"
 import { Flex } from "antd"
 export default async function Page(props: {
   searchParams?: Promise<{
