@@ -40,16 +40,14 @@ export default async function Page(props: {
     sort,
     currentPage
   )
-  const noSearchResults = questions.length === 0
-
-  const categoriesData = await getActiveCategories()
-  const categories = categoriesData.map((cat) => ({
-    ...cat,
-    slug: cat.name.toLowerCase().replace(/\s+/g, "-"),
-  }))
+  
+  const noSearchResults = query !== "" && questions.length === 0
+  const categories = await getActiveCategories()
 
   return (
     <PageWrapper>
+      <QuestionsNotification/>
+
       <Flex align="center" gap={28} style={{ marginBottom: 24 }}>
         <Search placeholder="Search questions..." />
         <CreateQuestion />
