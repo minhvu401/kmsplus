@@ -12,7 +12,9 @@ interface User {
 
 interface UserStore {
   user: User | null
+  userRole?: string
   setUser: (user: User | null) => void
+  setUserRole: (role: string | undefined) => void
   fetchUser: () => Promise<void>
   clearUser: () => void
 }
@@ -21,7 +23,9 @@ const useUserStore = create<UserStore>()(
   persist(
     (set, get) => ({
       user: null,
+      userRole: undefined,
       setUser: (user) => set({ user }),
+      setUserRole: (role) => set({ userRole: role }),
       fetchUser: async () => {
         // Nếu đã có user trong store (localStorage), không cần fetch lại
         if (!get().user) {
@@ -33,11 +37,11 @@ const useUserStore = create<UserStore>()(
           }
         }
       },
-      clearUser: () => set({ user: null }),
+      clearUser: () => set({ user: null, userRole: undefined }),
     }),
     {
       name: "user-storage", // Lưu trong localStorage
-      partialize: (state) => ({ user: state.user }), // Chỉ lưu user trong localStorage
+      partialize: (state) => ({ user: state.user, userRole: state.userRole }), // Lưu user và userRole trong localStorage
     }
   )
 )

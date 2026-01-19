@@ -33,12 +33,9 @@ import {
 } from "@ant-design/icons"
 import { LEARNER_DETAIL } from "@/data/mockEnrollmentData"
 
-export default function LearnerProgressPage({
-  params,
-}: {
-  params: { id: string; userId: string }
-}) {
+export default function LearnerProgressPage() {
   const router = useRouter()
+  const params = useParams() as { id: string; userId: string }
   // params.id = courseId
   // params.userId = userId
 

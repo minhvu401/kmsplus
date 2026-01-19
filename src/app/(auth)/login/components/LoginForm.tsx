@@ -1,16 +1,19 @@
 "use client"
 
-import { useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { loginAction } from "@/action/auth/authActions"
-import { Form, Input, Button, Card, Alert, Checkbox } from "antd"
+import { getUserRoleAction } from "@/action/user/userActions"
+import { Form, Input, Button, Alert, Checkbox, Typography } from "antd"
 import useUserStore from "@/store/useUserStore"
 import {
   EyeInvisibleOutlined,
   EyeTwoTone,
-  MailOutlined,
+  UserOutlined,
+  LockOutlined,
 } from "@ant-design/icons"
 import React from "react"
+
+const { Title, Text } = Typography
 
 interface LoginFormProps {
   callbackUrl?: string | null
@@ -63,8 +66,19 @@ export default function LoginForm({
       }
 
       if (result.success && result.user) {
-        const { setUser } = useUserStore.getState()
+        const { setUser, setUserRole } = useUserStore.getState()
         setUser(result.user)
+
+        // Get user role from server
+        try {
+          const role = await getUserRoleAction()
+          if (role) {
+            setUserRole(role)
+          }
+        } catch (error) {
+          console.error("Error getting user role:", error)
+        }
+
         if (onSuccess) {
           onSuccess()
         } else {
@@ -72,7 +86,6 @@ export default function LoginForm({
           window.location.replace(url || "/dashboard?loggedin=true")
         }
       } else if (!result.success && result.message) {
-        // ✅ Báo lỗi ra giao diện
         setState((prev) => ({
           ...prev,
           message: result.message,
@@ -89,144 +102,114 @@ export default function LoginForm({
     }
   }
 
-  // useEffect(() => {
-  //   if (state.success) {
-  //     if (onSuccess) {
-  //       onSuccess()
-  //     } else if (callbackUrl) {
-  //       window.location.replace(callbackUrl)
-  //     } else {
-  //       window.location.replace("/dashboard?loggedin=true")
-  //     }
-  //   }
-  // }, [state.success, onSuccess, callbackUrl])
   return (
-    <Card
-      style={{
-        width: 450,
-        minWidth: 350,
-        maxWidth: "90%",
-        borderRadius: 16,
-        boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
-        margin: "0 16px",
-      }}
-    >
-      <div style={{ textAlign: "center", marginBottom: 32 }}>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 8,
-            marginBottom: 16,
-          }}
-        >
-          <div
-            style={{
-              width: 40,
-              height: 40,
-              background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-              borderRadius: 8,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <MailOutlined style={{ fontSize: 24, color: "white" }} />
-          </div>
-          <div style={{ textAlign: "left" }}>
-            <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>
+    <div className="bg-white rounded-2xl shadow-2xl p-8 w-full">
+      {/* Header */}
+      <div className="text-center mb-8">
+        <div className="flex items-center justify-center gap-3 mb-6">
+          <img 
+            src="/logo.png" 
+            alt="KMSPlus Logo" 
+            className="w-12 h-12 rounded-xl object-contain shadow-lg"
+          />
+          <div className="text-left">
+            <Title level={4} className="!m-0 !text-gray-800">
               KMSPlus
-            </h2>
-            {/* <p style={{ margin: 0, fontSize: 12, color: "#667eea" }}>by bai</p> */}
+            </Title>
+            <Text className="text-xs text-[#1677ff]">
+              Knowledge Management System
+            </Text>
           </div>
         </div>
-        <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0 }}>
-          Chào mừng👋!
-        </h1>
+        <Title level={2} className="!m-0 !text-gray-800 !font-bold">
+          Đăng nhập
+        </Title>
+        <Text className="text-gray-500 mt-2 block">
+          Chào mừng bạn trở lại! Vui lòng đăng nhập để tiếp tục.
+        </Text>
       </div>
+
+      {/* Error Alert */}
       {!state.success && state.message && (
         <Alert
           message={state.message}
           type="error"
           showIcon
-          style={{ marginBottom: 16, borderRadius: 8 }}
+          className="mb-6 rounded-lg"
         />
       )}
+
+      {/* Form */}
       <Form
         form={form}
         layout="vertical"
         onFinish={handleSubmit}
         requiredMark={false}
+        size="large"
       >
         <Form.Item
-          label="Email"
+          label={<span className="font-medium text-gray-700">Email</span>}
           name="email"
           rules={[
-            { required: true, message: "Please input your email!" },
-            { type: "email", message: "Please enter a valid email!" },
+            { required: true, message: "Vui lòng nhập email!" },
+            { type: "email", message: "Email không hợp lệ!" },
           ]}
         >
           <Input
-            name="email"
-            size="large"
+            prefix={<UserOutlined className="text-gray-400" />}
             placeholder="admin@company.com"
-            style={{ borderRadius: 8 }}
+            className="!rounded-lg"
           />
         </Form.Item>
+
         <Form.Item
-          label="Mật khẩu"
+          label={<span className="font-medium text-gray-700">Mật khẩu</span>}
           name="password"
-          rules={[{ required: true, message: "Please input your password!" }]}
+          rules={[{ required: true, message: "Vui lòng nhập mật khẩu!" }]}
         >
           <Input.Password
-            name="password"
-            size="large"
+            prefix={<LockOutlined className="text-gray-400" />}
             placeholder="••••••••"
             iconRender={(visible) =>
               visible ? <EyeTwoTone /> : <EyeInvisibleOutlined />
             }
-            style={{ borderRadius: 8 }}
+            className="!rounded-lg"
           />
         </Form.Item>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: 24,
-          }}
-        >
+
+        <div className="flex justify-between items-center mb-6">
           <Form.Item name="remember" valuePropName="checked" noStyle>
-            <Checkbox>Ghi nhớ đăng nhập</Checkbox>
+            <Checkbox className="text-gray-600">Ghi nhớ đăng nhập</Checkbox>
           </Form.Item>
           <Button
             type="link"
-            style={{ padding: 0, height: "auto" }}
             onClick={onForgotPassword}
+            className="!p-0 !h-auto"
           >
             Quên mật khẩu?
           </Button>
         </div>
-        <Form.Item style={{ marginTop: 0, marginBottom: 0 }}>
+
+        <Form.Item className="!mb-0">
           <Button
             type="primary"
             htmlType="submit"
-            size="large"
             block
             loading={isLoading}
-            style={{
-              height: 44,
-              borderRadius: 8,
-              fontWeight: 500,
-              background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-              border: "none",
-            }}
+            className="!h-12 !rounded-lg !font-semibold !text-base"
+            style={{ background: "linear-gradient(135deg, #69b1ff 0%, #1677ff 100%)", border: "none" }}
           >
             Đăng nhập
           </Button>
         </Form.Item>
       </Form>
-    </Card>
+
+      {/* Footer */}
+      <div className="mt-8 pt-6 border-t border-gray-100 text-center">
+        <Text className="text-gray-400 text-sm">
+          © 2026 KMSPlus. All rights reserved.
+        </Text>
+      </div>
+    </div>
   )
 }
