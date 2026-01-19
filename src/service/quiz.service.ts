@@ -135,6 +135,7 @@ export async function createQuizAction(data: {
   time_limit_minutes?: number
   passing_score?: number
   max_attempts?: number
+  questionIds?: number[]
 }) {
   try {
     // Không cần BEGIN/COMMIT nếu chỉ có 1 lệnh INSERT đơn lẻ,
@@ -166,6 +167,7 @@ export async function createQuizAction(data: {
 
     return result[0] as Quiz
   } catch (err) {
+    console.error("createQuizAction failed:", err)
     console.error("createQuizAction failed:", err)
     throw new Error("Failed to create quiz")
   }
@@ -229,5 +231,323 @@ export async function deleteQuizAction(id: number) {
   } catch (error) {
     console.error("deleteQuizAction error:", error)
     throw new Error("Failed to delete quiz")
+  }
+}
+
+/**
+ * Lấy danh sách câu hỏi cho một lần làm bài
+ */
+export async function getQuestionsForAttemptAction(attemptId: number) {
+  try {
+    const rows = await sql`
+      SELECT q.id, q.question_text, q.type, q.options, q.time_limit
+      FROM questions q
+      INNER JOIN quiz_attempts qa ON q.quiz_id = qa.quiz_id
+      WHERE qa.id = ${attemptId}
+      ORDER BY q.id ASC
+    `
+    return rows as Question[]
+  } catch (error) {
+    console.error("getQuestionsForAttemptAction error:", error)
+    throw new Error("Failed to fetch questions for attempt")
+  }
+}
+
+/**
+ * Lấy các câu trả lời đã lưu cho một lần làm bài
+ */
+export async function getSavedAnswersAction(attemptId: number) {
+  try {
+    const rows = await sql`
+      SELECT question_id, selected_option_id
+      FROM attempt_answers
+      WHERE attempt_id = ${attemptId}
+    `
+    return rows as Array<{ question_id: number; selected_option_id: any }>
+  } catch (error) {
+    console.error("getSavedAnswersAction error:", error)
+    throw new Error("Failed to fetch saved answers")
+  }
+}
+
+export async function getTimeLimitForAttemptAction(attemptId: number) {
+  try {
+    const rows = await sql`
+      SELECT q.time_limit_minutes
+      FROM quizzes q
+      INNER JOIN quiz_attempts qa ON q.id = qa.quiz_id
+      WHERE qa.id = ${attemptId}
+    `
+    return rows.length > 0 ? rows[0].time_limit_minutes : null
+  } catch (error) {
+    console.error("getTimeLimitForAttemptAction error:", error)
+    throw new Error("Failed to fetch time limit for attempt")
+  }
+}
+
+export async function startQuizAttemptAction(quizId: number, userId: number) {
+  try {
+    await sql`BEGIN`
+
+    // Get current attempt count
+    const attempts = await sql`
+      SELECT COUNT(*) as count
+      FROM quiz_attempts
+      WHERE quiz_id = ${quizId} AND user_id = ${userId}
+    `
+    const attemptNumber = (attempts[0].count as number) + 1
+
+    // Create new attempt
+    const result = await sql`
+      INSERT INTO quiz_attempts (quiz_id, user_id, attempt_number, status, started_at)
+      VALUES (${quizId}, ${userId}, ${attemptNumber}, 'in_progress', NOW())
+      RETURNING *
+    `
+
+    await sql`COMMIT`
+    return result[0] as QuizAttempt
+  } catch (error) {
+    await sql`ROLLBACK`
+    console.error("startQuizAttemptAction error:", error)
+    throw new Error("Failed to start quiz attempt")
+  }
+}
+
+/**
+ * Lưu câu trả lời của người dùng
+ */
+export async function saveAttemptAnswerAction(
+  attemptId: number,
+  questionId: number,
+  selectedOptionId: number | number[]
+) {
+  try {
+    const selectedOptionIdJson = Array.isArray(selectedOptionId)
+      ? JSON.stringify(selectedOptionId)
+      : String(selectedOptionId)
+
+    await sql`
+      INSERT INTO attempt_answers (attempt_id, question_id, selected_option_id)
+      VALUES (${attemptId}, ${questionId}, ${selectedOptionIdJson})
+      ON CONFLICT (attempt_id, question_id)
+      DO UPDATE SET selected_option_id = ${selectedOptionIdJson}
+    `
+
+    return true
+  } catch (error) {
+    console.error("saveAttemptAnswerAction error:", error)
+    throw new Error("Failed to save attempt answer")
+  }
+}
+
+/**
+ * Nộp bài thi và tính điểm
+ */
+export async function submitQuizAttemptAction(attemptId: number) {
+  try {
+    await sql`BEGIN`
+
+    // Get attempt with quiz info
+    const attemptRows = await sql`
+      SELECT qa.id, qa.quiz_id, q.passing_score, q.id as quiz_id_check
+      FROM quiz_attempts qa
+      INNER JOIN quizzes q ON qa.quiz_id = q.id
+      WHERE qa.id = ${attemptId}
+    `
+
+    if (attemptRows.length === 0) {
+      throw new Error("Attempt not found")
+    }
+
+    const quizId = attemptRows[0].quiz_id as number
+
+    // Count total questions
+    const totalRows = await sql`
+      SELECT COUNT(*) as count FROM questions WHERE quiz_id = ${quizId}
+    `
+    const totalQuestions = totalRows[0].count as number
+
+    // Count correct answers
+    const correctRows = await sql`
+      SELECT COUNT(*) as count
+      FROM attempt_answers aa
+      INNER JOIN questions q ON aa.question_id = q.id
+      WHERE aa.attempt_id = ${attemptId}
+      AND aa.selected_option_id = q.correct_answer::text
+    `
+    const correctAnswers = correctRows[0].count as number
+
+    // Calculate score
+    const score =
+      totalQuestions > 0 ? (correctAnswers / totalQuestions) * 100 : 0
+
+    // Update attempt
+    const result = await sql`
+      UPDATE quiz_attempts
+      SET 
+        status = 'completed',
+        submitted_at = NOW(),
+        correct_answers = ${correctAnswers},
+        score = ${score},
+        time_spent_seconds = EXTRACT(EPOCH FROM (NOW() - started_at))::int
+      WHERE id = ${attemptId}
+      RETURNING *
+    `
+
+    await sql`COMMIT`
+    return result[0] as QuizAttempt
+  } catch (error) {
+    await sql`ROLLBACK`
+    console.error("submitQuizAttemptAction error:", error)
+    throw new Error("Failed to submit quiz attempt")
+  }
+}
+
+/**
+ * Lấy kết quả chi tiết của một lần làm bài
+ */
+export async function getAttemptResultAction(
+  attemptId: number
+): Promise<AttemptResult> {
+  try {
+    // Get attempt info
+    const attemptRows = await sql`
+      SELECT qa.id, qa.quiz_id, qa.attempt_number, qa.score, qa.time_spent_seconds, q.title
+      FROM quiz_attempts qa
+      INNER JOIN quizzes q ON qa.quiz_id = q.id
+      WHERE qa.id = ${attemptId}
+    `
+
+    if (attemptRows.length === 0) {
+      throw new Error("Attempt not found")
+    }
+
+    const attempt = attemptRows[0] as any
+    const quizId = attempt.quiz_id as number
+
+    // Get all questions with their answers
+    const questionsRows = await sql`
+      SELECT 
+        q.id,
+        q.question_text,
+        q.type,
+        q.options,
+        q.correct_answer,
+        q.explanation,
+        aa.selected_option_id
+      FROM questions q
+      LEFT JOIN attempt_answers aa ON q.id = aa.question_id AND aa.attempt_id = ${attemptId}
+      WHERE q.quiz_id = ${quizId}
+      ORDER BY q.id ASC
+    `
+
+    const questions: QuestionResult[] = questionsRows.map((row: any) => {
+      const options = Array.isArray(row.options)
+        ? row.options
+        : JSON.parse(row.options)
+      const correctAnswer = Array.isArray(row.correct_answer)
+        ? row.correct_answer
+        : JSON.parse(row.correct_answer)
+      const selectedAnswer = row.selected_option_id
+        ? Array.isArray(row.selected_option_id)
+          ? row.selected_option_id
+          : JSON.parse(row.selected_option_id)
+        : []
+
+      return {
+        id: row.id as number,
+        questionText: row.question_text as string,
+        type: row.type as "single_choice" | "multiple_choice",
+        options,
+        selectedAnswers: Array.isArray(selectedAnswer)
+          ? selectedAnswer
+          : [selectedAnswer],
+        correctAnswers: Array.isArray(correctAnswer)
+          ? correctAnswer
+          : [correctAnswer],
+        explanation: row.explanation,
+      }
+    })
+
+    return {
+      title: attempt.title,
+      attempt_number: attempt.attempt_number,
+      time_spent_seconds: attempt.time_spent_seconds || 0,
+      score: attempt.score || 0,
+      questions,
+    }
+  } catch (error) {
+    console.error("getAttemptResultAction error:", error)
+    throw new Error("Failed to fetch attempt result")
+  }
+}
+
+/**
+ * Lấy danh sách câu hỏi của một quiz.
+ */
+export async function getQuizQuestionsAction(quizId: number) {
+  try {
+    const rows = await sql`
+      SELECT 
+        qq.id as quiz_question_id,
+        qq.question_id,
+        qq.question_order,
+        qb.question_text,
+        qb.type,
+        qb.explanation
+      FROM quiz_questions qq
+      JOIN question_bank qb ON qq.question_id = qb.id
+      WHERE qq.quiz_id = ${quizId}
+      ORDER BY qq.question_order ASC, qq.id ASC
+    `
+    return rows
+  } catch (error) {
+    console.error("getQuizQuestionsAction error:", error)
+    return []
+  }
+}
+
+/**
+ * Cập nhật danh sách câu hỏi của một quiz.
+ * - Xóa tất cả câu hỏi cũ
+ * - Thêm lại câu hỏi mới (batch insert)
+ */
+// ...existing code...
+
+/**
+ * Cập nhật danh sách câu hỏi của một quiz.
+ */
+export async function updateQuizQuestionsAction(
+  quizId: number,
+  questionIds: number[]
+) {
+  try {
+    // Xóa tất cả câu hỏi hiện tại của quiz
+    await sql`
+      DELETE FROM quiz_questions
+      WHERE quiz_id = ${quizId}
+    `
+
+    if (questionIds.length === 0) {
+      return true
+    }
+
+    // Insert từng câu một (chậm hơn nhưng ổn định hơn)
+    for (let i = 0; i < questionIds.length; i++) {
+      const questionId = questionIds[i]
+      const order = i + 1
+
+      await sql`
+        INSERT INTO quiz_questions (quiz_id, question_id, question_order)
+        VALUES (${quizId}, ${questionId}, ${order})
+        ON CONFLICT (quiz_id, question_id) 
+        DO UPDATE SET question_order = EXCLUDED.question_order
+      `
+    }
+
+    return true
+  } catch (error) {
+    console.error("updateQuizQuestionsAction error:", error)
+    throw new Error("Failed to update quiz questions")
   }
 }

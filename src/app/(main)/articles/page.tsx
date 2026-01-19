@@ -91,10 +91,23 @@ export default function ViewArticlePage() {
   const totalPages = 50
 
   return (
-    <Flex vertical className="flex-1 bg-gray-50">
-      <main className="flex-1 overflow-auto px-8 py-6">
-        {/* Header: Tags và Create Button */}
-        <Flex justify="space-between" align="center" className="mb-6">
+    <div className="p-6">
+      <main className="flex-1 overflow-auto">
+        {/* Header with Title and Description */}
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h1 className="text-3xl font-bold">Bài Viết</h1>
+              <p className="text-gray-600 mt-2">
+                Thư viện bài viết và tài liệu học tập
+              </p>
+            </div>
+            <Button type="primary" icon={<PlusOutlined />} size="large">
+              Tạo Bài Viết Mới
+            </Button>
+          </div>
+
+          {/* Tags Filter */}
           <Space size="middle">
             <Text type="secondary" strong className="text-xs uppercase">
               RELATED TAGS
@@ -112,10 +125,7 @@ export default function ViewArticlePage() {
               ))}
             </Space>
           </Space>
-          <Button type="primary" icon={<PlusOutlined />} size="large">
-            Create Article
-          </Button>
-        </Flex>
+        </div>
 
         {/* Article List */}
         <Space direction="vertical" size="large" className="w-full">
@@ -204,6 +214,6 @@ export default function ViewArticlePage() {
           </Space>
         </Flex>
       </footer>
-    </Flex>
+    </div>
   )
 }

@@ -1,5 +1,5 @@
 // List questions in Q&A Forum
-import PageWrapper from "@/components/page-wrapper"
+import PageWrapper from "@/components/ui/questions/page-wrapper"
 import Search from "@/components/ui/questions/search"
 import { CreateQuestion } from "@/components/ui/questions/create-button"
 import {
@@ -10,9 +10,12 @@ import {
 import {
   getActiveCategories,
   fetchQuestionsPages,
+  fetchFilteredQuestions,
 } from "@/action/question/questionActions"
-import Pagination from "@/components/ui/questions/pagination"
 
+import Pagination from "@/components/ui/questions/pagination"
+import QuestionsList from "@/components/ui/questions/questions-list"
+import { Flex } from "antd"
 export default async function Page(props: {
   searchParams?: Promise<{
     query?: string
@@ -30,18 +33,39 @@ export default async function Page(props: {
   const currentPage = Number(searchParams?.page) || 1
   const totalPages = await fetchQuestionsPages(query, category, status)
 
-  const categories = await getActiveCategories()
+  const questions = await fetchFilteredQuestions(
+    query,
+    category,
+    status,
+    sort,
+    currentPage
+  )
+  const noSearchResults = questions.length === 0
+
+  const categoriesData = await getActiveCategories()
+  const categories = categoriesData.map((cat) => ({
+    ...cat,
+    slug: cat.name.toLowerCase().replace(/\s+/g, "-"),
+  }))
 
   return (
     <PageWrapper>
-      <div className="flex items-center gap-7 mb-6">
+      <Flex align="center" gap={28} style={{ marginBottom: 24 }}>
         <Search placeholder="Search questions..." />
         <CreateQuestion />
-      </div>
-      <div className="flex items-center gap-14 mb-6">
+      </Flex>
+
+      <Flex align="center" gap={56} style={{ marginBottom: 24 }}>
         <FilterCategory categories={categories} />
         <FilterStatus />
         <SortBy />
+      </Flex>
+
+      <div style={{ marginBottom: 24 }}>
+        <QuestionsList
+          questions={questions}
+          noSearchResults={noSearchResults}
+        />
       </div>
       <div className="flex justify-end items-center gap-14 mb-6">
         <Pagination totalPages={totalPages} />
