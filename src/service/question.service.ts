@@ -325,17 +325,14 @@ export async function fetchQuestionPagesAction(
        users.email ILIKE ${"%" + query + "%"} OR
        questions.title ILIKE ${"%" + query + "%"} OR
        questions.content ILIKE ${"%" + query + "%"})
+      AND questions.deleted_at IS NULL
     `
 
     // Add optional filters dynamically
     // Only filter by category if it's a valid numeric ID
     const categoryId = parseInt(category, 10)
     if (category !== "any" && !isNaN(categoryId)) {
-      sqlQuery = sql`
-      JOIN categories ON questions.category_id = categories.id
-      ${sqlQuery} 
-      AND categories.id = ${categoryId}
-      `
+      sqlQuery = sql`${sqlQuery} AND categories.id = ${categoryId}`
     }
 
     if (status !== "any") {
@@ -353,11 +350,12 @@ export async function fetchQuestionPagesAction(
       SELECT COUNT(*) AS count
       FROM questions
       JOIN users ON questions.user_id = users.id
+      JOIN categories ON questions.category_id = categories.id
       ${sqlQuery};
     `
 
     const totalPages = Math.ceil(Number(data[0].count) / QUESTIONS_PER_PAGE)
-    return totalPages
+    return Math.max(1, totalPages)
   } catch (error) {
     console.error("Database Error:", error)
     throw new Error("Failed to fetch total number of invoices.")

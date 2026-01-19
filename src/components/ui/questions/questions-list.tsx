@@ -25,14 +25,14 @@ export default function QuestionsList({ questions, noSearchResults }: { question
     
     if (!questions || questions.length === 0) {
         return (
-            <Flex justify="center" align="center" style={{ padding: '40px 0' }}>
+            <Flex justify="center" align="center" style={{ padding: '48px 0', width: '100%' }}>
                 <Text type="secondary">{noSearchResults ? "No results match your search." : "No questions found"}</Text>
             </Flex>
         );
     }
     
     return (
-        <Flex vertical gap="large">
+        <Flex vertical gap="large" style={{ width: '100%' }}>
             {questions.map((q) => (
                 <Flex key={q.id} vertical gap="small">
                     {/* Top row: Title + counts */}

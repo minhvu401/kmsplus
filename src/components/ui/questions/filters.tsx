@@ -99,7 +99,7 @@ export function FilterStatus() {
         <option key="Open" value="open">
           Open
         </option>
-        <option key="Closed" value="close">
+        <option key="Closed" value="closed">
           Closed
         </option>
       </select>
