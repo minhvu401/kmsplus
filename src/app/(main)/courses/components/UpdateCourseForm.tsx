@@ -59,7 +59,8 @@ import {
 const { TextArea } = Input
 const { Dragger } = Upload
 const CLOUDINARY_CLOUD_NAME = "dhclot8lh"
-const CLOUDINARY_UPLOAD_PRESET = "kms-course"
+// const CLOUDINARY_UPLOAD_PRESET = "kms-course"
+const CLOUDINARY_UPLOAD_PRESET = "kms-plus"
 // --- TYPES ---
 export type Lesson = {
   id: number
@@ -171,22 +172,15 @@ export default function UpdateCourseForm({
     }
   }, [payload.curriculum, activeSectionId])
 
-  // const handleUpload = (file: File) => {
-  //   const reader = new FileReader()
-  //   reader.onload = (e) => {
-  //     const result = e.target?.result as string
-  //     setImageUrl(result)
-  //     update("thumbnail_url", result)
-  //   }
-  //   reader.readAsDataURL(file)
-  //   return false
-  // }
-  const handleUploadThumbnail = async (file: File) => {
-    const hide = message.loading("Uploading image to cloud...", 0) // Hiển thị trạng thái chờ
+  const handleUploadThumbnail = async (options: any) => {
+    const { file, onSuccess, onError } = options
+    const hide = message.loading("Đang tải ảnh lên...", 0)
+
     try {
       const formData = new FormData()
       formData.append("file", file)
-      formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET) // Sử dụng preset đã định nghĩa ở đầu file
+      formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET) // Đảm bảo preset này là UNSIGNED
+
       const res = await fetch(
         `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
         { method: "POST", body: formData }
@@ -194,27 +188,29 @@ export default function UpdateCourseForm({
 
       if (!res.ok) {
         const errorData = await res.json()
-        throw new Error(errorData.error?.message || "Upload failed")
+        throw new Error(errorData.error?.message || "Upload thất bại")
       }
 
       const data = await res.json()
-      const secureUrl = data.secure_url // Đây là URL ngắn gọn từ Cloudinary (vừa vặn 500 ký tự)
+      const shortUrl = data.secure_url
 
-      setImageUrl(secureUrl) // Cập nhật ảnh hiển thị preview
-      update("thumbnail_url", secureUrl) // Cập nhật giá trị vào payload để gửi xuống DB
+      // Cập nhật State
+      setImageUrl(shortUrl)
+      update("thumbnail_url", shortUrl)
 
-      message.success("Image uploaded successfully!")
+      // Báo cho Antd là đã xong
+      if (onSuccess) onSuccess("Ok")
+      message.success("Tải ảnh thành công!")
     } catch (error: any) {
       console.error("Upload error:", error)
-      message.error(`Upload failed: ${error.message}`)
+      message.error(`Lỗi tải ảnh: ${error.message}`)
+      // Báo cho Antd là lỗi
+      if (onError) onError({ error })
     } finally {
-      hide() // Tắt thông báo loading
+      hide()
     }
-    return false // Ngăn chặn Ant Design tự động upload theo cách mặc định
   }
-
   // --- LOGIC KÉO THẢ ---
-
   const findSectionId = (itemId: string) => {
     if (payload.curriculum.find((s) => s.id === itemId)) return itemId
     const section = payload.curriculum.find((s) =>
@@ -401,7 +397,9 @@ export default function UpdateCourseForm({
         {current === 0 && (
           <section className="space-y-4">
             <div>
-              <label className="block text-sm font-medium mb-1">Title</label>
+              <label className="block text-sm font-medium mb-1 text-gray-700">
+                Title
+              </label>
               <Input
                 value={payload.title || ""}
                 onChange={(e) => update("title", e.target.value)}
@@ -415,7 +413,7 @@ export default function UpdateCourseForm({
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">
+              <label className="block text-sm font-medium mb-1 text-gray-700">
                 Thumbnail URL
               </label>
               <Input
@@ -428,7 +426,7 @@ export default function UpdateCourseForm({
                 <Upload
                   accept="image/*"
                   showUploadList={false}
-                  beforeUpload={handleUploadThumbnail}
+                  customRequest={handleUploadThumbnail}
                 >
                   <Button icon={<AntPlusOutlined />}>Upload Image</Button>
                 </Upload>
@@ -449,7 +447,7 @@ export default function UpdateCourseForm({
               )}
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">
+              <label className="block text-sm font-medium mb-1 text-gray-700">
                 Short Description
               </label>
               <TextArea
@@ -1102,8 +1100,9 @@ function CurriculumContentBank({
               }}
               buttonStyle="solid"
               className="w-full flex"
+              value={contentType}
             >
-              <Radio.Button value="text" className="flex-1 text-center">
+              <Radio.Button value="text_media" className="flex-1 text-center">
                 Text & Media
               </Radio.Button>
               <Radio.Button value="video" className="flex-1 text-center">

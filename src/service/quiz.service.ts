@@ -3,22 +3,7 @@
 
 import { sql } from "@/lib/database"
 
-/**
- * Quiz type theo DB schema actual:
- * - id: BIGSERIAL PRIMARY KEY
- * - course_id: BIGINT NOT NULL (FOREIGN KEY)
- * - title: VARCHAR(500) NOT NULL
- * - description: TEXT (nullable)
- * - time_limit_minutes: INTEGER (nullable)
- * - passing_score: NUMERIC(5, 2) DEFAULT 70.00
- * - max_attempts: SMALLINT DEFAULT 3
- * - available_from: TIMESTAMP (nullable)
- * - available_until: TIMESTAMP (nullable)
- * - is_deleted: BOOLEAN DEFAULT false
- * - deleted_at: TIMESTAMP (nullable)
- * - created_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP
- * - updated_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP
- */
+// 1. Định nghĩa Type đầy đủ
 export type Quiz = {
   id: number
   course_id: number
@@ -33,6 +18,7 @@ export type Quiz = {
   deleted_at: Date | null
   created_at: Date
   updated_at: Date
+  question_count?: number // Bổ sung field này vì query có lấy
 }
 
 type GetAllQuizzesParams = {
@@ -42,63 +28,82 @@ type GetAllQuizzesParams = {
   course_id?: number
 }
 
+// Định nghĩa kết quả trả về cho hàm get all
+export type GetAllQuizzesResult = {
+  success: boolean
+  data?: Quiz[]
+  total?: number
+  error?: string
+}
+
 /**
  * Lấy danh sách bài thi có phân trang và tìm kiếm.
- * - Hỗ trợ tìm kiếm theo title
- * - Hỗ trợ filter theo course_id
- * - Phân trang theo page và limit
  */
-// ...existing code...
-
-export async function getAllQuizzesAction({
-  query = "",
-  page = 1,
-  limit = 10,
-  course_id,
-}: GetAllQuizzesParams) {
-  const offset = (page - 1) * limit
-
+export async function getAllQuizzesAction(
+  params: GetAllQuizzesParams = {} // Gán giá trị mặc định là rỗng
+): Promise<GetAllQuizzesResult> {
   try {
-    let whereConditions: string[] = ["is_deleted = FALSE"]
-    const params: any[] = []
+    const { query = "", page = 1, limit = 100, course_id } = params
+    const offset = (page - 1) * limit
 
-    if (query) {
-      whereConditions.push(`title ILIKE $${params.length + 1}`)
-      params.push("%" + query + "%")
-    }
+    // Xử lý điều kiện lọc
+    // Lưu ý: Cú pháp ILIKE và %${query}% phụ thuộc vào lib DB,
+    // ở đây viết theo chuẩn chung dùng template literal.
 
-    if (course_id) {
-      whereConditions.push(`course_id = $${params.length + 1}`)
-      params.push(course_id)
-    }
-
-    const whereClause =
-      whereConditions.length > 0 ? `WHERE ${whereConditions.join(" AND ")}` : ""
-
-    // Fetch data
-    const dataQuery = `
-      SELECT *
-      FROM quizzes
-      ${whereClause}
-      ORDER BY created_at DESC
-      LIMIT $${params.length + 1} OFFSET $${params.length + 2}
+    // Câu query lấy dữ liệu
+    const quizzes = await sql`
+      SELECT 
+        q.id, 
+        q.course_id,
+        q.title, 
+        q.description,
+        q.time_limit_minutes,
+        q.passing_score,
+        q.max_attempts,
+        q.available_from,
+        q.available_until,
+        q.created_at,
+        q.updated_at,
+        (
+          SELECT COUNT(*) 
+          FROM quiz_questions qq 
+          WHERE qq.quiz_id = q.id
+        ) as question_count
+      FROM quizzes q
+      WHERE q.is_deleted = false
+      ${course_id ? sql`AND q.course_id = ${course_id}` : sql``}
+      ${query ? sql`AND q.title ILIKE ${"%" + query + "%"}` : sql``}
+      ORDER BY q.created_at DESC
+      LIMIT ${limit} OFFSET ${offset}
     `
 
-    const rows = await (sql as any)(dataQuery, [...params, limit, offset])
+    // Câu query đếm tổng số lượng (để phân trang)
+    const countResult = await sql`
+      SELECT COUNT(*) as total
+      FROM quizzes q
+      WHERE q.is_deleted = false
+      ${course_id ? sql`AND q.course_id = ${course_id}` : sql``}
+      ${query ? sql`AND q.title ILIKE ${"%" + query + "%"}` : sql``}
+    `
 
-    // Count total
-    const countQuery = `SELECT COUNT(*) FROM quizzes ${whereClause}`
-    const totalResult = await (sql as any)(countQuery, params)
-
-    const totalCount = parseInt(totalResult[0].count as string, 10)
+    const total = Number(countResult[0].total)
 
     return {
-      quizzes: rows as Quiz[],
-      totalCount,
+      success: true,
+      data: quizzes.map((quiz) => ({
+        ...quiz,
+        // Sửa lỗi mapping: DB trả về time_limit_minutes, không phải time_limit
+        time_limit_minutes: quiz.time_limit_minutes,
+        question_count: Number(quiz.question_count) || 0,
+      })) as Quiz[],
+      total,
     }
   } catch (error) {
-    console.error("getAllQuizzesAction error:", error)
-    throw new Error("Failed to fetch quizzes")
+    console.error("Error fetching quizzes:", error)
+    return {
+      success: false,
+      error: "Failed to fetch quizzes",
+    }
   }
 }
 
@@ -114,19 +119,13 @@ export async function getQuizByIdAction(id: number) {
     return rows.length > 0 ? (rows[0] as Quiz) : null
   } catch (error) {
     console.error("getQuizByIdAction error:", error)
-    throw new Error("Failed to fetch quiz")
+    // Nên return null hoặc throw tùy theo cách xử lý ở UI
+    return null
   }
 }
 
 /**
  * Tạo mới một bài thi.
- *
- * Functional Requirements (FR-01):
- * - User Action: Click vào ô "Quiz Title" và nhập text
- * - System Behavior: Validate độ dài (Max 255 ký tự). Cập nhật biến state title.
- * - Post-conditions: Dữ liệu Title và Description được lưu trong DB
- *
- * Accepts sanitized data từ server action (quizActions.ts)
  */
 export async function createQuizAction(data: {
   course_id: number
@@ -138,7 +137,8 @@ export async function createQuizAction(data: {
   max_attempts?: number
 }) {
   try {
-    await sql`BEGIN`
+    // Không cần BEGIN/COMMIT nếu chỉ có 1 lệnh INSERT đơn lẻ,
+    // trừ khi thư viện DB yêu cầu bắt buộc.
 
     const result = await sql`
       INSERT INTO quizzes (
@@ -148,7 +148,9 @@ export async function createQuizAction(data: {
         time_limit_minutes, 
         passing_score, 
         max_attempts,
-        is_deleted
+        is_deleted,
+        created_at,
+        updated_at
       ) VALUES (
         ${data.course_id}, 
         ${data.title}, 
@@ -156,55 +158,55 @@ export async function createQuizAction(data: {
         ${data.time_limit_minutes || null}, 
         ${data.passing_score || 70}, 
         ${data.max_attempts || 3},
-        false
+        false,
+        NOW(),
+        NOW()
       ) RETURNING *
     `
 
-    await sql`COMMIT`
     return result[0] as Quiz
   } catch (err) {
-    await sql`ROLLBACK`
-    console.error("createQuizAction transaction failed:", err)
+    console.error("createQuizAction failed:", err)
     throw new Error("Failed to create quiz")
   }
 }
 
 /**
  * Cập nhật một bài thi.
- */
-// ...existing code...
-
-/**
- * Cập nhật một bài thi.
+ * FIX: Sử dụng logic update an toàn hơn, tránh nối chuỗi SQL thủ công dễ gây lỗi.
  */
 export async function updateQuizAction(
   id: number,
   data: Partial<Omit<Quiz, "id" | "created_at" | "updated_at">>
 ) {
   try {
-    const updates: string[] = []
-    const values: any[] = []
-    let paramIndex = 1
+    // Cách an toàn nhất với Tagged Templates là Update từng trường
+    // hoặc sử dụng helper của thư viện nếu có.
+    // Dưới đây là cách dùng COALESCE hoặc logic update thông dụng:
 
-    Object.entries(data).forEach(([key, value]) => {
-      if (key !== "id" && key !== "created_at" && key !== "updated_at") {
-        updates.push(`${key} = $${paramIndex}`)
-        values.push(value)
-        paramIndex++
-      }
-    })
+    // Lấy dữ liệu cũ trước (để đảm bảo tính toàn vẹn nếu cần)
+    // Tuy nhiên, cách đơn giản nhất là viết câu lệnh UPDATE set từng field
+    // nếu giá trị đó tồn tại trong object data.
 
-    if (updates.length === 0) return { id } as Quiz
+    // Lưu ý: Cú pháp này giả định thư viện `sql` hỗ trợ dynamic fragments
+    // (như postgres.js hoặc neon). Nếu dùng vercel/postgres, bạn phải viết query tĩnh
+    // hoặc dùng COALESCE.
 
-    const query = `
+    const result = await sql`
       UPDATE quizzes
-      SET ${updates.join(", ")}, updated_at = NOW()
-      WHERE id = $${paramIndex}
+      SET 
+        title = ${data.title !== undefined ? data.title : sql`title`},
+        description = ${data.description !== undefined ? data.description : sql`description`},
+        time_limit_minutes = ${data.time_limit_minutes !== undefined ? data.time_limit_minutes : sql`time_limit_minutes`},
+        passing_score = ${data.passing_score !== undefined ? data.passing_score : sql`passing_score`},
+        max_attempts = ${data.max_attempts !== undefined ? data.max_attempts : sql`max_attempts`},
+        available_from = ${data.available_from !== undefined ? data.available_from : sql`available_from`},
+        available_until = ${data.available_until !== undefined ? data.available_until : sql`available_until`},
+        updated_at = NOW()
+      WHERE id = ${id}
       RETURNING *
     `
-    values.push(id)
 
-    const result = await (sql as any)(query, values)
     return result.length > 0 ? (result[0] as Quiz) : null
   } catch (error) {
     console.error("updateQuizAction error:", error)

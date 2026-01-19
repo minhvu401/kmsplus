@@ -9,7 +9,7 @@ import { checkItemCompletion } from "@/action/progress/progressAction"
 
 // 2. Import Button (Nếu bạn để ở chỗ khác thì sửa đường dẫn nhé)
 // Dựa vào tree của bạn, tôi đoán bạn để ở components của courses
-import CompleteButton from "@/app/(main)/courses/components/CompleteButton"
+import CompleteButton from "../../../components/CompleteButton"
 
 export default async function LessonDetailPage({
   params,

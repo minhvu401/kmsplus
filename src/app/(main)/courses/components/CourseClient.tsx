@@ -245,12 +245,23 @@ function Header() {
 /**
  * CourseCard component to display individual course information
  */
+// @/src/app/(main)/courses/components/CourseClient.tsx
+
+/**
+ * CourseCard component to display individual course information
+ */
 function CourseCard({ course }: { course: Course }) {
-  // Generate a random rating between 4.2 and 5.0
-  const mockRating = useMemo(
-    () => (Math.random() * (5 - 4.2) + 4.2).toFixed(1),
-    []
-  )
+  // ✅ ĐÃ SỬA: Tạo số rating cố định dựa trên ID khóa học
+  // Thay vì dùng Math.random() thuần túy, ta dùng công thức toán học với ID
+  const mockRating = useMemo(() => {
+    const idNum = Number(course.id) || 0
+    // Hàm sin giúp tạo ra số thập phân có vẻ ngẫu nhiên nhưng cố định với mỗi ID
+    const seed = Math.sin(idNum) * 10000
+    const random = seed - Math.floor(seed) // Tạo số từ 0 -> 1
+
+    // Tính rating trong khoảng 4.2 đến 5.0
+    return (4.2 + random * (5.0 - 4.2)).toFixed(1)
+  }, [course.id])
 
   return (
     <Link href={`/courses/${course.id}`} className="block h-full">
@@ -290,7 +301,7 @@ function CourseCard({ course }: { course: Course }) {
           <div className="flex items-center gap-2 text-xs text-gray-500 mb-1">
             <Rate
               disabled
-              defaultValue={parseFloat(mockRating)}
+              value={parseFloat(mockRating)} // Sửa defaultValue thành value để chắc chắn
               style={{ fontSize: 14 }}
             />
             <span className="font-bold text-gray-700">{mockRating}</span>

@@ -67,7 +67,8 @@ import {
 
 const { TextArea } = Input
 const CLOUDINARY_CLOUD_NAME = "dhclot8lh"
-const CLOUDINARY_UPLOAD_PRESET = "kms-course"
+// const CLOUDINARY_UPLOAD_PRESET = "kms-course"
+const CLOUDINARY_UPLOAD_PRESET = "kms-plus"
 const { Dragger } = Upload
 // --- 1. ĐỊNH NGHĨA CÁC TYPES ---
 
@@ -193,36 +194,45 @@ export function CreateCourseClient({
   }, [payload.curriculum, activeSectionId])
 
   // --- CÁC HÀM XỬ LÝ ---
-
-  const handleUploadThumbnail = async (file: File) => {
+  // Sửa lại hàm handleUploadThumbnail
+  const handleUploadThumbnail = async (options: any) => {
+    const { file, onSuccess, onError } = options
     const hide = message.loading("Đang tải ảnh lên...", 0)
+
     try {
       const formData = new FormData()
       formData.append("file", file)
-      formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET)
+      formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET) // Đảm bảo preset này là UNSIGNED
 
       const res = await fetch(
         `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
         { method: "POST", body: formData }
       )
 
-      if (!res.ok) throw new Error("Upload thất bại")
+      if (!res.ok) {
+        const errorData = await res.json()
+        throw new Error(errorData.error?.message || "Upload thất bại")
+      }
 
       const data = await res.json()
       const shortUrl = data.secure_url
 
+      // Cập nhật State
       setImageUrl(shortUrl)
       update("thumbnail_url", shortUrl)
+
+      // Báo cho Antd là đã xong
+      if (onSuccess) onSuccess("Ok")
       message.success("Tải ảnh thành công!")
-    } catch (error) {
+    } catch (error: any) {
       console.error("Upload error:", error)
-      message.error("Lỗi tải ảnh")
+      message.error(`Lỗi tải ảnh: ${error.message}`)
+      // Báo cho Antd là lỗi
+      if (onError) onError({ error })
     } finally {
       hide()
-      return false
     }
   }
-
   const findSectionId = (itemId: string) => {
     if (payload.curriculum.find((s) => s.id === itemId)) {
       return itemId
@@ -470,7 +480,7 @@ export function CreateCourseClient({
                 <Upload
                   accept="image/*"
                   showUploadList={false}
-                  beforeUpload={handleUploadThumbnail}
+                  customRequest={handleUploadThumbnail}
                 >
                   <Button icon={<PlusOutlined />}>Upload Image</Button>
                 </Upload>
@@ -888,80 +898,107 @@ function CurriculumContentBank({
             />
           </div>
         )}
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold m-0">Available Content</h3>
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={() => setIsCreateModalOpen(true)}
-            className="bg-blue-600 hover:bg-blue-500 shadow-sm"
-            size="small"
-          >
-            New Lesson
-          </Button>
-        </div>
-        <div className="relative mb-2">
-          <input
-            type="text"
-            placeholder="Search content..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-8 pr-4 py-2 border rounded-md text-sm"
-          />
-          <Search
-            size={16}
-            className="absolute left-2.5 top-2.5 text-gray-400"
-          />
-        </div>
+        <div className="bg-gray-50 p-4 rounded border flex-1 flex flex-col overflow-hidden">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold m-0">Available Content</h3>
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={() => setIsCreateModalOpen(true)}
+              className="bg-blue-600 hover:bg-blue-500 shadow-sm"
+              size="small"
+            >
+              New Lesson
+            </Button>
+          </div>
+          <div className="relative mb-2">
+            <input
+              type="text"
+              placeholder="Search content..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-8 pr-4 py-2 border rounded-md text-sm"
+            />
+            <Search
+              size={16}
+              className="absolute left-2.5 top-2.5 text-gray-400"
+            />
+          </div>
 
-        <div className="flex border-b border-gray-200">
-          <button
-            onClick={() => setActiveTab("lessons")}
-            className={`px-4 py-2 text-sm font-medium ${
-              activeTab === "lessons"
-                ? "border-b-2 border-blue-600 text-blue-600"
-                : "text-gray-500"
-            }`}
-          >
-            Lessons ({availableLessons.length})
-          </button>
-          <button
-            onClick={() => setActiveTab("quizzes")}
-            className={`px-4 py-2 text-sm font-medium ${
-              activeTab === "quizzes"
-                ? "border-b-2 border-blue-600 text-blue-600"
-                : "text-gray-500"
-            }`}
-          >
-            Quizzes ({availableQuizzes.length})
-          </button>
-        </div>
-        <div className="flex-1 overflow-y-auto space-y-2">
-          {activeTab === "quizzes" ? (
-            isLoadingQuizzes ? (
-              <div className="text-center py-4">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
-                <p className="mt-2 text-sm text-gray-500">Loading quizzes...</p>
-              </div>
-            ) : quizzesError ? (
-              <div className="text-center py-4 text-red-500 text-sm">
-                {quizzesError}
-              </div>
-            ) : availableQuizzes.length === 0 ? (
-              <div className="text-center py-4 text-gray-500 text-sm">
-                No quizzes available
-              </div>
-            ) : (
-              availableQuizzes.map((quiz) => (
-                <ContentBankItem
-                  key={`quiz-${quiz.id}`}
-                  icon={<FileQuestion size={16} />}
-                  title={quiz.title}
-                  meta={`
+          <div className="flex border-b border-gray-200">
+            <button
+              onClick={() => setActiveTab("lessons")}
+              className={`px-4 py-2 text-sm font-medium ${
+                activeTab === "lessons"
+                  ? "border-b-2 border-blue-600 text-blue-600"
+                  : "text-gray-500"
+              }`}
+            >
+              Lessons ({availableLessons.length})
+            </button>
+            <button
+              onClick={() => setActiveTab("quizzes")}
+              className={`px-4 py-2 text-sm font-medium ${
+                activeTab === "quizzes"
+                  ? "border-b-2 border-blue-600 text-blue-600"
+                  : "text-gray-500"
+              }`}
+            >
+              Quizzes ({availableQuizzes.length})
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto space-y-2 max-h-[400px]">
+            {activeTab === "quizzes" ? (
+              isLoadingQuizzes ? (
+                <div className="text-center py-4">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
+                  <p className="mt-2 text-sm text-gray-500">
+                    Loading quizzes...
+                  </p>
+                </div>
+              ) : quizzesError ? (
+                <div className="text-center py-4 text-red-500 text-sm">
+                  {quizzesError}
+                </div>
+              ) : availableQuizzes.length === 0 ? (
+                <div className="text-center py-4 text-gray-500 text-sm">
+                  No quizzes available
+                </div>
+              ) : (
+                availableQuizzes.map((quiz) => (
+                  <ContentBankItem
+                    key={`quiz-${quiz.id}`}
+                    icon={<FileQuestion size={16} />}
+                    title={quiz.title}
+                    meta={`
           ${quiz.question_count} questions • 
           ${quiz.time_limit_minutes || "No"} min • 
           Pass: ${quiz.passing_score}%
         `}
+                    onAdd={() => {
+                      if (!activeSectionId) {
+                        message.warning("Please select a section first")
+                        return
+                      }
+                      handleAddItemToSection(
+                        activeSectionId,
+                        "quiz",
+                        quiz.id,
+                        quiz.title,
+                        quiz.time_limit_minutes,
+                        quiz.question_count
+                      )
+                    }}
+                  />
+                ))
+              )
+            ) : (
+              filteredLessons.map((lesson) => (
+                <ContentBankItem
+                  key={lesson.id}
+                  icon={<BookOpen size={16} />}
+                  title={lesson.title}
+                  meta={`${lesson.duration_minutes || 0} min`}
                   onAdd={() => {
                     if (!activeSectionId) {
                       message.warning("Please select a section first")
@@ -969,39 +1006,16 @@ function CurriculumContentBank({
                     }
                     handleAddItemToSection(
                       activeSectionId,
-                      "quiz",
-                      quiz.id,
-                      quiz.title,
-                      quiz.time_limit_minutes,
-                      quiz.question_count
+                      "lesson",
+                      lesson.id,
+                      lesson.title,
+                      lesson.duration_minutes
                     )
                   }}
                 />
               ))
-            )
-          ) : (
-            filteredLessons.map((lesson) => (
-              <ContentBankItem
-                key={lesson.id}
-                icon={<BookOpen size={16} />}
-                title={lesson.title}
-                meta={`${lesson.duration_minutes || 0} min`}
-                onAdd={() => {
-                  if (!activeSectionId) {
-                    message.warning("Please select a section first")
-                    return
-                  }
-                  handleAddItemToSection(
-                    activeSectionId,
-                    "lesson",
-                    lesson.id,
-                    lesson.title,
-                    lesson.duration_minutes
-                  )
-                }}
-              />
-            ))
-          )}
+            )}
+          </div>
         </div>
       </div>
 
@@ -1013,7 +1027,7 @@ function CurriculumContentBank({
         {/* CỘT PHẢI */}
         <div className="block text-sm font-medium mb-1 text-gray-700">
           <h3 className="text-lg font-semibold mb-4">Course Curriculum</h3>
-          <div className="flex-1 overflow-y-auto space-y-4">
+          <div className="flex-1 overflow-y-auto space-y-4 pr-2 max-h-[600px]">
             {sections.map((section) => (
               <div key={section.id} className="bg-white border rounded">
                 <div className="flex items-center justify-between p-3 border-b bg-gray-50">
@@ -1190,8 +1204,9 @@ function CurriculumContentBank({
               }}
               buttonStyle="solid"
               className="w-full flex"
+              value={contentType}
             >
-              <Radio.Button value="text" className="flex-1 text-center">
+              <Radio.Button value="text_media" className="flex-1 text-center">
                 Text & Media
               </Radio.Button>
               <Radio.Button value="video" className="flex-1 text-center">
