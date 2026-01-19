@@ -39,11 +39,6 @@ export default function AnswerSection({
                     <Title level={4} style={{ color: "black", textAlign: "left", margin: 0 }}>
                         Answers ({answer_count})
                     </Title>
-
-                    {/*  FUTURE SORT FILTER */}
-                    {/* <div style={{ position: "absolute", right: 0, top: 0 }}>
-                
-                </div> */}
                 </Flex>
 
                 {/* Create Answer Form */}

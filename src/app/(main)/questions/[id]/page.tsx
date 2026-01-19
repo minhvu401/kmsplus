@@ -4,11 +4,13 @@ import {
   getQuestionDetails,
   getAnswersForQuestion,
   fetchFilteredAnswers,
+  getActiveCategories,
 } from "@/action/question/questionActions"
 import AnswerSection from "@/components/ui/questions/answer-section"
 import PageWrapper from "@/components/ui/questions/page-wrapper"
 import QuestionDetails from "@/components/ui/questions/question-details"
 import { QuestionDetailsNotification } from "@/components/ui/questions/questions-notification"
+import { requireAuth } from "@/lib/auth"
 import { notFound } from "next/navigation"
 
 export default async function Page({
@@ -29,11 +31,13 @@ export default async function Page({
   const { id } = await params
   const resolvedSearchParams = await searchParams
   const currentPage = Number(resolvedSearchParams?.page) || 1
+  const user = await requireAuth()
 
   // Fetch question details
   const question = await getQuestionDetails(id)
   const answers = await getAnswersForQuestion(Number(id))
   const paginatedAnswers = await fetchFilteredAnswers(currentPage, Number(id))
+  const categories = await getActiveCategories()
 
   if (!question) {
     return notFound()
@@ -45,7 +49,7 @@ export default async function Page({
         id={id}
         key={`${id}-${resolvedSearchParams?.closed}-${resolvedSearchParams?.opened}-${resolvedSearchParams?.updated}-${resolvedSearchParams?.answerCreated}-${resolvedSearchParams?.answerDeleted}`}
       />
-      <QuestionDetails question={question} />
+      <QuestionDetails userId={Number(user.id)} question={question} categories={categories} />
       <AnswerSection
         questionId={Number(id)}
         answer_count={question.answer_count}

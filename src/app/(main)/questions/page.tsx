@@ -12,11 +12,12 @@ import {
   fetchQuestionsPages,
   fetchFilteredQuestions,
 } from "@/action/question/questionActions"
-
 import Pagination from "@/components/ui/questions/pagination"
 import QuestionsList from "@/components/ui/questions/questions-list"
 import QuestionsNotification from "@/components/ui/questions/questions-notification"
 import { Flex } from "antd"
+import { requireAuth } from "@/lib/auth"
+
 export default async function Page(props: {
   searchParams?: Promise<{
     query?: string
@@ -26,6 +27,7 @@ export default async function Page(props: {
     sort?: string
   }>
 }) {
+  const user = await requireAuth()
   const searchParams = await props.searchParams
   const query = searchParams?.query || ""
   const category = searchParams?.category || "any"
@@ -43,6 +45,7 @@ export default async function Page(props: {
   )
   
   const noSearchResults = query !== "" && questions.length === 0
+  const isEmpty = questions.length === 0
   const categories = await getActiveCategories()
 
   return (
@@ -51,16 +54,22 @@ export default async function Page(props: {
 
       <Flex align="center" gap={28} style={{ marginBottom: 24 }}>
         <Search placeholder="Search questions..." />
-        <CreateQuestion />
+        <CreateQuestion categories={categories} userId={Number(user.id)} />
       </Flex>
 
-      <Flex align="center" gap={56} style={{ marginBottom: 24 }}>
+      <Flex align="center" gap={56} style={{ marginBottom: 24, width: "100%" }}>
         <FilterCategory categories={categories} />
         <FilterStatus />
         <SortBy />
       </Flex>
 
-      <Flex style={{ marginBottom: 24 }}>
+      <Flex
+        style={{
+          marginBottom: 24,
+          width: "100%",
+          minHeight: isEmpty ? undefined : "60vh",
+        }}
+      >
         <QuestionsList questions={questions} noSearchResults={noSearchResults} />
       </Flex>
 
