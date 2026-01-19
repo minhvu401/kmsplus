@@ -12,8 +12,6 @@ import {
   Divider,
 } from "antd"
 import {
-  MenuFoldOutlined,
-  MenuUnfoldOutlined,
   BellOutlined,
   UserOutlined,
   WarningOutlined,
@@ -31,7 +29,6 @@ const { Text } = Typography
 
 interface HeaderProps extends React.HTMLAttributes<HTMLElement> {
   collapsed: boolean
-  onToggle: () => void
 }
 
 interface UserType {
@@ -43,7 +40,7 @@ interface UserType {
   avatar_url?: string
 }
 
-export default function AppHeader({ collapsed, onToggle }: HeaderProps) {
+export default function AppHeader({ collapsed }: HeaderProps) {
   const {
     token: { colorBgContainer },
   } = theme.useToken()
@@ -121,17 +118,11 @@ export default function AppHeader({ collapsed, onToggle }: HeaderProps) {
         padding: "0 24px",
         background: colorBgContainer,
         display: "flex",
-        justifyContent: "space-between",
+        justifyContent: "flex-end",
         alignItems: "center",
         borderBottom: "1px solid #f0f0f0",
       }}
     >
-      {React.createElement(collapsed ? MenuUnfoldOutlined : MenuFoldOutlined, {
-        className: "trigger",
-        onClick: onToggle,
-        style: { fontSize: "18px", cursor: "pointer" },
-      })}
-
       <Space size="middle">
         {/* <WarningOutlined style={{ fontSize: "18px", color: "#f5222d" }} /> */}
         <MessageOutlined style={{ fontSize: "18px" }} />
