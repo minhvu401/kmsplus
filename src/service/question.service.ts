@@ -328,11 +328,13 @@ export async function fetchQuestionPagesAction(
     `
 
     // Add optional filters dynamically
-    if (category !== "any") {
+    // Only filter by category if it's a valid numeric ID
+    const categoryId = parseInt(category, 10)
+    if (category !== "any" && !isNaN(categoryId)) {
       sqlQuery = sql`
       JOIN categories ON questions.category_id = categories.id
       ${sqlQuery} 
-      AND categories.id = ${category}
+      AND categories.id = ${categoryId}
       `
     }
 
@@ -382,10 +384,12 @@ export async function fetchFilteredQuestionsAction(
     `;
 
     // Add optional filters dynamically
-    if (category !== "any") {
+    // Only filter by category if it's a valid numeric ID
+    const categoryId = parseInt(category, 10)
+    if (category !== "any" && !isNaN(categoryId)) {
       sqlQuery = sql`
       ${sqlQuery} 
-      AND categories.id = ${category}
+      AND categories.id = ${categoryId}
       `
     }
 

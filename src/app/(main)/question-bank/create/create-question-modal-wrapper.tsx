@@ -56,7 +56,7 @@ export default function CreateQuestionModalWrapper() {
                 }}
                 disabled={isLoadingCategories}
             >
-                {isLoadingCategories ? 'Đang tải...' : 'Create a question'}
+                {isLoadingCategories ? 'Đang tải...' : '+ Tạo câu hỏi'}
             </Button>
             {categoriesError && (
                 <div className="mt-2 p-3 bg-red-100 border border-red-400 rounded text-red-700 text-sm">
