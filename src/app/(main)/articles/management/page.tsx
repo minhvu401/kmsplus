@@ -1,58 +1,41 @@
 "use client"
 
-import {
-  useState,
-  useEffect,
-  useRef,
-  type KeyboardEvent,
-  type ClipboardEvent,
-} from "react"
-import { useRouter } from "next/navigation"
-import {
-  Table,
-  Input,
-  Select,
-  Button,
-  Space,
-  Flex,
-  Typography,
-  Tag,
-  Card,
-  Alert,
-  Segmented,
-  Row,
-  Col,
-  Spin,
-  Modal,
-  Form,
-  Divider,
-  message,
-  Tooltip,
-} from "antd"
-import {
-  SearchOutlined,
-  PlusOutlined,
-  EditOutlined,
-  DeleteOutlined,
-  BoldOutlined,
-  ItalicOutlined,
-  UnderlineOutlined,
-  UnorderedListOutlined,
-  OrderedListOutlined,
-  SendOutlined,
-  CloseOutlined,
-} from "@ant-design/icons"
-import type { ColumnsType } from "antd/es/table"
-import type { FormInstance } from "antd/es/form"
-import {
-  filterByTagAndCategory,
-  getAllTags,
-  deleteArticle,
-  getAllCategories,
-  createArticle,
-} from "@/action/articles/articlesManagementAction"
-import type { Article, Tag as TagType } from "@/service/articles.service"
+import React, { useState, useEffect, useRef, type KeyboardEvent, type ClipboardEvent } from 'react';
+import { useRouter } from 'next/navigation';
+import { Table, Input, Select, Button, Space, Flex, Typography, Tag as AntTag, Card, Alert, Segmented, Row, Col, Spin, Modal, Form, Divider, message, Tooltip } from 'antd';
+import { SearchOutlined, PlusOutlined, EditOutlined, DeleteOutlined, SendOutlined, CloseOutlined } from '@ant-design/icons';
+import type { ColumnsType } from 'antd/es/table';
+import type { FormInstance } from 'antd/es/form';
+import { filterByTagAndCategory, getAllTags, deleteArticle, getAllCategories, createArticle } from '@/action/articles/articlesManagementAction';
+import type { Article, Tag } from '@/service/articles.service';
+import dynamic from 'next/dynamic';
+import 'react-markdown-editor-lite/lib/index.css';
+import MarkdownIt from 'markdown-it';
+// @ts-ignore
+import markdownItUnderline from 'markdown-it-underline';
 
+// Make React available globally for react-markdown-editor-lite
+if (typeof window !== 'undefined') {
+  (window as any).React = React;
+}
+
+const MdEditor = dynamic(() => import('react-markdown-editor-lite'), { 
+  ssr: false,
+  loading: () => <p>Loading editor...</p>
+});
+
+const { Text, Title } = Typography;
+
+// Initialize markdown parser with proper configuration
+const mdParser = new MarkdownIt({
+  html: true,        // Enable HTML tags in source
+  linkify: true,     // Autoconvert URL-like text to links
+  typographer: true, // Enable smartypants and other sweet transforms
+  breaks: true,      // Convert '\n' in paragraphs into <br>
+});
+
+// Add underline plugin
+mdParser.use(markdownItUnderline);
 const { Text, Title } = Typography
 
 function useDebounce(value: string, delay: number) {
@@ -139,6 +122,15 @@ export default function ArticleManagement() {
   const [viewMode, setViewMode] = useState<"list" | "grid">("list")
 
   // Modal and create form states
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [createForm] = Form.useForm();
+  const [titleContent, setTitleContent] = useState('');
+  const [contentValue, setContentValue] = useState('');
+  const [imageUrl, setImageUrl] = useState('');
+  const [selectedTagsForCreate, setSelectedTagsForCreate] = useState<string[]>([]);
+  const [submitStatus, setSubmitStatus] = useState<'draft' | 'published' | 'pending'>('published');
+  const [creatingArticle, setCreatingArticle] = useState(false);
+  const titleEditorRef = useRef<HTMLDivElement>(null);
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [createForm] = Form.useForm()
   const [titleContent, setTitleContent] = useState("")
@@ -159,6 +151,12 @@ export default function ArticleManagement() {
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [articlesError, setArticlesError] = useState<string | null>(null)
 
+  const [tags, setTags] = useState<Tag[]>([]);
+  const [loadingTags, setLoadingTags] = useState(false);
+  const [categories, setCategories] = useState<{ id: number; name: string }[]>([]);
+  const [loadingCategories, setLoadingCategories] = useState(false);
+  const [userRoles, setUserRoles] = useState<string[]>([]);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [tags, setTags] = useState<TagType[]>([])
   const [loadingTags, setLoadingTags] = useState(false)
   const [categories, setCategories] = useState<{ id: number; name: string }[]>(
@@ -192,9 +190,52 @@ export default function ArticleManagement() {
     } finally {
       if (showLoader) setLoadingArticles(false)
     }
+  };
+
+  // Handle markdown editor changes
+  const handleEditorChange = ({ text, html }: { text: string; html: string }) => {
+    setContentValue(text);
+    
+    // Extract image URLs from markdown content
+    // Pattern: ![alt](url) or ![](url)
+    const imageRegex = /!\[.*?\]\((.*?)\)/g;
+    const matches = text.matchAll(imageRegex);
+    const urls: string[] = [];
+    
+    for (const match of matches) {
+      if (match[1]) {
+        urls.push(match[1]);
+      }
+    }
+    
+    // Use the first image URL found, or empty string if none
+    if (urls.length > 0) {
+      setImageUrl(urls[0]);
+    } else {
+      setImageUrl('');
+    }
+
+    return text;
+  };
   }
 
   useEffect(() => {
+    refreshCurrentArticles();
+  }, [debouncedSearchQuery, selectedTag, selectedCategory, selectedStatus]);
+
+  // Load user roles
+  useEffect(() => {
+    (async () => {
+      try {
+        // TODO: Implement getUserRoles API
+        // For now, just set empty roles
+        setUserRoles([]);
+        setIsAdmin(false);
+      } catch (err) {
+        console.error('Error loading user roles:', err);
+      }
+    })();
+  }, []);
     refreshCurrentArticles()
   }, [debouncedSearchQuery, selectedTag, selectedCategory, selectedStatus])
 
@@ -259,11 +300,14 @@ export default function ArticleManagement() {
         return (
           <Space size={[4, 4]} wrap>
             {visibleTags.map((tag) => (
+              <AntTag key={tag} color="blue">{tag}</AntTag>
               <Tag key={tag} color="blue">
                 {tag}
               </Tag>
             ))}
             {hiddenTags.length > 0 && (
+              <Tooltip title={hiddenTags.join(', ')}>
+                <AntTag color="default">+{hiddenTags.length}</AntTag>
               <Tooltip title={hiddenTags.join(", ")}>
                 <Tag color="default">+{hiddenTags.length}</Tag>
               </Tooltip>
@@ -284,6 +328,7 @@ export default function ArticleManagement() {
       dataIndex: "status",
       key: "status",
       width: 120,
+      render: (status: string) => <AntTag color={statusColors[status] || 'default'}>{status}</AntTag>,
       render: (status: string) => (
         <Tag color={statusColors[status] || "default"}>{status}</Tag>
       ),
@@ -303,6 +348,12 @@ export default function ArticleManagement() {
       width: 100,
       render: (_, record) => (
         <Space size="small">
+          <Button
+            type="text"
+            icon={<EditOutlined />}
+            size="small"
+            onClick={() => router.push(`/articles/${record.id}/edit`)}
+          />
           <Button type="text" icon={<EditOutlined />} size="small" />
           <Button
             type="text"
@@ -478,6 +529,7 @@ export default function ArticleManagement() {
                       <Card
                         hoverable
                         title={article.title}
+                        extra={<AntTag color={statusColors[article.status] || 'default'}>{article.status}</AntTag>}
                         extra={
                           <Tag
                             color={statusColors[article.status] || "default"}
@@ -506,6 +558,7 @@ export default function ArticleManagement() {
                               <Text type="secondary">No tags</Text>
                             )}
                             {tagList.map((tag) => (
+                              <AntTag key={`${article.id}-${tag}`} color="blue">{tag}</AntTag>
                               <Tag key={`${article.id}-${tag}`} color="blue">
                                 {tag}
                               </Tag>
@@ -567,6 +620,13 @@ export default function ArticleManagement() {
           onFinish={async (values) => {
             setCreatingArticle(true)
             try {
+              const formData = new FormData();
+              formData.append('title', titleContent);
+              formData.append('content', contentValue);
+              formData.append('status', submitStatus);
+              formData.append('tags', JSON.stringify(selectedTagsForCreate));
+              formData.append('category_id', values?.categoryId ? String(values.categoryId) : '');
+              formData.append('image_url', imageUrl);
               const formData = new FormData()
               formData.append("title", titleContent)
               formData.append("content", contentValue)
@@ -579,6 +639,15 @@ export default function ArticleManagement() {
 
               const result = await createArticle(formData)
               if (result.success) {
+                message.success(result.message || 'Article created successfully!');
+                setIsModalOpen(false);
+                createForm.resetFields();
+                setTitleContent('');
+                setContentValue('');
+                setImageUrl('');
+                setSelectedTagsForCreate([]);
+                setSubmitStatus('published');
+                await refreshCurrentArticles(false);
                 message.success(
                   result.message || "Article created successfully!"
                 )
@@ -637,7 +706,6 @@ export default function ArticleManagement() {
                     setTitleContent(titleEditorRef.current.innerText)
                   }
                 }}
-                onMouseDown={() => saveSelection(savedSelectionRef)}
                 onKeyDown={(e: KeyboardEvent<HTMLDivElement>) => {
                   if (e.key === "Enter") {
                     e.preventDefault()
@@ -674,16 +742,22 @@ export default function ArticleManagement() {
               </Text>
             }
             name="content"
+            valuePropName="value"
+            trigger="onChange"
+            getValueFromEvent={(...args) => args?.[0]?.text ?? ''}
             rules={[
               {
                 required: true,
                 validator: (_, value) => {
+                  const textContent = contentValue.replace(/[#*_\[\]`~>-]/g, '').trim();
                   const textContent = contentValue
                     .replace(/<[^>]*>/g, "")
                     .trim()
                   if (!textContent) {
                     return Promise.reject("Please enter content")
                   }
+                  if (textContent.length > 5000) {
+                    return Promise.reject('Content must be less than 5000 characters');
                   if (textContent.length > 3000) {
                     return Promise.reject(
                       "Content must be less than 3000 characters"
@@ -694,6 +768,13 @@ export default function ArticleManagement() {
               },
             ]}
           >
+            <MdEditor
+              style={{ height: '400px' }}
+              renderHTML={(text) => mdParser.render(text)}
+              onChange={handleEditorChange}
+              value={contentValue}
+              placeholder="Write your content in Markdown..."
+            />
             <div>
               <Space size="small" className="mb-2" wrap>
                 <Select
@@ -812,6 +893,7 @@ export default function ArticleManagement() {
 
           <Flex justify="flex-end" align="center" className="mt-2 mb-4">
             <Text type="secondary" className="text-sm">
+              {contentValue.replace(/[#*_\[\]`~>-]/g, '').trim().length} / 5,000
               {contentValue.replace(/<[^>]*>/g, "").trim().length} / 3,000
             </Text>
           </Flex>
@@ -903,6 +985,31 @@ export default function ArticleManagement() {
               >
                 Cancel
               </Button>
+              {isAdmin ? (
+                <Button
+                  type="primary"
+                  htmlType="submit"
+                  size="large"
+                  icon={<SendOutlined />}
+                  onClick={() => setSubmitStatus('published')}
+                  loading={creatingArticle}
+                >
+                  Post
+                </Button>
+              ) : (
+                <Tooltip title="Only Admin can publish. Your article will be pending for approval.">
+                  <Button
+                    type="primary"
+                    htmlType="submit"
+                    size="large"
+                    icon={<SendOutlined />}
+                    onClick={() => setSubmitStatus('pending')}
+                    loading={creatingArticle}
+                  >
+                    Submit for Review
+                  </Button>
+                </Tooltip>
+              )}
               <Button
                 type="primary"
                 htmlType="submit"
