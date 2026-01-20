@@ -110,6 +110,7 @@ export default function ArticleManagement() {
   const [selectedTag, setSelectedTag] = useState('All Tags');
   const [selectedCategory, setSelectedCategory] = useState<number | 'All'>('All');
   const [selectedStatus, setSelectedStatus] = useState('All');
+  const [selectedDeletedFilter, setSelectedDeletedFilter] = useState<'all' | 'deleted' | 'not_deleted'>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
 
@@ -151,6 +152,7 @@ export default function ArticleManagement() {
     draft: 'blue',
     pending: 'gold',
     archived: 'default',
+    deleted: 'red',
   };
 
   const refreshCurrentArticles = async (showLoader: boolean = true) => {
@@ -159,7 +161,8 @@ export default function ArticleManagement() {
     try {
       const catId = selectedCategory === 'All' ? undefined : selectedCategory;
       const statusFilter = selectedStatus === 'All' ? undefined : selectedStatus;
-      const res = await filterByTagAndCategory(debouncedSearchQuery, selectedTag, catId, statusFilter);
+      const isDeletedFilter = selectedDeletedFilter === 'all' ? 'all' : selectedDeletedFilter === 'deleted' ? true : false;
+      const res = await filterByTagAndCategory(debouncedSearchQuery, selectedTag, catId, statusFilter, isDeletedFilter);
       setArticles(res || []);
     } catch (err: any) {
       setArticlesError(err?.message || String(err));
@@ -193,7 +196,7 @@ export default function ArticleManagement() {
 
   useEffect(() => {
     refreshCurrentArticles();
-  }, [debouncedSearchQuery, selectedTag, selectedCategory, selectedStatus]);
+  }, [debouncedSearchQuery, selectedTag, selectedCategory, selectedStatus, selectedDeletedFilter]);
 
   useEffect(() => {
     (async () => {
@@ -290,7 +293,11 @@ export default function ArticleManagement() {
       dataIndex: 'status',
       key: 'status',
       width: 120,
-      render: (status: string) => <AntTag color={statusColors[status] || 'default'}>{status}</AntTag>,
+      render: (status: string, record: Article) => {
+        const displayStatus = record.is_deleted ? 'deleted' : status;
+        const displayText = record.is_deleted ? 'Deleted' : status;
+        return <AntTag color={statusColors[displayStatus] || 'default'}>{displayText}</AntTag>;
+      },
     },
     {
       title: 'Last Updated',
@@ -344,18 +351,24 @@ export default function ArticleManagement() {
     { label: 'Archived', value: 'archived' },
   ];
 
+  const deletedFilterOptions = [
+    { label: 'All', value: 'all' },
+    { label: 'Not Deleted', value: 'not_deleted' },
+    { label: 'Deleted', value: 'deleted' },
+  ];
+
   const handleArchiveClick = async (articleId: number) => {
-    const ok = window.confirm('Archive this article?');
+    const ok = window.confirm('Delete this article? (This will mark it as deleted)');
     if (!ok) return;
     try {
       setDeletingId(articleId);
       const res = await deleteArticle(articleId);
       if (!res.success) {
-        throw new Error(res.message || 'Failed to archive');
+        throw new Error(res.message || 'Failed to delete');
       }
       await refreshCurrentArticles(false);
     } catch (err: any) {
-      setArticlesError(err?.message || 'Failed to archive');
+      setArticlesError(err?.message || 'Failed to delete');
     } finally {
       setDeletingId(null);
     }
@@ -519,6 +532,17 @@ export default function ArticleManagement() {
                 />
               </Space>
 
+              <Space direction="vertical" style={{ width: 180 }}>
+                <Text type="secondary">Deleted:</Text>
+                <Select
+                  value={selectedDeletedFilter}
+                  onChange={setSelectedDeletedFilter}
+                  options={deletedFilterOptions}
+                  size="large"
+                  className="w-full"
+                />
+              </Space>
+
               <Button
                 type="primary"
                 icon={<PlusOutlined />}
@@ -570,12 +594,14 @@ export default function ArticleManagement() {
                     .split(',')
                     .map((t) => t.trim())
                     .filter(Boolean);
+                  const displayStatus = article.is_deleted ? 'deleted' : article.status;
+                  const displayText = article.is_deleted ? 'Deleted' : article.status;
                   return (
                     <Col xs={24} sm={12} lg={8} xl={6} key={article.id}>
                       <Card
                         hoverable
                         title={article.title}
-                        extra={<AntTag color={statusColors[article.status] || 'default'}>{article.status}</AntTag>}
+                        extra={<AntTag color={statusColors[displayStatus] || 'default'}>{displayText}</AntTag>}
                       >
                         <Space direction="vertical" size="small" className="w-full">
                           <Text type="secondary">
@@ -676,7 +702,7 @@ export default function ArticleManagement() {
           validateTrigger="onBlur"
         >
           <Form.Item
-            label={<Text strong className="text-base">Title</Text>}
+            label={<Text strong className="text-xl">Title</Text>}
             name="title"
             rules={[
               { 
@@ -712,7 +738,7 @@ export default function ArticleManagement() {
                 const text = e.clipboardData.getData('text/plain').replace(/\s+/g, ' ').trim();
                 document.execCommand('insertText', false, text);
               }}
-              className="border border-gray-300 rounded p-3 min-h-[60px] focus:outline-none focus:border-blue-500"
+              className="border border-gray-300 rounded p-3 min-h-[60px] focus:outline-none focus:border-blue-500 text-lg font-medium"
               style={{ backgroundColor: 'white' }}
             />
           </Form.Item>
@@ -883,7 +909,7 @@ export default function ArticleManagement() {
             validateTrigger="onBlur"
           >
             <Form.Item
-              label={<Text strong className="text-base">Title</Text>}
+              label={<Text strong className="text-xl">Title</Text>}
               name="title"
               rules={[
                 { 
@@ -919,7 +945,7 @@ export default function ArticleManagement() {
                   const text = e.clipboardData.getData('text/plain').replace(/\s+/g, ' ').trim();
                   document.execCommand('insertText', false, text);
                 }}
-                className="border border-gray-300 rounded p-3 min-h-[60px] focus:outline-none focus:border-blue-500"
+                className="border border-gray-300 rounded p-3 min-h-[60px] focus:outline-none focus:border-blue-500 text-lg font-medium"
                 style={{ backgroundColor: 'white' }}
                 suppressContentEditableWarning
               >
