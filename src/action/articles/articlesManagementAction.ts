@@ -22,10 +22,11 @@ export async function filterByTagAndCategory(
   searchQuery: string,
   tagFilter?: string,
   categoryId?: number,
-  statusFilter?: string
+  statusFilter?: string,
+  isDeletedFilter?: boolean | 'all'
 ) {
   await requireAuth()
-  return filterByTagAction(searchQuery, tagFilter, categoryId, statusFilter)
+  return filterByTagAction(searchQuery, tagFilter, categoryId, statusFilter, isDeletedFilter)
 }
 
 export async function deleteArticle(id: number) {
