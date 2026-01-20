@@ -18,9 +18,15 @@ export async function filterByTag(searchQuery: string, tagFilter?: string) {
   return filterByTagAction(searchQuery, tagFilter)
 }
 
-export async function filterByTagAndCategory(searchQuery: string, tagFilter?: string, categoryId?: number, statusFilter?: string) {
+export async function filterByTagAndCategory(
+  searchQuery: string,
+  tagFilter?: string,
+  categoryId?: number,
+  statusFilter?: string,
+  isDeletedFilter?: boolean | 'all'
+) {
   await requireAuth()
-  return filterByTagAction(searchQuery, tagFilter, categoryId, statusFilter)
+  return filterByTagAction(searchQuery, tagFilter, categoryId, statusFilter, isDeletedFilter)
 }
 
 export async function deleteArticle(id: number) {
