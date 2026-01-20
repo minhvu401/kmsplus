@@ -13,6 +13,7 @@ export type Article = {
   category_name?: string | null
   status: string
   updated_at: Date
+  is_deleted: boolean
 }
 
 export type Tag = {
@@ -141,7 +142,8 @@ export async function filterByTagAction(
   searchQuery: string,
   tagFilter?: string,
   categoryId?: number,
-  statusFilter?: string
+  statusFilter?: string,
+  isDeletedFilter?: boolean | 'all'
 ): Promise<Article[]> {
   const query = `%${searchQuery}%`
 
@@ -151,6 +153,7 @@ export async function filterByTagAction(
       a.title, 
       a.status, 
       a.updated_at,
+      a.is_deleted,
       STRING_AGG(t.name, ', ') as article_tags,
       c.name as category_name
     FROM articles a
@@ -161,9 +164,10 @@ export async function filterByTagAction(
     WHERE a.title ILIKE ${query}
       ${categoryId ? sql`AND a.category_id = ${categoryId}` : sql``}
       ${statusFilter && statusFilter !== 'All' ? sql`AND a.status = ${statusFilter}` : sql``}
+      ${isDeletedFilter === true ? sql`AND a.is_deleted = TRUE` : isDeletedFilter === false ? sql`AND a.is_deleted = FALSE` : sql``}
     
     GROUP BY 
-      a.id, a.title, a.status, a.updated_at, c.name
+      a.id, a.title, a.status, a.updated_at, a.is_deleted, c.name
     ORDER BY 
       a.id ASC
   `
@@ -192,7 +196,7 @@ export async function deleteArticleAction(articleId: number): Promise<{ success:
   try {
     const result = await sql`
       UPDATE articles
-      SET status = 'archived', updated_at = NOW()
+      SET is_deleted = TRUE, deleted_at = NOW(), updated_at = NOW()
       WHERE id = ${articleId}
       RETURNING id
     `
@@ -201,10 +205,10 @@ export async function deleteArticleAction(articleId: number): Promise<{ success:
       return { success: false, message: 'Article not found' }
     }
 
-    return { success: true, message: 'Article archived successfully' }
+    return { success: true, message: 'Article deleted successfully' }
   } catch (error: any) {
-    console.error('Error archiving article:', error)
-    return { success: false, message: error?.message || 'Failed to archive article' }
+    console.error('Error deleting article:', error)
+    return { success: false, message: error?.message || 'Failed to delete article' }
   }
 }
 
