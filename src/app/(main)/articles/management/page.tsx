@@ -1,12 +1,11 @@
 'use client';
 
 import React, { useState, useEffect, useRef, type KeyboardEvent, type ClipboardEvent } from 'react';
-import { useRouter } from 'next/navigation';
 import { Table, Input, Select, Button, Space, Flex, Typography, Tag as AntTag, Card, Alert, Segmented, Row, Col, Spin, Modal, Form, Divider, message, Tooltip } from 'antd';
-import { SearchOutlined, PlusOutlined, EditOutlined, DeleteOutlined, SendOutlined, CloseOutlined } from '@ant-design/icons';
+import { SearchOutlined, PlusOutlined, EditOutlined, DeleteOutlined, SendOutlined, CloseOutlined, SaveOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import type { FormInstance } from 'antd/es/form';
-import { filterByTagAndCategory, getAllTags, deleteArticle, getAllCategories, createArticle } from '@/action/articles/articlesManagementAction';
+import { filterByTagAndCategory, getAllTags, deleteArticle, getAllCategories, createArticle, getArticleById, updateArticle } from '@/action/articles/articlesManagementAction';
 import type { Article, Tag } from '@/service/articles.service';
 import dynamic from 'next/dynamic';
 import 'react-markdown-editor-lite/lib/index.css';
@@ -106,7 +105,6 @@ const applyQuote = (
 }
 
 export default function ArticleManagement() {
-  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
   const [selectedTag, setSelectedTag] = useState('All Tags');
@@ -136,6 +134,17 @@ export default function ArticleManagement() {
   const [loadingCategories, setLoadingCategories] = useState(false);
   const [userRoles, setUserRoles] = useState<string[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
+
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingArticleId, setEditingArticleId] = useState<number | null>(null);
+  const [editForm] = Form.useForm();
+  const [editTitleContent, setEditTitleContent] = useState('');
+  const [editContentValue, setEditContentValue] = useState('');
+  const [editImageUrl, setEditImageUrl] = useState('');
+  const [editSelectedTags, setEditSelectedTags] = useState<string[]>([]);
+  const [editSubmitStatus, setEditSubmitStatus] = useState<'draft' | 'published' | 'pending'>('published');
+  const [editingArticle, setEditingArticle] = useState(false);
+  const [loadingEditData, setLoadingEditData] = useState(false);
 
   const statusColors: Record<string, string> = {
     published: 'green',
@@ -302,7 +311,7 @@ export default function ArticleManagement() {
             type="text"
             icon={<EditOutlined />}
             size="small"
-            onClick={() => router.push(`/articles/${record.id}/edit`)}
+            onClick={() => openEditModal(Number(record.id))}
           />
           <Button
             type="text"
@@ -349,6 +358,96 @@ export default function ArticleManagement() {
       setArticlesError(err?.message || 'Failed to archive');
     } finally {
       setDeletingId(null);
+    }
+  };
+
+  const openEditModal = async (articleId: number) => {
+    setEditingArticleId(articleId);
+    setIsEditModalOpen(true);
+    setLoadingEditData(true);
+    
+    try {
+      const result: any = await getArticleById(articleId);
+      if (result.success && result.data) {
+        const article = result.data;
+        setEditTitleContent(article.title);
+        setEditContentValue(article.content);
+        setEditImageUrl(article.image_url || '');
+        setEditSelectedTags(article.tags || []);
+        
+        editForm.setFieldsValue({
+          title: article.title,
+          content: article.content,
+          categoryId: article.category_id,
+          tags: article.tags,
+        });
+      } else {
+        message.error('Failed to load article');
+        setIsEditModalOpen(false);
+      }
+    } catch (err: any) {
+      message.error('Failed to load article');
+      setIsEditModalOpen(false);
+    } finally {
+      setLoadingEditData(false);
+    }
+  };
+
+  const handleEditEditorChange = ({ text }: { text: string; html: string }) => {
+    setEditContentValue(text);
+    
+    const imageRegex = /!\[.*?\]\((.*?)\)/g;
+    const matches = text.matchAll(imageRegex);
+    const urls: string[] = [];
+    
+    for (const match of matches) {
+      if (match[1]) {
+        urls.push(match[1]);
+      }
+    }
+    
+    if (urls.length > 0) {
+      setEditImageUrl(urls[0]);
+    } else {
+      setEditImageUrl('');
+    }
+
+    return text;
+  };
+
+  const handleEditSubmit = async (values: any) => {
+    if (!editingArticleId) return;
+    setEditingArticle(true);
+    
+    try {
+      const formData = new FormData();
+      formData.append('id', String(editingArticleId));
+      formData.append('title', editTitleContent);
+      formData.append('content', editContentValue);
+      formData.append('status', editSubmitStatus);
+      formData.append('tags', JSON.stringify(editSelectedTags));
+      formData.append('category_id', values?.categoryId ? String(values.categoryId) : '');
+      formData.append('image_url', editImageUrl);
+
+      const result = await updateArticle(formData);
+      if (result.success) {
+        message.success(result.message || 'Article updated successfully!');
+        setIsEditModalOpen(false);
+        editForm.resetFields();
+        setEditTitleContent('');
+        setEditContentValue('');
+        setEditImageUrl('');
+        setEditSelectedTags([]);
+        setEditingArticleId(null);
+        setEditSubmitStatus('published');
+        await refreshCurrentArticles(false);
+      } else {
+        message.error(result.message || 'Failed to update article');
+      }
+    } catch (error: any) {
+      message.error(error?.message || 'An error occurred');
+    } finally {
+      setEditingArticle(false);
     }
   };
 
@@ -497,7 +596,7 @@ export default function ArticleManagement() {
                               type="text"
                               icon={<EditOutlined />}
                               size="small"
-                              onClick={() => router.push(`/articles/${article.id}/edit`)}
+                              onClick={() => openEditModal(Number(article.id))}
                             />
                             <Button
                               type="text"
@@ -757,6 +856,194 @@ export default function ArticleManagement() {
             </Flex>
           </Form.Item>
         </Form>
+      </Modal>
+
+      <Modal
+        title="Edit Article"
+        open={isEditModalOpen}
+        onCancel={() => {
+          setIsEditModalOpen(false);
+          editForm.resetFields();
+          setEditTitleContent('');
+          setEditContentValue('');
+          setEditSelectedTags([]);
+          setEditingArticleId(null);
+          setEditSubmitStatus('published');
+        }}
+        footer={null}
+        width={900}
+        style={{ maxHeight: '90vh', overflow: 'auto' }}
+        getContainer={() => document.body}
+      >
+        <Spin spinning={loadingEditData} tip="Loading article...">
+          <Form
+            form={editForm}
+            layout="vertical"
+            onFinish={handleEditSubmit}
+            validateTrigger="onBlur"
+          >
+            <Form.Item
+              label={<Text strong className="text-base">Title</Text>}
+              name="title"
+              rules={[
+                { 
+                  required: true, 
+                  validator: (_, value) => {
+                    const textContent = editTitleContent.replace(/<[^>]*>/g, '').trim();
+                    if (!textContent) {
+                      return Promise.reject('Please enter a title');
+                    }
+                    if (textContent.length > 150) {
+                      return Promise.reject('Title must be less than 150 characters');
+                    }
+                    return Promise.resolve();
+                  }
+                },
+              ]}
+            >
+              <div
+                contentEditable
+                onInput={() => {
+                  const div = document.querySelector('[contentEditable]') as HTMLDivElement;
+                  if (div) {
+                    setEditTitleContent(div.innerText);
+                  }
+                }}
+                onKeyDown={(e: KeyboardEvent<HTMLDivElement>) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                  }
+                }}
+                onPaste={(e: ClipboardEvent<HTMLDivElement>) => {
+                  e.preventDefault();
+                  const text = e.clipboardData.getData('text/plain').replace(/\s+/g, ' ').trim();
+                  document.execCommand('insertText', false, text);
+                }}
+                className="border border-gray-300 rounded p-3 min-h-[60px] focus:outline-none focus:border-blue-500"
+                style={{ backgroundColor: 'white' }}
+                suppressContentEditableWarning
+              >
+                {editTitleContent}
+              </div>
+            </Form.Item>
+
+            <Flex justify="flex-end" align="center" className="mt-2 mb-4">
+              <Text type="secondary" className="text-sm">
+                {editTitleContent.replace(/<[^>]*>/g, '').trim().length} / 150
+              </Text>
+            </Flex>
+
+            <Form.Item
+              label={<Text strong className="text-base">Content</Text>}
+              name="content"
+              valuePropName="value"
+              trigger="onChange"
+              getValueFromEvent={(...args) => args?.[0]?.text ?? ''}
+              rules={[
+                { 
+                  required: true, 
+                  validator: (_, value) => {
+                    const textContent = editContentValue.replace(/[#*_\[\]`~>-]/g, '').trim();
+                    if (!textContent) {
+                      return Promise.reject('Please enter content');
+                    }
+                    if (textContent.length > 5000) {
+                      return Promise.reject('Content must be less than 5000 characters');
+                    }
+                    return Promise.resolve();
+                  }
+                },
+              ]}
+            >
+              <MdEditor
+                style={{ height: '400px' }}
+                renderHTML={(text) => mdParser.render(text)}
+                onChange={handleEditEditorChange}
+                value={editContentValue}
+                placeholder="Write your content in Markdown..."
+              />
+            </Form.Item>
+
+            <Flex justify="flex-end" align="center" className="mt-2 mb-4">
+              <Text type="secondary" className="text-sm">
+                {editContentValue.replace(/[#*_\[\]`~>-]/g, '').trim().length} / 5,000
+              </Text>
+            </Flex>
+
+            <Divider />
+
+            <Form.Item
+              label={<Text strong className="text-base">Category</Text>}
+              name="categoryId"
+              rules={[{ required: true, message: 'Please select a category' }]}
+            >
+              <Select
+                size="large"
+                placeholder="Select a category"
+                loading={loadingCategories}
+                options={categories.map((cat) => ({ label: cat.name, value: cat.id }))}
+                optionFilterProp="label"
+                showSearch
+                allowClear
+              />
+            </Form.Item>
+
+            <Divider />
+
+            <Form.Item
+              label={<Text strong className="text-base">Tags</Text>}
+              name="tags"
+            >
+              <Select
+                mode="tags"
+                options={tags.map((tag) => ({ label: tag.name, value: tag.name }))}
+                size="large"
+                loading={loadingTags}
+                placeholder="Type to search or add new tags"
+                value={editSelectedTags}
+                onChange={setEditSelectedTags}
+                maxTagCount="responsive"
+                showSearch
+                tokenSeparators={[',']}
+                filterOption={(input, option) =>
+                  (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                }
+              />
+            </Form.Item>
+
+            <Form.Item className="!mb-0">
+              <Flex justify="flex-end" gap="middle" className="pt-4">
+                <Button
+                  size="large"
+                  danger
+                  icon={<CloseOutlined />}
+                  onClick={() => {
+                    setIsEditModalOpen(false);
+                    editForm.resetFields();
+                    setEditTitleContent('');
+                    setEditContentValue('');
+                    setEditSelectedTags([]);
+                    setEditingArticleId(null);
+                    setEditSubmitStatus('published');
+                  }}
+                  disabled={editingArticle}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="primary"
+                  htmlType="submit"
+                  size="large"
+                  icon={<SaveOutlined />}
+                  onClick={() => setEditSubmitStatus('published')}
+                  loading={editingArticle}
+                >
+                  Update
+                </Button>
+              </Flex>
+            </Form.Item>
+          </Form>
+        </Spin>
       </Modal>
 
       <footer className="bg-white border-t px-8 py-4">
