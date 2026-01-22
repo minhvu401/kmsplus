@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, startTransition, useActionState } from "react";
-import { Flex, Typography, Tag, Divider, Dropdown, Button, message, Modal, Form, Input, Select } from "antd";
+import { Flex, Typography, Tag, Divider, Dropdown, Button, message, Modal, Form, Input, Select, Avatar } from "antd";
 const { Title, Text } = Typography;
 const { TextArea } = Input;
 import {
@@ -25,26 +25,34 @@ export default function QuestionDetails({ userId, question, categories }: { user
         <Flex vertical align="center" gap={12} style={{ marginTop: 24 }}>
             {/* Title and Menu */}
             <Flex
-                align="center"
-                justify="center"
-                style={{ position: "relative", width: "100%", marginBottom: 12 }}
+                align="flex-start"
+                justify="space-between"
+                style={{ width: "100%", marginBottom: 12, gap: 12 }}
             >
-                <Title level={3} style={{ color: "#1677ff", textAlign: "center", margin: 0 }}>
-                    {question.title}
-                </Title>
+                <Flex style={{ flex: 1, minWidth: 0 }}>
+                    <Title
+                        level={3}
+                        ellipsis={{ rows: 2, tooltip: question.title }}
+                        style={{ color: "#111827", textAlign: "left", margin: 0 }}
+                    >
+                        {question.title}
+                    </Title>
+                </Flex>
 
-                <div style={{ position: "absolute", right: 0, top: 0 }}>
-                    <QuestionMenu
-                        userId={userId}
-                        question={question}
-                        categories={categories}
-                    />
-                </div>
+                <Flex style={{ flex: "none" }}>
+                    <QuestionMenu userId={userId} question={question} categories={categories} />
+                </Flex>
             </Flex>
 
             {/* Author & Category Info */}
-            <Flex align="center" justify="center" gap={12} style={{ color: "#374151" }}>
-                <Text strong>by {question.user_name}</Text>
+            <Flex align="center" justify="flex-start" gap={12} style={{ color: "#374151", width: "100%", marginBottom: 12 }}>
+                <Flex align="center" gap={4}>
+                    <Text>by</Text>
+                    <Avatar size="small">
+                        {(question.user_name?.trim()?.[0] ?? "?").toUpperCase()}
+                    </Avatar>
+                    <Text>{question.user_name}</Text>
+                </Flex>
                 <Tag color="blue">{question.category_name}</Tag>
                 <Tag color={question.is_closed ? "red" : "green"}>
                     {question.is_closed ? "Closed" : "Open"}
@@ -52,7 +60,7 @@ export default function QuestionDetails({ userId, question, categories }: { user
             </Flex>
 
             {/* Metadata Row */}
-            <Flex align="center" justify="center" gap={48} style={{ color: "#4b5563", fontWeight: 500 }}>
+            <Flex align="center" justify="flex-start" gap={48} style={{ color: "#4b5563", fontWeight: 500, width: "100%" }}>
                 <Text>asked on {createdAt.toLocaleDateString()}</Text>
                 {question.is_closed ? (
                     <Text>closed on {updatedAt.toLocaleDateString()}</Text>
@@ -61,11 +69,9 @@ export default function QuestionDetails({ userId, question, categories }: { user
                 )}
             </Flex>
 
-            <Divider style={{ borderColor: "#d1d5db", width: "100%" }} />
-
             {/* Content */}
-            <Flex justify="center" style={{ padding: "0 80px" }}>
-                <Text style={{ color: "#374151", fontSize: 18, whiteSpace: "pre-wrap" }}>
+            <Flex justify="flex-start" style={{ width: "100%", marginTop: 16, flexDirection: "column", gap: 12 }}>
+                <Text style={{ color: "#374151", fontSize: 16, lineHeight: 1.6, whiteSpace: "pre-wrap" }}>
                     {question.content}
                 </Text>
             </Flex>

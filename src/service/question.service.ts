@@ -312,12 +312,13 @@ export async function getActiveCategoriesAction(): Promise<Category[]> {
   return categories as Category[]
 }
 
-const QUESTIONS_PER_PAGE = 10
+const DEFAULT_QUESTIONS_PER_PAGE = 10
 // FETCH QUESTIONS PAGES
 export async function fetchQuestionPagesAction(
   query: string,
   category: string,
-  status: string
+  status: string,
+  limit: number = DEFAULT_QUESTIONS_PER_PAGE
 ) {
   try {
     let sqlQuery = sql`
@@ -354,11 +355,13 @@ export async function fetchQuestionPagesAction(
       ${sqlQuery};
     `
 
-    const totalPages = Math.ceil(Number(data[0].count) / QUESTIONS_PER_PAGE)
-    return Math.max(1, totalPages)
+    const totalItems = Number(data[0].count)
+    const pageSize = Math.max(1, limit || DEFAULT_QUESTIONS_PER_PAGE)
+    const totalPages = Math.ceil(totalItems / pageSize)
+    return { totalItems, totalPages: Math.max(1, totalPages) }
   } catch (error) {
     console.error("Database Error:", error)
-    throw new Error("Failed to fetch total number of invoices.")
+    throw new Error("Failed to fetch total number of questions.")
   }
 }
 
@@ -368,9 +371,11 @@ export async function fetchFilteredQuestionsAction(
   category: string,
   status: string,
   sort: string,
-  currentPage: number
+  currentPage: number,
+  limit: number = DEFAULT_QUESTIONS_PER_PAGE
 ) {
-  const offset = (currentPage - 1) * QUESTIONS_PER_PAGE
+  const pageSize = Math.max(1, limit || DEFAULT_QUESTIONS_PER_PAGE)
+  const offset = (currentPage - 1) * pageSize
 
   try {
     let sqlQuery = sql`
@@ -414,13 +419,13 @@ export async function fetchFilteredQuestionsAction(
       JOIN users ON questions.user_id = users.id
       JOIN categories ON questions.category_id = categories.id
       ${sqlQuery}
-      LIMIT ${QUESTIONS_PER_PAGE} OFFSET ${offset};
+      LIMIT ${pageSize} OFFSET ${offset};
     `) as Question[]
 
     return result
   } catch (error) {
     console.error("Database Error:", error)
-    throw new Error("Failed to fetch total number of invoices.")
+    throw new Error("Failed to fetch filtered questions.")
   }
 }
 
@@ -610,8 +615,15 @@ export async function deleteAnswerAction(id: number) {
 };
 
 // FETCH FILTERED ANSWERS
-export async function fetchFilteredAnswersAction(currentPage: number, questionId: number) {
-  const offset = (currentPage - 1) * 5;
+const DEFAULT_ANSWERS_PER_PAGE = 5
+
+export async function fetchFilteredAnswersAction(
+  currentPage: number,
+  questionId: number,
+  limit: number = DEFAULT_ANSWERS_PER_PAGE
+) {
+  const pageSize = Math.max(1, limit || DEFAULT_ANSWERS_PER_PAGE)
+  const offset = (currentPage - 1) * pageSize
   try {
     const data = await sql`
     SELECT
@@ -626,11 +638,11 @@ export async function fetchFilteredAnswersAction(currentPage: number, questionId
     JOIN users u ON a.user_id = u.id
     WHERE a.question_id = ${questionId}
     ORDER BY a.created_at DESC
-    LIMIT 5 OFFSET ${offset};
+    LIMIT ${pageSize} OFFSET ${offset};
   `;
     return data as Answer[];
   } catch (error) {
     console.error("Database Error:", error)
-    throw new Error("Failed to fetch total number of invoices.")
+    throw new Error("Failed to fetch filtered answers.")
   }
 };

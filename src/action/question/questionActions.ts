@@ -31,6 +31,12 @@ export async function createQuestion(
 ): Promise<State> {
   const result = await service.createQuestionAction(formData);
 
+  const returnToRaw = formData.get("returnTo")
+  const returnTo =
+    typeof returnToRaw === "string" && returnToRaw.startsWith("/")
+      ? returnToRaw
+      : null
+
   // If DB/service returned validation errors → show in form
   if (result?.errors && Object.keys(result.errors).length > 0) {
     return {
@@ -40,8 +46,8 @@ export async function createQuestion(
   }
 
   if (result?.success) {
-    revalidatePath("/questions");
-    redirect("/questions?created=1");
+    revalidatePath(returnTo ?? "/questions")
+    redirect(`${returnTo ?? "/questions"}?created=1`)
   }
 
   return { message: null, errors: {} };
@@ -134,10 +140,11 @@ export async function getActiveCategories() {
 export async function fetchQuestionsPages(
   query: string,
   category: string,
-  status: string
+  status: string,
+  limit?: number
 ) {
   //await requireAuth()
-  return service.fetchQuestionPagesAction(query, category, status)
+  return service.fetchQuestionPagesAction(query, category, status, limit)
 }
 
 export async function fetchFilteredQuestions(
@@ -145,9 +152,18 @@ export async function fetchFilteredQuestions(
   category: string,
   status: string,
   sort: string,
-  currentPage: number) {
+  currentPage: number,
+  limit?: number
+) {
   // await requireAuth()
-  return service.fetchFilteredQuestionsAction(query, category, status, sort, currentPage)
+  return service.fetchFilteredQuestionsAction(
+    query,
+    category,
+    status,
+    sort,
+    currentPage,
+    limit
+  )
 }
 
 export async function getAnswersForQuestion(id: number) {
@@ -228,7 +244,8 @@ export async function updateAnswer(
 export async function fetchFilteredAnswers (
   currentPage: number,
   questionId: number,
+  limit?: number,
 ){
   //await requireAuth()
-  return service.fetchFilteredAnswersAction(currentPage, questionId);
+  return service.fetchFilteredAnswersAction(currentPage, questionId, limit);
 }

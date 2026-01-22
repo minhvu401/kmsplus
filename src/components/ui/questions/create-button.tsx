@@ -26,9 +26,11 @@ const { TextArea } = Input;
 export function CreateQuestion({
   categories,
   userId,
+  returnTo,
 }: {
   categories: { id: number; name: string }[];
   userId: number;
+  returnTo?: string;
 }) {
 
   const [form] = Form.useForm();
@@ -90,6 +92,9 @@ export function CreateQuestion({
             formData.append('title', values.title);
             formData.append('content', values.content);
             formData.append('category_id', values.category_id);
+            if (returnTo) {
+              formData.append('returnTo', returnTo);
+            }
 
             startTransition(() => {
               createQuestionAction(formData);
