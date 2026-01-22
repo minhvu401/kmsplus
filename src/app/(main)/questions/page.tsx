@@ -15,6 +15,7 @@ import {
 import Pagination from "@/components/ui/questions/pagination"
 import QuestionsList from "@/components/ui/questions/questions-list"
 import QuestionsNotification from "@/components/ui/questions/questions-notification"
+import PageSizeSelector from "@/components/ui/questions/page-size-selector"
 import { Flex } from "antd"
 import { requireAuth } from "@/lib/auth"
 
@@ -22,6 +23,7 @@ export default async function Page(props: {
   searchParams?: Promise<{
     query?: string
     page?: string
+    limit?: string
     category?: string
     status?: string
     sort?: string
@@ -34,14 +36,21 @@ export default async function Page(props: {
   const status = searchParams?.status || "any"
   const sort = searchParams?.sort || "newest"
   const currentPage = Number(searchParams?.page) || 1
-  const totalPages = await fetchQuestionsPages(query, category, status)
+  const pageSize = Number(searchParams?.limit) || 10
+  const { totalItems, totalPages } = await fetchQuestionsPages(
+    query,
+    category,
+    status,
+    pageSize
+  )
 
   const questions = await fetchFilteredQuestions(
     query,
     category,
     status,
     sort,
-    currentPage
+    currentPage,
+    pageSize
   )
   
   const noSearchResults = query !== "" && questions.length === 0
@@ -73,8 +82,17 @@ export default async function Page(props: {
         <QuestionsList questions={questions} noSearchResults={noSearchResults} />
       </Flex>
 
-      <Flex justify="end" align="center" style={{ marginBottom: 24 }}>
+      <Flex className="flex justify-end my-6">
+        <PageSizeSelector currentPageSize={pageSize} />
+      </Flex>
+
+      <Flex className="flex justify-center mt-8">
         <Pagination totalPages={totalPages} />
+      </Flex>
+
+      <Flex className="flex justify-center text-gray-600 mt-4 text-sm">
+        Showing {questions.length > 0 ? (currentPage - 1) * pageSize + 1 : 0}-
+        {Math.min(currentPage * pageSize, totalItems)} of {totalItems} questions
       </Flex>
     </PageWrapper>
   )

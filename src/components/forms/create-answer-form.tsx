@@ -28,7 +28,11 @@ export default function CreateAnswerForm({
 
     return (
         <>
-            <Flex vertical gap={16} style={{ width: '1100px', background: '#fff' }}>
+            <Flex
+                vertical
+                gap={8}
+                style={{ width: '100%', maxWidth: 900, background: '#fff' }}
+            >
                 <Form
                     form={form}
                     layout="vertical"
@@ -47,6 +51,7 @@ export default function CreateAnswerForm({
 
                     <Form.Item
                         name="content"
+                        style={{ marginBottom: 8 }}
                         rules={[{ required: true, message: 'Please provide more details' },
                         { min: 15, message: 'Answers must be at least 15 characters' }
                         ]}
@@ -61,8 +66,9 @@ export default function CreateAnswerForm({
                             style={{ resize: 'none' }}
                         />
                     </Form.Item>
-                    <Text type="secondary">Character limit {contentCount} / 600</Text>
-                    <Flex justify="end" gap={16} style={{ marginTop: 2 }}>
+
+                    <Flex justify="space-between" align="center">
+                        <Text type="secondary">Character limit {contentCount} / 600</Text>
                         <Button type="primary" size="large" onClick={() => setSubmitVisible(true)}>
                             Submit
                         </Button>

@@ -1,12 +1,14 @@
 'use client'
 
-import { useState, useActionState, startTransition, useEffect } from 'react';
-import { Flex, Typography, Divider, Card, Avatar, Form, Dropdown, Button, Modal, Input } from "antd";
+import { useState, useActionState, startTransition } from 'react';
+import { Flex, Typography, Divider, Card, Avatar, Dropdown, Button, Modal, Input } from "antd";
 import { EditOutlined, DeleteOutlined, EllipsisOutlined, LockOutlined } from '@ant-design/icons';
-import { updateAnswer, deleteAnswer } from '@/action/question/questionActions';
+import { updateAnswer, deleteAnswer, State } from '@/action/question/questionActions';
 import CreateAnswerForm from "@/components/forms/create-answer-form";
 import { Answer } from "@/service/question.service";
 import Pagination from "@/components/ui/questions/pagination";
+import PageSizeSelector from "@/components/ui/questions/page-size-selector";
+import { useSearchParams } from 'next/navigation';
 import { formatDistanceToNowStrict } from 'date-fns/formatDistanceToNowStrict';
 
 const { Title, Text, Paragraph } = Typography;
@@ -25,16 +27,53 @@ export default function AnswerSection({
     paginatedAnswers: Answer[],
 }) {
     const userId = 1; // TEMP: Replace with actual user ID from session/context
-    const totalPages = Math.ceil(Number(answers.length) / 5)
+    const searchParams = useSearchParams()
+    const currentPage = Number(searchParams.get('page')) || 1
+    const pageSize = Number(searchParams.get('limit')) || 5
+    const totalItems = Number(answer_count) || 0
+    const totalPages = Math.max(1, Math.ceil(totalItems / pageSize))
+
+    const initialState: State = { message: null, errors: {} };
+    const [updateState, updateAnswerAction] = useActionState(updateAnswer, initialState);
+
+    const [editingAnswerId, setEditingAnswerId] = useState<number | null>(null);
+    const [editingContent, setEditingContent] = useState('');
+    const [editingCount, setEditingCount] = useState(0);
+
+    const beginEdit = (answer: Answer) => {
+        const content = answer.content ?? '';
+        setEditingAnswerId(answer.id);
+        setEditingContent(content);
+        setEditingCount(content.length);
+    };
+
+    const cancelEdit = () => {
+        setEditingAnswerId(null);
+        setEditingContent('');
+        setEditingCount(0);
+    };
+
+    const handleSaveEdit = (answerId: number) => {
+        const formData = new FormData();
+        formData.append('content', editingContent);
+        formData.append('answer_id', answerId.toString());
+        formData.append('question_id', questionId.toString());
+
+        startTransition(() => {
+            updateAnswerAction(formData);
+        });
+    };
+
+    const contentError = updateState?.errors?.content?.[0];
 
     return (
         <>
             <Flex vertical align="left" gap={12} style={{ marginTop: 6 }}>
                 {/* Title and Sort Filter */}
                 <Flex
-                    align="left"
-                    justify="left"
-                    style={{ position: "relative", width: "100%", marginBottom: 12, marginLeft: 30 }}
+                    align="flex-start"
+                    justify="space-between"
+                    style={{ position: "relative", width: "100%", marginBottom: 4, marginLeft: 30 }}
                 >
                     <Title level={4} style={{ color: "black", textAlign: "left", margin: 0 }}>
                         Answers ({answer_count})
@@ -45,7 +84,7 @@ export default function AnswerSection({
                 <Flex
                     align="center"
                     justify="center"
-                    style={{ position: "relative", width: "100%", marginBottom: 5 }}
+                    style={{ position: "relative", width: "100%", marginBottom: 4 }}
                 >
                     {is_closed ? (
                         <LockedAnswerBox message='This question is closed. No new answers can be submitted.' />
@@ -66,6 +105,7 @@ export default function AnswerSection({
                     )}
 
                     {paginatedAnswers.map((answer) => {
+                        const isEditing = editingAnswerId === answer.id;
                         return (
                             <Card
                                 key={answer.id}
@@ -100,31 +140,78 @@ export default function AnswerSection({
                                             pointerEvents: Number(answer.user_id) === userId ? 'auto' : 'none',
                                         }}
                                     >
-                                        <AnswerMenu answer={answer} />
+                                        <AnswerMenu
+                                            answer={answer}
+                                            onEdit={() => beginEdit(answer)}
+                                            isEditing={isEditing}
+                                        />
                                     </Flex>
                                 </Flex>
 
                                 <Divider style={{ margin: "6px 0" }} />
 
-                                {/* Answer content (indented & larger) */}
+                                {/* Answer content / inline editor */}
                                 <Flex style={{ marginLeft: 40 }}>
-                                    <Paragraph
-                                        style={{
-                                            marginBottom: 0,
-                                            fontSize: 15,
-                                            whiteSpace: 'pre-wrap',
-                                            wordBreak: 'break-word',
-                                            lineHeight: 1.6,
-                                        }}
-                                    >
-                                        {answer.content}
-                                    </Paragraph>
+                                    {isEditing ? (
+                                        <Flex vertical style={{ width: '100%' }} gap={8}>
+                                            <Input.TextArea
+                                                rows={4}
+                                                value={editingContent}
+                                                placeholder="Enter your answer here..."
+                                                maxLength={600}
+                                                onChange={(e) => {
+                                                    setEditingContent(e.target.value);
+                                                    setEditingCount(e.target.value.length);
+                                                }}
+                                                style={{ resize: 'none' }}
+                                                status={contentError ? 'error' : ''}
+                                            />
+                                            <Flex justify="space-between" align="center">
+                                                <Text type={contentError ? 'danger' : 'secondary'}>
+                                                    {contentError ? contentError : `Character limit ${editingCount} / 600`}
+                                                </Text>
+
+                                                <Flex gap={8}>
+                                                    <Button onClick={cancelEdit}>Cancel</Button>
+                                                    <Button
+                                                        type="primary"
+                                                        onClick={() => handleSaveEdit(answer.id)}
+                                                        disabled={editingContent.trim().length < 15}
+                                                    >
+                                                        Save
+                                                    </Button>
+                                                </Flex>
+                                            </Flex>
+                                        </Flex>
+                                    ) : (
+                                        <Paragraph
+                                            style={{
+                                                marginBottom: 0,
+                                                fontSize: 15,
+                                                whiteSpace: 'pre-wrap',
+                                                wordBreak: 'break-word',
+                                                lineHeight: 1.6,
+                                            }}
+                                        >
+                                            {answer.content}
+                                        </Paragraph>
+                                    )}
                                 </Flex>
                             </Card>
                         )
                     })}
-                    <Flex justify="end" align="center" style={{ marginBottom: 24 }}>
+
+                    <Flex className="flex justify-end my-6">
+                        <PageSizeSelector currentPageSize={pageSize} />
+                    </Flex>
+
+                    <Flex className="flex justify-center mt-8">
                         <Pagination totalPages={totalPages} />
+                    </Flex>
+
+                    <Flex className="flex justify-center text-gray-600 mt-4 text-sm">
+                        Showing {paginatedAnswers.length > 0 ? (currentPage - 1) * pageSize + 1 : 0}-
+                        {Math.min(currentPage * pageSize, totalItems)} of {totalItems} answers
                     </Flex>
                 </Flex>
             </Flex >
@@ -133,16 +220,16 @@ export default function AnswerSection({
 }
 
 export function AnswerMenu({
-    answer
+    answer,
+    onEdit,
+    isEditing,
 }: {
-    answer: Answer
+    answer: Answer;
+    onEdit: () => void;
+    isEditing: boolean;
 }) {
-    const [form] = Form.useForm();
     const [open, setOpen] = useState(false);
-    const [contentCount, setContentCount] = useState(0);
     const [isDeleteVisible, setDeleteVisible] = useState(false);
-    const [isUpdateVisible, setUpdateVisible] = useState(false);
-    const [state, updateAnswerAction] = useActionState(updateAnswer, { message: null, errors: {} });
 
     const items = [
         {
@@ -150,13 +237,14 @@ export function AnswerMenu({
             label: (
                 <span
                     onClick={() => {
-                        setUpdateVisible(true);
+                        onEdit();
                         setOpen(false);
                     }}
                 >
                     <EditOutlined /> Edit answer
                 </span>
             ),
+            disabled: isEditing,
         },
         {
             key: 'delete',
@@ -174,25 +262,12 @@ export function AnswerMenu({
     ];
 
     const handleDelete = () => {
-        // Implement delete logic here
         setDeleteVisible(false);
 
         startTransition(() => {
             deleteAnswer(answer.id, answer.question_id);
         });
     };
-
-    const handleUpdate = () => {
-        setUpdateVisible(false);
-        form.submit();
-    }
-
-    useEffect(() => {
-        form.setFieldsValue({
-            content: answer.content,
-        });
-        setContentCount(answer.content.length);
-    }, [form]);
 
     return (
         <>
@@ -211,6 +286,7 @@ export function AnswerMenu({
 
             <Modal
                 title="Confirmation"
+                centered
                 open={isDeleteVisible}
                 onCancel={() => setDeleteVisible(false)}
                 footer={[
@@ -225,49 +301,6 @@ export function AnswerMenu({
                 <Text>Are you sure you want to delete this answer?</Text>
                 <br />
                 <Text type="secondary">Your answer will be permanently deleted.</Text>
-            </Modal>
-
-            <Modal
-                title="Edit answer"
-                open={isUpdateVisible}
-                onCancel={() => setUpdateVisible(false)}
-                onOk={handleUpdate}
-                okText="Submit"
-                width={700}
-            >
-                <Form
-                    form={form}
-                    layout="vertical"
-                    onFinish={async (values) => {
-                        const formData = new FormData();
-                        formData.append('content', values.content);
-                        formData.append('answer_id', answer.id.toString());
-                        formData.append('question_id', answer.question_id.toString());
-
-                        startTransition(() => {
-                            updateAnswerAction(formData);
-                        });
-                    }}
-                >
-                    <Form.Item
-                        name="content"
-                        rules={[
-                            { required: true, message: 'Please enter content' },
-                            { min: 15, message: 'Minimum 15 characters' }
-                        ]}
-                    >
-                        <Input.TextArea
-                            rows={4}
-                            placeholder="Enter your answer here..."
-                            maxLength={600}
-                            onChange={(e) => {
-                                setContentCount(e.target.value.length);
-                            }}
-                            style={{ resize: 'none' }}
-                        />
-                    </Form.Item>
-                    <Text type="secondary">Character limit {contentCount} / 600</Text>
-                </Form>
             </Modal>
 
         </>
