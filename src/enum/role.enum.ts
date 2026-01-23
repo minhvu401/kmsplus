@@ -1,9 +1,9 @@
 export enum Role {
   EMPLOYEE = "Employee",
   CONTRIBUTOR = "Contributor",
-  TRAINING_MANAGER = "TrainingManager",
+  TRAINING_MANAGER = "Training Manager",
   ADMIN = "Admin",
-  DASHBOARD_VIEWER = "DashboardViewer",
+  DASHBOARD_VIEWER = "Dashboard Viewer",
 }
 
 export const RoleConfig = {
@@ -19,7 +19,7 @@ export const RoleConfig = {
   },
   [Role.TRAINING_MANAGER]: {
     id: 3,
-    name: "TrainingManager",
+    name: "Training Manager",
     label: "Quản lý đào tạo",
   },
   [Role.ADMIN]: {
@@ -29,7 +29,7 @@ export const RoleConfig = {
   },
   [Role.DASHBOARD_VIEWER]: {
     id: 5,
-    name: "DashboardViewer",
-    label: "Xem bảng điều khiển",
+    name: "Dashboard Viewer",
+    label: "Người xem bảng điều khiển",
   },
 } as const
