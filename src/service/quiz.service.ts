@@ -279,6 +279,7 @@ export async function deleteQuizAction(id: number) {
 
 /**
  * Lấy danh sách câu hỏi cho một lần làm bài
+ * NhatTT
  */
 export async function getQuestionsForAttemptAction(attemptId: number) {
   try {
@@ -298,6 +299,7 @@ export async function getQuestionsForAttemptAction(attemptId: number) {
 
 /**
  * Lấy các câu trả lời đã lưu cho một lần làm bài
+ * NhatTT
  */
 export async function getSavedAnswersAction(attemptId: number) {
   try {
@@ -313,6 +315,7 @@ export async function getSavedAnswersAction(attemptId: number) {
   }
 }
 
+// NhatTT
 export async function getTimeLimitForAttemptAction(attemptId: number) {
   try {
     const rows = await sql`
@@ -328,6 +331,7 @@ export async function getTimeLimitForAttemptAction(attemptId: number) {
   }
 }
 
+// NhatTT
 export async function startQuizAttemptAction(quizId: number, userId: number) {
   try {
     await sql`BEGIN`
@@ -359,6 +363,7 @@ export async function startQuizAttemptAction(quizId: number, userId: number) {
 /**
  * Lưu câu trả lời của người dùng
  */
+// NhatTT
 export async function saveAttemptAnswerAction(
   attemptId: number,
   questionId: number,
@@ -386,6 +391,7 @@ export async function saveAttemptAnswerAction(
 /**
  * Nộp bài thi và tính điểm
  */
+// NhatTT
 export async function submitQuizAttemptAction(attemptId: number) {
   try {
     await sql`BEGIN`

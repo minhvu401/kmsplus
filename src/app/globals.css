@@ -28,6 +28,164 @@ body {
   font-family: var(--font-lato), sans-serif;
 }
 
+/* ===== Rich Text Editor Content Styles ===== */
+.prose p:empty {
+  min-height: 1em;
+}
+
+.prose h1 {
+  @apply text-2xl font-bold mt-4 mb-2;
+}
+
+.prose h2 {
+  @apply text-xl font-bold mt-3 mb-2;
+}
+
+.prose p {
+  @apply my-1;
+}
+
+.prose strong {
+  @apply font-bold;
+}
+
+.prose em {
+  @apply italic;
+}
+
+.prose u {
+  @apply underline;
+}
+
+.prose s {
+  @apply line-through;
+}
+
+.prose blockquote {
+  @apply border-l-4 border-gray-300 pl-4 italic my-2 text-gray-600;
+}
+
+.prose ol {
+  @apply list-decimal list-inside my-2;
+}
+
+.prose ul {
+  @apply list-disc list-inside my-2;
+}
+
+.prose a {
+  @apply text-blue-600 underline hover:text-blue-800;
+}
+
+/* ===== Login Page Animations ===== */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slide-right {
+  from {
+    opacity: 0;
+    transform: translateX(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes bounce-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  70% {
+    transform: scale(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes scale-in {
+  from {
+    transform: scale(1.1);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+@keyframes pulse-slow {
+  0%, 100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.8s ease-out forwards;
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.6s ease-out forwards;
+}
+
+.animate-slide-up {
+  opacity: 0;
+  animation: slide-up 0.6s ease-out forwards;
+}
+
+.animate-slide-right {
+  opacity: 0;
+  animation: slide-right 0.5s ease-out forwards;
+}
+
+.animate-bounce-in {
+  animation: bounce-in 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards;
+}
+
+.animate-scale-in {
+  animation: scale-in 1.2s ease-out forwards;
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 4s ease-in-out infinite;
+  font-family: var(--font-lato), sans-serif;
+}
+
 /* ===== Login Page Animations ===== */
 @keyframes fade-in {
   from {
