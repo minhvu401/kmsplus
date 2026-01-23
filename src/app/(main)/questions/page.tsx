@@ -51,7 +51,7 @@ export default async function Page(props: {
     sort,
     currentPage,
     pageSize
-  ) ?? []
+  )
   
   const noSearchResults = query !== "" && questions.length === 0
   const isEmpty = questions.length === 0
