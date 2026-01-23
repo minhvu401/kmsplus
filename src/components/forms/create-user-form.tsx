@@ -1,3 +1,5 @@
+// Sửa create-user-form.tsx - loại bỏ max-w-2xl wrapper
+// src/components/forms/create-user-form.tsx
 "use client"
 
 import { useState, useActionState, startTransition, useEffect } from "react"
@@ -7,18 +9,18 @@ import {
   Select,
   Button,
   Typography,
-  Flex,
-  Divider,
+  Space,
   message,
 } from "antd"
 import {
   UserManagementState,
   createUserByAdminAction,
 } from "@/action/user/userManagementActions"
-import { RoleConfig, Role } from "@/enum/role.enum"
+import { RoleConfig } from "@/enum/role.enum"
+import { t } from "@/lib/i18n"
+import useLanguageStore from "@/store/useLanguageStore"
 
-const { Text, Title } = Typography
-const { TextArea } = Input
+const { Text } = Typography
 
 interface CreateUserFormProps {
   roles: { id: number; name: string }[]
@@ -29,6 +31,7 @@ export default function CreateUserForm({
   roles,
   onSuccess,
 }: CreateUserFormProps) {
+  const { language } = useLanguageStore()
   const [form] = Form.useForm()
   const [isLoading, setIsLoading] = useState(false)
 
@@ -75,119 +78,102 @@ export default function CreateUserForm({
     setIsLoading(false)
   }
 
-  // Get role label for display
-  const getRoleLabel = (value: string | number) => {
-    const roleEntry = Object.entries(RoleConfig).find(
-      ([_, config]) => config.id === Number(value)
-    )
-    return roleEntry ? roleEntry[1].label : ""
-  }
-
   return (
-    <Flex
-      justify="center"
-      align="center"
-      style={{ width: "100%", minHeight: "600px" }}
-    >
-      <Flex vertical gap={15} style={{ width: "100%", maxWidth: "600px" }}>
-        <Title level={4} style={{ color: "#1677ff", marginBottom: 0 }}>
-          Create New User Account
-        </Title>
-
-        <Divider style={{ margin: "8px 0 16px" }} />
-
-        <Form
-          form={form}
-          layout="vertical"
-          style={{ width: "100%" }}
-          onFinish={handleSubmit}
+    <div style={{ width: "100%", maxWidth: "600px" }}>
+      <Form
+        form={form}
+        layout="vertical"
+        onFinish={handleSubmit}
+        autoComplete="off"
+      >
+        {/* Email Field */}
+        <Form.Item
+          label={<Text strong>{language === "vi" ? "Địa chỉ email" : "Email Address"}</Text>}
+          name="email"
+          rules={[
+            { required: true, message: language === "vi" ? "Vui lòng nhập email" : "Please enter email address" },
+            { type: "email", message: language === "vi" ? "Vui lòng nhập email hợp lệ" : "Please enter a valid email address" },
+          ]}
+          help={state.errors?.email?.[0]}
+          validateStatus={state.errors?.email ? "error" : ""}
         >
-          {/* Email Field */}
-          <Form.Item
-            label={<Text strong>Email Address:</Text>}
-            name="email"
-            rules={[
-              { required: true, message: "Please enter email address" },
-              { type: "email", message: "Please enter a valid email address" },
-            ]}
-            help={state.errors?.email?.[0]}
-            validateStatus={state.errors?.email ? "error" : ""}
-          >
-            <Input
-              placeholder="user@company.com"
-              type="email"
-              size="large"
-              disabled={isLoading}
-            />
-          </Form.Item>
+          <Input
+            placeholder="user@company.com"
+            type="email"
+            disabled={isLoading}
+          />
+        </Form.Item>
 
-          {/* Password Field */}
-          <Form.Item
-            label={<Text strong>Password:</Text>}
-            name="password"
-            rules={[
-              { required: true, message: "Please enter password" },
-              { min: 6, message: "Password must be at least 6 characters" },
-            ]}
-            help={state.errors?.password?.[0]}
-            validateStatus={state.errors?.password ? "error" : ""}
-          >
-            <Input.Password
-              placeholder="At least 6 characters"
-              size="large"
-              disabled={isLoading}
-            />
-          </Form.Item>
+        {/* Password Field */}
+        <Form.Item
+          label={<Text strong>{language === "vi" ? "Mật khẩu" : "Password"}</Text>}
+          name="password"
+          rules={[
+            { required: true, message: language === "vi" ? "Vui lòng nhập mật khẩu" : "Please enter password" },
+            { min: 6, message: language === "vi" ? "Mật khẩu phải có ít nhất 6 ký tự" : "Password must be at least 6 characters" },
+          ]}
+          help={state.errors?.password?.[0]}
+          validateStatus={state.errors?.password ? "error" : ""}
+        >
+          <Input.Password
+            placeholder={language === "vi" ? "Tối thiểu 6 ký tự" : "At least 6 characters"}
+            disabled={isLoading}
+          />
+        </Form.Item>
 
-          {/* Full Name Field */}
-          <Form.Item
-            label={<Text strong>Full Name:</Text>}
-            name="fullName"
-            rules={[
-              { required: true, message: "Please enter full name" },
-              { min: 2, message: "Full name must be at least 2 characters" },
-            ]}
-            help={state.errors?.fullName?.[0]}
-            validateStatus={state.errors?.fullName ? "error" : ""}
-          >
-            <Input placeholder="John Doe" size="large" disabled={isLoading} />
-          </Form.Item>
+        {/* Full Name Field */}
+        <Form.Item
+          label={<Text strong>{language === "vi" ? "Họ và tên" : "Full Name"}</Text>}
+          name="fullName"
+          rules={[
+            { required: true, message: language === "vi" ? "Vui lòng nhập họ và tên" : "Please enter full name" },
+            { min: 2, message: language === "vi" ? "Họ và tên phải có ít nhất 2 ký tự" : "Full name must be at least 2 characters" },
+          ]}
+          help={state.errors?.fullName?.[0]}
+          validateStatus={state.errors?.fullName ? "error" : ""}
+        >
+          <Input
+            placeholder={language === "vi" ? "Ví dụ: Nguyễn Văn A" : "John Doe"}
+            disabled={isLoading}
+          />
+        </Form.Item>
 
-          {/* Role Field */}
-          <Form.Item
-            label={<Text strong>Role:</Text>}
-            name="roleId"
-            rules={[{ required: true, message: "Please select a role" }]}
-            help={state.errors?.roleId?.[0]}
-            validateStatus={state.errors?.roleId ? "error" : ""}
-          >
-            <Select
-              placeholder="Select a role for the user"
-              size="large"
-              disabled={isLoading}
-              options={Object.entries(RoleConfig).map(([_, config]) => ({
-                label: config.label,
-                value: config.id,
-              }))}
-            />
-          </Form.Item>
+        {/* Role Field */}
+        <Form.Item
+          label={<Text strong>{language === "vi" ? "Vai trò" : "Role"}</Text>}
+          name="roleId"
+          rules={[
+            { required: true, message: language === "vi" ? "Vui lòng chọn vai trò" : "Please select a role" },
+          ]}
+          help={state.errors?.roleId?.[0]}
+          validateStatus={state.errors?.roleId ? "error" : ""}
+        >
+          <Select
+            placeholder={language === "vi" ? "Chọn vai trò cho người dùng" : "Select a role for the user"}
+            disabled={isLoading}
+            options={Object.entries(RoleConfig).map(([_, config]) => ({
+              label: config.label,
+              value: config.id,
+            }))}
+          />
+        </Form.Item>
 
-          {/* Submit Buttons */}
-          <Flex gap={8} justify="center" style={{ marginTop: "24px" }}>
-            <Button size="large" onClick={() => form.resetFields()}>
-              Reset
+        {/* Submit Buttons */}
+        <Form.Item>
+          <Space>
+            <Button onClick={() => form.resetFields()}>
+              {language === "vi" ? "Xóa" : "Reset"}
             </Button>
             <Button
               type="primary"
-              size="large"
               htmlType="submit"
               loading={isLoading}
             >
-              Create User
+              {language === "vi" ? "Tạo người dùng" : "Create User"}
             </Button>
-          </Flex>
-        </Form>
-      </Flex>
-    </Flex>
+          </Space>
+        </Form.Item>
+      </Form>
+    </div>
   )
 }

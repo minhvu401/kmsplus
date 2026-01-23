@@ -67,11 +67,11 @@ export const PermissionConfig = {
     name: "create_answer",
     label: "Tạo câu trả lời",
   },
-  [Permission.VOTE_ANSWER]: {
-    id: 11,
-    name: "vote_answer",
-    label: "Bình chọn câu trả lời",
-  },
+  // [Permission.VOTE_ANSWER]: {
+  //   id: 11,
+  //   name: "vote_answer",
+  //   label: "Bình chọn câu trả lời",
+  // },
   [Permission.READ_COURSE]: {
     id: 12,
     name: "read_course",
