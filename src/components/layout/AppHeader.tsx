@@ -1,3 +1,4 @@
+"use client"
 import React, { useEffect, useState } from "react"
 import {
   Layout,
@@ -23,6 +24,7 @@ import { PageRoute } from "@/enum/page-route.enum"
 import LogoutIcon from "@/components/icon/LogoutIcon"
 import { logoutAction } from "@/action/auth/authActions"
 import useUserStore from "@/store/useUserStore"
+import LanguageToggle from "@/components/LanguageToggle"
 
 const { Header } = Layout
 const { Text } = Typography
@@ -129,6 +131,7 @@ export default function AppHeader({ collapsed }: HeaderProps) {
         <Badge count={11} dot>
           <BellOutlined style={{ fontSize: "18px" }} />
         </Badge>
+        <LanguageToggle />
         <Dropdown
           menu={{ items: profileItems }}
           trigger={["click"]}
