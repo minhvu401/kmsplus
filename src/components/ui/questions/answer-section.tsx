@@ -10,6 +10,7 @@ import Pagination from "@/components/ui/questions/pagination";
 import PageSizeSelector from "@/components/ui/questions/page-size-selector";
 import { useSearchParams } from 'next/navigation';
 import { formatDistanceToNowStrict } from 'date-fns/formatDistanceToNowStrict';
+import RichTextEditor from "@/components/ui/RichTextEditor";
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -44,7 +45,9 @@ export default function AnswerSection({
         const content = answer.content ?? '';
         setEditingAnswerId(answer.id);
         setEditingContent(content);
-        setEditingCount(content.length);
+        // Strip HTML tags to count plain text characters
+        const plainText = content.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
+        setEditingCount(plainText.length);
     };
 
     const cancelEdit = () => {
@@ -154,17 +157,15 @@ export default function AnswerSection({
                                 <Flex style={{ marginLeft: 40 }}>
                                     {isEditing ? (
                                         <Flex vertical style={{ width: '100%' }} gap={8}>
-                                            <Input.TextArea
-                                                rows={4}
+                                            <RichTextEditor
                                                 value={editingContent}
-                                                placeholder="Enter your answer here..."
-                                                maxLength={600}
-                                                onChange={(e) => {
-                                                    setEditingContent(e.target.value);
-                                                    setEditingCount(e.target.value.length);
+                                                onChange={(val) => {
+                                                    setEditingContent(val);
+                                                    // Strip HTML tags to count plain text characters
+                                                    const plainText = val.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
+                                                    setEditingCount(plainText.length);
                                                 }}
-                                                style={{ resize: 'none' }}
-                                                status={contentError ? 'error' : ''}
+                                                placeholder="Enter your answer here..."
                                             />
                                             <Flex justify="space-between" align="center">
                                                 <Text type={contentError ? 'danger' : 'secondary'}>
@@ -176,7 +177,7 @@ export default function AnswerSection({
                                                     <Button
                                                         type="primary"
                                                         onClick={() => handleSaveEdit(answer.id)}
-                                                        disabled={editingContent.trim().length < 15}
+                                                        disabled={editingCount < 15}
                                                     >
                                                         Save
                                                     </Button>
@@ -184,17 +185,16 @@ export default function AnswerSection({
                                             </Flex>
                                         </Flex>
                                     ) : (
-                                        <Paragraph
+                                        <div
+                                            className="prose prose-sm max-w-none"
                                             style={{
                                                 marginBottom: 0,
                                                 fontSize: 15,
-                                                whiteSpace: 'pre-wrap',
                                                 wordBreak: 'break-word',
                                                 lineHeight: 1.6,
                                             }}
-                                        >
-                                            {answer.content}
-                                        </Paragraph>
+                                            dangerouslySetInnerHTML={{ __html: answer.content }}
+                                        />
                                     )}
                                 </Flex>
                             </Card>
