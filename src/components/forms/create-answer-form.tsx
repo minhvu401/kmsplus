@@ -3,9 +3,26 @@
 import { useState, useActionState, startTransition } from 'react';
 import { Form, Input, Select, Button, Typography, Flex, Modal, Divider } from 'antd';
 import { State, createAnswer } from '@/action/question/questionActions';
+import RichTextEditor from "@/components/ui/RichTextEditor";
 
 const { Text } = Typography;
-const { TextArea } = Input;
+
+// Wrapper component for Ant Design Form integration
+interface ContentEditorProps {
+  value?: string;
+  onChange?: (value: string) => void;
+  placeholder?: string;
+}
+
+function ContentEditor({ value = '', onChange, placeholder }: ContentEditorProps) {
+  return (
+    <RichTextEditor
+      value={value}
+      onChange={(val) => onChange?.(val)}
+      placeholder={placeholder}
+    />
+  );
+}
 
 export default function CreateAnswerForm({
     userId,
@@ -28,7 +45,11 @@ export default function CreateAnswerForm({
 
     return (
         <>
-            <Flex vertical gap={16} style={{ width: '1100px', background: '#fff' }}>
+            <Flex
+                vertical
+                gap={8}
+                style={{ width: '100%', maxWidth: 900, background: '#fff' }}
+            >
                 <Form
                     form={form}
                     layout="vertical"
@@ -47,22 +68,31 @@ export default function CreateAnswerForm({
 
                     <Form.Item
                         name="content"
+                        style={{ marginBottom: 8 }}
+                        getValueFromEvent={(val: string) => {
+                            // Strip HTML tags to count plain text characters
+                            const plainText = val ? val.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim() : '';
+                            setContentCount(plainText.length);
+                            return val;
+                        }}
                         rules={[{ required: true, message: 'Please provide more details' },
-                        { min: 15, message: 'Answers must be at least 15 characters' }
+                        {
+                            validator: (_, value) => {
+                                // Strip HTML tags to get plain text for validation
+                                const plainText = value ? value.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim() : '';
+                                if (plainText.length < 15) {
+                                    return Promise.reject('Answers must be at least 15 characters');
+                                }
+                                return Promise.resolve();
+                            }
+                        }
                         ]}
                     >
-                        <TextArea
-                            rows={4}
-                            placeholder="Enter your answer here..."
-                            maxLength={600}
-                            onChange={(e) => {
-                                setContentCount(e.target.value.length);
-                            }}
-                            style={{ resize: 'none' }}
-                        />
+                        <ContentEditor placeholder="Enter your answer here..." />
                     </Form.Item>
-                    <Text type="secondary">Character limit {contentCount} / 600</Text>
-                    <Flex justify="end" gap={16} style={{ marginTop: 2 }}>
+
+                    <Flex justify="space-between" align="center">
+                        <Text type="secondary">Character limit {contentCount} / 600</Text>
                         <Button type="primary" size="large" onClick={() => setSubmitVisible(true)}>
                             Submit
                         </Button>
