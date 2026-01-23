@@ -331,8 +331,12 @@ export async function fetchFilteredQuestionsAction(
     // Only filter by category if it's a valid numeric ID
     const categoryId = parseInt(category, 10)
     if (category !== "any" && !isNaN(categoryId)) {
+    // Only filter by category if it's a valid numeric ID
+    const categoryId = parseInt(category, 10)
+    if (category !== "any" && !isNaN(categoryId)) {
       sqlQuery = sql`
       ${sqlQuery} 
+      AND categories.id = ${categoryId}
       AND categories.id = ${categoryId}
       `
     }

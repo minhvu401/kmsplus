@@ -30,9 +30,7 @@ type APIResponse =
   | { success: false; error: string }
 
 // Response type cho update operations (không cần courseId)
-type UpdateAPIResponse =
-  | { success: true }
-  | { success: false; error: string }
+type UpdateAPIResponse = { success: true } | { success: false; error: string }
 
 // --- FETCH ACTIONS ---
 
@@ -117,7 +115,10 @@ export async function createCourseAPI(
       return { success: true, courseId: result.courseId }
     }
     if (!result.success && "error" in result) {
-      return { success: false, error: result.error || "Failed to create course" }
+      return {
+        success: false,
+        error: result.error || "Failed to create course",
+      }
     }
     return { success: false, error: "Failed to create course" }
   } catch (error) {
@@ -142,23 +143,12 @@ export async function createCourseAPI(
 
 //     const result = await updateCourseAction(courseId, data)
 //     if (result.success) {
-//       revalidatePath(`/courses/${courseId}`)
-//       revalidatePath("/courses")
-//       return { success: true }
-//     }
-//     return { success: false, error: result.error || "Update failed" }
-//   } catch (error) {
-//     return { success: false, error: "Update failed" }
-//   }
-// }
 export async function updateCourseAPI(
   courseId: number,
   data: Partial<CreateCoursePayload>
 ): Promise<UpdateAPIResponse> {
   try {
-    const user = await requireAuth()
-    if (!user?.id) throw new Error("Unauthorized")
-
+    await requireAuth()
     console.log("🔥 [API] Thực hiện cập nhật toàn diện Course:", courseId)
 
     // GỌI HÀM UPDATE TOÀN DIỆN (Bao gồm cả curriculum)
@@ -171,7 +161,10 @@ export async function updateCourseAPI(
       return { success: true }
     }
 
-    return { success: false, error: "error" in result ? result.error : "Update failed" }
+    return {
+      success: false,
+      error: "error" in result ? result.error : "Update failed",
+    }
   } catch (error) {
     console.error("API Update Error:", error)
     return { success: false, error: "Hệ thống gặp lỗi khi lưu dữ liệu" }
