@@ -3,6 +3,49 @@
 
 import { sql } from "@/lib/database"
 
+// Quiz Question Type
+export type Question = {
+  id: number
+  question_text: string
+  type: "single_choice" | "multiple_choice"
+  options: string[]
+  time_limit?: number
+}
+
+// Quiz Attempt Type
+export type QuizAttempt = {
+  id: number
+  quiz_id: number
+  user_id: number
+  attempt_number: number
+  status: "in_progress" | "completed"
+  started_at: Date
+  submitted_at?: Date
+  correct_answers?: number
+  score?: number
+  time_spent_seconds?: number
+}
+
+// Question Result Type (for quiz results)
+export type QuestionResult = {
+  id: number
+  questionText: string
+  type: "single_choice" | "multiple_choice"
+  options: string[]
+  selectedAnswers: number[]
+  correctAnswers: number[]
+  explanation?: string
+}
+
+// Attempt Result Type
+export type AttemptResult = {
+  title: string
+  attempt_number: number
+  time_spent_seconds: number
+  score: number
+  questions: QuestionResult[]
+}
+
 // 1. Định nghĩa Type đầy đủ
 export type Quiz = {
   id: number

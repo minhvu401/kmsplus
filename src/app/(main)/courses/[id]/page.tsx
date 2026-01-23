@@ -16,7 +16,7 @@ import {
 } from "@/service/course.service"
 import type { Course } from "@/service/course.service"
 import Link from "next/link"
-import { Button, Tabs, Card, Image, Progress } from "antd" // Đã có Progress ở đây
+import { Button, Tabs, Card, Image, Progress } from "antd"
 import { PlayCircleOutlined, UserOutlined } from "@ant-design/icons" // Đã có PlayCircleOutlined ở đây
 
 type Props = {

@@ -1,7 +1,17 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Button, Table, Space, message, Spin, Empty, Input, Tooltip, Modal } from "antd"
+import {
+  Button,
+  Table,
+  Space,
+  message,
+  Spin,
+  Empty,
+  Input,
+  Tooltip,
+  Modal,
+} from "antd"
 import {
   PlusOutlined,
   EditOutlined,
@@ -47,8 +57,8 @@ export default function QuizzesPage() {
         page: 1,
         limit: 100,
       })
-      setQuizzes(data.quizzes || [])
-      setFilteredQuizzes(data.quizzes || [])
+      setQuizzes(data.data || [])
+      setFilteredQuizzes(data.data || [])
     } catch (error) {
       console.error("Failed to load quizzes:", error)
       message.error("Không thể tải danh sách bài thi")
@@ -59,7 +69,7 @@ export default function QuizzesPage() {
 
   const handleSearch = (value: string) => {
     setSearchText(value)
-    const filtered = quizzes.filter(quiz =>
+    const filtered = quizzes.filter((quiz) =>
       quiz.title.toLowerCase().includes(value.toLowerCase())
     )
     setFilteredQuizzes(filtered)
@@ -73,7 +83,8 @@ export default function QuizzesPage() {
   const handleDelete = async (id: number) => {
     Modal.confirm({
       title: "Xác nhận xóa",
-      content: "Bạn có chắc chắn muốn xóa bài thi này? Hành động này không thể hoàn tác.",
+      content:
+        "Bạn có chắc chắn muốn xóa bài thi này? Hành động này không thể hoàn tác.",
       okText: "Xóa",
       okType: "danger",
       cancelText: "Hủy",
@@ -102,9 +113,7 @@ export default function QuizzesPage() {
       dataIndex: "description",
       key: "description",
       width: "30%",
-      render: (text: string | null) => (
-        <span>{text || "Không có mô tả"}</span>
-      ),
+      render: (text: string | null) => <span>{text || "Không có mô tả"}</span>,
     },
     {
       title: "Thời Gian (phút)",
@@ -128,11 +137,7 @@ export default function QuizzesPage() {
         <Space size="small">
           <Tooltip title="Xem chi tiết">
             <Link href={`/quizzes/${record.id}`}>
-              <Button
-                type="primary"
-                size="small"
-                icon={<EyeOutlined />}
-              >
+              <Button type="primary" size="small" icon={<EyeOutlined />}>
                 Xem
               </Button>
             </Link>

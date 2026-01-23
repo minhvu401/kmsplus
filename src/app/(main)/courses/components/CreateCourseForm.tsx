@@ -1,12 +1,12 @@
-// @/src/app/(main)/courses/components/UpdateCourseForm
+// @/src/app/(main)/courses/components/CreateCourseForm.tsx
 "use client"
+
 import React, { useState, useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
-import { updateCourseAPI } from "@/action/courses/courseAction"
+import { createCourseAPI } from "@/action/courses/courseAction"
 import { createNewLessonAPI } from "@/action/lesson/lessonActions"
 import { COURSE_STATUS_LABELS } from "@/enum/course-status.enum"
 import RichTextEditor from "@/components/ui/RichTextEditor"
-import ContentBankItem from "@/components/ui/ContentBankItem"
 import {
   DndContext,
   closestCorners,
@@ -47,7 +47,7 @@ import {
   Radio,
 } from "antd"
 import {
-  PlusOutlined as AntPlusOutlined,
+  PlusOutlined,
   CheckCircleFilled,
   InboxOutlined,
   PlayCircleOutlined,
@@ -82,9 +82,7 @@ export type Section = {
   order: number
   items: CurriculumItem[]
 }
-export type CoursePayload = {
-  id?: number
-  creator_id?: number
+export type CreateCoursePayload = {
   title?: string
   description?: string
   thumbnail_url?: string
@@ -96,20 +94,14 @@ export type CoursePayload = {
 const steps = ["Basic Information", "Advance Information"]
 type StepStatus = "pending" | "valid" | "invalid"
 
-interface UpdateCourseFormProps {
-  initialData: CoursePayload
+interface CreateCourseFormProps {
   availableLessons: Lesson[]
   availableQuizzes: Quiz[]
   onSuccess: () => void
 }
 
 // --- SORTABLE ITEM COMPONENT ---
-interface SortableItemProps {
-  id: string
-  children: (listeners: any) => React.ReactNode
-}
-
-function SortableItem({ id, children }: SortableItemProps) {
+function SortableItem({ id, children }: { id: string; children: any }) {
   const {
     attributes,
     listeners,
@@ -118,7 +110,6 @@ function SortableItem({ id, children }: SortableItemProps) {
     transition,
     isDragging,
   } = useSortable({ id })
-
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
@@ -126,7 +117,6 @@ function SortableItem({ id, children }: SortableItemProps) {
     zIndex: isDragging ? 999 : "auto",
     position: "relative" as "relative",
   }
-
   return (
     <div ref={setNodeRef} style={style} {...attributes}>
       {children(listeners)}
@@ -135,35 +125,21 @@ function SortableItem({ id, children }: SortableItemProps) {
 }
 
 // --- MAIN COMPONENT ---
-export default function UpdateCourseForm({
-  initialData,
+export default function CreateCourseForm({
   availableLessons: initialLessons = [],
   availableQuizzes: initialQuizzes = [],
   onSuccess,
-}: UpdateCourseFormProps) {
-  console.log("🔥 UpdateCourseForm - Initial data:", {
-    courseId: initialData.id,
-    title: initialData.title,
-    curriculumLength: initialData.curriculum?.length || 0,
-    curriculum: initialData.curriculum,
-  })
-  // 1. Quản lý danh sách Available Content (Lessons & Quizzes) từ Props
+}: CreateCourseFormProps) {
   const [availableLessons, setAvailableLessons] =
     useState<Lesson[]>(initialLessons)
   const [availableQuizzes, setAvailableQuizzes] =
     useState<Quiz[]>(initialQuizzes)
 
-  // Cập nhật state khi props thay đổi (khi server gửi dữ liệu mới)
   useEffect(() => {
-    console.log("🔥 UpdateCourseForm - Props changed:", {
-      initialLessons: initialLessons.length,
-      initialQuizzes: initialQuizzes.length,
-    })
     setAvailableLessons(initialLessons)
     setAvailableQuizzes(initialQuizzes)
   }, [initialLessons, initialQuizzes])
 
-  // Hàm thêm lesson mới vào danh sách ngay lập tức khi tạo xong
   const handleLessonCreated = (newLesson: Lesson) => {
     setAvailableLessons((prev) => [newLesson, ...prev])
   }
@@ -173,36 +149,23 @@ export default function UpdateCourseForm({
   const [current, setCurrent] = useState(0)
   const [loading, setLoading] = useState(false)
 
-  // State Payload
-  const [payload, setPayload] = useState<CoursePayload>(initialData)
-
-  // Log khi payload thay đổi
-  useEffect(() => {
-    console.log("🔥 UpdateCourseForm - Payload changed:", {
-      courseId: payload.id,
-      curriculumLength: payload.curriculum?.length || 0,
-      curriculum: payload.curriculum,
-    })
-  }, [payload.curriculum])
+  const [payload, setPayload] = useState<CreateCoursePayload>({
+    status: "pending_approval",
+    duration_hours: 0,
+    curriculum: [],
+  })
 
   const [stepStatus, setStepStatus] = useState<StepStatus[]>(
-    new Array(steps.length).fill("valid")
+    new Array(steps.length).fill("pending")
   )
-  const [imageUrl, setImageUrl] = useState<string | null>(
-    initialData.thumbnail_url || null
-  )
-  const [cropModalVisible, setCropModalVisible] = useState(false)
+  const [imageUrl, setImageUrl] = useState<string | null>(null)
   const [activeSectionId, setActiveSectionId] = useState<string | null>(null)
 
-  // Sensors cho Kéo thả
   const sensors = useSensors(
     useSensor(PointerSensor),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   )
 
-  // Effect: Tự động chọn Section đầu tiên
   useEffect(() => {
     if (payload.curriculum.length > 0 && !activeSectionId) {
       setActiveSectionId(payload.curriculum[0].id)
@@ -210,62 +173,39 @@ export default function UpdateCourseForm({
   }, [payload.curriculum, activeSectionId])
 
   const handleUploadThumbnail = async (options: any) => {
-    const { file, onSuccess, onError } = options
-    const hide = message.loading("Đang tải ảnh lên...", 0)
-
+    const { file, onSuccess: onUploadSuccess, onError } = options
+    const hide = message.loading("Uploading...", 0)
     try {
       const formData = new FormData()
       formData.append("file", file)
       formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET)
-
       const res = await fetch(
         `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
         { method: "POST", body: formData }
       )
-
-      if (!res.ok) {
-        const errorData = await res.json()
-        throw new Error(errorData.error?.message || "Upload thất bại")
-      }
-
+      if (!res.ok) throw new Error("Upload failed")
       const data = await res.json()
-      const shortUrl = data.secure_url
-
-      setImageUrl(shortUrl)
-      update("thumbnail_url", shortUrl)
-
-      if (onSuccess) onSuccess("Ok")
-      message.success("Tải ảnh thành công!")
+      setImageUrl(data.secure_url)
+      update("thumbnail_url", data.secure_url)
+      if (onUploadSuccess) onUploadSuccess("Ok")
+      message.success("Upload success!")
     } catch (error: any) {
-      console.error("Upload error:", error)
-      message.error(`Lỗi tải ảnh: ${error.message}`)
+      message.error("Upload failed")
       if (onError) onError({ error })
     } finally {
       hide()
     }
   }
 
-  // --- LOGIC KÉO THẢ ---
-  const findSectionId = (itemId: string) => {
-    if (payload.curriculum.find((s) => s.id === itemId)) return itemId
-    const section = payload.curriculum.find((s) =>
-      s.items.some((i) => i.id === itemId)
-    )
-    return section?.id
-  }
-
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event
     if (!over) return
-
     const activeId = active.id as string
     const overId = over.id as string
-
     if (activeId === overId) return
 
     const activeSectionId = findSectionId(activeId)
     const overSectionId = findSectionId(overId)
-
     if (!activeSectionId || !overSectionId) return
 
     setPayload((prev) => {
@@ -290,16 +230,12 @@ export default function UpdateCourseForm({
         const destSection = newCurriculum[overSectionIndex]
         const sourceItems = [...sourceSection.items]
         const destItems = [...destSection.items]
-
         const activeItemIndex = sourceItems.findIndex((i) => i.id === activeId)
         const [movedItem] = sourceItems.splice(activeItemIndex, 1)
-
         const overItemIndex = destItems.findIndex((i) => i.id === overId)
         const insertIndex =
           overItemIndex >= 0 ? overItemIndex : destItems.length + 1
-
         destItems.splice(insertIndex, 0, movedItem)
-
         newCurriculum[activeSectionIndex] = {
           ...sourceSection,
           items: sourceItems,
@@ -310,9 +246,17 @@ export default function UpdateCourseForm({
     })
   }
 
-  function update<K extends keyof CoursePayload>(
+  const findSectionId = (itemId: string) => {
+    if (payload.curriculum.find((s) => s.id === itemId)) return itemId
+    const section = payload.curriculum.find((s) =>
+      s.items.some((i) => i.id === itemId)
+    )
+    return section?.id
+  }
+
+  function update<K extends keyof CreateCoursePayload>(
     key: K,
-    value: CoursePayload[K]
+    value: CreateCoursePayload[K]
   ) {
     setPayload((p) => ({ ...p, [key]: value }))
     setStepStatus((prev) => {
@@ -362,15 +306,10 @@ export default function UpdateCourseForm({
       return
     }
 
-    if (!payload.id) {
-      message.error("Course ID missing.")
-      return
-    }
-
     setLoading(true)
     try {
-      const res = await updateCourseAPI(payload.id, {
-        title: payload.title,
+      const res = await createCourseAPI({
+        title: payload.title || "Untitled Course",
         description: payload.description,
         thumbnail_url: payload.thumbnail_url,
         status: payload.status,
@@ -378,11 +317,11 @@ export default function UpdateCourseForm({
         curriculum: payload.curriculum,
       })
       if (res.success) {
-        message.success("Course updated successfully!")
+        message.success("Course created successfully! 🎉")
         if (onSuccess) onSuccess()
         router.refresh()
       } else {
-        message.error(res.error || "Update failed")
+        message.error(res.error || "Create failed")
       }
     } catch (err) {
       message.error("System error occurred.")
@@ -397,43 +336,34 @@ export default function UpdateCourseForm({
   )
 
   return (
-    <div className="bg-white p-2 rounded shadow">
+    <div className="bg-white p-2">
       {contextHolder}
       <h1 className="text-2xl font-semibold text-gray-900">
-        Update Course: {payload.title}
+        Create New Course
       </h1>
-      <div className="text-sm text-gray-500">
+      <div className="text-sm text-gray-500 mb-6">
         Step {current + 1} / {steps.length}
       </div>
-
-      <div className="mb-6">
-        <Steps
-          current={current}
-          onChange={changeStep}
-          items={steps.map((s, i) => {
-            const status = stepStatus[i]
-            const isCurriculumStep = i === 1
-            return {
-              title: s,
-              status:
-                status === "valid"
-                  ? "finish"
-                  : status === "invalid"
-                    ? "error"
-                    : "wait",
-              description: isCurriculumStep ? `${totalItems} items` : undefined,
-            }
-          })}
-        />
-      </div>
-
+      <Steps
+        className="mb-6"
+        current={current}
+        onChange={changeStep}
+        items={steps.map((s, i) => ({
+          title: s,
+          status:
+            stepStatus[i] === "valid"
+              ? "finish"
+              : stepStatus[i] === "invalid"
+                ? "error"
+                : "wait",
+          description: i === 1 ? `${totalItems} items` : undefined,
+        }))}
+      />
       <div>
         {current === 0 && (
           <section className="space-y-4">
             <div>
-              <label className="block text-sm font-medium mb-1 text-gray-700">
-                Title
-              </label>
+              <label className="block text-sm font-medium mb-1">Title</label>
               <Input
                 value={payload.title || ""}
                 onChange={(e) => update("title", e.target.value)}
@@ -447,14 +377,12 @@ export default function UpdateCourseForm({
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1 text-gray-700">
+              <label className="block text-sm font-medium mb-1">
                 Thumbnail URL
               </label>
               <Input
                 value={payload.thumbnail_url || ""}
                 onChange={(e) => update("thumbnail_url", e.target.value)}
-                maxLength={500}
-                showCount
               />
               <div className="mt-2">
                 <Upload
@@ -462,27 +390,20 @@ export default function UpdateCourseForm({
                   showUploadList={false}
                   customRequest={handleUploadThumbnail}
                 >
-                  <Button icon={<AntPlusOutlined />}>Upload Image</Button>
+                  <Button icon={<PlusOutlined />}>Upload Image</Button>
                 </Upload>
               </div>
               {imageUrl && (
-                <div className="mt-2">
-                  <img
-                    src={imageUrl}
-                    alt="Thumbnail"
-                    className="max-w-full h-32 object-cover border rounded"
-                  />
-                  <div className="mt-2">
-                    <Button onClick={() => setCropModalVisible(true)}>
-                      Crop Image
-                    </Button>
-                  </div>
-                </div>
+                <img
+                  src={imageUrl}
+                  alt="Thumbnail"
+                  className="mt-2 h-32 object-cover border rounded"
+                />
               )}
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1 text-gray-700">
-                Short Description
+              <label className="block text-sm font-medium mb-1">
+                Description
               </label>
               <TextArea
                 value={payload.description || ""}
@@ -494,78 +415,55 @@ export default function UpdateCourseForm({
             </div>
           </section>
         )}
-
         {current === 1 && (
           <section className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium mb-1 text-gray-700">
-                  Status
-                </label>
+                <label className="block text-sm font-medium mb-1">Status</label>
                 <Select
                   value={payload.status}
-                  onChange={(value) => update("status", value)}
+                  onChange={(v) => update("status", v)}
                   className="w-full"
                   options={Object.entries(COURSE_STATUS_LABELS)
-                    .filter(
-                      ([value]) =>
-                        value === "draft" || value === "pending_approval"
-                    )
-                    .map(([value, label]) => ({ value, label }))}
+                    .filter(([v]) => v !== "published")
+                    .map(([v, l]) => ({ value: v, label: l }))}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1 text-gray-700">
+                <label className="block text-sm font-medium mb-1">
                   Duration (hours)
                 </label>
                 <Input
                   type="number"
-                  value={String(payload.duration_hours ?? "")}
+                  value={payload.duration_hours}
                   onChange={(e) =>
-                    update(
-                      "duration_hours",
-                      e.target.value ? Number(e.target.value) : undefined
-                    )
+                    update("duration_hours", Number(e.target.value))
                   }
                 />
               </div>
             </div>
-
-            <hr className="my-6 border-gray-200" />
-
-            <div>
-              <CurriculumContentBank
-                modal={modal}
-                availableLessons={availableLessons} // Dùng state đã được khởi tạo
-                availableQuizzes={availableQuizzes} // Dùng state đã được khởi tạo
-                value={payload.curriculum}
-                onChange={(newCurriculum) =>
-                  update("curriculum", newCurriculum)
-                }
-                hasError={
-                  stepStatus[1] === "invalid" &&
-                  (payload.curriculum.length === 0 ||
-                    payload.curriculum.some((s) => s.items.length === 0))
-                }
-                sensors={sensors}
-                onDragEnd={handleDragEnd}
-                activeSectionId={activeSectionId}
-                setActiveSectionId={setActiveSectionId}
-                onOpenCreateModal={() => {}}
-                onLessonCreated={handleLessonCreated} // Truyền callback tạo lesson
-              />
-              {stepStatus[1] === "invalid" && (
-                <p className="mt-2 text-sm text-red-600">
-                  Curriculum must have at least one section, and each section
-                  must have at least one item.
-                </p>
-              )}
-            </div>
+            <hr className="my-6" />
+            <CurriculumContentBank
+              modal={modal}
+              availableLessons={availableLessons}
+              availableQuizzes={availableQuizzes}
+              value={payload.curriculum}
+              onChange={(nc) => update("curriculum", nc)}
+              hasError={
+                stepStatus[1] === "invalid" &&
+                (payload.curriculum.length === 0 ||
+                  payload.curriculum.some((s) => s.items.length === 0))
+              }
+              sensors={sensors}
+              onDragEnd={handleDragEnd}
+              activeSectionId={activeSectionId}
+              setActiveSectionId={setActiveSectionId}
+              onLessonCreated={handleLessonCreated}
+            />
           </section>
         )}
       </div>
-
-      <div className="mt-6 flex items-center justify-between">
+      <div className="mt-6 flex justify-between">
         <div>
           {current > 0 && (
             <Button onClick={() => changeStep(current - 1)}>Back</Button>
@@ -581,123 +479,33 @@ export default function UpdateCourseForm({
               type="primary"
               onClick={handleSubmit}
               loading={loading}
-              style={{ backgroundColor: "#10b981" }}
+              style={{ backgroundColor: "#1677ff" }}
             >
-              Save Changes
+              Create Course
             </Button>
           )}
         </div>
       </div>
-
-      {/* Modal Crop */}
-      <Modal
-        title="Crop Image"
-        open={cropModalVisible}
-        onCancel={() => setCropModalVisible(false)}
-        onOk={() => setCropModalVisible(false)}
-        width={600}
-      >
-        <div className="text-center">
-          {imageUrl && (
-            <img src={imageUrl} alt="Crop Preview" className="max-w-full" />
-          )}
-          <p className="mt-2 text-gray-500">Crop functionality placehoder.</p>
-        </div>
-      </Modal>
     </div>
   )
 }
 
-// --- Component FormModal ---
-function FormModal({
-  title,
-  label,
-  placeholder,
-  initialValue = "",
-  onClose,
-  onSave,
-}: {
-  title: string
-  label: string
-  placeholder: string
-  initialValue?: string
-  onClose: () => void
-  onSave: (value: string) => void
-}) {
-  const [value, setValue] = useState(initialValue)
+// --- CURRICULUM CONTENT BANK (Nơi chứa Modal Create Lesson Mới) ---
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    onSave(value)
-  }
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
-        <form onSubmit={handleSubmit}>
-          <div className="flex justify-between items-center p-4 border-b">
-            <h3 className="text-lg font-semibold text-gray-700">{title}</h3>
-            <button
-              type="button"
-              onClick={onClose}
-              className="text-gray-400 hover:text-gray-600"
-            >
-              <X size={20} />
-            </button>
-          </div>
-          <div className="p-4 space-y-2">
-            <label
-              htmlFor="modal-input"
-              className="block text-sm font-medium text-gray-700 mb-1"
-            >
-              {label}
-            </label>
-            <input
-              id="modal-input"
-              type="text"
-              value={value}
-              onChange={(e) => setValue(e.target.value)}
-              placeholder={placeholder}
-              className="w-full border px-3 py-2 rounded border-gray-300"
-              autoFocus
-            />
-          </div>
-          <div className="flex justify-end gap-3 p-4 bg-gray-50 rounded-b-lg">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 bg-white text-blue-600 border border-blue-600 rounded text-sm font-medium hover:bg-blue-50 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 bg-blue-600 text-white rounded text-sm font-medium"
-            >
-              Save Changes
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  )
-}
-
-// --- CURRICULUM CONTENT BANK ---
 interface CurriculumContentBankProps {
   modal: any
   value: Section[]
-  onChange: (value: Section[]) => void
+  onChange: (v: Section[]) => void
   hasError: boolean
   availableLessons: Lesson[]
   availableQuizzes: Quiz[]
   sensors: any
-  onDragEnd: (event: DragEndEvent) => void
+  onDragEnd: (e: DragEndEvent) => void
   activeSectionId: string | null
   setActiveSectionId: (id: string | null) => void
-  onOpenCreateModal: () => void
-  onLessonCreated: (lesson: Lesson) => void // Thêm prop này để nhận callback
+  onLessonCreated: (l: Lesson) => void
 }
+
 function CurriculumContentBank({
   value: sections,
   onChange,
@@ -709,24 +517,22 @@ function CurriculumContentBank({
   modal,
   activeSectionId,
   setActiveSectionId,
-  onLessonCreated, // Nhận prop này
+  onLessonCreated,
 }: CurriculumContentBankProps) {
   const router = useRouter()
   const [modalState, setModalState] = useState<{
     type: "Section"
     sectionId?: string
   } | null>(null)
-
   const [activeTab, setActiveTab] = useState<"lessons" | "quizzes">("lessons")
   const [searchTerm, setSearchTerm] = useState("")
 
-  // --- State cho Modal Create Lesson ---
+  // --- States cho Create Lesson Modal (Updated) ---
   const [form] = Form.useForm()
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false)
   const [createdLessonName, setCreatedLessonName] = useState("")
   const [isCreating, setIsCreating] = useState(false)
-
   const [contentType, setContentType] = useState<
     "text_media" | "video" | "pdf"
   >("text_media")
@@ -746,121 +552,101 @@ function CurriculumContentBank({
     setActiveSectionId(newSection.id)
   }
 
-  const handleEditSection = (sectionId: string) =>
-    setModalState({ type: "Section", sectionId })
-
+  const handleEditSection = (id: string) =>
+    setModalState({ type: "Section", sectionId: id })
   const handleSaveSection = (title: string) => {
-    if (modalState?.sectionId) {
+    if (modalState?.sectionId)
       onChange(
         sections.map((s) =>
-          String(s.id) === String(modalState.sectionId) ? { ...s, title } : s
+          s.id === modalState.sectionId ? { ...s, title } : s
         )
       )
-    }
     setModalState(null)
   }
 
-  const handleDeleteSection = (sectionId: string | number) => {
+  const handleDeleteSection = (id: string | number) => {
     modal.confirm({
       title: "Delete Section",
       content: (
         <div className="text-gray-600">
           Are you sure you want to delete this section?
           <br />
-          <b className="text-red-500">All lessons inside will be removed.</b>
+          <b className="text-red-500">All items inside will be removed.</b>
         </div>
       ),
       okText: "Delete",
       okType: "danger",
       onOk: () => {
-        const newSections = sections.filter(
-          (s: any) => String(s.id) !== String(sectionId)
-        )
-        onChange(newSections)
-        if (String(activeSectionId) === String(sectionId))
-          setActiveSectionId(null)
-        message.success("Section removed")
+        onChange(sections.filter((s) => String(s.id) !== String(id)))
+        if (String(activeSectionId) === String(id)) setActiveSectionId(null)
       },
     })
   }
-  const handleAddItemToSection = (
+
+  const handleAddItem = (
     sectionId: string,
-    item: Lesson | Quiz,
+    item: any,
     type: "lesson" | "quiz"
   ) => {
     onChange(
-      sections.map((s) => {
-        if (s.id !== sectionId) return s
-        const newItem: CurriculumItem = {
-          id: `item-${Date.now()}`,
-          order: s.items.length + 1,
-          resource_id: item.id,
-          type: type,
-          title: item.title,
-          duration_minutes:
-            type === "lesson" ? (item as Lesson).duration_minutes : undefined,
-          question_count:
-            type === "quiz" ? (item as Quiz).question_count : undefined,
-        }
-        return { ...s, items: [...s.items, newItem] }
-      })
+      sections.map((s) =>
+        s.id === sectionId
+          ? {
+              ...s,
+              items: [
+                ...s.items,
+                {
+                  id: `item-${Date.now()}`,
+                  order: s.items.length,
+                  resource_id: item.id,
+                  type,
+                  title: item.title,
+                  duration_minutes:
+                    type === "lesson" ? item.duration_minutes : undefined,
+                  question_count:
+                    type === "quiz" ? item.question_count : undefined,
+                },
+              ],
+            }
+          : s
+      )
     )
   }
 
   const handleRemoveItem = (
-    sectionId: string | number,
+    secId: string | number,
     itemId: string | number
   ) => {
-    modal.confirm({
-      title: "Remove Item",
-      content: "Are you sure you want to remove this item?",
-      okText: "Remove",
-      okType: "danger",
-      centered: true,
-      onOk: () => {
-        const updatedSections = sections.map((section) => {
-          if (String(section.id) === String(sectionId)) {
-            return {
-              ...section,
-              items: section.items.filter(
-                (item) => String(item.id) !== String(itemId)
-              ),
+    onChange(
+      sections.map((s) =>
+        String(s.id) === String(secId)
+          ? {
+              ...s,
+              items: s.items.filter((i) => String(i.id) !== String(itemId)),
             }
-          }
-          return section
-        })
-        onChange(updatedSections)
-        message.success("Item removed")
-      },
-    })
+          : s
+      )
+    )
   }
 
+  // --- Logic Helpers cho Create Lesson (Updated) ---
   const handleUploadPDF = async (file: File) => {
     const hide = message.loading("Uploading PDF...", 0)
     try {
       const formData = new FormData()
       formData.append("file", file)
       formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET)
-
       const res = await fetch(
         `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/auto/upload`,
         { method: "POST", body: formData }
       )
-
-      if (!res.ok) {
-        const errorData = await res.json()
-        throw new Error(errorData.error?.message || "Upload failed")
-      }
-
+      if (!res.ok) throw new Error("Upload failed")
       const data = await res.json()
-      const fileUrl = data.secure_url || data.url
-
-      setPdfFile({ name: file.name, url: fileUrl })
-      form.setFieldsValue({ content: fileUrl })
-      message.success("PDF uploaded successfully!")
-    } catch (error: any) {
-      console.error("PDF Upload error:", error)
-      message.error(`Failed to upload: ${error.message}`)
+      setPdfFile({ name: file.name, url: data.secure_url })
+      form.setFieldsValue({ content: data.secure_url })
+      message.success("PDF uploaded!")
+    } catch (error) {
+      message.error("Failed to upload PDF")
     } finally {
       hide()
     }
@@ -878,175 +664,144 @@ function CurriculumContentBank({
   const handleCreateSubmit = async (values: any) => {
     setIsCreating(true)
     try {
-      const newLessonResponse = await createNewLessonAPI({
+      const res = await createNewLessonAPI({
         title: values.title,
         type: values.type,
         content: values.content,
       })
-
-      // ✅ Cập nhật danh sách lesson ngay lập tức
-      if (onLessonCreated) {
-        onLessonCreated(newLessonResponse as unknown as Lesson)
-      }
-
+      onLessonCreated(res as unknown as Lesson)
       setIsCreateModalOpen(false)
-      setCreatedLessonName(newLessonResponse.title)
+      setCreatedLessonName(res.title)
       setIsSuccessModalOpen(true)
       form.resetFields()
-    } catch (error) {
+      setVideoUrl("")
+      setPdfFile(null)
+    } catch {
       message.error("Failed to create lesson")
     } finally {
       setIsCreating(false)
     }
   }
 
-  // ✅ Sử dụng useMemo để lọc danh sách
-  const filteredLessons = useMemo(() => {
-    return availableLessons.filter((l) =>
-      l.title.toLowerCase().includes(searchTerm.toLowerCase())
-    )
-  }, [availableLessons, searchTerm])
-
-  const filteredQuizzes = useMemo(() => {
-    return availableQuizzes.filter((q) =>
-      q.title.toLowerCase().includes(searchTerm.toLowerCase())
-    )
-  }, [availableQuizzes, searchTerm])
+  const filteredLessons = useMemo(
+    () =>
+      availableLessons.filter((l) =>
+        l.title.toLowerCase().includes(searchTerm.toLowerCase())
+      ),
+    [availableLessons, searchTerm]
+  )
+  const filteredQuizzes = useMemo(
+    () =>
+      availableQuizzes.filter((q) =>
+        q.title.toLowerCase().includes(searchTerm.toLowerCase())
+      ),
+    [availableQuizzes, searchTerm]
+  )
 
   return (
     <div
       className={`grid grid-cols-1 md:grid-cols-2 gap-6 p-4 border rounded-md ${hasError ? "border-red-500" : "border-gray-200"}`}
     >
-      {/* LEFT COLUMN: SOURCE */}
-      <div className="block text-sm font-medium mb-1 text-gray-700">
+      <div className="bg-gray-50 p-4 rounded border flex-1 flex flex-col overflow-hidden">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-semibold m-0">Available Content</h3>
+          <Button
+            type="primary"
+            size="small"
+            icon={<Plus size={16} />}
+            onClick={() => setIsCreateModalOpen(true)}
+            className="bg-[#1677ff] hover:bg-blue-500 shadow-sm"
+          >
+            New Lesson
+          </Button>
+        </div>
         {sections.length > 0 && (
           <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Select Section to Add To
+            <label className="block text-xs font-medium text-gray-500 mb-1">
+              Target Section
             </label>
             <Select
               className="w-full"
               value={activeSectionId || undefined}
-              onChange={(val) => setActiveSectionId(val)}
+              onChange={setActiveSectionId}
               options={sections.map((s) => ({ value: s.id, label: s.title }))}
-              placeholder="Select a section..."
+              placeholder="Select section..."
             />
           </div>
         )}
-
-        <div className="bg-gray-50 p-4 rounded border flex-1 flex flex-col overflow-hidden">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold m-0">Available Content</h3>
-            <Button
-              type="primary"
-              icon={<Plus size={16} />}
-              onClick={() => setIsCreateModalOpen(true)}
-              className="bg-blue-600 hover:bg-blue-500 shadow-sm"
-              size="small"
-            >
-              New Lesson
-            </Button>
-          </div>
-
-          <div className="relative mb-2">
-            <input
-              type="text"
-              placeholder="Search..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-8 pr-4 py-2 border rounded-md text-sm"
-            />
-            <Search
-              size={16}
-              className="absolute left-2.5 top-2.5 text-gray-400"
-            />
-          </div>
-
-          <div className="flex border-b mb-2">
-            <button
-              onClick={() => setActiveTab("lessons")}
-              className={`px-4 py-2 text-sm font-medium ${activeTab === "lessons" ? "border-b-2 border-blue-600 text-blue-600" : "text-gray-500"}`}
-            >
-              Lessons
-            </button>
-            <button
-              onClick={() => setActiveTab("quizzes")}
-              className={`px-4 py-2 text-sm font-medium ${activeTab === "quizzes" ? "border-b-2 border-blue-600 text-blue-600" : "text-gray-500"}`}
-            >
-              Quizzes
-            </button>
-          </div>
-
-          <div className="flex-1 overflow-y-auto space-y-2 max-h-[400px]">
-            {activeTab === "lessons" &&
-              // ✅ Đã fix lỗi implicit any
-              filteredLessons.map((l: Lesson) => (
-                <ContentBankItem
-                  key={`l-${l.id}`}
-                  icon={<BookOpen size={16} />}
-                  title={l.title}
-                  meta={`${l.duration_minutes || 0} min`}
-                  onAdd={() => {
-                    if (!activeSectionId) {
-                      message.warning("Please select a section above first")
-                      return
-                    }
-                    handleAddItemToSection(activeSectionId, l, "lesson")
-                  }}
-                />
-              ))}
-            {activeTab === "quizzes" &&
-              // ✅ Đã fix lỗi implicit any
-              filteredQuizzes.map((q: Quiz) => (
-                <ContentBankItem
-                  key={`q-${q.id}`}
-                  icon={<FileQuestion size={16} />}
-                  title={q.title}
-                  meta={`${q.question_count} Qs`}
-                  onAdd={() => {
-                    if (!activeSectionId) {
-                      message.warning("Please select a section above first")
-                      return
-                    }
-                    handleAddItemToSection(activeSectionId, q, "quiz")
-                  }}
-                />
-              ))}
-            {activeTab === "lessons" && filteredLessons.length === 0 && (
-              <p className="text-center text-gray-400 mt-4 text-sm">
-                No lessons found.
-              </p>
-            )}
-            {activeTab === "quizzes" && filteredQuizzes.length === 0 && (
-              <p className="text-center text-gray-400 mt-4 text-sm">
-                No quizzes found.
-              </p>
-            )}
-          </div>
+        <div className="relative mb-2">
+          <Input
+            placeholder="Search content..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            prefix={<Search size={14} className="text-gray-400" />}
+          />
+        </div>
+        <div className="flex border-b mb-2">
+          <button
+            className={`px-4 py-2 text-sm font-medium ${activeTab === "lessons" ? "border-b-2 border-blue-600 text-blue-600" : "text-gray-500"}`}
+            onClick={() => setActiveTab("lessons")}
+          >
+            Lessons
+          </button>
+          <button
+            className={`px-4 py-2 text-sm font-medium ${activeTab === "quizzes" ? "border-b-2 border-blue-600 text-blue-600" : "text-gray-500"}`}
+            onClick={() => setActiveTab("quizzes")}
+          >
+            Quizzes
+          </button>
+        </div>
+        <div className="overflow-y-auto flex-1 max-h-[400px] pr-1">
+          {activeTab === "lessons" &&
+            filteredLessons.map((l) => (
+              <ContentBankItem
+                key={l.id}
+                icon={<BookOpen size={16} />}
+                title={l.title}
+                meta={`${l.duration_minutes || 0} min`}
+                onAdd={() =>
+                  activeSectionId
+                    ? handleAddItem(activeSectionId, l, "lesson")
+                    : message.warning("Please select a section first")
+                }
+              />
+            ))}
+          {activeTab === "quizzes" &&
+            filteredQuizzes.map((q) => (
+              <ContentBankItem
+                key={q.id}
+                icon={<FileQuestion size={16} />}
+                title={q.title}
+                meta={`${q.question_count} Qs`}
+                onAdd={() =>
+                  activeSectionId
+                    ? handleAddItem(activeSectionId, q, "quiz")
+                    : message.warning("Please select a section first")
+                }
+              />
+            ))}
         </div>
       </div>
 
-      {/* RIGHT COLUMN: TARGET */}
       <DndContext
         sensors={sensors}
         collisionDetection={closestCorners}
         onDragEnd={onDragEnd}
       >
-        {/* 👇 BẮT ĐẦU SỬA: Đảm bảo cấu trúc div đóng mở đúng */}
-        <div className="block text-sm font-medium mb-1 text-gray-700">
+        <div className="flex flex-col h-[500px]">
           <h3 className="text-lg font-semibold mb-4">Course Curriculum</h3>
-          <div className="flex-1 overflow-y-auto space-y-4 pr-2 max-h-[600px]">
+          <div className="flex-1 overflow-y-auto space-y-4 pr-1">
             {sections.map((section) => (
               <div
                 key={section.id}
                 className={`bg-white border rounded transition-colors ${activeSectionId === section.id ? "border-blue-500 ring-1 ring-blue-500" : ""}`}
                 onClick={() => setActiveSectionId(section.id)}
               >
-                <div className="flex items-center justify-between p-3 border-b bg-gray-50">
-                  <div className="flex items-center gap-2">
-                    <GripVertical size={18} className="text-gray-400" />
-                    <span className="font-medium">{section.title}</span>
-                  </div>
+                <div className="flex justify-between items-center p-3 bg-gray-50 border-b">
+                  <span className="font-medium flex items-center gap-2">
+                    <GripVertical size={16} className="text-gray-400" />{" "}
+                    {section.title}
+                  </span>
                   <div className="flex items-center gap-3">
                     <button
                       onClick={(e) => {
@@ -1076,50 +831,45 @@ function CurriculumContentBank({
                   >
                     {section.items.map((item) => (
                       <SortableItem key={item.id} id={item.id}>
-                        {(listeners) => (
-                          <div className="flex items-center justify-between p-2 border rounded hover:bg-gray-50 bg-white">
-                            <div className="flex items-center gap-2">
+                        {(listeners: any) => (
+                          <div className="flex justify-between items-center p-2 border rounded bg-white hover:bg-gray-50">
+                            <div className="flex items-center gap-2 overflow-hidden">
                               <div
                                 {...listeners}
                                 className="cursor-grab p-1 text-gray-400"
                               >
-                                <GripVertical size={16} />
+                                <GripVertical size={14} />
                               </div>
                               {item.type === "lesson" ? (
-                                <BookOpen size={16} className="text-gray-500" />
+                                <BookOpen
+                                  size={14}
+                                  className="text-gray-500 flex-shrink-0"
+                                />
                               ) : (
                                 <FileQuestion
-                                  size={16}
-                                  className="text-gray-500"
+                                  size={14}
+                                  className="text-gray-500 flex-shrink-0"
                                 />
                               )}
-                              <span className="text-sm font-medium">
+                              <span className="text-sm truncate">
                                 {item.title}
                               </span>
                             </div>
-                            <div className="flex items-center gap-3">
-                              <span className="text-xs text-gray-400">
-                                {item.type === "lesson"
-                                  ? `${item.duration_minutes || 0} min`
-                                  : `${item.question_count || 0} Qs`}
-                              </span>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  handleRemoveItem(section.id, item.id)
-                                }}
-                                className="text-gray-400 hover:text-red-600"
-                              >
-                                <X size={15} />
-                              </button>
-                            </div>
+                            <X
+                              size={14}
+                              className="cursor-pointer text-gray-400 hover:text-red-500 flex-shrink-0 ml-2"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleRemoveItem(section.id, item.id)
+                              }}
+                            />
                           </div>
                         )}
                       </SortableItem>
                     ))}
                   </SortableContext>
                   {section.items.length === 0 && (
-                    <p className="text-sm text-gray-400 text-center py-2 italic">
+                    <p className="text-center text-sm text-gray-400 py-2 italic">
                       Empty section
                     </p>
                   )}
@@ -1127,38 +877,32 @@ function CurriculumContentBank({
               </div>
             ))}
           </div>
-          <div className="mt-4">
-            <button
-              type="button"
-              onClick={handleAddSection}
-              className="w-full flex items-center justify-center gap-2 p-3 border-2 border-dashed border-gray-300 rounded text-gray-600 hover:border-blue-500 hover:text-blue-600"
-            >
-              <Plus size={18} /> Add Section
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={handleAddSection}
+            className="w-full mt-4 flex items-center justify-center gap-2 p-3 border-2 border-dashed border-gray-300 rounded text-gray-600 hover:border-blue-500 hover:text-blue-600 transition-colors"
+          >
+            <Plus size={18} /> Add Section
+          </button>
         </div>
-        {/* 👆 KẾT THÚC SỬA: Đã đóng thẻ div "block text-sm" đúng chỗ */}
       </DndContext>
 
-      {/* Modal Rename Section */}
+      {/* --- MODALS --- */}
       {modalState?.type === "Section" && (
         <FormModal
-          title={modalState.sectionId ? "Edit Section" : "New Section"}
-          label="Section Title"
-          placeholder="Enter section name..."
+          title="Edit Section Name"
+          label="Title"
           initialValue={
-            modalState.sectionId
-              ? sections.find((s) => s.id === modalState.sectionId)?.title
-              : ""
+            sections.find((s) => s.id === modalState.sectionId)?.title
           }
           onClose={() => setModalState(null)}
           onSave={handleSaveSection}
         />
       )}
 
-      {/* Modal Create Lesson */}
+      {/* Modal Create Lesson (FULL FUNCTIONALITY) */}
       <Modal
-        title="Create New Lesson"
+        title={<span className="text-lg font-bold">Create New Lesson</span>}
         open={isCreateModalOpen}
         onCancel={() => {
           setIsCreateModalOpen(false)
@@ -1168,7 +912,7 @@ function CurriculumContentBank({
           setContentType("text_media")
         }}
         footer={null}
-        width={700}
+        width={750}
         centered
       >
         <Form
@@ -1178,7 +922,6 @@ function CurriculumContentBank({
           initialValues={{ type: "text_media" }}
           className="mt-4"
         >
-          {/* Form Content */}
           <Form.Item
             name="title"
             label={
@@ -1207,7 +950,6 @@ function CurriculumContentBank({
               }}
               buttonStyle="solid"
               className="w-full flex"
-              value={contentType}
             >
               <Radio.Button value="text_media" className="flex-1 text-center">
                 Text & Media
@@ -1261,7 +1003,6 @@ function CurriculumContentBank({
                       src={`https://www.youtube.com/embed/${getYoutubeEmbedId(videoUrl)}`}
                       title="Video Preview"
                       frameBorder="0"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                       allowFullScreen
                       className="rounded shadow-sm"
                     ></iframe>
@@ -1271,10 +1012,7 @@ function CurriculumContentBank({
                     <PlayCircleOutlined
                       style={{ fontSize: "32px", marginBottom: "8px" }}
                     />
-                    <span>
-                      Preview will appear here when you paste a valid YouTube
-                      link
-                    </span>
+                    <span>Preview will appear here</span>
                   </div>
                 )}
               </div>
@@ -1291,7 +1029,7 @@ function CurriculumContentBank({
                 rules={[
                   { required: true, message: "Please upload a PDF file" },
                 ]}
-                style={{ height: 0, margin: 0, padding: 0, opacity: 0 }}
+                style={{ display: "none" }}
               >
                 <Input />
               </Form.Item>
@@ -1300,8 +1038,8 @@ function CurriculumContentBank({
                   accept=".pdf"
                   showUploadList={false}
                   beforeUpload={handleUploadPDF}
-                  height={180}
-                  className="bg-gray-50 border-dashed border-2 border-gray-300 rounded-lg hover:border-blue-50 transition-colors"
+                  height={160}
+                  className="bg-gray-50 border-dashed border-2 border-gray-300 rounded-lg hover:border-blue-500 transition-colors"
                 >
                   <p className="ant-upload-drag-icon">
                     <InboxOutlined style={{ color: "#3b82f6" }} />
@@ -1315,16 +1053,14 @@ function CurriculumContentBank({
                 </Dragger>
               </div>
               {pdfFile && (
-                <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg">
+                <div className="flex items-center justify-between p-3 bg-blue-50 border border-blue-200 rounded-lg">
                   <div className="flex items-center gap-3">
-                    <div className="bg-white p-2 rounded border border-gray-200">
-                      <FilePdfOutlined className="text-red-500 text-xl" />
-                    </div>
+                    <FilePdfOutlined className="text-red-500 text-xl" />
                     <div>
-                      <p className="font-medium text-gray-800 text-sm">
+                      <p className="font-medium text-gray-800 text-sm m-0">
                         {pdfFile.name}
                       </p>
-                      <p className="text-xs text-green-600 font-semibold">
+                      <p className="text-xs text-blue-600 m-0 font-semibold">
                         Upload Complete
                       </p>
                     </div>
@@ -1358,7 +1094,7 @@ function CurriculumContentBank({
               htmlType="submit"
               loading={isCreating}
               size="large"
-              className="bg-blue-600 hover:bg-blue-500"
+              className="bg-[#1677ff] hover:bg-blue-700 font-semibold px-8 shadow-md"
             >
               Create Lesson
             </Button>
@@ -1366,7 +1102,7 @@ function CurriculumContentBank({
         </Form>
       </Modal>
 
-      {/* --- MODAL SUCCESS --- */}
+      {/* Modal Success */}
       <Modal
         open={isSuccessModalOpen}
         onCancel={() => setIsSuccessModalOpen(false)}
@@ -1382,11 +1118,48 @@ function CurriculumContentBank({
           <p className="text-gray-500 mb-6">
             The lesson <strong>"{createdLessonName}"</strong> has been created.
           </p>
-          <Button block onClick={() => setIsSuccessModalOpen(false)}>
+          <Button
+            block
+            type="primary"
+            size="large"
+            onClick={() => setIsSuccessModalOpen(false)}
+          >
             Close
           </Button>
         </div>
       </Modal>
     </div>
+  )
+}
+
+function ContentBankItem({ icon, title, meta, onAdd }: any) {
+  return (
+    <div className="flex items-center justify-between p-2 bg-white border rounded shadow-sm hover:shadow-md transition-shadow mb-2">
+      <div className="flex items-center gap-2 overflow-hidden">
+        <span className="text-blue-600">{icon}</span>
+        <div className="flex-1 overflow-hidden">
+          <p className="text-sm font-medium m-0 truncate">{title}</p>
+          <p className="text-xs text-gray-500 m-0">{meta}</p>
+        </div>
+      </div>
+      <button
+        onClick={onAdd}
+        className="text-blue-500 hover:text-blue-700 p-1 rounded-full hover:bg-blue-50 transition-colors"
+      >
+        <PlusCircle size={18} />
+      </button>
+    </div>
+  )
+}
+
+function FormModal({ title, label, initialValue, onClose, onSave }: any) {
+  const [val, setVal] = useState(initialValue)
+  return (
+    <Modal title={title} open onCancel={onClose} onOk={() => onSave(val)}>
+      <div className="py-4">
+        <label className="block text-sm font-medium mb-1">{label}</label>
+        <Input value={val} onChange={(e) => setVal(e.target.value)} autoFocus />
+      </div>
+    </Modal>
   )
 }

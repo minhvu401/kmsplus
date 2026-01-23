@@ -9,6 +9,7 @@ import type { Lesson } from "@/service/lesson.service"
 import { COURSE_STATUS_LABELS } from "@/enum/course-status.enum"
 import { createNewLessonAPI } from "@/action/lesson/lessonActions"
 import RichTextEditor from "@/components/ui/RichTextEditor"
+import ContentBankItem from "@/components/ui/ContentBankItem"
 import {
   DndContext,
   closestCorners,
@@ -520,9 +521,13 @@ export function CreateCourseClient({
                   value={payload.status}
                   onChange={(value) => update("status", value)}
                   className="w-full"
-                  options={Object.entries(COURSE_STATUS_LABELS).map(
-                    ([value, label]) => ({ value, label })
-                  )}
+                  /* Chỉ hiển thị 'draft' và 'pending_approval' */
+                  options={Object.entries(COURSE_STATUS_LABELS)
+                    .filter(
+                      ([value]) =>
+                        value === "draft" || value === "pending_approval"
+                    )
+                    .map(([value, label]) => ({ value, label }))}
                 />
               </div>
               <div>
@@ -1401,34 +1406,6 @@ function CurriculumContentBank({
           </div>
         </div>
       </Modal>
-    </div>
-  )
-}
-
-// --- Component ContentBankItem (Không thay đổi) ---
-function ContentBankItem({
-  icon,
-  title,
-  meta,
-  onAdd,
-}: {
-  icon: React.ReactNode
-  title: string
-  meta: string
-  onAdd: () => void
-}) {
-  return (
-    <div className="flex items-center justify-between p-2 bg-white border rounded shadow-sm">
-      <div className="flex items-center gap-2 overflow-hidden">
-        <span className="text-blue-600">{icon}</span>
-        <div className="flex-1 overflow-hidden">
-          <p className="text-sm font-medium truncate">{title}</p>
-          <p className="text-xs text-gray-500">{meta}</p>
-        </div>
-      </div>
-      <button onClick={onAdd} className="text-blue-500 hover:text-blue-700 p-1">
-        <PlusCircle size={18} />
-      </button>
     </div>
   )
 }
