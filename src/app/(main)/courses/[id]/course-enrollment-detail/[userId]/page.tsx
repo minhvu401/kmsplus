@@ -2,24 +2,11 @@
 // Learner Detail Page ( TRANG CHI TIẾT HIỆU SUẤT HỌC CỦA NGƯỜI HỌC)
 // Shows detailed progress for a specific learner in a course
 // Route: /courses/[id]/course-enrollment-detail/[userId]
-
 "use client"
 
 import React from "react"
 import { useRouter, useParams } from "next/navigation"
-import {
-  Button,
-  Card,
-  Avatar,
-  Tag,
-  Progress,
-  Breadcrumb,
-  Row,
-  Col,
-  List,
-  Divider,
-  Typography,
-} from "antd"
+import { Button, Card, Avatar, Tag, Progress, Breadcrumb } from "antd"
 import {
   ArrowLeftOutlined,
   MailOutlined,
@@ -33,11 +20,12 @@ import {
 } from "@ant-design/icons"
 import { LEARNER_DETAIL } from "@/data/mockEnrollmentData"
 
+// --- CONSTANTS ---
+const PRIMARY_BLUE = "#1677ff" // ✅ Mã màu chuẩn yêu cầu
+
 export default function LearnerProgressPage() {
   const router = useRouter()
   const params = useParams() as { id: string; userId: string }
-  // params.id = courseId
-  // params.userId = userId
 
   const data = LEARNER_DETAIL
 
@@ -52,9 +40,12 @@ export default function LearnerProgressPage() {
             { title: data.name },
           ]}
         />
-        <Button icon={<ArrowLeftOutlined />} onClick={() => router.back()}>
-          Back to List
-        </Button>
+        <button
+          onClick={() => router.back()}
+          className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-gray-700 font-medium shadow-sm"
+        >
+          <ArrowLeftOutlined /> Back to List
+        </button>
       </div>
 
       {/* User Profile Card */}
@@ -84,7 +75,8 @@ export default function LearnerProgressPage() {
                 <div className="text-xs text-gray-400 uppercase font-bold">
                   Avg Quiz Score
                 </div>
-                <div className="font-semibold text-green-600">
+                {/* 1. ✅ Đã cập nhật màu text sang #1677ff */}
+                <div className="font-semibold" style={{ color: PRIMARY_BLUE }}>
                   {data.avgQuizScore}%
                 </div>
               </div>
@@ -101,7 +93,8 @@ export default function LearnerProgressPage() {
               type="circle"
               percent={data.overallProgress}
               width={60}
-              strokeColor="#22c55e"
+              /* 2. ✅ Đã cập nhật màu stroke sang #1677ff */
+              strokeColor={PRIMARY_BLUE}
               showInfo={false}
             />
           </div>
@@ -142,8 +135,9 @@ export default function LearnerProgressPage() {
 
                     {/* Status */}
                     <div className="w-1/6">
+                      {/* 3. ✅ Đã cập nhật tag Completed sang màu blue */}
                       {item.status === "Completed" && (
-                        <Tag color="success" className="rounded-full">
+                        <Tag color="blue" className="rounded-full">
                           Completed
                         </Tag>
                       )}
@@ -155,8 +149,9 @@ export default function LearnerProgressPage() {
                       {item.status === "Not Started" && (
                         <Tag className="rounded-full">Not Started</Tag>
                       )}
+                      {/* 4. ✅ Đã cập nhật tag Passed sang màu blue */}
                       {item.status === "Passed" && (
-                        <Tag color="green" className="rounded-full">
+                        <Tag color="blue" className="rounded-full">
                           Submitted
                         </Tag>
                       )}
@@ -171,7 +166,11 @@ export default function LearnerProgressPage() {
                     <div className="w-1/6 text-center">
                       {item.type === "quiz" ? (
                         item.status === "Passed" ? (
-                          <span className="font-bold text-green-600 flex items-center gap-1 justify-center">
+                          /* 5. ✅ Đã cập nhật kết quả Passed sang màu #1677ff */
+                          <span
+                            className="font-bold flex items-center gap-1 justify-center"
+                            style={{ color: PRIMARY_BLUE }}
+                          >
                             <CheckCircleFilled /> {item.score}/100
                           </span>
                         ) : item.status === "Failed" ? (

@@ -1,21 +1,10 @@
-// @src/app/(main)/courses/manage/courses-manage-page.tsx
-// Course management page component
-
-import Link from "next/link"
 import { getAllCourses } from "@/action/courses/courseAction"
-import { deleteCourseAPI } from "@/action/courses/courseAction"
-import type { Course } from "@/service/course.service"
-import type { Metadata } from "next"
 import ManageCoursesClient from "../components/ManageCoursesClient"
-export const dynamic = "force-dynamic"
-export const revalidate = 0
-
-export const metadata: Metadata = {
-  title: "Course Management",
-}
+import { getAllQuizzesAction } from "@/service/quiz.service"
+import { getAllLessonsAction } from "@/service/lesson.service"
 
 type Props = {
-  searchParams?: Promise<{ [key: string]: string | string[] | undefined }>
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>
 }
 
 export default async function ManagerCoursesPage({ searchParams }: Props) {
@@ -26,9 +15,29 @@ export default async function ManagerCoursesPage({ searchParams }: Props) {
     : (params?.query as string) || ""
   const limit = 10
 
-  // 3. Gọi API lấy dữ liệu (Giữ nguyên)
-  const { courses = [], totalCount = 0 } =
-    (await getAllCourses({ query, page, limit })) || {}
+  // 1. Fetch dữ liệu song song
+  const [coursesData, lessonsRes, quizzesRes] = await Promise.all([
+    getAllCourses({ query, page, limit }),
+    getAllLessonsAction(),
+    getAllQuizzesAction(),
+  ])
+
+  // 2. Trích xuất mảng courses
+  const { courses = [], totalCount = 0 } = coursesData || {}
+
+  // 👇 LOGIC AN TOÀN: Kiểm tra xem kết quả trả về là Mảng hay Object
+  const safeLessons = Array.isArray(lessonsRes)
+    ? lessonsRes
+    : (lessonsRes as any)?.data || []
+  const safeQuizzes = Array.isArray(quizzesRes)
+    ? quizzesRes
+    : (quizzesRes as any)?.data || (quizzesRes as any)?.quizzes || []
+
+  // 👇 Debug Log: Xem Server lấy được gì (Kiểm tra terminal của VS Code)
+  console.log("🔥 Raw lessonsRes:", lessonsRes)
+  console.log("🔥 Raw quizzesRes:", quizzesRes)
+  console.log("🔥 Lessons Count:", safeLessons.length)
+  console.log("🔥 Quizzes Count:", safeQuizzes.length)
 
   return (
     <main className="min-h-screen bg-gray-50 py-8">
@@ -38,6 +47,8 @@ export default async function ManagerCoursesPage({ searchParams }: Props) {
           totalCount={totalCount}
           query={query}
           page={page}
+          availableLessons={safeLessons}
+          availableQuizzes={safeQuizzes}
         />
       </div>
     </main>

@@ -1,7 +1,16 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Button, Table, Space, message, Spin, Empty, Input, Popconfirm } from "antd"
+import {
+  Button,
+  Table,
+  Space,
+  message,
+  Spin,
+  Empty,
+  Input,
+  Popconfirm,
+} from "antd"
 import {
   PlusOutlined,
   EditOutlined,
@@ -46,8 +55,8 @@ export default function QuizzesPage() {
         page: 1,
         limit: 100,
       })
-      setQuizzes(data.quizzes || [])
-      setFilteredQuizzes(data.quizzes || [])
+      setQuizzes(data.data || [])
+      setFilteredQuizzes(data.data || [])
     } catch (error) {
       console.error("Failed to load quizzes:", error)
       message.error("Không thể tải danh sách bài thi")
@@ -58,7 +67,7 @@ export default function QuizzesPage() {
 
   const handleSearch = (value: string) => {
     setSearchText(value)
-    const filtered = quizzes.filter(quiz =>
+    const filtered = quizzes.filter((quiz) =>
       quiz.title.toLowerCase().includes(value.toLowerCase())
     )
     setFilteredQuizzes(filtered)
@@ -92,9 +101,7 @@ export default function QuizzesPage() {
       dataIndex: "description",
       key: "description",
       width: "30%",
-      render: (text: string | null) => (
-        <span>{text || "Không có mô tả"}</span>
-      ),
+      render: (text: string | null) => <span>{text || "Không có mô tả"}</span>,
     },
     {
       title: "Thời Gian (phút)",
@@ -119,12 +126,12 @@ export default function QuizzesPage() {
         <Space size="middle">
           <Link href={`/quizzes/${record.id}`}>
             <EyeOutlined
-              style={{ cursor: 'pointer', color: '#1890ff' }}
+              style={{ cursor: "pointer", color: "#1890ff" }}
               title="Xem chi tiết"
             />
           </Link>
           <EditOutlined
-            style={{ cursor: 'pointer', color: '#1890ff' }}
+            style={{ cursor: "pointer", color: "#1890ff" }}
             onClick={() => handleEdit(record.id)}
             title="Chỉnh sửa"
           />
@@ -137,7 +144,7 @@ export default function QuizzesPage() {
             okButtonProps={{ danger: true }}
           >
             <DeleteOutlined
-              style={{ cursor: 'pointer', color: '#ff4d4f' }}
+              style={{ cursor: "pointer", color: "#ff4d4f" }}
               title="Xóa"
             />
           </Popconfirm>
