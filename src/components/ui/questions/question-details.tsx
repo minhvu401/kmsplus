@@ -2,8 +2,25 @@
 
 import { useEffect, useState, startTransition, useActionState } from "react";
 import { Flex, Typography, Tag, Divider, Dropdown, Button, message, Modal, Form, Input, Select, Avatar } from "antd";
+import RichTextEditor from "@/components/ui/RichTextEditor";
 const { Title, Text } = Typography;
-const { TextArea } = Input;
+
+// Wrapper component for Ant Design Form integration
+interface ContentEditorProps {
+  value?: string;
+  onChange?: (value: string) => void;
+  placeholder?: string;
+}
+
+function ContentEditor({ value = '', onChange, placeholder }: ContentEditorProps) {
+  return (
+    <RichTextEditor
+      value={value}
+      onChange={(val) => onChange?.(val)}
+      placeholder={placeholder}
+    />
+  );
+}
 import {
     EllipsisOutlined,
     EditOutlined,
@@ -71,9 +88,11 @@ export default function QuestionDetails({ userId, question, categories }: { user
 
             {/* Content */}
             <Flex justify="flex-start" style={{ width: "100%", marginTop: 16, flexDirection: "column", gap: 12 }}>
-                <Text style={{ color: "#374151", fontSize: 16, lineHeight: 1.6, whiteSpace: "pre-wrap" }}>
-                    {question.content}
-                </Text>
+                <div 
+                    className="prose prose-sm max-w-none text-gray-700"
+                    style={{ fontSize: 16, lineHeight: 1.6 }}
+                    dangerouslySetInnerHTML={{ __html: question.content }}
+                />
             </Flex>
             <Divider style={{ borderColor: "#d1d5db", width: "100%" }} />
         </Flex>
@@ -242,7 +261,9 @@ export function QuestionMenu({
         });
 
         setTitleCount(initialTitle.length);
-        setContentCount(initialContent.length);
+        // Strip HTML tags to count plain text characters
+        const plainText = initialContent.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
+        setContentCount(plainText.length);
     }, [isUpdateVisible, form, question]);
 
     return (
@@ -379,17 +400,26 @@ export function QuestionMenu({
                         name="content"
                         help={contentError}
                         validateStatus={contentError ? "error" : undefined}
+                        getValueFromEvent={(val: string) => {
+                            // Strip HTML tags to count plain text characters
+                            const plainText = val ? val.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim() : '';
+                            setContentCount(plainText.length);
+                            return val;
+                        }}
                         rules={[{ required: true, message: 'Please provide more details' },
-                        { min: 10, message: 'Content must be at least 10 characters' }
+                        {
+                            validator: (_, value) => {
+                                // Strip HTML tags to get plain text for validation
+                                const plainText = value ? value.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim() : '';
+                                if (plainText.length < 10) {
+                                    return Promise.reject('Content must be at least 10 characters');
+                                }
+                                return Promise.resolve();
+                            }
+                        }
                         ]}
                     >
-                        <TextArea
-                            rows={8}
-                            placeholder="Provide more details about your question..."
-                            maxLength={3000}
-                            onChange={(e) => setContentCount(e.target.value.length)}
-                            style={{ resize: 'none' }}
-                        />
+                        <ContentEditor placeholder="Provide more details about your question..." />
                     </Form.Item>
                     <Text type="secondary">Character limit {contentCount} / 3000</Text>
 

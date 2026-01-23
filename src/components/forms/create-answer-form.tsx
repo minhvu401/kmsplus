@@ -3,9 +3,26 @@
 import { useState, useActionState, startTransition } from 'react';
 import { Form, Input, Select, Button, Typography, Flex, Modal, Divider } from 'antd';
 import { State, createAnswer } from '@/action/question/questionActions';
+import RichTextEditor from "@/components/ui/RichTextEditor";
 
 const { Text } = Typography;
-const { TextArea } = Input;
+
+// Wrapper component for Ant Design Form integration
+interface ContentEditorProps {
+  value?: string;
+  onChange?: (value: string) => void;
+  placeholder?: string;
+}
+
+function ContentEditor({ value = '', onChange, placeholder }: ContentEditorProps) {
+  return (
+    <RichTextEditor
+      value={value}
+      onChange={(val) => onChange?.(val)}
+      placeholder={placeholder}
+    />
+  );
+}
 
 export default function CreateAnswerForm({
     userId,
@@ -52,19 +69,26 @@ export default function CreateAnswerForm({
                     <Form.Item
                         name="content"
                         style={{ marginBottom: 8 }}
+                        getValueFromEvent={(val: string) => {
+                            // Strip HTML tags to count plain text characters
+                            const plainText = val ? val.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim() : '';
+                            setContentCount(plainText.length);
+                            return val;
+                        }}
                         rules={[{ required: true, message: 'Please provide more details' },
-                        { min: 15, message: 'Answers must be at least 15 characters' }
+                        {
+                            validator: (_, value) => {
+                                // Strip HTML tags to get plain text for validation
+                                const plainText = value ? value.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim() : '';
+                                if (plainText.length < 15) {
+                                    return Promise.reject('Answers must be at least 15 characters');
+                                }
+                                return Promise.resolve();
+                            }
+                        }
                         ]}
                     >
-                        <TextArea
-                            rows={4}
-                            placeholder="Enter your answer here..."
-                            maxLength={600}
-                            onChange={(e) => {
-                                setContentCount(e.target.value.length);
-                            }}
-                            style={{ resize: 'none' }}
-                        />
+                        <ContentEditor placeholder="Enter your answer here..." />
                     </Form.Item>
 
                     <Flex justify="space-between" align="center">

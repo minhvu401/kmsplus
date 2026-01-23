@@ -6,6 +6,22 @@ import { formatDistanceToNowStrict } from 'date-fns';
 
 const { Text, Title } = Typography;
 
+// Helper function to strip HTML tags and decode entities for preview
+function stripHtml(html: string): string {
+    return html
+        .replace(/<\/p>/gi, ' ')  // Replace closing </p> tags with space
+        .replace(/<br\s*\/?>/gi, ' ') // Replace <br> tags with space
+        .replace(/<[^>]*>/g, '') // Remove remaining HTML tags
+        .replace(/&nbsp;/g, ' ') // Replace &nbsp; with space
+        .replace(/&amp;/g, '&')  // Decode &amp;
+        .replace(/&lt;/g, '<')   // Decode &lt;
+        .replace(/&gt;/g, '>')   // Decode &gt;
+        .replace(/&quot;/g, '"') // Decode &quot;
+        .replace(/&#39;/g, "'")  // Decode &#39;
+        .replace(/\s+/g, ' ')    // Collapse multiple spaces into one
+        .trim();
+}
+
 export type Question = {
     id: number
     user_id: number
@@ -61,8 +77,8 @@ export default function QuestionsList({ questions, noSearchResults }: { question
                                     overflow: 'hidden',
                                 }}
                             >
-                                <p className="text-gray-600 line-clamp-2 whitespace-pre-wrap">
-                                    {q.content}
+                                <p className="text-gray-600 line-clamp-2">
+                                    {stripHtml(q.content)}
                                 </p>
                             </Text>
                         </Flex>

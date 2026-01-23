@@ -4,9 +4,27 @@ import { useState, useActionState, startTransition } from "react"
 import { Button, Form, Modal, Typography, Input, Select, Divider } from "antd"
 import { PlusCircleOutlined } from "@ant-design/icons"
 import { State, createQuestion } from '@/action/question/questionActions';
+import RichTextEditor from "@/components/ui/RichTextEditor";
 
 const { Text } = Typography;
-const { TextArea } = Input;
+
+// Wrapper component for Ant Design Form integration
+// Form.Item automatically injects value and onChange props
+interface ContentEditorProps {
+  value?: string;
+  onChange?: (value: string) => void;
+  placeholder?: string;
+}
+
+function ContentEditor({ value = '', onChange, placeholder }: ContentEditorProps) {
+  return (
+    <RichTextEditor
+      value={value}
+      onChange={(val) => onChange?.(val)}
+      placeholder={placeholder}
+    />
+  );
+}
 
 // import Link from "next/link"
 // export function CreateQuestion() {
@@ -126,17 +144,26 @@ export function CreateQuestion({
             name="content"
             help={contentError}
             validateStatus={contentError ? "error" : undefined}
+            getValueFromEvent={(val: string) => {
+              // Strip HTML tags to count plain text characters
+              const plainText = val ? val.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim() : '';
+              setContentCount(plainText.length);
+              return val;
+            }}
             rules={[{ required: true, message: 'Please provide more details' },
-            { min: 10, message: 'Content must be at least 10 characters' }
+            {
+              validator: (_, value) => {
+                // Strip HTML tags to get plain text for validation
+                const plainText = value ? value.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim() : '';
+                if (plainText.length < 10) {
+                  return Promise.reject('Content must be at least 10 characters');
+                }
+                return Promise.resolve();
+              }
+            }
             ]}
           >
-            <TextArea
-              rows={8}
-              placeholder="Provide more details about your question..."
-              maxLength={3000}
-              onChange={(e) => setContentCount(e.target.value.length)}
-              style={{ resize: 'none' }}
-            />
+            <ContentEditor placeholder="Provide more details about your question..." />
           </Form.Item>
           <Text type="secondary">Character limit {contentCount} / 3000</Text>
 
