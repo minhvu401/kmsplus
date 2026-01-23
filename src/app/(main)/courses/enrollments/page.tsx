@@ -1,8 +1,5 @@
 // @/src/app/(main)/courses/enrollments/page.tsx
 // Enrollments Overview Page
-// MÀN HÌNH CHUNG có thẻ chọn quản lý khóa học, quản lý ghi danh
-// Displays overview of all courses with enrollment statistics
-// Route: /courses/enrollments
 
 "use client"
 
@@ -32,26 +29,28 @@ import {
   CheckCircleFilled,
   HomeOutlined,
 } from "@ant-design/icons"
-// import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts"
 
 const { Title, Text } = Typography
 
-// --- MOCK DATA GIỐNG HÌNH ẢNH ---
+// --- MÃ MÀU CHUẨN ---
+const PRIMARY_BLUE = "#1677ff"
+
+// --- MOCK DATA ---
 const COURSE_STATS = {
   id: "CS-2024-001",
   name: "Advanced Cybersecurity Compliance 2024",
   totalEnrollments: 1245,
-  growth: 12, // +12%
+  growth: 12,
   avgProgress: 68,
   completionRate: 82,
-  completionGrowth: 5, // +5%
+  completionGrowth: 5,
 }
 
 const CHART_DATA = [
-  { name: "Engineering", value: 45, color: "#22c55e" }, // Green
-  { name: "Sales", value: 30, color: "#10b981" }, // Emerald
-  { name: "Marketing", value: 15, color: "#059669" }, // Dark Green
-  { name: "Others", value: 10, color: "#e5e7eb" }, // Grey
+  { name: "Engineering", value: 45, color: PRIMARY_BLUE }, // ✅ Đã cập nhật
+  { name: "Sales", value: 30, color: "#4096ff" }, // Blue 5 (Ant Design)
+  { name: "Marketing", value: 15, color: "#69b1ff" }, // Blue 4 (Ant Design)
+  { name: "Others", value: 10, color: "#e5e7eb" },
 ]
 
 const ACTIVITY_DATA = [
@@ -87,10 +86,8 @@ export default function EnrollmentOverviewPage() {
 
   const handleViewData = () => {
     if (selectedCourseId) {
-      // Điều hướng sang trang chi tiết danh sách (code cũ của bạn)
       router.push(`/courses/${selectedCourseId}/course-enrollment-detail`)
     } else {
-      // Demo: Nếu chưa chọn thì mặc định nhảy vào khóa ID 5
       router.push(`/courses/5/course-enrollment-detail`)
     }
   }
@@ -106,7 +103,10 @@ export default function EnrollmentOverviewPage() {
               { title: <HomeOutlined />, href: "/dashboard" },
               {
                 title: (
-                  <span className="text-green-600">Enrollment & Progress</span>
+                  /* ✅ Đã cập nhật màu text */
+                  <span style={{ color: PRIMARY_BLUE }} className="font-medium">
+                    Enrollment & Progress
+                  </span>
                 ),
               },
             ]}
@@ -152,7 +152,9 @@ export default function EnrollmentOverviewPage() {
             <Button
               type="primary"
               size="large"
-              className="w-full bg-green-500 hover:!bg-green-600 border-none font-semibold"
+              className="w-full border-none font-semibold"
+              /* ✅ Đã cập nhật màu nền nút */
+              style={{ backgroundColor: PRIMARY_BLUE }}
               onClick={handleViewData}
             >
               View Data
@@ -161,15 +163,16 @@ export default function EnrollmentOverviewPage() {
         </Row>
       </Card>
 
-      {/* 3. Detailed Course Stats Card (Static Demo for "Advanced Cybersecurity") */}
+      {/* 3. Detailed Course Stats Card */}
       <Card bordered={false} className="shadow-sm rounded-xl">
-        {/* Card Header */}
         <div className="flex justify-between items-start mb-6">
           <div>
             <div className="flex items-center gap-2 mb-1">
               <Tag
-                color="success"
-                className="rounded-full px-2 border-none bg-green-100 text-green-700"
+                /* ✅ Đã cập nhật màu Tag */
+                color="blue"
+                className="rounded-full px-2 border-none bg-blue-50"
+                style={{ color: PRIMARY_BLUE }}
               >
                 Published
               </Tag>
@@ -187,7 +190,6 @@ export default function EnrollmentOverviewPage() {
           </div>
         </div>
 
-        {/* Stats Grid */}
         <Row gutter={24} className="divide-x divide-gray-100">
           {/* Total Enrollments */}
           <Col span={8}>
@@ -197,14 +199,22 @@ export default function EnrollmentOverviewPage() {
                 <div className="text-3xl font-bold">
                   {COURSE_STATS.totalEnrollments.toLocaleString()}
                 </div>
-                <div className="text-green-500 text-xs font-semibold mt-1">
-                  ↗ +{COURSE_STATS.growth}%{" "}
+                {/* ✅ Đã cập nhật màu text growth */}
+                <div
+                  className="text-xs font-semibold mt-1"
+                  style={{ color: PRIMARY_BLUE }}
+                >
+                  <span className="mr-1">↗</span> +{COURSE_STATS.growth}%{" "}
                   <span className="text-gray-400 font-normal">
                     vs. last month
                   </span>
                 </div>
               </div>
-              <div className="p-2 bg-blue-50 text-blue-500 rounded-lg">
+              {/* ✅ Đã cập nhật màu icon box */}
+              <div
+                className="p-2 rounded-lg"
+                style={{ backgroundColor: "#e6f4ff", color: PRIMARY_BLUE }}
+              >
                 <UserOutlined />
               </div>
             </div>
@@ -221,7 +231,8 @@ export default function EnrollmentOverviewPage() {
                 <Progress
                   percent={COURSE_STATS.avgProgress}
                   showInfo={false}
-                  strokeColor="#22c55e"
+                  /* ✅ Đã cập nhật màu thanh progress */
+                  strokeColor={PRIMARY_BLUE}
                   trailColor="#f3f4f6"
                   size="small"
                 />
@@ -229,7 +240,11 @@ export default function EnrollmentOverviewPage() {
                   Active learners are pacing well
                 </div>
               </div>
-              <div className="p-2 bg-green-50 text-green-500 rounded-lg">
+              {/* ✅ Đã cập nhật màu icon box */}
+              <div
+                className="p-2 rounded-lg"
+                style={{ backgroundColor: "#e6f4ff", color: PRIMARY_BLUE }}
+              >
                 <ClockCircleOutlined />
               </div>
             </div>
@@ -243,13 +258,19 @@ export default function EnrollmentOverviewPage() {
                 <div className="text-3xl font-bold">
                   {COURSE_STATS.completionRate}%
                 </div>
-                <div className="text-green-500 text-xs font-semibold mt-1">
-                  ↗ +{COURSE_STATS.completionGrowth}%{" "}
+                {/* ✅ Đã cập nhật màu text growth */}
+                <div
+                  className="text-xs font-semibold mt-1"
+                  style={{ color: PRIMARY_BLUE }}
+                >
+                  <span className="mr-1">↗</span> +
+                  {COURSE_STATS.completionGrowth}%{" "}
                   <span className="text-gray-400 font-normal">
                     Higher than industry avg (75%)
                   </span>
                 </div>
               </div>
+              {/* Màu tím giữ nguyên để phân biệt */}
               <div className="p-2 bg-purple-50 text-purple-500 rounded-lg">
                 <CheckCircleFilled />
               </div>
@@ -260,7 +281,6 @@ export default function EnrollmentOverviewPage() {
 
       {/* 4. Bottom Section: Charts & Activity */}
       <Row gutter={24}>
-        {/* Left: Enrollment by Department (Pie Chart) */}
         <Col xs={24} lg={8}>
           <Card bordered={false} className="shadow-sm rounded-xl h-full">
             <div className="mb-4">
@@ -273,35 +293,16 @@ export default function EnrollmentOverviewPage() {
             </div>
 
             <div className="h-64 relative flex items-center justify-center">
-              {/* Recharts Pie Chart */}
-              {/* <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={CHART_DATA}
-                    innerRadius={60}
-                    outerRadius={80}
-                    paddingAngle={0}
-                    dataKey="value"
-                    startAngle={90}
-                    endAngle={-270}
-                  >
-                    {CHART_DATA.map((entry, index) => (
-                      <Cell
-                        key={`cell-${index}`}
-                        fill={entry.color}
-                        stroke="none"
-                      />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer> */}
-
-              {/* Center Text Overlay */}
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                 <div className="text-center">
                   <div className="text-gray-400 text-xs">Total</div>
-                  {/* <div className="text-xl font-bold">100%</div> */}
+                  {/* ✅ Đã cập nhật màu số liệu trung tâm */}
+                  <div
+                    className="text-xl font-bold"
+                    style={{ color: PRIMARY_BLUE }}
+                  >
+                    100%
+                  </div>
                 </div>
               </div>
             </div>
@@ -317,21 +318,28 @@ export default function EnrollmentOverviewPage() {
                     ></span>
                     <span className="text-gray-600">{item.name}</span>
                   </div>
-                  <span className="font-bold">{item.value}%</span>
+                  {/* ✅ Cập nhật màu số liệu */}
+                  <span className="font-bold" style={{ color: PRIMARY_BLUE }}>
+                    {item.value}%
+                  </span>
                 </div>
               ))}
             </div>
           </Card>
         </Col>
 
-        {/* Right: Recent Activity */}
         <Col xs={24} lg={16}>
           <Card
             bordered={false}
             className="shadow-sm rounded-xl h-full"
             title="Recent Enrollment Activity"
             extra={
-              <Button type="link" className="text-green-500 font-semibold">
+              /* ✅ Đã cập nhật màu nút View All */
+              <Button
+                type="link"
+                className="font-semibold"
+                style={{ color: PRIMARY_BLUE }}
+              >
                 View All
               </Button>
             }
@@ -361,8 +369,19 @@ export default function EnrollmentOverviewPage() {
                   />
                   {item.status && (
                     <Tag
-                      color={item.status === "Completed" ? "success" : "blue"}
+                      color={
+                        item.status === "Completed" ? "blue" : "processing"
+                      }
                       className="rounded-full px-3 border-none"
+                      /* ✅ Nếu là completed thì dùng màu chuẩn */
+                      style={
+                        item.status === "Completed"
+                          ? {
+                              backgroundColor: "#e6f4ff",
+                              color: PRIMARY_BLUE,
+                            }
+                          : {}
+                      }
                     >
                       {item.status}
                     </Tag>

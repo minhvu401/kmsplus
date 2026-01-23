@@ -46,7 +46,7 @@ export async function getAllLessonsAction({
   course_id,
   query = "",
   page = 1,
-  limit = 10,
+  limit = 100,
   sort = "newest",
   include_deleted = false,
 }: GetAllLessonsParams = {}) {
