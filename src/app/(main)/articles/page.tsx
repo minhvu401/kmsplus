@@ -214,6 +214,6 @@ export default function ViewArticlePage() {
           </Space>
         </Flex>
       </footer>
-    </Flex>
+    </div>
   )
 }

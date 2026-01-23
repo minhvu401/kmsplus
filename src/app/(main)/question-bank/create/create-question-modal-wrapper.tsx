@@ -1,7 +1,9 @@
+// src/app/(main)/question-bank/create/create-question-modal-wrapper.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
 import { Button, message } from 'antd';
+import { PlusOutlined } from '@ant-design/icons';
 import CreateQuestionModal from './create-question-modal';
 import { useRouter } from 'next/navigation';
 import * as actions from '@/action/question-bank/questionBankActions';
@@ -47,6 +49,8 @@ export default function CreateQuestionModalWrapper() {
         <>
             <Button
                 type="primary"
+                size="large"
+                icon={<PlusOutlined />}
                 onClick={() => {
                     if (categoriesError) {
                         message.error(categoriesError);
@@ -56,7 +60,7 @@ export default function CreateQuestionModalWrapper() {
                 }}
                 disabled={isLoadingCategories}
             >
-                {isLoadingCategories ? 'Đang tải...' : '+ Tạo câu hỏi'}
+                {isLoadingCategories ? 'Đang tải...' : 'Tạo Câu Hỏi Mới'}
             </Button>
             {categoriesError && (
                 <div className="mt-2 p-3 bg-red-100 border border-red-400 rounded text-red-700 text-sm">

@@ -17,6 +17,7 @@ import {
   updateProfileAction,
   ProfileActionState,
 } from "@/action/user/profileActions"
+import useUserStore from "@/store/useUserStore"
 import type { RcFile } from "antd/es/upload"
 
 const { Text, Title } = Typography
@@ -34,9 +35,12 @@ interface ProfileFormProps {
 export default function ProfileForm({ user, onSuccess }: ProfileFormProps) {
   const [form] = Form.useForm()
   const [isLoading, setIsLoading] = useState(false)
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
   const [avatarPreview, setAvatarPreview] = useState<string | null>(
     user.avatar_url || null
   )
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(user.avatar_url || null)
+  const { user: currentUser, setUser } = useUserStore()
 
   const initialState: ProfileActionState = {
     success: false,
@@ -51,19 +55,57 @@ export default function ProfileForm({ user, onSuccess }: ProfileFormProps) {
   useEffect(() => {
     if (state.success) {
       message.success(state.message)
+      // Update user store with new data
+      if (currentUser) {
+        const updatedUser = {
+          ...currentUser,
+          full_name: form.getFieldValue("full_name") || currentUser.full_name,
+        }
+        // Only update avatar if it was changed
+        if (avatarUrl && avatarUrl !== currentUser.avatar_url) {
+          updatedUser.avatar_url = avatarUrl
+        }
+        setUser(updatedUser)
+      }
       if (onSuccess) onSuccess()
-    } else if (state.message && !isLoading) {
+    } else if (state.message && !isLoading && state.success === false) {
       message.error(state.message)
     }
-  }, [state.success, state.message, isLoading, onSuccess])
+  }, [state.success, state.message, isLoading, onSuccess, currentUser, avatarUrl, setUser, form])
 
-  const handleAvatarChange = (file: RcFile) => {
-    const reader = new FileReader()
-    reader.onload = () => {
-      setAvatarPreview(reader.result as string)
-      form.setFieldValue("avatar_url", reader.result as string)
+  const handleAvatarChange = async (file: RcFile) => {
+    setIsUploadingAvatar(true)
+    try {
+      // Create preview
+      const reader = new FileReader()
+      reader.onload = () => {
+        setAvatarPreview(reader.result as string)
+      }
+      reader.readAsDataURL(file)
+
+      // Upload to server
+      const formData = new FormData()
+      formData.append("avatar", file)
+
+      const response = await fetch("/api/profile/avatar", {
+        method: "POST",
+        body: formData,
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        setAvatarUrl(data.data.avatarUrl)
+        message.success("Avatar uploaded successfully")
+      } else {
+        message.error(data.message || "Failed to upload avatar")
+      }
+    } catch (error) {
+      console.error("Error uploading avatar:", error)
+      message.error("Failed to upload avatar")
+    } finally {
+      setIsUploadingAvatar(false)
     }
-    reader.readAsDataURL(file)
     return false
   }
 
@@ -75,7 +117,21 @@ export default function ProfileForm({ user, onSuccess }: ProfileFormProps) {
         full_name: user.full_name || "",
         email: user.email,
       }}
-      action={formAction}
+      onFinish={async (values) => {
+        setIsLoading(true)
+        try {
+          const formData = new FormData()
+          formData.append("full_name", values.full_name)
+          formData.append("email", values.email)
+          if (avatarUrl) {
+            formData.append("avatar_url", avatarUrl)
+          }
+          
+          await formAction(formData)
+        } finally {
+          setIsLoading(false)
+        }
+      }}
     >
       <div style={{ marginBottom: "24px" }}>
         <Title level={4}>Avatar</Title>
@@ -91,22 +147,16 @@ export default function ProfileForm({ user, onSuccess }: ProfileFormProps) {
             accept="image/*"
             beforeUpload={handleAvatarChange}
             showUploadList={false}
-            customRequest={() => {}} // Prevent default upload behavior
+            disabled={isUploadingAvatar}
           >
             <Button
               icon={<CameraOutlined />}
               type="default"
-              loading={isLoading}
+              loading={isUploadingAvatar}
             >
               Change Avatar
             </Button>
           </Upload>
-          <Input
-            type="hidden"
-            name="avatar_url"
-            value={avatarPreview || ""}
-            hidden
-          />
         </Space>
       </div>
 
@@ -127,7 +177,7 @@ export default function ProfileForm({ user, onSuccess }: ProfileFormProps) {
 
       <Form.Item>
         <Flex gap="middle">
-          <Button type="primary" htmlType="submit" loading={isLoading} block>
+          <Button type="primary" htmlType="submit" loading={isLoading || isUploadingAvatar} block>
             Save Changes
           </Button>
         </Flex>

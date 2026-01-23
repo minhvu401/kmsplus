@@ -1,0 +1,291 @@
+// src/app/(main)/role-permissions/page.tsx
+"use client"
+
+import React, { useState, useEffect } from "react"
+import { Table, Card, Checkbox, Button, Space, message, Modal } from "antd"
+import { SaveOutlined, ReloadOutlined } from "@ant-design/icons"
+import { Role } from "@/enum/role.enum"
+import { Permission } from "@/enum/permission.enum"
+import { rolePermissionsMap } from "@/config/RolePermission.config"
+import useLanguageStore from "@/store/useLanguageStore"
+import { t } from "@/lib/i18n"
+import { updateRolePermissionsAction } from "@/action/role-permissions/rolePermissionActions"
+
+interface PermissionGroup {
+  module: Permission
+  moduleKey: string
+  permissions: Permission[]
+}
+
+const PERMISSION_GROUPS: PermissionGroup[] = [
+  {
+    module: Permission.READ_ARTICLE,
+    moduleKey: "module.article",
+    permissions: [
+      Permission.READ_ARTICLE,
+      Permission.CREATE_ARTICLE,
+      Permission.UPDATE_ARTICLE,
+      Permission.DELETE_ARTICLE,
+      Permission.APPROVE_ARTICLE,
+    ],
+  },
+  {
+    module: Permission.READ_QUESTION,
+    moduleKey: "module.question",
+    permissions: [
+      Permission.READ_QUESTION,
+      Permission.CREATE_QUESTION,
+      Permission.UPDATE_QUESTION,
+      Permission.DELETE_QUESTION,
+      Permission.CREATE_ANSWER,
+      Permission.VOTE_ANSWER,
+    ],
+  },
+  {
+    module: Permission.READ_COURSE,
+    moduleKey: "module.course",
+    permissions: [
+      Permission.READ_COURSE,
+      Permission.CREATE_COURSE,
+      Permission.ENROLL_COURSE,
+    ],
+  },
+  {
+    module: Permission.MANAGE_USERS,
+    moduleKey: "module.user",
+    permissions: [Permission.MANAGE_USERS],
+  },
+]
+
+const ROLE_ORDER = [
+  Role.EMPLOYEE,
+  Role.DASHBOARD_VIEWER,
+  Role.CONTRIBUTOR,
+  Role.TRAINING_MANAGER,
+  Role.ADMIN,
+]
+
+// Helper function to get correct translation key for role names
+const getRoleTranslationKey = (role: Role): string => {
+  const roleMap: Record<Role, string> = {
+    [Role.EMPLOYEE]: "employee",
+    [Role.CONTRIBUTOR]: "contributor",
+    [Role.TRAINING_MANAGER]: "trainingmanager",
+    [Role.ADMIN]: "admin",
+    [Role.DASHBOARD_VIEWER]: "dashboardviewer",
+  }
+  return `role.${roleMap[role]}`
+}
+
+export default function RolePermissionPage() {
+  const { language } = useLanguageStore()
+  const [permissions, setPermissions] = useState<Record<Role, Permission[]>>(
+    { ...rolePermissionsMap }
+  )
+  const [hasChanges, setHasChanges] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+
+  const handlePermissionChange = (role: Role, permission: Permission, checked: boolean) => {
+    setPermissions((prev) => {
+      const updated = { ...prev }
+      if (checked) {
+        if (!updated[role].includes(permission)) {
+          updated[role] = [...updated[role], permission]
+        }
+      } else {
+        updated[role] = updated[role].filter((p) => p !== permission)
+      }
+      setHasChanges(true)
+      return updated
+    })
+  }
+
+  const handleSave = async () => {
+    Modal.confirm({
+      title: language === "vi" ? "Xác nhận lưu" : "Confirm Save",
+      content:
+        language === "vi"
+          ? "Bạn có chắc chắn muốn lưu những thay đổi này? Điều này sẽ ảnh hưởng đến toàn bộ hệ thống."
+          : "Are you sure you want to save these changes? This will affect the entire system.",
+      okText: t("common.save", language),
+      cancelText: t("common.cancel", language),
+      onOk: async () => {
+        try {
+          setIsSaving(true)
+          const result = await updateRolePermissionsAction(permissions)
+          
+          if (result.success) {
+            message.success(
+              language === "vi"
+                ? "Lưu quyền thành công"
+                : "Permissions saved successfully"
+            )
+            setHasChanges(false)
+          } else {
+            message.error(result.message)
+          }
+        } catch (error) {
+          console.error("Error saving permissions:", error)
+          message.error(
+            language === "vi"
+              ? "Lỗi khi lưu quyền"
+              : "Error saving permissions"
+          )
+        } finally {
+          setIsSaving(false)
+        }
+      },
+    })
+  }
+
+  const handleReset = () => {
+    setPermissions({ ...rolePermissionsMap })
+    setHasChanges(false)
+    message.info(
+      language === "vi"
+        ? "Đã đặt lại về mặc định"
+        : "Reset to default"
+    )
+  }
+
+  const dataSource = PERMISSION_GROUPS.flatMap((group, groupIndex) => [
+    {
+      key: `group-${groupIndex}`,
+      isGroup: true,
+      module: t(group.moduleKey, language),
+      children: group.permissions,
+    },
+    ...group.permissions.map((perm, permIndex) => ({
+      key: `${groupIndex}-${permIndex}`,
+      isGroup: false,
+      module: t(`permission.${perm.toLowerCase()}`, language),
+      permission: perm,
+      groupIndex,
+    })),
+  ])
+
+  const columns = [
+    {
+      title: t("sidebar.role_permission", language),
+      dataIndex: "module",
+      key: "module",
+      width: "30%",
+      render: (text: string, record: any) => {
+        if (record.isGroup) {
+          return (
+            <div className="font-bold text-blue-600 text-base">
+              {text}
+            </div>
+          )
+        }
+        return (
+          <div className="ml-6 text-gray-700">
+            {text}
+          </div>
+        )
+      },
+    },
+    ...ROLE_ORDER.map((role) => ({
+      title: t(getRoleTranslationKey(role), language),
+      dataIndex: role,
+      key: role,
+      width: "14%",
+      align: "center" as const,
+      render: (_: any, record: any) => {
+        if (record.isGroup) {
+          return null
+        }
+        const permission = record.permission
+        const isChecked = permissions[role]?.includes(permission) || false
+        return (
+          <Checkbox
+            checked={isChecked}
+            onChange={(e) =>
+              handlePermissionChange(role, permission, e.target.checked)
+            }
+            disabled={isSaving}
+          />
+        )
+      },
+    })),
+  ]
+
+  return (
+    <div className="p-6">
+      {/* Header */}
+      <div className="mb-6">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-3xl font-bold">
+              {t("sidebar.role_permission", language)}
+            </h1>
+            <p className="text-gray-600 mt-2">
+              {language === "vi"
+                ? "Cấu hình quyền truy cập cho từng vai trò"
+                : "Configure access permissions for each role"}
+            </p>
+          </div>
+          <Space>
+            <Button
+              icon={<ReloadOutlined />}
+              onClick={handleReset}
+              disabled={!hasChanges || isSaving}
+            >
+              {language === "vi" ? "Đặt lại" : "Reset"}
+            </Button>
+            <Button
+              type="primary"
+              icon={<SaveOutlined />}
+              onClick={handleSave}
+              disabled={!hasChanges || isSaving}
+              loading={isSaving}
+            >
+              {t("common.save", language)}
+            </Button>
+          </Space>
+        </div>
+      </div>
+
+      {/* Matrix Table */}
+      <Card>
+        <div className="overflow-x-auto">
+          <Table
+            columns={columns}
+            dataSource={dataSource}
+            pagination={false}
+            bordered
+            size="middle"
+            rowKey="key"
+            className="role-permission-table"
+          />
+        </div>
+      </Card>
+
+      {/* Legend */}
+      <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+        <p className="text-sm text-gray-700">
+          <span className="font-semibold">
+            {language === "vi" ? "Hướng dẫn:" : "Legend:"}
+          </span>{" "}
+          {language === "vi"
+            ? "Đánh dấu các ô để cấp quyền cho vai trò tương ứng. Nhấn 'Lưu' để cập nhật cấu hình trên hệ thống."
+            : "Check the boxes to assign permissions to the corresponding role. Click 'Save' to apply changes to the system."}
+        </p>
+      </div>
+
+      <style>{`
+        .role-permission-table {
+          font-size: 14px;
+        }
+        .role-permission-table .ant-table-thead > tr > th {
+          background-color: #fafafa;
+          font-weight: 600;
+          text-align: center;
+        }
+        .role-permission-table .ant-table-cell {
+          padding: 12px !important;
+        }
+      `}</style>
+    </div>
+  )
+}

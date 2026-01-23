@@ -1,13 +1,12 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Button, Table, Space, message, Spin, Empty, Input, Tooltip, Modal } from "antd"
+import { Button, Table, Space, message, Spin, Empty, Input, Popconfirm } from "antd"
 import {
   PlusOutlined,
   EditOutlined,
   DeleteOutlined,
   EyeOutlined,
-  DesktopOutlined,
 } from "@ant-design/icons"
 import Link from "next/link"
 import { getAllQuizzes, deleteQuiz } from "@/action/quiz/quizActions"
@@ -71,23 +70,14 @@ export default function QuizzesPage() {
   }
 
   const handleDelete = async (id: number) => {
-    Modal.confirm({
-      title: "Xác nhận xóa",
-      content: "Bạn có chắc chắn muốn xóa bài thi này? Hành động này không thể hoàn tác.",
-      okText: "Xóa",
-      okType: "danger",
-      cancelText: "Hủy",
-      onOk: async () => {
-        try {
-          await deleteQuiz(id)
-          message.success("Đã xóa bài thi thành công")
-          loadQuizzes()
-        } catch (error) {
-          console.error("Failed to delete quiz:", error)
-          message.error("Không thể xóa bài thi")
-        }
-      },
-    })
+    try {
+      await deleteQuiz(id)
+      message.success("Đã xóa bài thi thành công")
+      loadQuizzes()
+    } catch (error) {
+      console.error("Failed to delete quiz:", error)
+      message.error("Không thể xóa bài thi")
+    }
   }
 
   const columns = [
@@ -123,39 +113,34 @@ export default function QuizzesPage() {
     {
       title: "Hành Động",
       key: "action",
-      width: "15%",
+      width: "8%",
+      align: "center" as const,
       render: (_: any, record: Quiz) => (
-        <Space size="small">
-          <Tooltip title="Xem chi tiết">
-            <Link href={`/quizzes/${record.id}`}>
-              <Button
-                type="primary"
-                size="small"
-                icon={<EyeOutlined />}
-              >
-                Xem
-              </Button>
-            </Link>
-          </Tooltip>
-          <Tooltip title="Chỉnh sửa">
-            <Button
-              size="small"
-              icon={<EditOutlined />}
-              onClick={() => handleEdit(record.id)}
-            >
-              Sửa
-            </Button>
-          </Tooltip>
-          <Tooltip title="Xóa">
-            <Button
-              danger
-              size="small"
-              icon={<DeleteOutlined />}
-              onClick={() => handleDelete(record.id)}
-            >
-              Xóa
-            </Button>
-          </Tooltip>
+        <Space size="middle">
+          <Link href={`/quizzes/${record.id}`}>
+            <EyeOutlined
+              style={{ cursor: 'pointer', color: '#1890ff' }}
+              title="Xem chi tiết"
+            />
+          </Link>
+          <EditOutlined
+            style={{ cursor: 'pointer', color: '#1890ff' }}
+            onClick={() => handleEdit(record.id)}
+            title="Chỉnh sửa"
+          />
+          <Popconfirm
+            title="Xóa bài thi"
+            description="Bạn có chắc chắn muốn xóa bài thi này? Hành động này không thể hoàn tác."
+            onConfirm={() => handleDelete(record.id)}
+            okText="Có"
+            cancelText="Không"
+            okButtonProps={{ danger: true }}
+          >
+            <DeleteOutlined
+              style={{ cursor: 'pointer', color: '#ff4d4f' }}
+              title="Xóa"
+            />
+          </Popconfirm>
         </Space>
       ),
     },
