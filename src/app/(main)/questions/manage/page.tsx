@@ -99,7 +99,7 @@ export default async function QuestionsManagePage(props: {
                 </Flex>
 
                 {/* Info */}
-                <Flex className="text-center text-gray-600 mt-4 text-sm">
+                <Flex className="flex justify-center text-gray-600 mt-4 text-sm">
                     Showing {questions.length > 0 ? (currentPage - 1) * pageSize + 1 : 0}-
                     {Math.min(currentPage * pageSize, totalItems)} of {totalItems} questions
                 </Flex>
