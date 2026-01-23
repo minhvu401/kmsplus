@@ -4,15 +4,16 @@ import { requireAuth } from "@/lib/auth"
 import * as service from "@/service/question.service"
 import { redirect } from "next/navigation"
 import { revalidatePath } from "next/cache"
+import {
+  CreateAnswerDto,
+  CreateQuestionDto,
+  UpdateAnswerDto,
+  UpdateQuestionDto,
+} from "./dto/question.dto"
 
 export type State = {
   message: string | null;
-  errors: {
-    title?: string[];
-    content?: string[];
-    category_id?: string[];
-    user_id?: string[];
-  };
+  errors: Record<string, string[] | undefined>;
 };
 
 export async function getAllQuestions() {
@@ -29,7 +30,21 @@ export async function createQuestion(
   _prevState: State,
   formData: FormData
 ): Promise<State> {
-  const result = await service.createQuestionAction(formData);
+  const validated = CreateQuestionDto.safeParse({
+    title: formData.get("title"),
+    content: formData.get("content"),
+    category_id: formData.get("category_id"),
+    user_id: formData.get("user_id"),
+  })
+
+  if (!validated.success) {
+    return {
+      message: "Missing or invalid fields. Failed to create question.",
+      errors: validated.error.flatten().fieldErrors,
+    }
+  }
+
+  const result = await service.createQuestionAction(validated.data);
 
   const returnToRaw = formData.get("returnTo")
   const returnTo =
@@ -56,8 +71,22 @@ export async function createQuestion(
 export async function updateQuestion(_prevState: State,
   formData: FormData
 ): Promise<State> {
-  const result = await service.updateQuestionAction(formData);
-  const id = formData.get("id");
+  const validated = UpdateQuestionDto.safeParse({
+    title: formData.get("title"),
+    content: formData.get("content"),
+    category_id: formData.get("category_id"),
+    id: formData.get("id"),
+  })
+
+  if (!validated.success) {
+    return {
+      message: "Invalid or missing fields. Failed to update question.",
+      errors: validated.error.flatten().fieldErrors,
+    }
+  }
+
+  const result = await service.updateQuestionAction(validated.data);
+  const id = validated.data.id;
 
   // If DB/service returned validation errors → show in form
   if (result?.errors && Object.keys(result.errors).length > 0) {
@@ -180,9 +209,21 @@ export async function createAnswer(
   _prevState: State,
   formData: FormData
 ): Promise<State> {
+  const validated = CreateAnswerDto.safeParse({
+    content: formData.get("content"),
+    user_id: formData.get("user_id"),
+    question_id: formData.get("question_id"),
+  })
 
-  const result = await service.createAnswerAction(formData);
-  const id = formData.get("question_id");
+  if (!validated.success) {
+    return {
+      message: "Missing or invalid fields. Failed to create answer.",
+      errors: validated.error.flatten().fieldErrors,
+    }
+  }
+
+  const result = await service.createAnswerAction(validated.data);
+  const id = validated.data.question_id;
 
   // If DB/service returned validation errors → show in form
   if (result?.errors && Object.keys(result.errors).length > 0) {
@@ -223,8 +264,21 @@ export async function updateAnswer(
   _prevState: State,
   formData: FormData
 ): Promise<State> {
-  const result = await service.updateAnswerAction(formData);
-  const questionId = formData.get("question_id");
+  const validated = UpdateAnswerDto.safeParse({
+    content: formData.get("content"),
+    answer_id: formData.get("answer_id"),
+    question_id: formData.get("question_id"),
+  })
+
+  if (!validated.success) {
+    return {
+      message: "Invalid or missing fields. Failed to update answer.",
+      errors: validated.error.flatten().fieldErrors,
+    }
+  }
+
+  const result = await service.updateAnswerAction(validated.data);
+  const questionId = validated.data.question_id;
 
   if (result?.errors && Object.keys(result.errors).length > 0) {
     return {

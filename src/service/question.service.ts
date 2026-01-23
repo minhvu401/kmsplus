@@ -1,7 +1,18 @@
 "use server"
 
 import { sql } from "@/lib/database"
-import { z } from "zod"
+import type {
+  CreateAnswerDtoType,
+  CreateQuestionDtoType,
+  UpdateAnswerDtoType,
+  UpdateQuestionDtoType,
+} from "@/action/question/dto/question.dto"
+
+export type ActionResult = {
+  success?: boolean
+  message?: string
+  errors?: Record<string, string[] | undefined>
+}
 
 //TYPE FOR 'QUESTION' RESPONSE
 export type Question = {
@@ -65,49 +76,10 @@ export async function getQuestionDetailsAction(id: string): Promise<Question> {
 }
 
 // CREATE QUESTIONS
-// Define validation schema using Zod
-const CreateQuestionSchema = z.object({
-  title: z
-    .string()
-    .trim()
-    .min(3, "Title must be at least 3 characters")
-    .max(150, "Title must be under 150 characters"),
-  content: z.preprocess(
-    (val) => {
-      if (typeof val !== 'string') return val;
-      return val.replace(/\r\n/g, '\n');
-    },
-    z
-      .string()
-      .min(10, "Content must be at least 10 characters")
-      .max(3000, "Content must be under 3000 characters")
-  ),
-  category_id: z
-    .coerce
-    .number()
-    .int()
-    .min(1, "Please select a category"),
-  user_id: z.coerce.number().int(), // or from session later
-})
-
-// Server Action
-export async function createQuestionAction(formData: FormData) {
-  // Validate input
-  const validatedFields = CreateQuestionSchema.safeParse({
-    title: formData.get("title"),
-    content: formData.get("content"),
-    category_id: formData.get("category_id"),
-    user_id: formData.get("user_id"),
-  })
-
-  // Return validation errors if invalid
-  if (!validatedFields.success) {
-    return {
-      errors: validatedFields.error.flatten().fieldErrors,
-      message: "Missing or invalid fields. Failed to create question.",
-    }
-  }
-  const { title, content, category_id, user_id } = validatedFields.data
+export async function createQuestionAction(
+  input: CreateQuestionDtoType
+): Promise<ActionResult> {
+  const { title, content, category_id, user_id } = input
 
   // Timestamp
   const createdAt = new Date().toLocaleString()
@@ -138,41 +110,10 @@ export async function createQuestionAction(formData: FormData) {
 }
 
 // UPDATE QUESTIONS
-const UpdateQuestionSchema = z.object({
-  title: z
-    .string()
-    .trim()
-    .min(3, "Title must be at least 3 characters")
-    .max(150, "Title must be under 150 characters"),
-  content: z.preprocess(
-    (val) => {
-      if (typeof val !== 'string') return val;
-      return val.replace(/\r\n/g, '\n');
-    },
-    z
-      .string()
-      .min(10, "Content must be at least 10 characters")
-      .max(3000, "Content must be under 3000 characters")
-  ),
-  category_id: z.coerce.number().int(),
-  id: z.coerce.number().int(),
-})
-export async function updateQuestionAction(formData: FormData) {
-  // Validate form data
-  const validatedFields = UpdateQuestionSchema.safeParse({
-    title: formData.get("title"),
-    content: formData.get("content"),
-    category_id: formData.get("category_id"),
-    id: formData.get("id"),
-  })
-
-  if (!validatedFields.success) {
-    return {
-      errors: validatedFields.error.flatten().fieldErrors,
-      message: "Invalid or missing fields. Failed to update question.",
-    }
-  }
-  const { title, content, category_id, id } = validatedFields.data
+export async function updateQuestionAction(
+  input: UpdateQuestionDtoType
+): Promise<ActionResult> {
+  const { title, content, category_id, id } = input
 
   const updatedAt = new Date().toLocaleString()
 
@@ -201,7 +142,7 @@ export async function updateQuestionAction(formData: FormData) {
 }
 
 // DELETE QUESTIONS
-export async function deleteQuestionAction(id: string) {
+export async function deleteQuestionAction(id: string): Promise<ActionResult> {
   const deletedAt = new Date().toLocaleString()
 
   try {
@@ -226,7 +167,7 @@ export async function deleteQuestionAction(id: string) {
 }
 
 // CLOSE QUESTIONS
-export async function closeQuestionAction(id: string) {
+export async function closeQuestionAction(id: string): Promise<ActionResult> {
   const closedAt = new Date().toLocaleString()
 
   try {
@@ -252,7 +193,7 @@ export async function closeQuestionAction(id: string) {
 }
 
 // OPEN QUESTIONS
-export async function openQuestionAction(id: string) {
+export async function openQuestionAction(id: string): Promise<ActionResult> {
   const openedAt = new Date().toLocaleString()
 
   try {
@@ -462,36 +403,10 @@ export async function getAnswerDetailsAction(id: number): Promise<Answer> {
 }
 
 // CREATE ANSWER
-const CreateAnswerSchema = z.object({
-  content: z.preprocess(
-    (val) => {
-      if (typeof val !== 'string') return val;
-      return val.replace(/\r\n/g, '\n');
-    },
-    z
-      .string()
-      .min(15, "Content must be at least 15 characters")
-      .max(600, "Content must be under 600 characters")
-  ),
-  user_id: z.coerce.number().int(), // or from session later
-  question_id: z.coerce.number().int(),
-})
-
-export async function createAnswerAction(formData: FormData) {
-  const validatedFields = CreateAnswerSchema.safeParse({
-    content: formData.get("content"),
-    user_id: formData.get("user_id"),
-    question_id: formData.get("question_id"),
-  })
-
-  if (!validatedFields.success) {
-    return {
-      errors: validatedFields.error.flatten().fieldErrors,
-      message: "Missing or invalid fields. Failed to create answer.",
-    }
-  }
-
-  const { content, user_id, question_id } = validatedFields.data
+export async function createAnswerAction(
+  input: CreateAnswerDtoType
+): Promise<ActionResult> {
+  const { content, user_id, question_id } = input
   const createdAt = new Date().toLocaleString()
 
   try {
@@ -535,33 +450,10 @@ export async function createAnswerAction(formData: FormData) {
 }
 
 // UPDATE ANSWER
-const UpdateAnswerSchema = z.object({
-  content: z.preprocess(
-    (val) => {
-      if (typeof val !== 'string') return val;
-      return val.replace(/\r\n/g, '\n');
-    },
-    z
-      .string()
-      .min(15, "Content must be at least 15 characters")
-      .max(600, "Content must be under 600 characters")
-  ),
-  answer_id: z.coerce.number().int(),
-})
-export async function updateAnswerAction(formData: FormData) {
-  // Validate form data
-  const validatedFields = UpdateAnswerSchema.safeParse({
-    content: formData.get("content"),
-    answer_id: formData.get("answer_id"),
-  })
-
-  if (!validatedFields.success) {
-    return {
-      errors: validatedFields.error.flatten().fieldErrors,
-      message: "Invalid or missing fields. Failed to update question.",
-    }
-  }
-  const { content, answer_id } = validatedFields.data
+export async function updateAnswerAction(
+  input: UpdateAnswerDtoType
+): Promise<ActionResult> {
+  const { content, answer_id } = input
 
   const updatedAt = new Date().toLocaleString()
 
@@ -588,7 +480,7 @@ export async function updateAnswerAction(formData: FormData) {
 }
 
 // DELETE ANSWER
-export async function deleteAnswerAction(id: number) {
+export async function deleteAnswerAction(id: number): Promise<ActionResult> {
   try {
     await sql`
       WITH deleted_answer AS (
