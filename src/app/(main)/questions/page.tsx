@@ -5,17 +5,18 @@ import { CreateQuestion } from "@/components/ui/questions/create-button"
 import {
   FilterCategory,
   FilterStatus,
-  SortBy,
+  QuestionsSortBy,
 } from "@/components/ui/questions/filters"
 import {
   getActiveCategories,
   fetchQuestionsPages,
   fetchFilteredQuestions,
 } from "@/action/question/questionActions"
-
+import QuestionsNotification from "@/components/ui/questions/questions-notification"
 import Pagination from "@/components/ui/questions/pagination"
 import QuestionsList from "@/components/ui/questions/questions-list"
 import { Flex } from "antd"
+
 export default async function Page(props: {
   searchParams?: Promise<{
     query?: string
@@ -33,6 +34,7 @@ export default async function Page(props: {
   const currentPage = Number(searchParams?.page) || 1
   const totalPages = await fetchQuestionsPages(query, category, status)
 
+  const categories = await getActiveCategories()
   const questions = await fetchFilteredQuestions(
     query,
     category,
@@ -40,16 +42,13 @@ export default async function Page(props: {
     sort,
     currentPage
   )
-  const noSearchResults = questions.length === 0
 
-  const categoriesData = await getActiveCategories()
-  const categories = categoriesData.map((cat) => ({
-    ...cat,
-    slug: cat.name.toLowerCase().replace(/\s+/g, "-"),
-  }))
+  const noSearchResults = query !== "" && questions.length === 0
 
   return (
     <PageWrapper>
+      <QuestionsNotification />
+
       <Flex align="center" gap={28} style={{ marginBottom: 24 }}>
         <Search placeholder="Search questions..." />
         <CreateQuestion />
@@ -58,18 +57,19 @@ export default async function Page(props: {
       <Flex align="center" gap={56} style={{ marginBottom: 24 }}>
         <FilterCategory categories={categories} />
         <FilterStatus />
-        <SortBy />
+        <QuestionsSortBy />
       </Flex>
 
-      <div style={{ marginBottom: 24 }}>
+      <Flex style={{ marginBottom: 24 }}>
         <QuestionsList
           questions={questions}
           noSearchResults={noSearchResults}
         />
-      </div>
-      <div className="flex justify-end items-center gap-14 mb-6">
+      </Flex>
+
+      <Flex justify="end" align="center" style={{ marginBottom: 24 }}>
         <Pagination totalPages={totalPages} />
-      </div>
+      </Flex>
     </PageWrapper>
   )
 }

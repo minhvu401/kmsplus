@@ -1,4 +1,3 @@
-// src/app/(main)/layout.tsx
 import PrivateLayout from "@/components/layout/PrivateLayout"
 
 export default function MainLayout({

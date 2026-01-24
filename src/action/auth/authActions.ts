@@ -36,21 +36,9 @@ export async function loginAction(
 
   const { email, password } = parsed.data
 
-  // Kiểm tra user tồn tại và lấy role
+  // Kiểm tra user tồn tại
   const users = await sql`
-    SELECT 
-      u.id, 
-      u.email, 
-      u.full_name, 
-      u.avatar_url, 
-      u.created_at, 
-      u.password_hash, 
-      r.name as role_name
-    FROM users u
-    LEFT JOIN user_roles ur ON u.id = ur.user_id
-    LEFT JOIN roles r ON ur.role_id = r.id
-    WHERE u.email = ${email}
-    LIMIT 1
+    SELECT id, email, full_name, avatar_url, created_at, password_hash FROM users WHERE email = ${email}
   `
   const user = users[0]
   if (!user) {
@@ -71,14 +59,10 @@ export async function loginAction(
     }
   }
 
-  // Tạo token (kèm role)
-  const userRole = user.role_name || "EMPLOYEE" // Default là EMPLOYEE nếu không có role
-  console.log(`[LOGIN] User: ${user.email}, Role: ${userRole}`)
-
+  // Tạo token
   const token = await signToken({
     id: user.id,
     email: user.email,
-    role: userRole,
   })
 
   // Set cookie
