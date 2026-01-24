@@ -1,11 +1,14 @@
+// src/app/(main)/user-management/page-content.tsx
 "use client"
 
 import { useEffect, useState } from "react"
 import { Card, Tabs, Spin, Alert, Button, Space, Flex } from "antd"
-import { ReloadOutlined } from "@ant-design/icons"
+import { ReloadOutlined, UserAddOutlined, TeamOutlined } from "@ant-design/icons"
 import CreateUserForm from "@/components/forms/create-user-form"
 import UserListTable from "@/components/forms/user-list-table"
 import { getAllUsersForManagementAction } from "@/action/user/userManagementActions"
+import { t } from "@/lib/i18n"
+import useLanguageStore from "@/store/useLanguageStore"
 
 interface User {
   id: string
@@ -18,6 +21,7 @@ interface User {
 }
 
 export default function UserManagementPageContent() {
+  const { language } = useLanguageStore()
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -51,17 +55,18 @@ export default function UserManagementPageContent() {
   const availableRoles = [
     { id: 1, name: "Employee" },
     { id: 2, name: "Contributor" },
-    { id: 3, name: "TrainingManager" },
+    { id: 3, name: "Training Manager" },
     { id: 4, name: "Admin" },
-    { id: 5, name: "DashboardViewer" },
+    { id: 5, name: "Dashboard Viewer" },
   ]
 
   const tabs = [
     {
       key: "create",
-      label: "Create User Account",
+      label: language === "vi" ? "Tạo tài khoản" : "Create Account",
+      icon: <UserAddOutlined />,
       children: (
-        <Card style={{ marginTop: "20px" }}>
+        <div className="pt-4">
           <CreateUserForm
             roles={availableRoles}
             onSuccess={() => {
@@ -69,14 +74,15 @@ export default function UserManagementPageContent() {
               setTimeout(() => fetchUsers(), 1000)
             }}
           />
-        </Card>
+        </div>
       ),
     },
     {
       key: "manage",
-      label: "Manage Users",
+      label: language === "vi" ? "Quản lý người dùng" : "Manage Users",
+      icon: <TeamOutlined />,
       children: (
-        <Card style={{ marginTop: "20px" }}>
+        <div className="pt-4">
           <Flex vertical gap={16}>
             <Space>
               <Button
@@ -84,29 +90,57 @@ export default function UserManagementPageContent() {
                 onClick={fetchUsers}
                 loading={loading}
               >
-                Refresh
+                {language === "vi" ? "Làm mới" : "Refresh"}
               </Button>
             </Space>
 
-            {error && <Alert message={error} type="error" showIcon />}
+            {error && (
+              <Alert
+                message={error}
+                type="error"
+                showIcon
+                closable
+              />
+            )}
 
             {loading ? (
-              <div style={{ textAlign: "center", padding: "40px" }}>
+              <div className="flex justify-center items-center py-10">
                 <Spin />
               </div>
             ) : (
               <UserListTable users={users} onRefresh={fetchUsers} />
             )}
           </Flex>
-        </Card>
+        </div>
       ),
     },
   ]
 
   return (
-    <div style={{ padding: "24px" }}>
-      <h1 style={{ marginBottom: "24px" }}>User Management</h1>
-      <Tabs items={tabs} defaultActiveKey="create" />
+    <div className="p-6">
+      {/* Header */}
+      <div className="mb-6">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-3xl font-bold">
+              {t("sidebar.user_management", language)}
+            </h1>
+            <p className="text-gray-600 mt-2">
+              {language === "vi"
+                ? "Quản lý tài khoản người dùng trong hệ thống"
+                : "Manage user accounts in the system"}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Tabs Card */}
+      <Card>
+        <Tabs
+          items={tabs}
+          defaultActiveKey="create"
+        />
+      </Card>
     </div>
   )
 }

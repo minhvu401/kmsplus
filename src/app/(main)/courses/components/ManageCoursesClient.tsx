@@ -1,7 +1,7 @@
 // @/src/app/(main)/courses/components/ManageCoursesClient.tsx
 "use client"
 
-import { useState } from "react"
+import React, { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Input, Button, Table, Pagination, message, Modal, Tag } from "antd"
@@ -11,16 +11,25 @@ import {
   DeleteOutlined,
   PlusOutlined,
   CheckOutlined,
+  CloseOutlined,
 } from "@ant-design/icons"
 import type { Course } from "@/service/course.service"
-import { deleteCourseAPI, approveCourse } from "@/action/courses/courseAction"
+import {
+  getCourseById,
+  deleteCourseAPI,
+  approveCourse,
+} from "@/action/courses/courseAction"
 import { COURSE_STATUS_LABELS } from "@/enum/course-status.enum"
+import UpdateCourseForm, { CoursePayload } from "./UpdateCourseForm"
+import CreateCourseForm from "./CreateCourseForm"
 
 interface ManageCoursesClientProps {
   courses: Course[]
   totalCount: number
   query: string
   page: number
+  availableLessons: any[]
+  availableQuizzes: any[]
 }
 
 export default function ManageCoursesClient({
@@ -28,11 +37,94 @@ export default function ManageCoursesClient({
   totalCount,
   query,
   page,
+  availableLessons,
+  availableQuizzes,
 }: ManageCoursesClientProps) {
+  console.log("🔥 ManageCoursesClient - Received props:", {
+    coursesCount: courses.length,
+    availableLessonsCount: availableLessons?.length || 0,
+    availableQuizzesCount: availableQuizzes?.length || 0,
+    firstLesson: availableLessons?.[0],
+    firstQuiz: availableQuizzes?.[0],
+  })
   const router = useRouter()
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [searchInput, setSearchInput] = useState(query)
-  const [isDeleting, setIsDeleting] = useState(false)
+  const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false)
+  const [selectedCourse, setSelectedCourse] = useState<
+    Course | CoursePayload | null
+  >(null)
 
+  const handleOpenUpdate = async (course: Course) => {
+    const hide = message.loading("Loading course details...", 0)
+
+    try {
+      // 1. Gọi API lấy thông tin chi tiết (bao gồm curriculum)
+      const res = await getCourseById(course.id)
+
+      // Kiểm tra kết quả trả về từ server action
+      // Lưu ý: Tùy thuộc vào cấu trúc trả về của getCourseById mà bạn lấy data
+      // Giả sử res trả về { success: true, data: { ... } } hoặc trực tiếp object course
+      const fullCourse = (res as any).data || res
+
+      if (!fullCourse) {
+        throw new Error("Course data not found")
+      }
+
+      console.log("🔥 [DEBUG] Full Course Data fetched:", fullCourse)
+
+      // 2. Xử lý chuẩn hóa dữ liệu Curriculum
+      // DB có thể trả về 'curriculum' hoặc 'curriculum_sections', kiểm tra cả 2
+      const rawCurriculum =
+        (fullCourse as any).curriculum ||
+        (fullCourse as any).curriculum_sections ||
+        []
+
+      const safeCurriculum = Array.isArray(rawCurriculum)
+        ? rawCurriculum.map((section: any) => ({
+            ...section,
+            id: String(section.id), // ✅ Ép ID Section thành String
+            items: Array.isArray(section.items) // Hoặc section.curriculum_items
+              ? section.items.map((item: any) => ({
+                  ...item,
+                  id: String(item.id), // ✅ Ép ID Item thành String
+                  resource_id: Number(item.resource_id),
+                  type: item.type || "lesson",
+                  duration_minutes: item.duration_minutes || 0,
+                  question_count: item.question_count || 0,
+                }))
+              : [],
+          }))
+        : []
+
+      // 3. Tạo payload
+      const payload: CoursePayload = {
+        ...fullCourse, // Dùng dữ liệu full vừa fetch được
+        description: fullCourse.description ?? undefined,
+        thumbnail_url: fullCourse.thumbnail_url ?? undefined,
+        duration_hours: fullCourse.duration_hours ?? 0,
+        curriculum: safeCurriculum,
+      }
+
+      setSelectedCourse(payload)
+      setIsUpdateModalOpen(true)
+    } catch (error) {
+      console.error(error)
+      message.error("Failed to load course details.")
+    } finally {
+      hide()
+    }
+  }
+
+  const handleUpdateSuccess = () => {
+    setIsUpdateModalOpen(false)
+    setSelectedCourse(null)
+    router.refresh() // Tải lại dữ liệu bảng
+  }
+  const handleCreateSuccess = () => {
+    setIsCreateModalOpen(false)
+    router.refresh()
+  }
   // --- Search ---
   const handleSearch = (value: string) => {
     const params = new URLSearchParams()
@@ -71,6 +163,23 @@ export default function ManageCoursesClient({
         } catch (error) {
           message.error("System error occurred")
         }
+      },
+    })
+  }
+
+  // --- Reject ---
+  const handleReject = (id: number, title: string) => {
+    Modal.confirm({
+      title: "Reject Course",
+      content: `Are you sure you want to reject "${title}"? This course will be moved back to Draft status.`,
+      okText: "Reject",
+      okType: "danger",
+      cancelText: "Cancel",
+      centered: true,
+      onOk: async () => {
+        // Tại đây bạn sẽ gọi API để cập nhật status thành 'draft'
+        message.info("Course has been rejected and moved to Draft.")
+        router.refresh()
       },
     })
   }
@@ -180,6 +289,41 @@ export default function ManageCoursesClient({
         </span>
       ),
     },
+    // 👇 CHÈN CỘT MỚI VÀO ĐÂY
+    {
+      title: "Confirm Course",
+      key: "confirm",
+      render: (_: any, record: Course) => (
+        <div className="flex gap-2">
+          {record.status === "pending_approval" ? (
+            <>
+              <Button
+                type="primary"
+                size="small"
+                icon={<CheckOutlined />}
+                className="bg-blue-600 border-none hover:!bg-blue-700"
+                onClick={() => handleApprove(record.id, record.title)}
+              >
+                Approve
+              </Button>
+              <Button
+                danger
+                size="small"
+                icon={<CloseOutlined />}
+                className="hover:!bg-red-50"
+                onClick={() => handleReject(record.id, record.title)}
+              >
+                Reject
+              </Button>
+            </>
+          ) : (
+            <span className="text-gray-400 text-xs italic pl-2">
+              No action needed
+            </span>
+          )}
+        </div>
+      ),
+    },
     {
       title: "Actions",
       key: "actions",
@@ -192,35 +336,17 @@ export default function ManageCoursesClient({
             e.preventDefault()
           }}
         >
-          {/* Nút Approve */}
-          {(record.status === "pending_approval" ||
-            record.status === "draft") && (
-            <Button
-              icon={<CheckOutlined />}
-              size="small"
-              className="text-blue-600 border-blue-600 hover:!text-blue-500 hover:!border-blue-500"
-              onClick={(e) => {
-                // 🛑 Ngăn chặn hành vi mặc định và lan truyền
-                e.stopPropagation()
-                e.preventDefault()
-
-                // 🟢 Kiểm tra Console trình duyệt (F12) xem dòng này có hiện không
-                console.log("🟢 Client: Đã bấm nút Approve ID:", record.id)
-
-                handleApprove(record.id, record.title)
-              }}
-            >
-              Approve
-            </Button>
-          )}
-
-          {/* Nút Edit */}
-          <Link
-            href={`/courses/${record.id}/update`}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <Button type="primary" icon={<EditOutlined />} size="small" />
-          </Link>
+          {/* Nút Edit mới dùng để mở Modal */}
+          <Button
+            type="default"
+            icon={<EditOutlined />}
+            size="small"
+            className="border-blue-600 text-blue-600 hover:!border-blue-700 hover:!text-blue-700 hover:bg-blue-50"
+            onClick={(e) => {
+              e.stopPropagation() // Chặn sự kiện click vào hàng
+              handleOpenUpdate(record) // Gọi hàm mở Modal với dữ liệu hàng hiện tại
+            }}
+          />
 
           {/* Nút Delete */}
           <Button
@@ -253,11 +379,14 @@ export default function ManageCoursesClient({
           </h1>
           <p className="text-gray-600 mt-1">Manage and organize your courses</p>
         </div>
-        <Link href="/courses/create">
-          <Button type="primary" icon={<PlusOutlined />} size="large">
-            Create Course
-          </Button>
-        </Link>
+        <Button
+          type="primary"
+          icon={<PlusOutlined />}
+          size="large"
+          onClick={() => setIsCreateModalOpen(true)}
+        >
+          Create Course
+        </Button>
       </div>
 
       {/* Search */}
@@ -300,6 +429,39 @@ export default function ManageCoursesClient({
           />
         </div>
       )}
+      <Modal
+        title={null} // Ẩn tiêu đề mặc định của Modal vì trong Form đã có h1/h2
+        open={isUpdateModalOpen}
+        onCancel={() => setIsUpdateModalOpen(false)} // Đóng modal khi nhấn X hoặc ra ngoài
+        footer={null} // Không dùng nút OK/Cancel mặc định của Modal
+        width={1000} // Độ rộng đủ lớn cho Curriculum Builder
+        centered
+        destroyOnHidden={true}
+      >
+        {selectedCourse && (
+          <UpdateCourseForm
+            initialData={selectedCourse as CoursePayload}
+            availableLessons={availableLessons}
+            availableQuizzes={availableQuizzes}
+            onSuccess={handleUpdateSuccess}
+          />
+        )}
+      </Modal>
+      <Modal
+        title={null}
+        open={isCreateModalOpen}
+        onCancel={() => setIsCreateModalOpen(false)}
+        footer={null}
+        width={1000}
+        centered
+        destroyOnHidden
+      >
+        <CreateCourseForm
+          availableLessons={availableLessons}
+          availableQuizzes={availableQuizzes}
+          onSuccess={handleCreateSuccess}
+        />
+      </Modal>
     </div>
   )
 }

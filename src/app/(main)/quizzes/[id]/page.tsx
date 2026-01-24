@@ -70,7 +70,7 @@ export default function QuizDetailPage() {
         getQuizById(quizId),
         getQuizQuestions(quizId),
       ])
-      
+
       if (quizData) {
         setQuiz(quizData)
         setQuestions(questionsData as QuizQuestion[])
@@ -121,9 +121,7 @@ export default function QuizDetailPage() {
       key: "explanation",
       width: "22%",
       render: (text: string | null) => (
-        <span className="text-gray-500 text-sm">
-          {text || "Không có"}
-        </span>
+        <span className="text-gray-500 text-sm">{text || "Không có"}</span>
       ),
     },
   ]
@@ -243,7 +241,10 @@ export default function QuizDetailPage() {
         {questions.length > 0 ? (
           <Table
             columns={questionColumns}
-            dataSource={questions.map((q, index) => ({ ...q, key: q.quiz_question_id || index }))}
+            dataSource={questions.map((q, index) => ({
+              ...q,
+              key: q.quiz_question_id || index,
+            }))}
             pagination={questions.length > 10 ? { pageSize: 10 } : false}
             size="small"
           />

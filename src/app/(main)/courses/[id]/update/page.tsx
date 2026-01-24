@@ -49,10 +49,10 @@ export default async function UpdateCoursePage({
     duration_minutes: l.duration_minutes || 0,
   }))
 
-  const availableQuizzes: Quiz[] = (quizzesRes?.quizzes || []).map((q: any) => ({
+  const availableQuizzes: Quiz[] = (quizzesRes?.data || []).map((q: any) => ({
     id: q.id,
     title: q.title,
-    question_count: q.question_count || 0, // Giả sử DB trả về field này
+    question_count: q.question_count || 0,
   }))
 
   // 3. Chuẩn bị initialData cho Form
@@ -79,6 +79,11 @@ export default async function UpdateCoursePage({
           initialData={course as any}
           availableLessons={availableLessons}
           availableQuizzes={availableQuizzes}
+          onSuccess={() => {
+            // Handle successful course update
+            console.log("Course updated successfully")
+            // You can add additional logic here like redirecting
+          }}
         />
       </div>
     </main>

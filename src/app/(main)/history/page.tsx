@@ -3,7 +3,7 @@
 
 "use client"
 
-import React, { useState } from "react"
+import React, { useState, useEffect } from "react"
 import Link from "next/link"
 import {
   Table,
@@ -13,7 +13,6 @@ import {
   Button,
   Input,
   Select,
-  Avatar,
   Pagination,
 } from "antd"
 import type { ColumnsType } from "antd/es/table"
@@ -26,9 +25,7 @@ import {
   CheckCircle,
   TrendingUp,
 } from "lucide-react"
-// 👇 1. IMPORT ACTION THẬT
 import { getPersonalHistory } from "@/action/progress/progressAction"
-import { useEffect } from "react" // Import thêm useEffec
 
 // --- 1. MOCK DATA (Dữ liệu giả lập theo ảnh) ---
 const MOCK_STATS = [
@@ -44,9 +41,12 @@ const MOCK_STATS = [
     title: "Courses Completed",
     value: 8,
     sub: "66% completion rate",
-    icon: <CheckCircle className="text-green-600" size={24} />,
-    bg: "bg-green-50",
-    text: "text-green-600",
+    // ✅ Đã đổi màu icon
+    icon: <CheckCircle className="text-blue-600" size={24} />,
+    // ✅ Đã đổi màu nền
+    bg: "bg-blue-50",
+    // ✅ Đã đổi màu chữ
+    text: "text-blue-600",
   },
   {
     title: "Avg. Score",
@@ -66,7 +66,7 @@ const MOCK_COURSES = [
     enrolledOn: "Oct 12, 2023",
     progress: 100,
     status: "completed",
-    image: "https://api.dicebear.com/7.x/icons/svg?seed=Security", // Ảnh giả
+    image: "https://api.dicebear.com/7.x/icons/svg?seed=Security",
   },
   {
     id: 2,
@@ -108,7 +108,7 @@ const MOCK_COURSES = [
 
 // --- 2. COMPONENT CHÍNH ---
 export default function PersonalHistoryPage() {
-  const [data, setData] = useState(MOCK_COURSES) // Dùng dữ liệu giả
+  const [data, setData] = useState(MOCK_COURSES)
 
   // Cấu hình cột cho bảng
   const columns: ColumnsType<(typeof MOCK_COURSES)[0]> = [
@@ -129,7 +129,8 @@ export default function PersonalHistoryPage() {
           <div>
             <Link
               href={`/courses/${record.id}`}
-              className="font-bold text-gray-800 hover:text-green-600 text-base block mb-0.5"
+              // ✅ Đã đổi màu hover
+              className="font-bold text-gray-800 hover:text-blue-600 text-base block mb-0.5"
             >
               {text}
             </Link>
@@ -159,7 +160,8 @@ export default function PersonalHistoryPage() {
           <Progress
             percent={percent}
             showInfo={false}
-            strokeColor={percent === 100 ? "#10b981" : "#3b82f6"}
+            // ✅ Đã đổi màu khi hoàn thành 100% (dùng chung màu xanh dương)
+            strokeColor="#3b82f6"
             trailColor="#e5e7eb"
             size="small"
             className="mb-0"
@@ -175,15 +177,20 @@ export default function PersonalHistoryPage() {
         const isCompleted = status === "completed"
         return (
           <Tag
-            color={isCompleted ? "success" : "warning"}
+            // ✅ Đổi color từ 'success' sang 'processing' (màu xanh dương của Antd)
+            color={isCompleted ? "processing" : "warning"}
             className={`px-3 py-1 rounded-full border-0 font-semibold flex items-center gap-1 w-fit ${
               isCompleted
-                ? "bg-green-50 text-green-600"
+                ? // ✅ Đổi màu background và text
+                  "bg-blue-50 text-blue-600"
                 : "bg-yellow-50 text-yellow-600"
             }`}
           >
             <span
-              className={`w-1.5 h-1.5 rounded-full ${isCompleted ? "bg-green-600" : "bg-yellow-600"}`}
+              className={`w-1.5 h-1.5 rounded-full ${
+                // ✅ Đổi màu chấm tròn
+                isCompleted ? "bg-blue-600" : "bg-yellow-600"
+              }`}
             ></span>
             {isCompleted ? "Completed" : "In Progress"}
           </Tag>
@@ -199,7 +206,8 @@ export default function PersonalHistoryPage() {
           return (
             <Button
               icon={<Award size={16} />}
-              className="text-gray-600 border-gray-300 hover:!text-green-600 hover:!border-green-600 flex items-center gap-2"
+              // ✅ Đổi màu text và border khi hover
+              className="text-gray-600 border-gray-300 hover:!text-blue-600 hover:!border-blue-600 flex items-center gap-2"
             >
               Certificate
             </Button>
@@ -209,7 +217,8 @@ export default function PersonalHistoryPage() {
           <Link href={`/courses/${record.id}`}>
             <Button
               type="primary"
-              className="bg-green-500 hover:!bg-green-600 border-none shadow-md flex items-center gap-2"
+              // ✅ Đổi màu nền và hover
+              className="bg-blue-600 hover:!bg-blue-700 border-none shadow-md flex items-center gap-2"
             >
               Continue <PlayCircle size={16} />
             </Button>
@@ -236,7 +245,8 @@ export default function PersonalHistoryPage() {
           <Button
             type="primary"
             icon={<Download size={18} />}
-            className="bg-green-500 hover:!bg-green-600 h-10 px-5 border-none shadow-sm font-medium"
+            // ✅ Đổi màu nền và hover cho nút Export Report
+            className="bg-blue-600 hover:!bg-blue-700 h-10 px-5 border-none shadow-sm font-medium"
           >
             Export Report
           </Button>
@@ -269,12 +279,14 @@ export default function PersonalHistoryPage() {
                     {stat.sub}
                   </p>
                 </div>
-                {/* Có thể thêm chart nhỏ ở đây nếu muốn giống y hệt ảnh */}
               </div>
               {/* Fake progress bar dưới cùng card */}
               <div className="mt-4 h-1 w-full bg-gray-100 rounded-full overflow-hidden">
                 <div
-                  className={`h-full rounded-full ${stat.text.replace("text", "bg")}`}
+                  className={`h-full rounded-full ${stat.text.replace(
+                    "text",
+                    "bg"
+                  )}`}
                   style={{ width: "70%" }}
                 ></div>
               </div>
@@ -282,7 +294,7 @@ export default function PersonalHistoryPage() {
           ))}
         </div>
 
-        {/* FILTERS & SEARCH */}
+        {/* FILTERS & SEARCH (Phần này giữ nguyên vì không có màu xanh lá) */}
         <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
           <div className="flex items-center gap-3 w-full md:w-auto">
             <Select
@@ -342,7 +354,7 @@ export default function PersonalHistoryPage() {
             className="custom-history-table"
           />
 
-          {/* Custom Pagination Footer giống ảnh */}
+          {/* Custom Pagination Footer */}
           <div className="p-4 border-t border-gray-100 flex justify-between items-center">
             <span className="text-sm text-gray-500">
               Showing 1-5 of 12 courses
