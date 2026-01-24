@@ -5,8 +5,6 @@
 // export default function DashboardPage() {
 //   return <GeneralInfromation />
 // }
-
-// app/dashboard/page.tsx
 import Link from "next/link"
 
 export default function DashboardOverview() {
@@ -33,7 +31,7 @@ export default function DashboardOverview() {
           </span>
           <input
             type="text"
-            className="block w-full pl-10 pr-3 py-2 border border-gray-200 rounded-lg leading-5 bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm"
+            className="block w-full pl-10 pr-3 py-2 border border-gray-200 rounded-lg leading-5 bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
             placeholder="Search courses, users, or settings..."
           />
         </div>
@@ -102,7 +100,7 @@ export default function DashboardOverview() {
           </button>
           <Link
             href="/courses/create"
-            className="px-4 py-2 bg-green-500 text-white font-medium rounded-lg hover:bg-green-600 flex items-center gap-2"
+            className="px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 flex items-center gap-2"
           >
             <svg
               className="w-4 h-4"
@@ -131,7 +129,7 @@ export default function DashboardOverview() {
               <p className="text-gray-500 text-sm font-medium">Total Courses</p>
               <h3 className="text-3xl font-bold text-gray-900 mt-1">124</h3>
             </div>
-            <div className="p-2 bg-green-50 text-green-600 rounded-lg">
+            <div className="p-2 bg-blue-50 text-blue-600 rounded-lg">
               <svg
                 className="w-6 h-6"
                 fill="none"
@@ -147,7 +145,7 @@ export default function DashboardOverview() {
               </svg>
             </div>
           </div>
-          <p className="text-green-600 text-sm font-medium flex items-center">
+          <p className="text-blue-600 text-sm font-medium flex items-center">
             <span className="mr-1">↗</span> 3 new this week
           </p>
         </div>
@@ -177,7 +175,7 @@ export default function DashboardOverview() {
               </svg>
             </div>
           </div>
-          <p className="text-green-600 text-sm font-medium flex items-center">
+          <p className="text-blue-600 text-sm font-medium flex items-center">
             <span className="mr-1">↗</span> +12% vs last month
           </p>
         </div>
@@ -235,7 +233,7 @@ export default function DashboardOverview() {
           </div>
           <div className="w-full bg-gray-100 rounded-full h-2">
             <div
-              className="bg-green-500 h-2 rounded-full"
+              className="bg-blue-600 h-2 rounded-full"
               style={{ width: "84%" }}
             ></div>
           </div>
@@ -312,12 +310,12 @@ export default function DashboardOverview() {
         </div>
 
         {/* Nav 3: Enrollment & Progress (KEY ACTION) */}
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-green-200 ring-1 ring-green-100 flex flex-col justify-between h-48 hover:shadow-md transition-shadow relative overflow-hidden">
-          <div className="absolute top-0 right-0 bg-green-500 text-white text-[10px] font-bold px-2 py-1 rounded-bl-lg">
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-blue-200 ring-1 ring-blue-100 flex flex-col justify-between h-48 hover:shadow-md transition-shadow relative overflow-hidden">
+          <div className="absolute top-0 right-0 bg-blue-600 text-white text-[10px] font-bold px-2 py-1 rounded-bl-lg">
             KEY ACTION
           </div>
           <div className="flex gap-4">
-            <div className="p-3 bg-green-50 text-green-600 rounded-lg h-fit">
+            <div className="p-3 bg-blue-50 text-blue-600 rounded-lg h-fit">
               <svg
                 className="w-6 h-6"
                 fill="none"
@@ -343,7 +341,7 @@ export default function DashboardOverview() {
           </div>
           <Link
             href="/courses/enrollments"
-            className="text-green-700 font-bold text-sm hover:underline flex items-center"
+            className="text-blue-700 font-bold text-sm hover:underline flex items-center"
           >
             Open Tracker <span className="ml-1">→</span>
           </Link>
@@ -386,12 +384,12 @@ export default function DashboardOverview() {
             >
               <path
                 d="M0 35 Q 10 30, 20 32 T 40 25 T 60 15 T 80 20 T 100 10 V 40 H 0 Z"
-                fill="rgba(34, 197, 94, 0.1)"
+                fill="rgba(37, 99, 235, 0.1)"
               />
               <path
                 d="M0 35 Q 10 30, 20 32 T 40 25 T 60 15 T 80 20 T 100 10"
                 fill="none"
-                stroke="#22c55e"
+                stroke="#2563eb"
                 strokeWidth="0.5"
               />
             </svg>
@@ -410,7 +408,7 @@ export default function DashboardOverview() {
             <h3 className="font-bold text-lg text-gray-900">
               Recent Enrollments
             </h3>
-            <span className="text-green-500 text-sm font-semibold cursor-pointer">
+            <span className="text-blue-600 text-sm font-semibold cursor-pointer">
               View All
             </span>
           </div>
@@ -438,7 +436,7 @@ export default function DashboardOverview() {
               <div className="text-xs text-gray-600 font-medium w-20 truncate">
                 UX Design 101
               </div>
-              <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full font-medium">
+              <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full font-medium">
                 Active
               </span>
             </div>
@@ -478,7 +476,7 @@ export default function DashboardOverview() {
               <div className="text-xs text-gray-600 font-medium w-20 truncate">
                 Data Sec
               </div>
-              <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full font-medium">
+              <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full font-medium">
                 Active
               </span>
             </div>

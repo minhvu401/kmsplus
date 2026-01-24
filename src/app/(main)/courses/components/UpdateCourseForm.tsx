@@ -1,13 +1,12 @@
-// @/src/app/(main)/courses/components/UpdateCourseForm.tsx
+// @/src/app/(main)/courses/components/UpdateCourseForm
 "use client"
-
-import React, { useState, useMemo, useEffect } from "react"
+import React, { useState, useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { updateCourseAPI } from "@/action/courses/courseAction"
 import { createNewLessonAPI } from "@/action/lesson/lessonActions"
 import { COURSE_STATUS_LABELS } from "@/enum/course-status.enum"
-import type { HookAPI } from "antd/es/modal/useModal"
 import RichTextEditor from "@/components/ui/RichTextEditor"
+import ContentBankItem from "@/components/ui/ContentBankItem"
 import {
   DndContext,
   closestCorners,
@@ -59,7 +58,8 @@ import {
 const { TextArea } = Input
 const { Dragger } = Upload
 const CLOUDINARY_CLOUD_NAME = "dhclot8lh"
-const CLOUDINARY_UPLOAD_PRESET = "kms-course"
+const CLOUDINARY_UPLOAD_PRESET = "kms-plus"
+
 // --- TYPES ---
 export type Lesson = {
   id: number
@@ -100,6 +100,7 @@ interface UpdateCourseFormProps {
   initialData: CoursePayload
   availableLessons: Lesson[]
   availableQuizzes: Quiz[]
+  onSuccess: () => void
 }
 
 // --- SORTABLE ITEM COMPONENT ---
@@ -136,9 +137,37 @@ function SortableItem({ id, children }: SortableItemProps) {
 // --- MAIN COMPONENT ---
 export default function UpdateCourseForm({
   initialData,
-  availableLessons = [],
-  availableQuizzes = [],
+  availableLessons: initialLessons = [],
+  availableQuizzes: initialQuizzes = [],
+  onSuccess,
 }: UpdateCourseFormProps) {
+  console.log("🔥 UpdateCourseForm - Initial data:", {
+    courseId: initialData.id,
+    title: initialData.title,
+    curriculumLength: initialData.curriculum?.length || 0,
+    curriculum: initialData.curriculum,
+  })
+  // 1. Quản lý danh sách Available Content (Lessons & Quizzes) từ Props
+  const [availableLessons, setAvailableLessons] =
+    useState<Lesson[]>(initialLessons)
+  const [availableQuizzes, setAvailableQuizzes] =
+    useState<Quiz[]>(initialQuizzes)
+
+  // Cập nhật state khi props thay đổi (khi server gửi dữ liệu mới)
+  useEffect(() => {
+    console.log("🔥 UpdateCourseForm - Props changed:", {
+      initialLessons: initialLessons.length,
+      initialQuizzes: initialQuizzes.length,
+    })
+    setAvailableLessons(initialLessons)
+    setAvailableQuizzes(initialQuizzes)
+  }, [initialLessons, initialQuizzes])
+
+  // Hàm thêm lesson mới vào danh sách ngay lập tức khi tạo xong
+  const handleLessonCreated = (newLesson: Lesson) => {
+    setAvailableLessons((prev) => [newLesson, ...prev])
+  }
+
   const router = useRouter()
   const [modal, contextHolder] = Modal.useModal()
   const [current, setCurrent] = useState(0)
@@ -146,6 +175,15 @@ export default function UpdateCourseForm({
 
   // State Payload
   const [payload, setPayload] = useState<CoursePayload>(initialData)
+
+  // Log khi payload thay đổi
+  useEffect(() => {
+    console.log("🔥 UpdateCourseForm - Payload changed:", {
+      courseId: payload.id,
+      curriculumLength: payload.curriculum?.length || 0,
+      curriculum: payload.curriculum,
+    })
+  }, [payload.curriculum])
 
   const [stepStatus, setStepStatus] = useState<StepStatus[]>(
     new Array(steps.length).fill("valid")
@@ -171,22 +209,15 @@ export default function UpdateCourseForm({
     }
   }, [payload.curriculum, activeSectionId])
 
-  // const handleUpload = (file: File) => {
-  //   const reader = new FileReader()
-  //   reader.onload = (e) => {
-  //     const result = e.target?.result as string
-  //     setImageUrl(result)
-  //     update("thumbnail_url", result)
-  //   }
-  //   reader.readAsDataURL(file)
-  //   return false
-  // }
-  const handleUploadThumbnail = async (file: File) => {
-    const hide = message.loading("Uploading image to cloud...", 0) // Hiển thị trạng thái chờ
+  const handleUploadThumbnail = async (options: any) => {
+    const { file, onSuccess, onError } = options
+    const hide = message.loading("Đang tải ảnh lên...", 0)
+
     try {
       const formData = new FormData()
       formData.append("file", file)
-      formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET) // Sử dụng preset đã định nghĩa ở đầu file
+      formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET)
+
       const res = await fetch(
         `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
         { method: "POST", body: formData }
@@ -194,27 +225,27 @@ export default function UpdateCourseForm({
 
       if (!res.ok) {
         const errorData = await res.json()
-        throw new Error(errorData.error?.message || "Upload failed")
+        throw new Error(errorData.error?.message || "Upload thất bại")
       }
 
       const data = await res.json()
-      const secureUrl = data.secure_url // Đây là URL ngắn gọn từ Cloudinary (vừa vặn 500 ký tự)
+      const shortUrl = data.secure_url
 
-      setImageUrl(secureUrl) // Cập nhật ảnh hiển thị preview
-      update("thumbnail_url", secureUrl) // Cập nhật giá trị vào payload để gửi xuống DB
+      setImageUrl(shortUrl)
+      update("thumbnail_url", shortUrl)
 
-      message.success("Image uploaded successfully!")
+      if (onSuccess) onSuccess("Ok")
+      message.success("Tải ảnh thành công!")
     } catch (error: any) {
       console.error("Upload error:", error)
-      message.error(`Upload failed: ${error.message}`)
+      message.error(`Lỗi tải ảnh: ${error.message}`)
+      if (onError) onError({ error })
     } finally {
-      hide() // Tắt thông báo loading
+      hide()
     }
-    return false // Ngăn chặn Ant Design tự động upload theo cách mặc định
   }
 
   // --- LOGIC KÉO THẢ ---
-
   const findSectionId = (itemId: string) => {
     if (payload.curriculum.find((s) => s.id === itemId)) return itemId
     const section = payload.curriculum.find((s) =>
@@ -348,6 +379,7 @@ export default function UpdateCourseForm({
       })
       if (res.success) {
         message.success("Course updated successfully!")
+        if (onSuccess) onSuccess()
         router.refresh()
       } else {
         message.error(res.error || "Update failed")
@@ -365,15 +397,13 @@ export default function UpdateCourseForm({
   )
 
   return (
-    <div className="bg-white p-6 rounded shadow">
+    <div className="bg-white p-2 rounded shadow">
       {contextHolder}
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-gray-900">
-          Update Course: {payload.title}
-        </h1>
-        <div className="text-sm text-gray-500">
-          Step {current + 1} / {steps.length}
-        </div>
+      <h1 className="text-2xl font-semibold text-gray-900">
+        Update Course: {payload.title}
+      </h1>
+      <div className="text-sm text-gray-500">
+        Step {current + 1} / {steps.length}
       </div>
 
       <div className="mb-6">
@@ -401,7 +431,9 @@ export default function UpdateCourseForm({
         {current === 0 && (
           <section className="space-y-4">
             <div>
-              <label className="block text-sm font-medium mb-1">Title</label>
+              <label className="block text-sm font-medium mb-1 text-gray-700">
+                Title
+              </label>
               <Input
                 value={payload.title || ""}
                 onChange={(e) => update("title", e.target.value)}
@@ -415,7 +447,7 @@ export default function UpdateCourseForm({
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">
+              <label className="block text-sm font-medium mb-1 text-gray-700">
                 Thumbnail URL
               </label>
               <Input
@@ -428,7 +460,7 @@ export default function UpdateCourseForm({
                 <Upload
                   accept="image/*"
                   showUploadList={false}
-                  beforeUpload={handleUploadThumbnail}
+                  customRequest={handleUploadThumbnail}
                 >
                   <Button icon={<AntPlusOutlined />}>Upload Image</Button>
                 </Upload>
@@ -449,7 +481,7 @@ export default function UpdateCourseForm({
               )}
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">
+              <label className="block text-sm font-medium mb-1 text-gray-700">
                 Short Description
               </label>
               <TextArea
@@ -474,9 +506,12 @@ export default function UpdateCourseForm({
                   value={payload.status}
                   onChange={(value) => update("status", value)}
                   className="w-full"
-                  options={Object.entries(COURSE_STATUS_LABELS).map(
-                    ([value, label]) => ({ value, label })
-                  )}
+                  options={Object.entries(COURSE_STATUS_LABELS)
+                    .filter(
+                      ([value]) =>
+                        value === "draft" || value === "pending_approval"
+                    )
+                    .map(([value, label]) => ({ value, label }))}
                 />
               </div>
               <div>
@@ -501,8 +536,8 @@ export default function UpdateCourseForm({
             <div>
               <CurriculumContentBank
                 modal={modal}
-                availableLessons={availableLessons}
-                availableQuizzes={availableQuizzes}
+                availableLessons={availableLessons} // Dùng state đã được khởi tạo
+                availableQuizzes={availableQuizzes} // Dùng state đã được khởi tạo
                 value={payload.curriculum}
                 onChange={(newCurriculum) =>
                   update("curriculum", newCurriculum)
@@ -517,6 +552,7 @@ export default function UpdateCourseForm({
                 activeSectionId={activeSectionId}
                 setActiveSectionId={setActiveSectionId}
                 onOpenCreateModal={() => {}}
+                onLessonCreated={handleLessonCreated} // Truyền callback tạo lesson
               />
               {stepStatus[1] === "invalid" && (
                 <p className="mt-2 text-sm text-red-600">
@@ -572,9 +608,84 @@ export default function UpdateCourseForm({
   )
 }
 
+// --- Component FormModal ---
+function FormModal({
+  title,
+  label,
+  placeholder,
+  initialValue = "",
+  onClose,
+  onSave,
+}: {
+  title: string
+  label: string
+  placeholder: string
+  initialValue?: string
+  onClose: () => void
+  onSave: (value: string) => void
+}) {
+  const [value, setValue] = useState(initialValue)
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    onSave(value)
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
+        <form onSubmit={handleSubmit}>
+          <div className="flex justify-between items-center p-4 border-b">
+            <h3 className="text-lg font-semibold text-gray-700">{title}</h3>
+            <button
+              type="button"
+              onClick={onClose}
+              className="text-gray-400 hover:text-gray-600"
+            >
+              <X size={20} />
+            </button>
+          </div>
+          <div className="p-4 space-y-2">
+            <label
+              htmlFor="modal-input"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
+              {label}
+            </label>
+            <input
+              id="modal-input"
+              type="text"
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              placeholder={placeholder}
+              className="w-full border px-3 py-2 rounded border-gray-300"
+              autoFocus
+            />
+          </div>
+          <div className="flex justify-end gap-3 p-4 bg-gray-50 rounded-b-lg">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 bg-white text-blue-600 border border-blue-600 rounded text-sm font-medium hover:bg-blue-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 bg-blue-600 text-white rounded text-sm font-medium"
+            >
+              Save Changes
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
 // --- CURRICULUM CONTENT BANK ---
 interface CurriculumContentBankProps {
-  modal: any // HookAPI
+  modal: any
   value: Section[]
   onChange: (value: Section[]) => void
   hasError: boolean
@@ -585,8 +696,8 @@ interface CurriculumContentBankProps {
   activeSectionId: string | null
   setActiveSectionId: (id: string | null) => void
   onOpenCreateModal: () => void
+  onLessonCreated: (lesson: Lesson) => void // Thêm prop này để nhận callback
 }
-
 function CurriculumContentBank({
   value: sections,
   onChange,
@@ -595,9 +706,10 @@ function CurriculumContentBank({
   availableQuizzes,
   sensors,
   onDragEnd,
-  modal, // Sử dụng modal từ props truyền vào
+  modal,
   activeSectionId,
   setActiveSectionId,
+  onLessonCreated, // Nhận prop này
 }: CurriculumContentBankProps) {
   const router = useRouter()
   const [modalState, setModalState] = useState<{
@@ -608,7 +720,7 @@ function CurriculumContentBank({
   const [activeTab, setActiveTab] = useState<"lessons" | "quizzes">("lessons")
   const [searchTerm, setSearchTerm] = useState("")
 
-  // --- State cho Modal Create Lesson (Mới) ---
+  // --- State cho Modal Create Lesson ---
   const [form] = Form.useForm()
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false)
@@ -623,7 +735,6 @@ function CurriculumContentBank({
     null
   )
 
-  // --- Logic Section (Giữ nguyên) ---
   const handleAddSection = () => {
     const newSection: Section = {
       id: `section-${Date.now()}`,
@@ -696,7 +807,6 @@ function CurriculumContentBank({
     )
   }
 
-  // VỊ TRÍ: Bên trong function CurriculumContentBank
   const handleRemoveItem = (
     sectionId: string | number,
     itemId: string | number
@@ -709,11 +819,9 @@ function CurriculumContentBank({
       centered: true,
       onOk: () => {
         const updatedSections = sections.map((section) => {
-          // ✅ SỬA: Ép kiểu String cho sectionId
           if (String(section.id) === String(sectionId)) {
             return {
               ...section,
-              // ✅ SỬA: Ép kiểu String cho itemId bên trong filter
               items: section.items.filter(
                 (item) => String(item.id) !== String(itemId)
               ),
@@ -726,8 +834,6 @@ function CurriculumContentBank({
       },
     })
   }
-  // --- Logic Create Lesson (Mới - Copy từ CreateCourseClient) ---
-  // Tìm và thay thế hàm handleUploadPDF cũ:
 
   const handleUploadPDF = async (file: File) => {
     const hide = message.loading("Uploading PDF...", 0)
@@ -736,28 +842,21 @@ function CurriculumContentBank({
       formData.append("file", file)
       formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET)
 
-      // 👇 SỬA 1: Đổi 'raw' thành 'auto' để Cloudinary tự xử lý PDF tốt hơn
       const res = await fetch(
         `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/auto/upload`,
         { method: "POST", body: formData }
       )
 
       if (!res.ok) {
-        // 👇 Log lỗi chi tiết ra console để dễ debug
         const errorData = await res.json()
-        console.error("Cloudinary Error:", errorData)
         throw new Error(errorData.error?.message || "Upload failed")
       }
 
       const data = await res.json()
-      console.log("Upload Success:", data) // Kiểm tra xem có url trả về không
-
       const fileUrl = data.secure_url || data.url
 
-      // 👇 Cập nhật State & Form
       setPdfFile({ name: file.name, url: fileUrl })
-      form.setFieldsValue({ content: fileUrl }) // Quan trọng: Gán URL vào field content để submit
-
+      form.setFieldsValue({ content: fileUrl })
       message.success("PDF uploaded successfully!")
     } catch (error: any) {
       console.error("PDF Upload error:", error)
@@ -765,7 +864,7 @@ function CurriculumContentBank({
     } finally {
       hide()
     }
-    return false // Chặn hành động upload mặc định của Antd
+    return false
   }
 
   const getYoutubeEmbedId = (url: string) => {
@@ -784,7 +883,12 @@ function CurriculumContentBank({
         type: values.type,
         content: values.content,
       })
-      router.refresh()
+
+      // ✅ Cập nhật danh sách lesson ngay lập tức
+      if (onLessonCreated) {
+        onLessonCreated(newLessonResponse as unknown as Lesson)
+      }
+
       setIsCreateModalOpen(false)
       setCreatedLessonName(newLessonResponse.title)
       setIsSuccessModalOpen(true)
@@ -795,22 +899,19 @@ function CurriculumContentBank({
       setIsCreating(false)
     }
   }
-  // --- Filter Logic ---
-  const filteredLessons = useMemo(
-    () =>
-      availableLessons.filter((l) =>
-        l.title.toLowerCase().includes(searchTerm.toLowerCase())
-      ),
-    [availableLessons, searchTerm]
-  )
 
-  const filteredQuizzes = useMemo(
-    () =>
-      availableQuizzes.filter((q) =>
-        q.title.toLowerCase().includes(searchTerm.toLowerCase())
-      ),
-    [availableQuizzes, searchTerm]
-  )
+  // ✅ Sử dụng useMemo để lọc danh sách
+  const filteredLessons = useMemo(() => {
+    return availableLessons.filter((l) =>
+      l.title.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+  }, [availableLessons, searchTerm])
+
+  const filteredQuizzes = useMemo(() => {
+    return availableQuizzes.filter((q) =>
+      q.title.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+  }, [availableQuizzes, searchTerm])
 
   return (
     <div
@@ -839,7 +940,7 @@ function CurriculumContentBank({
             <Button
               type="primary"
               icon={<Plus size={16} />}
-              onClick={() => setIsCreateModalOpen(true)} // Mở modal tại đây
+              onClick={() => setIsCreateModalOpen(true)}
               className="bg-blue-600 hover:bg-blue-500 shadow-sm"
               size="small"
             >
@@ -878,7 +979,8 @@ function CurriculumContentBank({
 
           <div className="flex-1 overflow-y-auto space-y-2 max-h-[400px]">
             {activeTab === "lessons" &&
-              filteredLessons.map((l) => (
+              // ✅ Đã fix lỗi implicit any
+              filteredLessons.map((l: Lesson) => (
                 <ContentBankItem
                   key={`l-${l.id}`}
                   icon={<BookOpen size={16} />}
@@ -894,7 +996,8 @@ function CurriculumContentBank({
                 />
               ))}
             {activeTab === "quizzes" &&
-              filteredQuizzes.map((q) => (
+              // ✅ Đã fix lỗi implicit any
+              filteredQuizzes.map((q: Quiz) => (
                 <ContentBankItem
                   key={`q-${q.id}`}
                   icon={<FileQuestion size={16} />}
@@ -929,6 +1032,7 @@ function CurriculumContentBank({
         collisionDetection={closestCorners}
         onDragEnd={onDragEnd}
       >
+        {/* 👇 BẮT ĐẦU SỬA: Đảm bảo cấu trúc div đóng mở đúng */}
         <div className="block text-sm font-medium mb-1 text-gray-700">
           <h3 className="text-lg font-semibold mb-4">Course Curriculum</h3>
           <div className="flex-1 overflow-y-auto space-y-4 pr-2 max-h-[600px]">
@@ -1033,6 +1137,7 @@ function CurriculumContentBank({
             </button>
           </div>
         </div>
+        {/* 👆 KẾT THÚC SỬA: Đã đóng thẻ div "block text-sm" đúng chỗ */}
       </DndContext>
 
       {/* Modal Rename Section */}
@@ -1051,7 +1156,7 @@ function CurriculumContentBank({
         />
       )}
 
-      {/* --- MODAL TẠO BÀI HỌC MỚI (COPY NGUYÊN TỪ CREATE) --- */}
+      {/* Modal Create Lesson */}
       <Modal
         title="Create New Lesson"
         open={isCreateModalOpen}
@@ -1073,6 +1178,7 @@ function CurriculumContentBank({
           initialValues={{ type: "text_media" }}
           className="mt-4"
         >
+          {/* Form Content */}
           <Form.Item
             name="title"
             label={
@@ -1094,7 +1200,6 @@ function CurriculumContentBank({
           >
             <Radio.Group
               onChange={(e) => {
-                // Logic cập nhật state hiển thị UI giữ nguyên
                 setContentType(e.target.value)
                 form.setFieldValue("content", "")
                 setVideoUrl("")
@@ -1102,8 +1207,9 @@ function CurriculumContentBank({
               }}
               buttonStyle="solid"
               className="w-full flex"
+              value={contentType}
             >
-              <Radio.Button value="text" className="flex-1 text-center">
+              <Radio.Button value="text_media" className="flex-1 text-center">
                 Text & Media
               </Radio.Button>
               <Radio.Button value="video" className="flex-1 text-center">
@@ -1282,68 +1388,5 @@ function CurriculumContentBank({
         </div>
       </Modal>
     </div>
-  )
-}
-
-function ContentBankItem({
-  icon,
-  title,
-  meta,
-  onAdd,
-}: {
-  icon: React.ReactNode
-  title: string
-  meta: string
-  onAdd: () => void
-}) {
-  return (
-    <div className="flex items-center justify-between p-2 bg-white border rounded shadow-sm hover:shadow-md transition-shadow">
-      <div className="flex items-center gap-2 overflow-hidden">
-        <span className="text-blue-600">{icon}</span>
-        <div className="flex-1 overflow-hidden">
-          <p className="text-sm font-medium truncate">{title}</p>
-          <p className="text-xs text-gray-500">{meta}</p>
-        </div>
-      </div>
-      <button
-        onClick={onAdd}
-        className="text-blue-500 hover:text-blue-700 p-1 rounded-full hover:bg-blue-50"
-      >
-        <PlusCircle size={18} />
-      </button>
-    </div>
-  )
-}
-
-function FormModal({
-  title,
-  label,
-  placeholder,
-  initialValue = "",
-  onClose,
-  onSave,
-}: any) {
-  const [val, setVal] = useState(initialValue)
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    onSave(val)
-  }
-  return (
-    <Modal
-      title={title}
-      open={true}
-      onCancel={onClose}
-      onOk={() => onSave(val)}
-    >
-      <form onSubmit={handleSubmit} className="py-4">
-        <label className="block text-sm font-medium mb-1">{label}</label>
-        <Input
-          value={val}
-          onChange={(e) => setVal(e.target.value)}
-          placeholder={placeholder}
-          autoFocus
-        />
-      </form>
-    </Modal>
   )
 }

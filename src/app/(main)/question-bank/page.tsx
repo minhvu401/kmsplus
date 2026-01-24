@@ -1,3 +1,4 @@
+// src/app/(main)/question-bank/page.tsx
 import {
   QuestionType,
   PaginatedQuestionsResponse,
@@ -39,20 +40,20 @@ export default async function QuestionBankPage(props: {
 
   const totalPages = Math.ceil(totalItems / pageSize)
 
-    return (
-        <div className="p-6">
-            {/* Header */}
-            <div className="mb-6">
-                <div className="flex items-center justify-between mb-6">
-                    <div>
-                        <h1 className="text-3xl font-bold">Ngân hàng câu hỏi</h1>
-                        <p className="text-gray-600 mt-2">
-                            Quản lý tất cả các câu hỏi và chủ đề trong hệ thống
-                        </p>
-                    </div>
-                    <CreateQuestionModalWrapper />
-                </div>
-            </div>
+  return (
+    <div className="p-6">
+      {/* Header */}
+      <div className="mb-6">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-3xl font-bold">Ngân hàng câu hỏi</h1>
+            <p className="text-gray-600 mt-2">
+              Quản lý tất cả các câu hỏi và chủ đề trong hệ thống
+            </p>
+          </div>
+          <CreateQuestionModalWrapper />
+        </div>
+      </div>
 
       {/* Table */}
       <QuestionBankTable

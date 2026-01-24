@@ -1,7 +1,8 @@
+// src/app/(main)/profile/components/ProfilePageContent.tsx
 "use client"
 
 import {
-  Layout,
+  Card,
   Avatar,
   Typography,
   Row,
@@ -10,19 +11,22 @@ import {
   Tabs,
   Space,
   Spin,
+  Divider,
 } from "antd"
 import {
   UserOutlined,
   EditOutlined,
-  GlobalOutlined,
+  LockOutlined,
   HistoryOutlined,
-  SettingOutlined,
+  SecurityScanOutlined,
 } from "@ant-design/icons"
 import { useState, useEffect } from "react"
 import ActivityTabContent from "./ActivityTabContent"
 import ProfileForm from "@/components/forms/profile-form"
 import PasswordForm from "@/components/forms/password-form"
 import useUserStore from "@/store/useUserStore"
+import { t } from "@/lib/i18n"
+import useLanguageStore from "@/store/useLanguageStore"
 
 interface UserType {
   id: string
@@ -31,25 +35,36 @@ interface UserType {
   department?: string
   role?: string
   avatar_url?: string
+  created_at?: string
 }
 
 export default function ProfilePageContent() {
   const { Title, Text } = Typography
   const { user } = useUserStore()
+  const { language } = useLanguageStore()
   const [isEditMode, setIsEditMode] = useState(false)
   const [isPasswordMode, setIsPasswordMode] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [userData, setUserData] = useState<UserType | null>(user || null)
+  const [userData, setUserData] = useState<UserType | null>(
+    user
+      ? {
+          ...user,
+          created_at: user.created_at instanceof Date ? user.created_at.toISOString() : user.created_at,
+        }
+      : null
+  )
 
   useEffect(() => {
     if (user) {
-      setUserData(user)
+      setUserData({
+        ...user,
+        created_at: user.created_at instanceof Date ? user.created_at.toISOString() : user.created_at,
+      })
     }
   }, [user])
 
   const handleProfileSuccess = () => {
     setIsEditMode(false)
-    // Optionally refresh user data here
   }
 
   const handlePasswordSuccess = () => {
@@ -58,268 +73,233 @@ export default function ProfilePageContent() {
 
   if (!userData) {
     return (
-      <Layout style={{ padding: "24px", backgroundColor: "#fff" }}>
+      <div className="p-6 flex justify-center items-center min-h-96">
         <Spin size="large" />
-      </Layout>
+      </div>
     )
   }
 
   return (
-    <Layout
-      style={{
-        padding: "32px",
-        backgroundColor: "#f5f5f5",
-        minHeight: "100vh",
-      }}
-    >
-      {/* Phần Header: Avatar, Tên, Email và các nút Edit */}
-      <div
-        style={{
-          backgroundColor: "#fff",
-          padding: "32px",
-          borderRadius: "8px",
-          marginBottom: "32px",
-        }}
-      >
-        <Row
-          justify="space-between"
-          align="middle"
-          style={{ marginBottom: "0" }}
-        >
-          <Col>
-            <Space size="large" align="center">
-              <Avatar
-                size={128}
-                icon={<UserOutlined />}
-                src={userData?.avatar_url}
-              >
-                {/* Hiển thị chữ cái đầu nếu không có ảnh */}
-                {userData?.full_name?.charAt(0).toUpperCase()}
-              </Avatar>
-              <div>
-                <Title
-                  level={2}
-                  style={{ marginBottom: "8px", fontSize: "28px" }}
-                >
-                  {userData?.full_name}
-                </Title>
-                <Text
-                  type="secondary"
-                  style={{ fontSize: "16px", lineHeight: "1.8" }}
-                >
-                  {userData?.email}
-                </Text>
-              </div>
-            </Space>
-          </Col>
-          {!isEditMode && !isPasswordMode && (
-            <Col>
-              <Space>
-                <Button
-                  icon={<EditOutlined />}
-                  onClick={() => setIsEditMode(true)}
-                  size="large"
-                >
-                  Edit Profile
-                </Button>
-                <Button icon={<SettingOutlined />} size="large">
-                  Settings
-                </Button>
-              </Space>
-            </Col>
-          )}
-        </Row>
+    <div className="p-6">
+      {/* Header */}
+      <div className="mb-6">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-3xl font-bold">
+              {t("profile.title", language)}
+            </h1>
+            <p className="text-gray-600 mt-2">
+              {t("profile.subtitle", language)}
+            </p>
+          </div>
+        </div>
       </div>
 
-      {/* Phần Content: Các tab chính */}
-      {isEditMode ? (
-        <div
-          style={{
-            marginBottom: "32px",
-            marginLeft: "20px",
-            padding: "32px",
-            border: "1px solid #f0f0f0",
-            borderRadius: "8px",
-            backgroundColor: "#fff",
-          }}
-        >
-          <Title level={3} style={{ fontSize: "20px", marginBottom: "24px" }}>
-            Edit Profile
-          </Title>
-          <ProfileForm user={userData} onSuccess={handleProfileSuccess} />
-          <Button
-            danger
-            type="text"
-            onClick={() => setIsEditMode(false)}
-            style={{ marginTop: "20px" }}
-          >
-            Cancel
-          </Button>
+      {/* Profile Card */}
+      <Card className="mb-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Avatar
+              size={80}
+              icon={<UserOutlined />}
+              src={userData?.avatar_url}
+              className="bg-blue-500"
+            >
+              {userData?.full_name?.charAt(0).toUpperCase()}
+            </Avatar>
+            <div>
+              <Title level={3} className="mb-1">
+                {userData?.full_name}
+              </Title>
+              <Text type="secondary">{userData?.email}</Text>
+              {userData?.department && (
+                <>
+                  <br />
+                  <Text type="secondary" className="text-sm">
+                    {userData?.department}
+                  </Text>
+                </>
+              )}
+            </div>
+          </div>
+          {!isEditMode && !isPasswordMode && (
+            <Space>
+              <Button
+                type="primary"
+                icon={<EditOutlined />}
+                onClick={() => setIsEditMode(true)}
+              >
+                {t("profile.edit", language)}
+              </Button>
+              <Button
+                icon={<LockOutlined />}
+                onClick={() => setIsPasswordMode(true)}
+              >
+                {t("profile.change_password", language)}
+              </Button>
+            </Space>
+          )}
         </div>
-      ) : isPasswordMode ? (
-        <div
-          style={{
-            marginBottom: "32px",
-            padding: "32px",
-            border: "1px solid #f0f0f0",
-            borderRadius: "8px",
-            backgroundColor: "#fff",
-          }}
-        >
-          <Title level={3} style={{ fontSize: "20px", marginBottom: "24px" }}>
-            Change Password
+      </Card>
+
+      {/* Edit Mode */}
+      {isEditMode && (
+        <Card className="mb-6">
+          <Title level={4}>
+            {t("profile.edit_profile", language)}
           </Title>
-          <div style={{ maxWidth: "500px" }}>
+          <Divider />
+          <ProfileForm user={userData} onSuccess={handleProfileSuccess} />
+          <div className="mt-4">
+            <Button
+              type="text"
+              danger
+              onClick={() => setIsEditMode(false)}
+            >
+              {t("profile.cancel", language)}
+            </Button>
+          </div>
+        </Card>
+      )}
+
+      {/* Password Change Mode */}
+      {isPasswordMode && (
+        <Card className="mb-6">
+          <Title level={4}>
+            {t("profile.change_password", language)}
+          </Title>
+          <Divider />
+          <div className="max-w-md">
             <PasswordForm onSuccess={handlePasswordSuccess} />
           </div>
-          <Button
-            danger
-            type="text"
-            onClick={() => setIsPasswordMode(false)}
-            style={{ marginTop: "20px" }}
-          >
-            Cancel
-          </Button>
-        </div>
-      ) : (
-        <div
-          style={{
-            backgroundColor: "#fff",
-            borderRadius: "8px",
-            overflow: "hidden",
-          }}
-        >
+          <div className="mt-4">
+            <Button
+              type="text"
+              danger
+              onClick={() => setIsPasswordMode(false)}
+            >
+              {t("profile.cancel", language)}
+            </Button>
+          </div>
+        </Card>
+      )}
+
+      {/* Tabs Content */}
+      {!isEditMode && !isPasswordMode && (
+        <Card>
           <Tabs
-            defaultActiveKey="profile"
-            size="large"
-            type="line"
-            style={{ padding: "0", marginLeft: "10px" }}
+            defaultActiveKey="details"
             items={[
               {
-                label: "Profile",
-                key: "profile",
+                label: t("profile.details", language),
+                key: "details",
                 icon: <UserOutlined />,
                 children: (
-                  <div style={{ padding: "32px" }}>
-                    <Title
-                      level={4}
-                      style={{ fontSize: "20px", marginBottom: "28px" }}
-                    >
-                      Profile Details
+                  <div className="pt-4">
+                    <Title level={5}>
+                      {t("profile.profile_information", language)}
                     </Title>
-                    <Row gutter={[32, 32]}>
-                      <Col xs={24} sm={12}>
-                        <Text
-                          strong
-                          style={{ fontSize: "16px", lineHeight: "1.8" }}
-                        >
-                          Full Name:
-                        </Text>
-                        <br />
-                        <Text style={{ fontSize: "16px", lineHeight: "1.8" }}>
-                          {userData?.full_name}
-                        </Text>
-                      </Col>
-                      <Col xs={24} sm={12}>
-                        <Text
-                          strong
-                          style={{ fontSize: "16px", lineHeight: "1.8" }}
-                        >
-                          Email:
-                        </Text>
-                        <br />
-                        <Text style={{ fontSize: "16px", lineHeight: "1.8" }}>
-                          {userData?.email}
-                        </Text>
-                      </Col>
-                      <Col xs={24} sm={12}>
-                        <Text
-                          strong
-                          style={{ fontSize: "16px", lineHeight: "1.8" }}
-                        >
-                          Department:
-                        </Text>
-                        <br />
-                        <Text style={{ fontSize: "16px", lineHeight: "1.8" }}>
-                          {userData?.department || "N/A"}
-                        </Text>
-                      </Col>
-                      <Col xs={24} sm={12}>
-                        <Text
-                          strong
-                          style={{ fontSize: "16px", lineHeight: "1.8" }}
-                        >
-                          Member Since:
-                        </Text>
-                        <br />
-                        <Text style={{ fontSize: "16px", lineHeight: "1.8" }}>
-                          {userData && (userData as any).created_at
-                            ? new Date(
-                                (userData as any).created_at
-                              ).toLocaleDateString("vi-VN")
-                            : "N/A"}
-                        </Text>
-                      </Col>
-                    </Row>
-                    <Space style={{ marginTop: "32px", marginBottom: "16px" }}>
+                    <div className="space-y-4">
+                      <Row gutter={[32, 24]}>
+                        <Col xs={24} sm={12}>
+                          <div>
+                            <Text strong className="block mb-2">
+                              {t("profile.full_name", language)}
+                            </Text>
+                            <Text>{userData?.full_name}</Text>
+                          </div>
+                        </Col>
+                        <Col xs={24} sm={12}>
+                          <div>
+                            <Text strong className="block mb-2">
+                              {t("profile.email", language)}
+                            </Text>
+                            <Text>{userData?.email}</Text>
+                          </div>
+                        </Col>
+                        <Col xs={24} sm={12}>
+                          <div>
+                            <Text strong className="block mb-2">
+                              {t("profile.department", language)}
+                            </Text>
+                            <Text>{userData?.department || "N/A"}</Text>
+                          </div>
+                        </Col>
+                        <Col xs={24} sm={12}>
+                          <div>
+                            <Text strong className="block mb-2">
+                              {t("profile.member_since", language)}
+                            </Text>
+                            <Text>
+                              {userData?.created_at
+                                ? new Date(userData.created_at).toLocaleDateString(
+                                    language === "vi" ? "vi-VN" : "en-US"
+                                  )
+                                : "N/A"}
+                            </Text>
+                          </div>
+                        </Col>
+                      </Row>
+                    </div>
+                    <Divider />
+                    <Space>
                       <Button
                         type="primary"
                         onClick={() => setIsEditMode(true)}
-                        size="large"
                       >
-                        Edit Profile
+                        {t("profile.edit_profile", language)}
                       </Button>
                       <Button
                         onClick={() => setIsPasswordMode(true)}
-                        size="large"
                       >
-                        Change Password
+                        {t("profile.change_password", language)}
                       </Button>
                     </Space>
                   </div>
                 ),
               },
               {
-                label: "Activity",
+                label: t("profile.activity", language),
                 key: "activity",
                 icon: <HistoryOutlined />,
                 children: (
-                  <div style={{ padding: "32px" }}>
+                  <div className="pt-4">
                     <ActivityTabContent />
                   </div>
                 ),
               },
               {
-                label: "Security",
+                label: t("profile.security", language),
                 key: "security",
-                icon: <SettingOutlined />,
+                icon: <SecurityScanOutlined />,
                 children: (
-                  <div style={{ padding: "32px" }}>
-                    <Title
-                      level={4}
-                      style={{ fontSize: "20px", marginBottom: "16px" }}
-                    >
-                      Security Settings
+                  <div className="pt-4">
+                    <Title level={5}>
+                      {t("profile.security_options", language)}
                     </Title>
-                    <Text style={{ fontSize: "16px", lineHeight: "1.8" }}>
-                      Manage your password and account security.
-                    </Text>
-                    <br />
-                    <Button
-                      danger
-                      style={{ marginTop: "24px" }}
-                      onClick={() => setIsPasswordMode(true)}
-                      size="large"
-                    >
-                      Change Password
-                    </Button>
+                    <div className="space-y-4 max-w-2xl">
+                      <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                        <Text strong>
+                          {t("profile.protect_account", language)}
+                        </Text>
+                        <p className="text-sm text-gray-600 mt-2">
+                          {t("profile.protect_account_desc", language)}
+                        </p>
+                      </div>
+                      <Button
+                        onClick={() => setIsPasswordMode(true)}
+                        icon={<LockOutlined />}
+                      >
+                        {t("profile.change_password", language)}
+                      </Button>
+                    </div>
                   </div>
                 ),
               },
             ]}
           />
-        </div>
+        </Card>
       )}
-    </Layout>
+    </div>
   )
 }

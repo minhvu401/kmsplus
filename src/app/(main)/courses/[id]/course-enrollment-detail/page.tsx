@@ -1,7 +1,5 @@
 // @/src/app/(main)/courses/[id]/course-enrollment-detail/page.tsx
 // Course Enrollments Page (TRANG CHI TIẾT HIỆU SUẤT HỌC CỦA KHOÁ HỌC)
-// Displays enrollment statistics and learner progress for a specific course
-// Route: /courses/[id]/course-enrollment-detail
 
 "use client"
 
@@ -19,7 +17,6 @@ import {
   Row,
   Col,
   Statistic,
-  Space,
 } from "antd"
 import {
   SearchOutlined,
@@ -34,7 +31,10 @@ import {
   ArrowUpOutlined,
 } from "@ant-design/icons"
 
-// --- MOCK DATA (Giống hệt hình ảnh image_9a4c63.png) ---
+// --- CONSTANTS ---
+const PRIMARY_BLUE = "#1677ff" // ✅ Mã màu yêu cầu
+
+// --- MOCK DATA ---
 const DATA_SOURCE = [
   {
     key: "1",
@@ -91,7 +91,6 @@ const DATA_SOURCE = [
 export default function CourseEnrollmentsPage() {
   const router = useRouter()
   const params = useParams()
-  // Ép kiểu courseId để tránh lỗi undefined
   const courseId = params?.id as string
 
   // --- Cấu hình cột cho bảng ---
@@ -122,15 +121,17 @@ export default function CourseEnrollmentsPage() {
       key: "progress",
       width: 250,
       render: (percent: number) => {
-        // Logic màu sắc: 100% xanh lá, <30% cam, còn lại xanh neon
-        let strokeColor = "#22c55e" // Green default
+        /* ✅ 1. Đổi strokeColor sang PRIMARY_BLUE */
+        let strokeColor = PRIMARY_BLUE
         if (percent < 30 && percent > 0) strokeColor = "#f97316" // Orange
         if (percent === 0) strokeColor = "#e5e7eb" // Gray
 
         return (
           <div className="w-full">
             <span
-              className={`text-xs font-bold ${percent < 30 ? "text-orange-500" : "text-green-600"}`}
+              /* ✅ 2. Đổi text color sang mã hex cụ thể */
+              className={`text-xs font-bold ${percent < 30 ? "text-orange-500" : "text-[#1677ff]"}`}
+              style={percent >= 30 ? { color: PRIMARY_BLUE } : {}}
             >
               {percent}%
             </span>
@@ -150,39 +151,39 @@ export default function CourseEnrollmentsPage() {
       dataIndex: "status",
       key: "status",
       render: (status: string) => {
-        let color = "default"
         let icon = null
 
         if (status === "In Progress") {
-          color = "success" // Dùng màu xanh lá nhạt custom
           icon = (
-            <span className="w-1.5 h-1.5 rounded-full bg-green-500 mr-1.5 inline-block"></span>
+            /* ✅ 3. Đổi chấm tròn sang PRIMARY_BLUE */
+            <span
+              className="w-1.5 h-1.5 rounded-full mr-1.5 inline-block"
+              style={{ backgroundColor: PRIMARY_BLUE }}
+            ></span>
           )
         } else if (status === "Completed") {
-          color = "success" // Antd success green
           icon = <CheckCircleOutlined className="mr-1" />
         } else if (status === "Not Started") {
-          color = "default"
           icon = (
             <span className="w-1.5 h-1.5 rounded-full bg-gray-400 mr-1.5 inline-block"></span>
           )
         }
 
-        // Custom styling tag để giống hệt thiết kế
+        // Custom styling tag đồng bộ xanh dương
         const customStyle =
           status === "In Progress"
             ? {
-                backgroundColor: "#ecfdf5",
-                color: "#059669",
-                border: "1px solid #d1fae5",
+                backgroundColor: "#eff6ff", // blue-50 (giữ nền nhạt cho đẹp)
+                color: PRIMARY_BLUE, // ✅ Text màu chuẩn
+                border: "1px solid #dbeafe", // blue-100
                 borderRadius: "20px",
                 padding: "0 12px",
               }
             : status === "Completed"
               ? {
-                  backgroundColor: "#f0fdf4",
-                  color: "#16a34a",
-                  border: "1px solid #bbf7d0",
+                  backgroundColor: "#eff6ff",
+                  color: PRIMARY_BLUE, // ✅ Text màu chuẩn
+                  border: "1px solid #bfdbfe",
                   borderRadius: "20px",
                   padding: "0 12px",
                 }
@@ -206,9 +207,12 @@ export default function CourseEnrollmentsPage() {
           type="text"
           shape="circle"
           icon={<EyeOutlined />}
-          className="text-gray-400 hover:text-blue-600 hover:bg-blue-50"
+          /* ✅ 4. Hover text màu chuẩn */
+          className="text-gray-400 hover:bg-blue-50"
+          style={{ color: undefined }} // Reset inline style if any
+          onMouseEnter={(e) => (e.currentTarget.style.color = PRIMARY_BLUE)}
+          onMouseLeave={(e) => (e.currentTarget.style.color = "")}
           onClick={() => {
-            // Điều hướng sang trang chi tiết (Code bạn đã có)
             router.push(
               `/courses/${courseId}/course-enrollment-detail/${record.id}`
             )
@@ -226,7 +230,6 @@ export default function CourseEnrollmentsPage() {
         items={[
           { title: <HomeOutlined />, href: "/dashboard" },
           { title: "Courses", href: "/courses/manage" },
-          // Giả sử tên khóa học lấy từ API, ở đây hardcode demo
           {
             title: "Introduction to Python",
             href: `/courses/${courseId}/enrollments`,
@@ -252,7 +255,9 @@ export default function CourseEnrollmentsPage() {
         <Button
           type="primary"
           icon={<ExportOutlined />}
-          className="bg-green-500 hover:!bg-green-600 border-none font-semibold h-10 px-6 rounded-lg shadow-sm"
+          /* ✅ 5. Background button màu chuẩn */
+          style={{ backgroundColor: PRIMARY_BLUE }}
+          className="border-none font-semibold h-10 px-6 rounded-lg shadow-sm hover:opacity-90"
         >
           Export Report
         </Button>
@@ -271,7 +276,11 @@ export default function CourseEnrollmentsPage() {
               value={1245}
               valueStyle={{ fontWeight: 700, fontSize: "2rem" }}
               suffix={
-                <span className="text-green-500 text-sm font-semibold ml-2 flex items-center">
+                /* ✅ 6. Text growth màu chuẩn */
+                <span
+                  className="text-sm font-semibold ml-2 flex items-center"
+                  style={{ color: PRIMARY_BLUE }}
+                >
                   <ArrowUpOutlined className="text-xs mr-1" /> +12% from last
                   month
                 </span>
@@ -299,7 +308,8 @@ export default function CourseEnrollmentsPage() {
             <Statistic
               title={
                 <span className="text-gray-500 font-bold text-xs uppercase tracking-wide flex items-center gap-2">
-                  <StarFilled className="text-green-500" /> Course Rating
+                  {/* ✅ 7. Ngôi sao màu chuẩn */}
+                  <StarFilled style={{ color: PRIMARY_BLUE }} /> Course Rating
                 </span>
               }
               value={4.8}

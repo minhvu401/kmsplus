@@ -2,11 +2,7 @@
 import { useSearchParams, useRouter, usePathname } from "next/navigation"
 import { useState, useEffect } from "react"
 import { Typography } from "antd"
-
-type Category = {
-    id: number;
-    name: string;
-}
+import { Category } from "@/service/question.service"
 
 const { Text } = Typography;
 
@@ -37,26 +33,26 @@ export function FilterCategory({ categories }: { categories: Category[] }) {
     setSelected(value)
   }
 
-    return (
-        <div className="flex items-center gap-2">
-            <label htmlFor="category" className="text-sm font-medium text-gray-700">
-                Category:
-            </label>
-            <select
-                id="category"
-                value={selected}
-                onChange={(e) => handleChange(e.target.value)}
-                className="block w-auto rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-            >
-                <option value="any">Any</option>
-                {categories.map((cat) => (
-                    <option key={cat.id} value={String(cat.id)}>
-                        {cat.name}
-                    </option>
-                ))}
-            </select>
-        </div>
-    );
+  return (
+    <div className="flex items-center gap-2">
+      <label htmlFor="category" className="text-sm font-medium text-gray-700">
+        Category:
+      </label>
+      <select
+        id="category"
+        value={selected}
+        onChange={(e) => handleChange(e.target.value)}
+        className="block w-auto rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+      >
+        <option value="any">Any</option>
+        {categories.map((cat) => (
+          <option key={cat.id} value={cat.id}>
+            {cat.name}
+          </option>
+        ))}
+      </select>
+    </div>
+  )
 }
 
 // -------------------- STATUS FILTER --------------------
@@ -103,7 +99,7 @@ export function FilterStatus() {
         <option key="Open" value="open">
           Open
         </option>
-        <option key="Closed" value="close">
+        <option key="Closed" value="closed">
           Closed
         </option>
       </select>
@@ -146,9 +142,6 @@ export function SortBy() {
       >
         <option key="Newest" value="newest">
           Newest
-        </option>
-        <option key="Most Views" value="most-views">
-          Most Popular
         </option>
         <option key="Most Answers" value="most-answers">
           Most Answers
