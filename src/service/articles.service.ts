@@ -9,11 +9,15 @@ import { sql } from "@/lib/database"
 export type Article = {
   id: string
   title: string
+  content?: string
   article_tags: string | null
   category_name?: string | null
+  author_name?: string | null
   status: string
   updated_at: Date
   is_deleted: boolean
+  image_url?: string | null
+  thumbnail_url?: string | null
 }
 
 export type Tag = {
@@ -29,6 +33,7 @@ export type CreateArticleInput = {
   status: 'draft' | 'pending' | 'published'
   category_id?: number | null
   image_url?: string | null
+  thumbnail_url?: string | null
 }
 
 export type UpdateArticleInput = {
@@ -37,11 +42,13 @@ export type UpdateArticleInput = {
   content: string
   tags: string[]
   category_id?: number | null
+  image_url?: string | null
+  thumbnail_url?: string | null
 }
 
 export async function createArticleAction(input: CreateArticleInput): Promise<{ success: boolean; message: string; articleId?: string }> {
   try {
-    const { title, content, tags, author_id, status, category_id, image_url } = input
+    const { title, content, tags, author_id, status, category_id, image_url, thumbnail_url } = input
 
     // Only allow known statuses to avoid invalid DB values
     const normalizedStatus = status === 'draft' || status === 'pending' || status === 'published'
@@ -50,7 +57,7 @@ export async function createArticleAction(input: CreateArticleInput): Promise<{ 
 
     // 1. Insert article mới
     const articleResult = await sql`
-      INSERT INTO articles (title, content, author_id, status, category_id, image_url, created_at, updated_at)
+      INSERT INTO articles (title, content, author_id, status, category_id, image_url, thumbnail_url, created_at, updated_at)
       VALUES (
         ${title},
         ${content},
@@ -58,6 +65,7 @@ export async function createArticleAction(input: CreateArticleInput): Promise<{ 
         ${normalizedStatus},
         ${category_id ?? null},
         ${image_url ?? null},
+        ${thumbnail_url ?? null},
         NOW(),
         NOW()
       )
@@ -119,13 +127,26 @@ export async function createArticleAction(input: CreateArticleInput): Promise<{ 
 
 export async function getAllArticlesAction(): Promise<Article[]> {
   const articles = await sql`
-    SELECT a.id, title, t.name as article_tags, status, updated_at 
+    SELECT 
+      a.id, 
+      a.title, 
+      a.content,
+      a.status, 
+      a.updated_at,
+      a.is_deleted,
+      a.image_url,
+      a.thumbnail_url,
+      STRING_AGG(t.name, ', ') as article_tags,
+      c.name as category_name,
+      u.full_name as author_name
     FROM articles a
-    inner JOIN article_tags at ON a.id = at.article_id
-    inner JOIN tags t ON at.tag_id = t.id
-    ORDER BY updated_at DESC
+    LEFT JOIN article_tags at ON a.id = at.article_id
+    LEFT JOIN tags t ON at.tag_id = t.id
+    LEFT JOIN categories c ON a.category_id = c.id
+    LEFT JOIN users u ON a.author_id = u.id
+    GROUP BY a.id, a.title, a.content, a.status, a.updated_at, a.is_deleted, a.image_url, a.thumbnail_url, c.name, u.full_name
+    ORDER BY a.updated_at DESC
   `
-  console.log("Fetched articles:", articles) // Debug log
   return articles as Article[]
 }
 
@@ -154,12 +175,16 @@ export async function filterByTagAction(
       a.status, 
       a.updated_at,
       a.is_deleted,
+      a.image_url,
+      a.thumbnail_url,
       STRING_AGG(t.name, ', ') as article_tags,
-      c.name as category_name
+      c.name as category_name,
+      u.full_name as author_name
     FROM articles a
     LEFT JOIN article_tags at ON a.id = at.article_id
     LEFT JOIN tags t ON at.tag_id = t.id
     LEFT JOIN categories c ON a.category_id = c.id
+    LEFT JOIN users u ON a.author_id = u.id
     
     WHERE a.title ILIKE ${query}
       ${categoryId ? sql`AND a.category_id = ${categoryId}` : sql``}
@@ -167,7 +192,7 @@ export async function filterByTagAction(
       ${isDeletedFilter === true ? sql`AND a.is_deleted = TRUE` : isDeletedFilter === false ? sql`AND a.is_deleted = FALSE` : sql``}
     
     GROUP BY 
-      a.id, a.title, a.status, a.updated_at, a.is_deleted, c.name
+      a.id, a.title, a.status, a.updated_at, a.is_deleted, a.image_url, a.thumbnail_url, c.name, u.full_name
     ORDER BY 
       a.id ASC
   `
@@ -212,6 +237,66 @@ export async function deleteArticleAction(articleId: number): Promise<{ success:
   }
 }
 
+export async function restoreArticleAction(articleId: number): Promise<{ success: boolean; message: string }> {
+  try {
+    const result = await sql`
+      UPDATE articles
+      SET is_deleted = FALSE, deleted_at = NULL, updated_at = NOW()
+      WHERE id = ${articleId}
+      RETURNING id
+    `
+
+    if (result.length === 0) {
+      return { success: false, message: 'Article not found' }
+    }
+
+    return { success: true, message: 'Article restored successfully' }
+  } catch (error: any) {
+    console.error('Error restoring article:', error)
+    return { success: false, message: error?.message || 'Failed to restore article' }
+  }
+}
+
+export async function approveArticleAction(articleId: number): Promise<{ success: boolean; message: string }> {
+  try {
+    const result = await sql`
+      UPDATE articles
+      SET status = 'published', updated_at = NOW()
+      WHERE id = ${articleId}
+      RETURNING id
+    `
+
+    if (result.length === 0) {
+      return { success: false, message: 'Article not found' }
+    }
+
+    return { success: true, message: 'Article approved successfully' }
+  } catch (error: any) {
+    console.error('Error approving article:', error)
+    return { success: false, message: error?.message || 'Failed to approve article' }
+  }
+}
+
+export async function rejectArticleAction(articleId: number): Promise<{ success: boolean; message: string }> {
+  try {
+    const result = await sql`
+      UPDATE articles
+      SET status = 'rejected', updated_at = NOW()
+      WHERE id = ${articleId}
+      RETURNING id
+    `
+
+    if (result.length === 0) {
+      return { success: false, message: 'Article not found' }
+    }
+
+    return { success: true, message: 'Article rejected successfully' }
+  } catch (error: any) {
+    console.error('Error rejecting article:', error)
+    return { success: false, message: error?.message || 'Failed to reject article' }
+  }
+}
+
 export async function getArticleByIdAction(articleId: number): Promise<{ success: boolean; data?: any; message?: string }> {
   try {
     const articles = await sql`
@@ -221,14 +306,20 @@ export async function getArticleByIdAction(articleId: number): Promise<{ success
         a.content,
         a.status,
         a.category_id,
+        a.author_id,
+        a.image_url,
+        a.thumbnail_url,
         STRING_AGG(t.name, ',') as tags,
         a.created_at,
-        a.updated_at
+        a.updated_at,
+        u.full_name as author_name,
+        u.email as author_email
       FROM articles a
       LEFT JOIN article_tags at ON a.id = at.article_id
       LEFT JOIN tags t ON at.tag_id = t.id
+      LEFT JOIN users u ON a.author_id = u.id
       WHERE a.id = ${articleId}
-      GROUP BY a.id, a.title, a.content, a.status, a.category_id, a.created_at, a.updated_at
+      GROUP BY a.id, a.title, a.content, a.status, a.category_id, a.author_id, a.image_url, a.thumbnail_url, a.created_at, a.updated_at, u.full_name, u.email
       LIMIT 1
     `
 
@@ -247,6 +338,11 @@ export async function getArticleByIdAction(articleId: number): Promise<{ success
         content: article.content,
         status: article.status,
         category_id: article.category_id,
+        author_id: article.author_id,
+        author_name: article.author_name,
+        author_email: article.author_email,
+        image_url: article.image_url,
+        thumbnail_url: article.thumbnail_url,
         tags,
         created_at: article.created_at,
         updated_at: article.updated_at,
@@ -260,12 +356,18 @@ export async function getArticleByIdAction(articleId: number): Promise<{ success
 
 export async function updateArticleAction(input: UpdateArticleInput): Promise<{ success: boolean; message: string }> {
   try {
-    const { id, title, content, tags, category_id } = input
+    const { id, title, content, tags, category_id, image_url, thumbnail_url } = input
 
     // Update article
     const result = await sql`
       UPDATE articles
-      SET title = ${title}, content = ${content}, category_id = ${category_id ?? null}, updated_at = NOW()
+      SET 
+        title = ${title}, 
+        content = ${content}, 
+        category_id = ${category_id ?? null},
+        image_url = ${image_url ?? null},
+        thumbnail_url = ${thumbnail_url ?? null},
+        updated_at = NOW()
       WHERE id = ${id}
       RETURNING id
     `

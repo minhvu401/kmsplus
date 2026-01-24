@@ -1,7 +1,7 @@
 "use server"
 
 import { requireAuth } from "@/lib/auth"
-import { getAllArticlesAction, filterByTagAction, getAllTagsAction, createArticleAction, deleteArticleAction, getAllCategoriesAction, getArticleByIdAction, updateArticleAction } from "@/service/articles.service"
+import { getAllArticlesAction, filterByTagAction, getAllTagsAction, createArticleAction, deleteArticleAction, getAllCategoriesAction, getArticleByIdAction, updateArticleAction, restoreArticleAction, approveArticleAction, rejectArticleAction } from "@/service/articles.service"
 
 export async function getAllArticles() {
   await requireAuth()
@@ -34,6 +34,21 @@ export async function deleteArticle(id: number) {
   return deleteArticleAction(id)
 }
 
+export async function restoreArticle(id: number) {
+  await requireAuth()
+  return restoreArticleAction(id)
+}
+
+export async function approveArticle(id: number) {
+  await requireAuth()
+  return approveArticleAction(id)
+}
+
+export async function rejectArticle(id: number) {
+  await requireAuth()
+  return rejectArticleAction(id)
+}
+
 export async function getAllCategories() {
   await requireAuth()
   return getAllCategoriesAction()
@@ -55,8 +70,9 @@ export async function createArticle(formData: FormData) {
     const categoryIdRaw = formData.get("category_id") as string | null
     const category_id = categoryIdRaw ? parseInt(categoryIdRaw, 10) : null
     const image_url = (formData.get('image_url') as string) || null
+    const thumbnail_url = (formData.get('thumbnail_url') as string) || null
 
-    console.log('Form data:', { title, content, status, tags, category_id, image_url })
+    console.log('Form data:', { title, content, status, tags, category_id, image_url, thumbnail_url })
 
     // Validate input
     if (!title || !content) {
@@ -88,7 +104,8 @@ export async function createArticle(formData: FormData) {
       author_id: authorId,
       status,
       category_id,
-      image_url
+      image_url,
+      thumbnail_url
     })
 
     console.log("Create article result:", result)
@@ -130,6 +147,8 @@ export async function updateArticle(formData: FormData) {
     const tags = formData.get('tags') as string
     const categoryIdRaw = formData.get('category_id') as string | null
     const category_id = categoryIdRaw ? parseInt(categoryIdRaw, 10) : null
+    const image_url = (formData.get('image_url') as string) || null
+    const thumbnail_url = (formData.get('thumbnail_url') as string) || null
 
     if (!title || !content) {
       return { 
@@ -152,7 +171,9 @@ export async function updateArticle(formData: FormData) {
       title,
       content,
       tags: parsedTags,
-      category_id
+      category_id,
+      image_url,
+      thumbnail_url
     })
 
     return result

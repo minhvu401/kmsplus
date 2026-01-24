@@ -61,23 +61,23 @@ export default function EditArticlePage() {
     }
   };
 
-  const focusEditor = (editorRef: React.RefObject<HTMLDivElement>) => {
+  const focusEditor = (editorRef: React.RefObject<HTMLDivElement | null>) => {
     editorRef.current?.focus({ preventScroll: true });
   };
 
-  const applyFormat = (command: string, editorRef: React.RefObject<HTMLDivElement>) => {
+  const applyFormat = (command: string, editorRef: React.RefObject<HTMLDivElement | null>) => {
     restoreSelection();
     document.execCommand(command, false);
     focusEditor(editorRef);
   };
 
-  const applyHeading = (level: string, editorRef: React.RefObject<HTMLDivElement>) => {
+  const applyHeading = (level: string, editorRef: React.RefObject<HTMLDivElement | null>) => {
     restoreSelection();
     document.execCommand('formatBlock', false, level);
     focusEditor(editorRef);
   };
 
-  const applyQuote = (editorRef: React.RefObject<HTMLDivElement>) => {
+  const applyQuote = (editorRef: React.RefObject<HTMLDivElement | null>) => {
     restoreSelection();
     document.execCommand('formatBlock', false, '<blockquote>');
     focusEditor(editorRef);
@@ -124,7 +124,7 @@ export default function EditArticlePage() {
           getAllCategories(),
         ]);
 
-        if (!articleRes.success || !articleRes.data) {
+        if (!articleRes.success || !('data' in articleRes) || !articleRes.data) {
           message.error('Failed to load article');
           router.push('/articles/management');
           return;

@@ -1,37 +1,20 @@
 'use client';
 
 import React, { useState, useEffect, useRef, type KeyboardEvent, type ClipboardEvent } from 'react';
-import { Table, Input, Select, Button, Space, Flex, Typography, Tag as AntTag, Card, Alert, Segmented, Row, Col, Spin, Modal, Form, Divider, message, Tooltip } from 'antd';
-import { SearchOutlined, PlusOutlined, EditOutlined, DeleteOutlined, SendOutlined, CloseOutlined, SaveOutlined } from '@ant-design/icons';
+import { Table, Input, Select, Button, Space, Flex, Typography, Tag as AntTag, Card, Alert, Segmented, Row, Col, Spin, Modal, Form, Divider, message, Tooltip, Upload } from 'antd';
+import { SearchOutlined, PlusOutlined, EditOutlined, DeleteOutlined, SendOutlined, CloseOutlined, SaveOutlined, RollbackOutlined, UploadOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import type { FormInstance } from 'antd/es/form';
-import { filterByTagAndCategory, getAllTags, deleteArticle, getAllCategories, createArticle, getArticleById, updateArticle } from '@/action/articles/articlesManagementAction';
+import { filterByTagAndCategory, getAllTags, deleteArticle, getAllCategories, createArticle, getArticleById, updateArticle, restoreArticle } from '@/action/articles/articlesManagementAction';
 import type { Article, Tag } from '@/service/articles.service';
-import dynamic from 'next/dynamic';
-import 'react-markdown-editor-lite/lib/index.css';
-import MarkdownIt from 'markdown-it';
-// @ts-ignore
-import markdownItUnderline from 'markdown-it-underline';
+import { uploadImageToCloudinary, getCloudinaryThumbnailUrl } from '@/lib/cloudinary';
+import QuillEditor from '@/components/QuillEditor';
 
 if (typeof window !== 'undefined') {
   (window as any).React = React;
 }
 
-const MdEditor = dynamic(() => import('react-markdown-editor-lite'), { 
-  ssr: false,
-  loading: () => <p>Loading editor...</p>
-});
-
 const { Text, Title } = Typography;
-
-const mdParser = new MarkdownIt({
-  html: true,
-  linkify: true,
-  typographer: true,
-  breaks: true,
-});
-
-mdParser.use(markdownItUnderline);
 
 function useDebounce(value: string, delay: number) {
   const [debouncedValue, setDebouncedValue] = useState(value);
@@ -55,7 +38,6 @@ export default function ArticleManagement() {
   const [selectedTag, setSelectedTag] = useState('All Tags');
   const [selectedCategory, setSelectedCategory] = useState<number | 'All'>('All');
   const [selectedStatus, setSelectedStatus] = useState('All');
-  const [selectedDeletedFilter, setSelectedDeletedFilter] = useState<'all' | 'deleted' | 'not_deleted'>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
 
@@ -64,9 +46,11 @@ export default function ArticleManagement() {
   const [titleContent, setTitleContent] = useState('');
   const [contentValue, setContentValue] = useState('');
   const [imageUrl, setImageUrl] = useState('');
+  const [thumbnailUrl, setThumbnailUrl] = useState(''); // New: Cloudinary thumbnail
   const [selectedTagsForCreate, setSelectedTagsForCreate] = useState<string[]>([]);
   const [submitStatus, setSubmitStatus] = useState<'draft' | 'published' | 'pending'>('published');
   const [creatingArticle, setCreatingArticle] = useState(false);
+  const [uploadingThumbnail, setUploadingThumbnail] = useState(false); // New
   const titleEditorRef = useRef<HTMLDivElement>(null);
 
   const [articles, setArticles] = useState<Article[]>([]);
@@ -91,6 +75,8 @@ export default function ArticleManagement() {
   const [editSubmitStatus, setEditSubmitStatus] = useState<'draft' | 'published' | 'pending'>('published');
   const [editingArticle, setEditingArticle] = useState(false);
   const [loadingEditData, setLoadingEditData] = useState(false);
+  const [editThumbnailUrl, setEditThumbnailUrl] = useState(''); // New
+  const [uploadingEditThumbnail, setUploadingEditThumbnail] = useState(false); // New
 
   const statusColors: Record<string, string> = {
     published: 'green',
@@ -105,8 +91,15 @@ export default function ArticleManagement() {
     if (showLoader) setLoadingArticles(true);
     try {
       const catId = selectedCategory === 'All' ? undefined : selectedCategory;
-      const statusFilter = selectedStatus === 'All' ? undefined : selectedStatus;
-      const isDeletedFilter = selectedDeletedFilter === 'all' ? 'all' : selectedDeletedFilter === 'deleted' ? true : false;
+      let statusFilter = selectedStatus === 'All' ? undefined : selectedStatus;
+      let isDeletedFilter: 'all' | boolean = 'all';
+      
+      // If status filter is 'deleted', set isDeletedFilter to true and reset statusFilter
+      if (statusFilter === 'deleted') {
+        isDeletedFilter = true;
+        statusFilter = undefined;
+      }
+      
       const res = await filterByTagAndCategory(debouncedSearchQuery, selectedTag, catId, statusFilter, isDeletedFilter);
       setArticles(res || []);
     } catch (err: any) {
@@ -117,31 +110,60 @@ export default function ArticleManagement() {
     }
   };
 
-  const handleEditorChange = ({ text }: { text: string; html: string }) => {
-    setContentValue(text);
+  const handleEditorChange = (value: string) => {
+    setContentValue(value);
     
-    const imageRegex = /!\[.*?\]\((.*?)\)/g;
-    const matches = text.matchAll(imageRegex);
-    const urls: string[] = [];
-    
-    for (const match of matches) {
+    const imgRegex = /<img[^>]+src=[\"']([^\"']+)[\"'][^>]*>/g;
+    let match;
+    let firstImage = '';
+
+    while ((match = imgRegex.exec(value)) !== null) {
       if (match[1]) {
-        urls.push(match[1]);
+        firstImage = match[1];
+        break;
       }
     }
-    
-    if (urls.length > 0) {
-      setImageUrl(urls[0]);
-    } else {
-      setImageUrl('');
-    }
 
-    return text;
+    setImageUrl(firstImage);
+  };
+
+  // New: Handle thumbnail upload
+  const handleThumbnailUpload = async (file: File) => {
+    console.log('Starting thumbnail upload...', file.name, file.type, file.size);
+    setUploadingThumbnail(true);
+    try {
+      const result = await uploadImageToCloudinary(file, 'article-thumbnails');
+      console.log('Upload successful:', result);
+      setThumbnailUrl(result.secure_url);
+      message.success('Thumbnail uploaded successfully');
+    } catch (error: any) {
+      console.error('Upload error:', error);
+      message.error(error?.message || 'Failed to upload thumbnail');
+    } finally {
+      setUploadingThumbnail(false);
+    }
+  };
+
+  // New: Handle edit thumbnail upload
+  const handleEditThumbnailUpload = async (file: File) => {
+    console.log('Starting edit thumbnail upload...', file.name, file.type, file.size);
+    setUploadingEditThumbnail(true);
+    try {
+      const result = await uploadImageToCloudinary(file, 'article-thumbnails');
+      console.log('Upload successful:', result);
+      setEditThumbnailUrl(result.secure_url);
+      message.success('Thumbnail uploaded successfully');
+    } catch (error: any) {
+      console.error('Upload error:', error);
+      message.error(error?.message || 'Failed to upload thumbnail');
+    } finally {
+      setUploadingEditThumbnail(false);
+    }
   };
 
   useEffect(() => {
     refreshCurrentArticles();
-  }, [debouncedSearchQuery, selectedTag, selectedCategory, selectedStatus, selectedDeletedFilter]);
+  }, [debouncedSearchQuery, selectedTag, selectedCategory, selectedStatus]);
 
   useEffect(() => {
     (async () => {
@@ -196,6 +218,14 @@ export default function ArticleManagement() {
       dataIndex: 'title',
       key: 'title',
       ellipsis: true,
+      render: (title: string, record: Article) => (
+        <a 
+          href={`/articles/${record.id}`}
+          className="text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
+        >
+          {title}
+        </a>
+      ),
     },
     {
       title: 'Tag',
@@ -233,6 +263,30 @@ export default function ArticleManagement() {
       width: 150,
       render: (category: string | null) => <Text>{category || 'null'}</Text>,
     },
+    // New: Thumbnail column
+    {
+      title: 'Thumbnail',
+      dataIndex: 'thumbnail_url',
+      key: 'thumbnail_url',
+      width: 120,
+      render: (thumbnailUrl: string, record: Article) => {
+        const src = thumbnailUrl || record.image_url;
+        if (!src) {
+          return <Text type="secondary">No image</Text>;
+        }
+
+        return (
+          <img 
+            src={src}
+            alt="Thumbnail" 
+            className="w-20 h-16 object-cover rounded"
+            onError={(e) => {
+              (e.target as HTMLImageElement).src = "https://via.placeholder.com/80x60?text=No+Image";
+            }}
+          />
+        );
+      },
+    },
     {
       title: 'Status',
       dataIndex: 'status',
@@ -267,11 +321,11 @@ export default function ArticleManagement() {
           />
           <Button
             type="text"
-            danger
-            icon={<DeleteOutlined />}
+            danger={!record.is_deleted}
+            icon={record.is_deleted ? <RollbackOutlined /> : <DeleteOutlined />}
             size="small"
             loading={deletingId === Number(record.id)}
-            onClick={() => handleArchiveClick(Number(record.id))}
+            onClick={() => handleArchiveClick(Number(record.id), !!record.is_deleted)}
           />
         </Space>
       ),
@@ -293,27 +347,24 @@ export default function ArticleManagement() {
     { label: 'Draft', value: 'draft' },
     { label: 'Published', value: 'published' },
     { label: 'Pending', value: 'pending' },
-    { label: 'Archived', value: 'archived' },
-  ];
-
-  const deletedFilterOptions = [
-    { label: 'All', value: 'all' },
-    { label: 'Not Deleted', value: 'not_deleted' },
     { label: 'Deleted', value: 'deleted' },
   ];
 
-  const handleArchiveClick = async (articleId: number) => {
-    const ok = window.confirm('Delete this article? (This will mark it as deleted)');
+  const handleArchiveClick = async (articleId: number, isDeleted: boolean) => {
+    const confirmText = isDeleted
+      ? 'Restore this article?'
+      : 'Delete this article? (This will mark it as deleted)';
+    const ok = window.confirm(confirmText);
     if (!ok) return;
     try {
       setDeletingId(articleId);
-      const res = await deleteArticle(articleId);
+      const res = isDeleted ? await restoreArticle(articleId) : await deleteArticle(articleId);
       if (!res.success) {
-        throw new Error(res.message || 'Failed to delete');
+        throw new Error(res.message || 'Failed to update');
       }
       await refreshCurrentArticles(false);
     } catch (err: any) {
-      setArticlesError(err?.message || 'Failed to delete');
+      setArticlesError(err?.message || 'Failed to update');
     } finally {
       setDeletingId(null);
     }
@@ -328,9 +379,11 @@ export default function ArticleManagement() {
       const result: any = await getArticleById(articleId);
       if (result.success && result.data) {
         const article = result.data;
-        setEditTitleContent(article.title);
-        setEditContentValue(article.content);
+        console.log('📋 Edit Modal - Fetched article:', { id: articleId, title: article.title, contentLength: article.content?.length || 0, content: article.content });
+        setEditTitleContent(article.title || '');
+        setEditContentValue(article.content || '');
         setEditImageUrl(article.image_url || '');
+        setEditThumbnailUrl(article.thumbnail_url || '');
         setEditSelectedTags(article.tags || []);
         
         editForm.setFieldsValue({
@@ -351,26 +404,21 @@ export default function ArticleManagement() {
     }
   };
 
-  const handleEditEditorChange = ({ text }: { text: string; html: string }) => {
-    setEditContentValue(text);
+  const handleEditEditorChange = (value: string) => {
+    setEditContentValue(value);
     
-    const imageRegex = /!\[.*?\]\((.*?)\)/g;
-    const matches = text.matchAll(imageRegex);
-    const urls: string[] = [];
-    
-    for (const match of matches) {
+    const imgRegex = /<img[^>]+src=[\"']([^\"']+)[\"'][^>]*>/g;
+    let match;
+    let firstImage = '';
+
+    while ((match = imgRegex.exec(value)) !== null) {
       if (match[1]) {
-        urls.push(match[1]);
+        firstImage = match[1];
+        break;
       }
     }
-    
-    if (urls.length > 0) {
-      setEditImageUrl(urls[0]);
-    } else {
-      setEditImageUrl('');
-    }
 
-    return text;
+    setEditImageUrl(firstImage);
   };
 
   const handleEditSubmit = async (values: any) => {
@@ -386,6 +434,10 @@ export default function ArticleManagement() {
       formData.append('tags', JSON.stringify(editSelectedTags));
       formData.append('category_id', values?.categoryId ? String(values.categoryId) : '');
       formData.append('image_url', editImageUrl);
+      // New: Add thumbnail from Cloudinary
+      if (editThumbnailUrl) {
+        formData.append('thumbnail_url', editThumbnailUrl);
+      }
 
       const result = await updateArticle(formData);
       if (result.success) {
@@ -395,6 +447,7 @@ export default function ArticleManagement() {
         setEditTitleContent('');
         setEditContentValue('');
         setEditImageUrl('');
+        setEditThumbnailUrl(''); // Reset thumbnail
         setEditSelectedTags([]);
         setEditingArticleId(null);
         setEditSubmitStatus('published');
@@ -417,20 +470,27 @@ export default function ArticleManagement() {
             <Title level={3} className="!mb-0">
               Article Management
             </Title>
-            <Segmented
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
               size="large"
-              value={viewMode}
-              onChange={(value) => setViewMode(value as 'list' | 'grid')}
-              options={[
-                { label: 'List', value: 'list' },
-                { label: 'Grid', value: 'grid' },
-              ]}
-            />
+              onClick={() => {
+                createForm.resetFields();
+                setTitleContent('');
+                setContentValue('');
+                setSelectedTagsForCreate([]);
+                setSubmitStatus('published');
+                setIsModalOpen(true);
+              }}
+            >
+              Create Article
+            </Button>
           </Flex>
 
-          <Space direction="vertical" size="middle" className="w-full mb-4">
-            <Flex gap="middle" align="end">
-              <Space direction="vertical" className="flex-1">
+          <Space direction="vertical" size="middle" className="w-full mb-6">
+            {/* Search Bar - Full Width */}
+            <Flex gap="middle">
+              <Space direction="vertical" className="w-full">
                 <Text type="secondary">Search:</Text>
                 <Input
                   placeholder="Search any..."
@@ -441,8 +501,11 @@ export default function ArticleManagement() {
                   allowClear
                 />
               </Space>
+            </Flex>
 
-              <Space direction="vertical" style={{ width: 220 }}>
+            {/* Filters Row */}
+            <Flex gap="middle" align="end" wrap>
+              <Space direction="vertical" style={{ minWidth: 160, flex: 1 }}>
                 <Text type="secondary">Tags:</Text>
                 <Select
                   value={selectedTag}
@@ -454,7 +517,7 @@ export default function ArticleManagement() {
                 />
               </Space>
 
-              <Space direction="vertical" style={{ width: 220 }}>
+              <Space direction="vertical" style={{ minWidth: 160, flex: 1 }}>
                 <Text type="secondary">Category:</Text>
                 <Select
                   value={selectedCategory}
@@ -466,7 +529,7 @@ export default function ArticleManagement() {
                 />
               </Space>
 
-              <Space direction="vertical" style={{ width: 180 }}>
+              <Space direction="vertical" style={{ minWidth: 140, flex: 1 }}>
                 <Text type="secondary">Status:</Text>
                 <Select
                   value={selectedStatus}
@@ -476,33 +539,6 @@ export default function ArticleManagement() {
                   className="w-full"
                 />
               </Space>
-
-              <Space direction="vertical" style={{ width: 180 }}>
-                <Text type="secondary">Deleted:</Text>
-                <Select
-                  value={selectedDeletedFilter}
-                  onChange={setSelectedDeletedFilter}
-                  options={deletedFilterOptions}
-                  size="large"
-                  className="w-full"
-                />
-              </Space>
-
-              <Button
-                type="primary"
-                icon={<PlusOutlined />}
-                size="large"
-                onClick={() => {
-                  createForm.resetFields();
-                  setTitleContent('');
-                  setContentValue('');
-                  setSelectedTagsForCreate([]);
-                  setSubmitStatus('published');
-                  setIsModalOpen(true);
-                }}
-              >
-                Create Article
-              </Button>
             </Flex>
           </Space>
 
@@ -516,6 +552,19 @@ export default function ArticleManagement() {
               className="mb-4"
             />
           )}
+
+          {/* View Mode Segmented - Above List */}
+          <Flex justify="flex-end" className="mb-4">
+            <Segmented
+              size="large"
+              value={viewMode}
+              onChange={(value) => setViewMode(value as 'list' | 'grid')}
+              options={[
+                { label: 'List', value: 'list' },
+                { label: 'Grid', value: 'grid' },
+              ]}
+            />
+          </Flex>
 
           {viewMode === 'list' ? (
             <Table
@@ -547,6 +596,16 @@ export default function ArticleManagement() {
                         hoverable
                         title={article.title}
                         extra={<AntTag color={statusColors[displayStatus] || 'default'}>{displayText}</AntTag>}
+                        cover={(
+                          <img
+                            src={article.thumbnail_url || article.image_url || 'https://via.placeholder.com/240x160?text=No+Image'}
+                            alt="Thumbnail"
+                            className="h-40 w-full object-cover"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = 'https://via.placeholder.com/240x160?text=No+Image';
+                            }}
+                          />
+                        )}
                       >
                         <Space direction="vertical" size="small" className="w-full">
                           <Text type="secondary">
@@ -571,11 +630,11 @@ export default function ArticleManagement() {
                             />
                             <Button
                               type="text"
-                              danger
-                              icon={<DeleteOutlined />}
+                              danger={!article.is_deleted}
+                              icon={article.is_deleted ? <RollbackOutlined /> : <DeleteOutlined />}
                               size="small"
                               loading={deletingId === Number(article.id)}
-                              onClick={() => handleArchiveClick(Number(article.id))}
+                              onClick={() => handleArchiveClick(Number(article.id), !!article.is_deleted)}
                             />
                           </Space>
                         </Space>
@@ -595,7 +654,7 @@ export default function ArticleManagement() {
       </main>
 
       <Modal
-        title="Create An Article"
+        title={<Title level={3} className="!mb-0">Create An Article</Title>}
         open={isModalOpen}
         onCancel={() => {
           setIsModalOpen(false);
@@ -623,6 +682,10 @@ export default function ArticleManagement() {
               formData.append('tags', JSON.stringify(selectedTagsForCreate));
               formData.append('category_id', values?.categoryId ? String(values.categoryId) : '');
               formData.append('image_url', imageUrl);
+              // New: Add thumbnail from Cloudinary
+              if (thumbnailUrl) {
+                formData.append('thumbnail_url', thumbnailUrl);
+              }
 
               const result = await createArticle(formData);
               if (result.success) {
@@ -632,6 +695,7 @@ export default function ArticleManagement() {
                 setTitleContent('');
                 setContentValue('');
                 setImageUrl('');
+                setThumbnailUrl(''); // Reset thumbnail
                 setSelectedTagsForCreate([]);
                 setSubmitStatus('published');
                 await refreshCurrentArticles(false);
@@ -694,17 +758,54 @@ export default function ArticleManagement() {
             </Text>
           </Flex>
 
+          {/* New: Thumbnail Upload */}
+          <Form.Item
+            label={<Text strong className="text-base">Thumbnail Image</Text>}
+            name="thumbnail"
+          >
+            <Flex vertical gap="middle">
+              {thumbnailUrl && (
+                <img 
+                  src={thumbnailUrl} 
+                  alt="Thumbnail preview" 
+                  className="w-40 h-30 object-cover rounded-lg border"
+                />
+              )}
+              <Upload
+                maxCount={1}
+                accept="image/*"
+                showUploadList={false}
+                beforeUpload={(file) => {
+                  handleThumbnailUpload(file);
+                  return false;
+                }}
+              >
+                <Button 
+                  icon={<UploadOutlined />} 
+                  loading={uploadingThumbnail}
+                  disabled={uploadingThumbnail}
+                >
+                  {uploadingThumbnail ? 'Uploading...' : 'Click to Upload Thumbnail'}
+                </Button>
+              </Upload>
+            </Flex>
+          </Form.Item>
+
+          <Divider />
+
           <Form.Item
             label={<Text strong className="text-base">Content</Text>}
             name="content"
-            valuePropName="value"
-            trigger="onChange"
-            getValueFromEvent={(...args) => args?.[0]?.text ?? ''}
             rules={[
               { 
                 required: true, 
                 validator: (_, value) => {
-                  const textContent = contentValue.replace(/[#*_\[\]`~>-]/g, '').trim();
+                  const stripHtml = (html: string) => {
+                    const tmp = document.createElement('DIV');
+                    tmp.innerHTML = html;
+                    return tmp.textContent || tmp.innerText || '';
+                  }
+                  const textContent = stripHtml(contentValue).trim();
                   if (!textContent) {
                     return Promise.reject('Please enter content');
                   }
@@ -716,18 +817,17 @@ export default function ArticleManagement() {
               },
             ]}
           >
-            <MdEditor
-              style={{ height: '400px' }}
-              renderHTML={(text) => mdParser.render(text)}
-              onChange={handleEditorChange}
+            <QuillEditor
               value={contentValue}
-              placeholder="Write your content in Markdown..."
+              onChange={handleEditorChange}
+              placeholder="Write your content here..."
+              height={400}
             />
           </Form.Item>
 
           <Flex justify="flex-end" align="center" className="mt-2 mb-4">
             <Text type="secondary" className="text-sm">
-              {contentValue.replace(/[#*_\[\]`~>-]/g, '').trim().length} / 5,000
+              {contentValue.replace(/<[^>]*>/g, '').trim().length} / 5,000
             </Text>
           </Flex>
 
@@ -904,17 +1004,48 @@ export default function ArticleManagement() {
               </Text>
             </Flex>
 
+            {/* New: Edit Thumbnail Upload */}
+            <Form.Item
+              label={<Text strong className="text-base">Thumbnail Image</Text>}
+              name="editThumbnail"
+            >
+              <Flex vertical gap="middle">
+                {editThumbnailUrl && (
+                  <img 
+                    src={editThumbnailUrl} 
+                    alt="Thumbnail preview" 
+                    className="w-40 h-30 object-cover rounded-lg border"
+                  />
+                )}
+                <Upload
+                  maxCount={1}
+                  accept="image/*"
+                  beforeUpload={(file) => {
+                    handleEditThumbnailUpload(file);
+                    return false;
+                  }}
+                >
+                  <Button 
+                    icon={<UploadOutlined />} 
+                    loading={uploadingEditThumbnail}
+                    disabled={uploadingEditThumbnail}
+                  >
+                    Click to Upload Thumbnail
+                  </Button>
+                </Upload>
+              </Flex>
+            </Form.Item>
+
+            <Divider />
+
             <Form.Item
               label={<Text strong className="text-base">Content</Text>}
               name="content"
-              valuePropName="value"
-              trigger="onChange"
-              getValueFromEvent={(...args) => args?.[0]?.text ?? ''}
               rules={[
                 { 
                   required: true, 
                   validator: (_, value) => {
-                    const textContent = editContentValue.replace(/[#*_\[\]`~>-]/g, '').trim();
+                    const textContent = editContentValue.replace(/<[^>]*>/g, '').trim();
                     if (!textContent) {
                       return Promise.reject('Please enter content');
                     }
@@ -926,18 +1057,21 @@ export default function ArticleManagement() {
                 },
               ]}
             >
-              <MdEditor
-                style={{ height: '400px' }}
-                renderHTML={(text) => mdParser.render(text)}
-                onChange={handleEditEditorChange}
-                value={editContentValue}
-                placeholder="Write your content in Markdown..."
-              />
+              {loadingEditData ? (
+                <Spin tip="Loading content..." style={{ height: '400px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} />
+              ) : (
+                <QuillEditor
+                  value={editContentValue}
+                  onChange={handleEditEditorChange}
+                  placeholder="Write your content here..."
+                  height={400}
+                />
+              )}
             </Form.Item>
 
             <Flex justify="flex-end" align="center" className="mt-2 mb-4">
               <Text type="secondary" className="text-sm">
-                {editContentValue.replace(/[#*_\[\]`~>-]/g, '').trim().length} / 5,000
+                {editContentValue.replace(/<[^>]*>/g, '').trim().length} / 5,000
               </Text>
             </Flex>
 
