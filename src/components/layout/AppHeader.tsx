@@ -1,3 +1,4 @@
+"use client"
 import React, { useEffect, useState } from "react"
 import {
   Layout,
@@ -12,8 +13,6 @@ import {
   Divider,
 } from "antd"
 import {
-  MenuFoldOutlined,
-  MenuUnfoldOutlined,
   BellOutlined,
   UserOutlined,
   WarningOutlined,
@@ -25,13 +24,13 @@ import { PageRoute } from "@/enum/page-route.enum"
 import LogoutIcon from "@/components/icon/LogoutIcon"
 import { logoutAction } from "@/action/auth/authActions"
 import useUserStore from "@/store/useUserStore"
+import LanguageToggle from "@/components/LanguageToggle"
 
 const { Header } = Layout
 const { Text } = Typography
 
 interface HeaderProps extends React.HTMLAttributes<HTMLElement> {
   collapsed: boolean
-  onToggle: () => void
 }
 
 interface UserType {
@@ -43,7 +42,7 @@ interface UserType {
   avatar_url?: string
 }
 
-export default function AppHeader({ collapsed, onToggle }: HeaderProps) {
+export default function AppHeader({ collapsed }: HeaderProps) {
   const {
     token: { colorBgContainer },
   } = theme.useToken()
@@ -52,6 +51,17 @@ export default function AppHeader({ collapsed, onToggle }: HeaderProps) {
   // const [user, setUser] = useState<UserType | null>(null)
 
   const profileItems: MenuProps["items"] = [
+    {
+      label: "Profile",
+      key: "profile",
+      icon: <UserOutlined />,
+      onClick: () => {
+        navigateToProfile()
+      },
+    },
+    {
+      type: "divider",
+    },
     {
       label: <span className="text-red-600">Đăng xuất</span>,
       icon: <LogoutIcon className="fill-red-600" />,
@@ -110,31 +120,25 @@ export default function AppHeader({ collapsed, onToggle }: HeaderProps) {
         padding: "0 24px",
         background: colorBgContainer,
         display: "flex",
-        justifyContent: "space-between",
+        justifyContent: "flex-end",
         alignItems: "center",
         borderBottom: "1px solid #f0f0f0",
       }}
     >
-      {React.createElement(collapsed ? MenuUnfoldOutlined : MenuFoldOutlined, {
-        className: "trigger",
-        onClick: onToggle,
-        style: { fontSize: "18px", cursor: "pointer" },
-      })}
-
       <Space size="middle">
         {/* <WarningOutlined style={{ fontSize: "18px", color: "#f5222d" }} /> */}
         <MessageOutlined style={{ fontSize: "18px" }} />
         <Badge count={11} dot>
           <BellOutlined style={{ fontSize: "18px" }} />
         </Badge>
+        <LanguageToggle />
         <Dropdown
           menu={{ items: profileItems }}
-          trigger={["hover"]}
+          trigger={["click"]}
           placement="bottomRight"
         >
           <Flex
             vertical={false}
-            onClick={navigateToProfile}
             className="cursor-pointer flex items-center gap-2"
           >
             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-sky-400 flex items-center justify-center text-white text-xs font-medium">

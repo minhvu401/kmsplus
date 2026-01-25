@@ -18,12 +18,16 @@ type GetAllCoursesParams = {
   limit?: number
 }
 
-/**
- * Lấy danh sách khóa học có phân trang và tìm kiếm.
- * - Params: { query, page, limit }
- * - Trả về object { courses, totalCount }
- * - Yêu cầu xác thực (requireAuth)
- */
+// Định nghĩa kiểu trả về chuẩn cho API
+type APIResponse =
+  | { success: true; courseId: number }
+  | { success: false; error: string }
+
+// Response type cho update operations (không cần courseId)
+type UpdateAPIResponse = { success: true } | { success: false; error: string }
+
+// --- FETCH ACTIONS ---
+
 export async function getAllCourses(params: GetAllCoursesParams) {
   await requireAuth()
   return getAllCoursesAction(params)
@@ -86,45 +90,111 @@ export async function createCourse(formData: FormData) {
  * - Sau khi cập nhật sẽ revalidate các path liên quan và redirect về /courses
  * - Yêu cầu xác thực (requireAuth)
  */
-export async function updateCourse(formData: FormData) {
-  await requireAuth()
-
-  const id = Number(formData.get("id"))
-  if (!id) throw new Error("Course ID is required")
-
-  const title = (formData.get("title") as string) || undefined
-  const slug = (formData.get("slug") as string) || undefined
-  const description = (formData.get("description") as string) || undefined
-  const thumbnail_url = (formData.get("thumbnail_url") as string) || undefined
-  const status = (formData.get("status") as string) || undefined
-  let duration_hours: number | undefined = Number(
-    formData.get("duration_hours")
-  )
-  if (isNaN(duration_hours)) duration_hours = undefined
-
-  await updateCourseAction(id, {
-    title,
-    slug,
-    description,
-    thumbnail_url,
-    status,
-    duration_hours,
-  })
-
-  revalidatePath(`/courses/${id}`)
-  revalidatePath("/courses")
-  redirect("/courses")
+export async function createCourseAPI(
+  data: Omit<CreateCoursePayload, "creator_id">
+): Promise<APIResponse> {
+  try {
+    const user = await requireAuth()
+    if (!user?.id) throw new Error("Unauthorized")
+    console.log("🔥 [API] Creating course:", data.title)
+    // Map dữ liệu
+    const courseData: CreateCoursePayload = {
+      ...data,
+      creator_id: parseInt(user.id),
+      status: data.status || "draft",
+      duration_hours: data.duration_hours || 0,
+    }
+    const result = await createCourseAction(courseData)
+    if (result.success && "courseId" in result) {
+      revalidatePath("/courses")
+      return { success: true, courseId: result.courseId }
+    }
+    if (!result.success && "error" in result) {
+      return {
+        success: false,
+        error: result.error || "Failed to create course",
+      }
+    }
+    return { success: false, error: "Failed to create course" }
+  } catch (error) {
+    console.error("Create API Error:", error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    }
+  }
 }
 
 /**
- * Xóa mềm (soft delete) khóa học.
- * - FormData expected: id
- * - Yêu cầu xác thực (requireAuth)
+ * Cập nhật khóa học
  */
-export async function deleteCourse(formData: FormData) {
-  await requireAuth()
-  const id = Number(formData.get("id"))
-  if (!id) throw new Error("Course ID is required")
-  await deleteCourseAction(id)
-  revalidatePath("/courses")
+// export async function updateCourseAPI(
+//   courseId: number,
+//   data: Partial<CreateCoursePayload>
+// ): Promise<APIResponse> {
+//   try {
+//     await requireAuth()
+//     console.log("🔥 [API] Updating course:", courseId)
+
+//     const result = await updateCourseAction(courseId, data)
+//     if (result.success) {
+export async function updateCourseAPI(
+  courseId: number,
+  data: Partial<CreateCoursePayload>
+): Promise<UpdateAPIResponse> {
+  try {
+    await requireAuth()
+    console.log("🔥 [API] Thực hiện cập nhật toàn diện Course:", courseId)
+
+    // GỌI HÀM UPDATE TOÀN DIỆN (Bao gồm cả curriculum)
+    const result = await updateFullCourseAction(courseId, data as any)
+
+    if (result.success) {
+      // Làm mới cache để hiển thị dữ liệu mới
+      revalidatePath(`/courses/${courseId}`)
+      revalidatePath("/courses/manage")
+      return { success: true }
+    }
+
+    return {
+      success: false,
+      error: "error" in result ? result.error : "Update failed",
+    }
+  } catch (error) {
+    console.error("API Update Error:", error)
+    return { success: false, error: "Hệ thống gặp lỗi khi lưu dữ liệu" }
+  }
+}
+
+export async function approveCourse(id: number) {
+  try {
+    const user = await requireAuth()
+
+    if (!user?.id) throw new Error("Unauthorized")
+
+    const adminId = Number(user.id)
+    if (isNaN(adminId)) {
+      throw new Error("Invalid User ID format")
+    }
+
+    const result = await approveCourseAction(id, adminId)
+
+    if (result) {
+      // Refresh cache của trang quản lý để cập nhật trạng thái bảng (từ Pending -> Published)
+      revalidatePath("/courses/manage")
+
+      // ✅ THÊM DÒNG NÀY: Refresh trang danh sách khóa học (Public) để user thường nhìn thấy khóa vừa duyệt
+      revalidatePath("/courses")
+
+      return { success: true }
+    }
+
+    return {
+      success: false,
+      error: "Failed to approve: Course not found or already processed",
+    }
+  } catch (error) {
+    console.error("Approve error:", error)
+    return { success: false, error: "System error during approval" }
+  }
 }

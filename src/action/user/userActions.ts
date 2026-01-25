@@ -113,7 +113,7 @@ export async function updateUserPassword(email: string, formData: FormData) {
     newPassword: formData.get("newPassword") as string,
   }
 
-  const result = await updateUserPasswordAction(email, passwordData)
+  const result = await updateUserPasswordAction(passwordData)
 
   if (result.success) {
     revalidatePath("/profile")

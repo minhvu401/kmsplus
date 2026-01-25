@@ -69,7 +69,7 @@ export async function getCurrentUserInforAction(): Promise<User | null> {
     const id = decoded.id
 
     const users = await sql`
-      SELECT email, full_name, avatar_url, created_at 
+      SELECT id, email, full_name, avatar_url, created_at 
       FROM users 
       WHERE id = ${id} AND (is_deleted = false OR is_deleted IS NULL)
     `
@@ -82,11 +82,38 @@ export async function getCurrentUserInforAction(): Promise<User | null> {
 
 export async function getUserDetail(id: string): Promise<User | null> {
   const users = await sql`
-    SELECT  email, full_name, avatar_url, created_at 
+    SELECT id, email, full_name, avatar_url, created_at 
     FROM users 
     WHERE id = ${id} AND (is_deleted = false OR is_deleted IS NULL)
   `
   return users.length > 0 ? (users[0] as User) : null
+}
+
+/**
+ * Get current user profile with full details
+ */
+export async function getCurrentUserProfileAction(): Promise<User | null> {
+  const cookieStore = await cookies()
+  const token = cookieStore.get("token")?.value
+
+  if (!token) {
+    return null
+  }
+
+  try {
+    const decoded = await verifyToken(token)
+    const id = decoded.id
+
+    const users = await sql`
+      SELECT id, email, full_name, avatar_url, created_at 
+      FROM users 
+      WHERE id = ${id} AND (is_deleted = false OR is_deleted IS NULL)
+    `
+    return users.length > 0 ? (users[0] as User) : null
+  } catch (error) {
+    console.error("Error getting user profile:", error)
+    return null
+  }
 }
 
 /**
@@ -182,21 +209,95 @@ export async function updateUserAction(
 }
 
 /**
- * Update user password
+ * Update user profile (PATCH)
  */
-export async function updateUserPasswordAction(
-  email: string,
-  passwordData: {
-    currentPassword: string
-    newPassword: string
+export async function updateUserProfileAction(updateData: {
+  full_name?: string
+  avatar_url?: string
+  department?: string
+}): Promise<ServiceResponse> {
+  const cookieStore = await cookies()
+  const token = cookieStore.get("token")?.value
+
+  if (!token) {
+    return {
+      success: false,
+      message: "Unauthorized",
+    }
   }
-): Promise<ServiceResponse> {
+
   try {
-    // Get user with password
+    const decoded = await verifyToken(token)
+    const id = decoded.id
+
     const users = await sql`
-      SELECT id, email, password
+      SELECT full_name, avatar_url
       FROM users 
-      WHERE email = ${email}
+      WHERE id = ${id} AND (is_deleted = false OR is_deleted IS NULL)
+    `
+
+    if (users.length === 0) {
+      return {
+        success: false,
+        message: "User not found",
+      }
+    }
+
+    const user = users[0]
+
+    // Update only provided fields
+    const updatedUser = {
+      full_name: updateData.full_name ?? user.full_name,
+      avatar_url: updateData.avatar_url ?? user.avatar_url,
+    }
+
+    await sql`
+      UPDATE users 
+      SET full_name = ${updatedUser.full_name}, 
+          avatar_url = ${updatedUser.avatar_url}
+      WHERE id = ${id}
+    `
+
+    return {
+      success: true,
+      message: "Profile updated successfully",
+      data: updatedUser,
+    }
+  } catch (error) {
+    console.error("Error updating profile:", error)
+    return {
+      success: false,
+      message: "Failed to update profile",
+    }
+  }
+}
+
+/**
+ * Update user password with verification of current password
+ */
+export async function updateUserPasswordAction(passwordData: {
+  currentPassword: string
+  newPassword: string
+}): Promise<ServiceResponse> {
+  const cookieStore = await cookies()
+  const token = cookieStore.get("token")?.value
+
+  if (!token) {
+    return {
+      success: false,
+      message: "Unauthorized",
+    }
+  }
+
+  try {
+    const decoded = await verifyToken(token)
+    const id = decoded.id
+
+    // Get user with password hash
+    const users = await sql`
+      SELECT id, email, password_hash
+      FROM users 
+      WHERE id = ${id} AND (is_deleted = false OR is_deleted IS NULL)
     `
 
     if (users.length === 0) {
@@ -211,7 +312,7 @@ export async function updateUserPasswordAction(
     // Verify current password
     const isValidPassword = await bcrypt.compare(
       passwordData.currentPassword,
-      user.password
+      user.password_hash
     )
 
     if (!isValidPassword) {
@@ -227,8 +328,8 @@ export async function updateUserPasswordAction(
     // Update password
     await sql`
       UPDATE users 
-      SET password = ${hashedNewPassword}
-      WHERE email = ${email}
+      SET password_hash = ${hashedNewPassword}
+      WHERE id = ${id}
     `
 
     return {
