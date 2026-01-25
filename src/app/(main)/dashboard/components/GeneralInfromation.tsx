@@ -116,9 +116,10 @@ export default function DashboardPage() {
 
   return (
     <Card
+      className="animate-page-fade-in"
       title={
         <Title level={3} style={{ margin: 0 }}>
-          Hỏi nhảm
+          Bài viết
         </Title>
       }
       extra={

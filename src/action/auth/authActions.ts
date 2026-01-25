@@ -38,11 +38,29 @@ export async function loginAction(
 
   // Kiểm tra user tồn tại
   const users = await sql`
-    SELECT id, email, full_name, avatar_url, created_at, password_hash FROM users WHERE email = ${email}
+    SELECT 
+      u.id, 
+      u.email, 
+      u.full_name, 
+      u.avatar_url, 
+      u.created_at, 
+      u.password_hash,
+      u.status,
+      r.name as role_name
+    FROM users u
+    LEFT JOIN user_roles ur ON u.id = ur.user_id
+    LEFT JOIN roles r ON ur.role_id = r.id
+    WHERE u.email = ${email}
+    LIMIT 1
   `
   const user = users[0]
   if (!user) {
     return { success: false, message: "Email not found" }
+  }
+
+  // Kiểm tra trạng thái tài khoản
+  if (user.status !== "active") {
+    return { success: false, message: "Tài khoản đã bị vô hiệu" }
   }
 
   // Kiểm tra mật khẩu

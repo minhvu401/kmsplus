@@ -1,3 +1,4 @@
+// src/app/(main)/question-bank/create/create-question-modal.tsx
 "use client"
 
 import { Modal, Form, Button, Radio, Checkbox, Input, Space, Select, message } from 'antd';
@@ -202,15 +203,15 @@ const CreateQuestionModal = ({ isModalOpen, onClose, categories, editingRecord, 
 
     return (
         <Modal
-            title={editingRecord ? "Sửa câu hỏi" : "Tạo câu hỏi mới"}
+            title={editingRecord ? "Sửa câu hỏi" : "Tạo câu hỏi"}
             open={isModalOpen}
             onCancel={onClose}
             footer={[
                 <Button key="back" onClick={handleCancel}>
-                    Cancel
+                    Hủy
                 </Button>,
                 <Button key="submit" type="primary" onClick={() => form.submit()}>
-                    {editingRecord ? "Update" : "Save"}
+                    {editingRecord ? "Cập nhật" : "Lưu"}
                 </Button>,
             ]}
         >

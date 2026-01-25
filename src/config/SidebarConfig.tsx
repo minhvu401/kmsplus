@@ -1,16 +1,25 @@
-import { useRouter } from "next/navigation"
-import { useMemo, useEffect, useState } from "react"
+import { useRouter, usePathname } from "next/navigation"
+import { useMemo } from "react"
 import {
   DashboardOutlined,
-  ThunderboltOutlined,
-  SafetyCertificateOutlined,
+  BookOutlined,
+  FileTextOutlined,
+  QuestionCircleOutlined,
+  DatabaseOutlined,
+  FormOutlined,
+  TeamOutlined,
+  MessageOutlined,
   SettingOutlined,
   UserOutlined,
+  BulbOutlined,
+  FolderOpenOutlined,
 } from "@ant-design/icons"
 import { PageRoute } from "@/enum/page-route.enum"
 import { Role } from "@/enum/role.enum"
 import { Permission } from "@/enum/permission.enum"
 import { hasPermission } from "@/config/RolePermission.config"
+import useLanguageStore from "@/store/useLanguageStore"
+import { t } from "@/lib/i18n"
 import type { MenuProps } from "antd"
 
 export type MenuItem = Required<MenuProps>["items"][number] & {
@@ -30,84 +39,119 @@ const useNavigation = () => {
 
 const createMenuItems = (
   navigate: (route: string) => void,
-  userRole?: Role
+  userRole?: Role,
+  language: "vi" | "en" = "vi"
 ): MenuItem[] => {
   const baseItems: MenuItem[] = [
     {
       key: PageRoute.DASHBOARD,
       icon: <DashboardOutlined />,
-      label: "Dashboard",
+      label: t("sidebar.dashboard", language),
+      title: t("sidebar.dashboard", language),
       route: PageRoute.DASHBOARD,
       onClick: () => navigate(PageRoute.DASHBOARD),
     },
     {
-      key: "operations_management",
-      icon: <ThunderboltOutlined />,
-      label: "Quản lý Vận hành",
-      children: [
-        {
-          key: PageRoute.QUIZZES,
-          icon: <SafetyCertificateOutlined />,
-          label: "Công tác",
-          route: PageRoute.QUIZZES,
-          onClick: () => navigate(PageRoute.QUIZZES),
-        },
-      ] as MenuItem[],
-    },
-    {
-      key: PageRoute.ARTICLES,
-      icon: <SettingOutlined />,
-      label: "ARTICLES",
-      route: PageRoute.ARTICLES,
-      onClick: () => navigate(PageRoute.ARTICLES),
+      type: "divider",
     },
     {
       key: PageRoute.COURSES,
-      icon: <SettingOutlined />,
-      label: "COURSES",
+      icon: <BookOutlined />,
+      label: t("sidebar.courses", language),
+      title: t("sidebar.courses", language),
       route: PageRoute.COURSES,
       onClick: () => navigate(PageRoute.COURSES),
     },
     {
+      key: PageRoute.QUIZZES,
+      icon: <FormOutlined />,
+      label: t("sidebar.quizzes", language),
+      title: t("sidebar.quizzes", language),
+      route: PageRoute.QUIZZES,
+      onClick: () => navigate(PageRoute.QUIZZES),
+    },
+    {
+      type: "divider",
+    },
+    {
+      key: PageRoute.ARTICLES,
+      icon: <FileTextOutlined />,
+      label: t("sidebar.articles", language),
+      title: t("sidebar.articles", language),
+      route: PageRoute.ARTICLES,
+      onClick: () => navigate(PageRoute.ARTICLES),
+    },
+    {
+      key: PageRoute.QUESTION_BANK,
+      icon: <DatabaseOutlined />,
+      label: t("sidebar.question_bank", language),
+      title: t("sidebar.question_bank", language),
+      route: PageRoute.QUESTION_BANK,
+      onClick: () => navigate(PageRoute.QUESTION_BANK),
+    },
+    {
+      type: "divider",
+    },
+    {
       key: PageRoute.QUESTIONS,
-      icon: <SettingOutlined />,
-      label: "QUESTIONS",
+      icon: <MessageOutlined />,
+      label: t("sidebar.questions", language),
+      title: t("sidebar.questions", language),
       route: PageRoute.QUESTIONS,
       onClick: () => navigate(PageRoute.QUESTIONS),
     },
     {
-      key: PageRoute.QUESTION_BANK,
-      icon: <SettingOutlined />,
-      label: "QUESTION_BANK",
-      route: PageRoute.QUESTION_BANK,
-      onClick: () => navigate(PageRoute.QUESTION_BANK),
+      type: "divider",
     },
-  ]
-
-  // Add User Management menu if user has permission
-  if (userRole && hasPermission(userRole, Permission.MANAGE_USERS)) {
-    baseItems.push({
+    {
       key: PageRoute.USER_MANAGEMENT,
-      icon: <UserOutlined />,
-      label: "User Management",
+      icon: <TeamOutlined />,
+      label: t("sidebar.user_management", language),
+      title: t("sidebar.user_management", language),
       route: PageRoute.USER_MANAGEMENT,
       onClick: () => navigate(PageRoute.USER_MANAGEMENT),
-    })
-  }
+    },
+    // In SidebarConfig.tsx, add this item before settings:
+    {
+      key: PageRoute.ROLE_PERMISSIONS,
+      icon: <FolderOpenOutlined />,
+      label: t("sidebar.role_permission", language),
+      title: t("sidebar.role_permission", language),
+      route: PageRoute.ROLE_PERMISSIONS,
+      onClick: () => navigate(PageRoute.ROLE_PERMISSIONS),
+    },
+    {
+      key: PageRoute.PROFILE,
+      icon: <UserOutlined />,
+      label: t("sidebar.profile", language),
+      title: t("sidebar.profile", language),
+      route: PageRoute.PROFILE,
+      onClick: () => navigate(PageRoute.PROFILE),
+    },
+    {
+      key: "settings",
+      icon: <SettingOutlined />,
+      label: t("sidebar.settings", language),
+      title: t("sidebar.settings", language),
+      route: "/settings",
+      onClick: () => navigate("/settings"),
+    },
+  ] as MenuItem[]
 
-  return baseItems as MenuItem[]
+  return baseItems
 }
 
 export const useSidebarItems = (userRole?: Role) => {
   const { navigate } = useNavigation()
+  const { language } = useLanguageStore()
   const items = useMemo(
-    () => createMenuItems(navigate, userRole),
-    [navigate, userRole]
+    () => createMenuItems(navigate, userRole, language),
+    [navigate, userRole, language]
   )
   return items
 }
 
-// 5. Export hàm thô (nếu cần)
-export const getSidebarItems = (userRole?: Role): MenuItem[] => {
-  return createMenuItems(() => {}, userRole) // Hàm không cần sử dụng navigate ở đây
+// Export hàm thô (nếu cần)
+export const getSidebarItems = (language: "vi" | "en" = "vi"): MenuItem[] => {
+  return createMenuItems(() => { }, undefined, language)
 }

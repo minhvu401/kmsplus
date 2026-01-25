@@ -2,129 +2,133 @@
 
 import { useEffect, useRef } from 'react';
 import { notification } from 'antd';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
 
-export default function QuestionsNotification() {
+type QuestionsNotificationProps = {
+  returnTo?: string;
+  scroll?: boolean;
+};
+
+const NOTIFICATION_QUERY_KEYS = [
+  'created',
+  'deleted',
+  'closed',
+  'opened',
+  'updated',
+  'answerCreated',
+  'answerDeleted',
+  'answerUpdated',
+] as const;
+
+export default function QuestionsNotification({
+  returnTo,
+  scroll = true,
+}: QuestionsNotificationProps) {
   const [notificationApi, contextHolder] = notification.useNotification();
   const searchParams = useSearchParams();
   const router = useRouter();
-  const hasShownRef = useRef(false);
+  const pathname = usePathname();
+  const lastShownKeyRef = useRef<string | null>(null);
 
 
   useEffect(() => {
+    const currentKey = NOTIFICATION_QUERY_KEYS.find(
+      (key) => searchParams.get(key) === '1'
+    );
 
-    if (hasShownRef.current) return;
+    // Nothing to show: reset so the next event can show again.
+    if (!currentKey) {
+      lastShownKeyRef.current = null;
+      return;
+    }
 
-    if (searchParams.get('created') === '1') {
-      hasShownRef.current = true;
+    // Prevent duplicate notification in React Strict Mode, and avoid re-showing
+    // the same event until the query flag is cleared.
+    if (lastShownKeyRef.current === currentKey) return;
+    lastShownKeyRef.current = currentKey;
+
+    const basePath = returnTo ?? pathname ?? '/questions';
+    const cleanedParams = new URLSearchParams(searchParams.toString());
+    for (const key of NOTIFICATION_QUERY_KEYS) {
+      cleanedParams.delete(key);
+    }
+    const nextUrl = cleanedParams.toString()
+      ? `${basePath}?${cleanedParams.toString()}`
+      : basePath;
+
+    const replace = () => {
+      router.replace(nextUrl, { scroll });
+    };
+
+    const showSuccess = (message: string, description: string) => {
       notificationApi.success({
-        message: 'Post created',
-        description: 'Your question has been posted successfully.',
+        message,
+        description,
         placement: 'topRight',
         duration: 3,
       });
-      router.replace('/questions');
-    }
-    if (searchParams.get('deleted') === '1') {
-      hasShownRef.current = true;
-      notificationApi.success({
-        message: 'Post deleted',
-        description: 'Your question has been removed successfully.',
-        placement: 'topRight',
-        duration: 3,
-      });
-      router.replace('/questions');
-    }
-  }, [searchParams, router, notificationApi]);
 
-  return <>{contextHolder}</>;
-}
+      // Always clean up immediately so the same action can trigger again later.
+      replace();
+    };
 
-export function QuestionDetailsNotification({ id }: { id: string }) {
-  const [notificationApi, contextHolder] = notification.useNotification();
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const hasShownRef = useRef(false);
-
-
-  useEffect(() => {
-
-    if (hasShownRef.current) return;
-
-    if (searchParams.get('closed') === '1') {
-      hasShownRef.current = true;
-      notificationApi.success({
-        message: 'Post closed',
-        description: 'Your question has been closed successfully.',
-        placement: 'topRight',
-        duration: 3,
-        onClose: () => {
-          router.replace(`/questions/${id}`, { scroll: false });
-        },
-      });
+    if (currentKey === 'created') {
+      showSuccess(
+        'Post created',
+        'Your question has been posted successfully.'
+      );
+      return;
     }
-    if (searchParams.get('opened') === '1') {
-      hasShownRef.current = true;
-      notificationApi.success({
-        message: 'Post opened',
-        description: 'Your question has been opened successfully.',
-        placement: 'topRight',
-        duration: 3,
-        onClose: () => {
-          router.replace(`/questions/${id}`, { scroll: false });
-        },
-      });
+    if (currentKey === 'deleted') {
+      showSuccess(
+        'Post deleted',
+        'Your question has been removed successfully.'
+      );
+      return;
     }
-    if (searchParams.get('updated') === '1') {
-      hasShownRef.current = true;
-      notificationApi.success({
-        message: 'Post updated',
-        description: 'Your question has been updated successfully.',
-        placement: 'topRight',
-        duration: 3,
-        onClose: () => {
-          router.replace(`/questions/${id}`, { scroll: false });
-        },
-      });
+    if (currentKey === 'closed') {
+      showSuccess(
+        'Post closed',
+        'Your question has been closed successfully.'
+      );
+      return;
     }
-    if (searchParams.get('answerCreated') === '1') {
-      hasShownRef.current = true;
-      notificationApi.success({
-        message: 'Answer created',
-        description: 'Your answer has been posted successfully.',
-        placement: 'topRight',
-        duration: 3,
-        onClose: () => {
-          router.replace(`/questions/${id}`, { scroll: false });
-        },
-      });
+    if (currentKey === 'opened') {
+      showSuccess(
+        'Post opened',
+        'Your question has been opened successfully.'
+      );
+      return;
     }
-    if (searchParams.get('answerDeleted') === '1') {
-      hasShownRef.current = true;
-      notificationApi.success({
-        message: 'Answer deleted',
-        description: 'Your answer has been deleted successfully.',
-        placement: 'topRight',
-        duration: 3,
-        onClose: () => {
-          router.replace(`/questions/${id}`, { scroll: false });
-        },
-      });
+    if (currentKey === 'updated') {
+      showSuccess(
+        'Post updated',
+        'Your question has been updated successfully.'
+      );
+      return;
     }
-    if (searchParams.get('answerUpdated') === '1') {
-      hasShownRef.current = true;
-      notificationApi.success({
-        message: 'Answer updated',
-        description: 'Your answer has been updated successfully.',
-        placement: 'topRight',
-        duration: 3,
-        onClose: () => {
-          router.replace(`/questions/${id}`, { scroll: false });
-        },
-      });
+    if (currentKey === 'answerCreated') {
+      showSuccess(
+        'Answer created',
+        'Your answer has been posted successfully.'
+      );
+      return;
     }
-  }, [searchParams, router, notificationApi, id]);
+    if (currentKey === 'answerDeleted') {
+      showSuccess(
+        'Answer deleted',
+        'Your answer has been deleted successfully.'
+      );
+      return;
+    }
+    if (currentKey === 'answerUpdated') {
+      showSuccess(
+        'Answer updated',
+        'Your answer has been updated successfully.'
+      );
+    }
+  }, [searchParams, router, notificationApi, returnTo, pathname, scroll]);
 
   return <>{contextHolder}</>;
 }

@@ -1,8 +1,7 @@
-import { Geist, Geist_Mono } from "next/font/google"
-import { AntdRegistry } from "@ant-design/nextjs-registry"
-import "./globals.css"
+import { Geist, Geist_Mono, Lato } from "next/font/google"
 import { Metadata } from "next"
-import { Inter } from "next/font/google"
+import "./globals.css"
+import { RootProvider } from "./RootProvider"
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -14,7 +13,11 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 })
 
-const inter = Inter({ subsets: ["latin"] })
+const lato = Lato({
+  weight: ["100", "300", "400", "700", "900"],
+  subsets: ["latin"],
+  variable: "--font-lato",
+})
 
 export const metadata: Metadata = {
   title: "KMS Plus",
@@ -29,9 +32,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${lato.variable} font-sans antialiased`}
+        style={{ fontFamily: "var(--font-lato), sans-serif" }}
+        suppressHydrationWarning
       >
-        <AntdRegistry>{children}</AntdRegistry>
+        <RootProvider>{children}</RootProvider>
       </body>
     </html>
   )
