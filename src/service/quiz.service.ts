@@ -169,13 +169,6 @@ export async function getQuizByIdAction(id: number) {
 
 /**
  * Tạo mới một bài thi.
- * 
- * Functional Requirements (FR-01):
- * - User Action: Click vào ô "Quiz Title" và nhập text
- * - System Behavior: Validate độ dài (Max 255 ký tự). Cập nhật biến state title.
- * - Post-conditions: Dữ liệu Title và Description được lưu trong DB
- * 
- * Accepts sanitized data từ server action (quizActions.ts)
  */
 export async function createQuizAction(data: {
   course_id: number
@@ -284,30 +277,6 @@ export async function deleteQuizAction(id: number) {
   }
 }
 
-export async function getQuizDetailsAction(id: number): Promise<Quiz> {
-  const result = await sql`
-        SELECT * 
-        FROM quizzes
-        WHERE id = ${id} AND is_deleted = FALSE
-    `
-  return result[0] as Quiz
-}
-
-export async function startQuizAttemptAction(quiz_id: number, user_id: number, total_questions: number): Promise<QuizAttempt> {
-  // Check for existing in-progress attempt
-  const existingAttempt = await sql`
-        SELECT * FROM quiz_attempts
-        WHERE quiz_id = ${quiz_id} AND user_id = ${user_id} AND status = 'in_progress'
-        LIMIT 1
-    `
-  if (existingAttempt.length > 0) {
-    return existingAttempt[0] as QuizAttempt;
-  }
-
-  const quizResult = await sql`
-        SELECT max_attempts
-        FROM quizzes
-        WHERE id = ${quiz_id}
 /**
  * Lấy danh sách câu hỏi cho một lần làm bài
  * NhatTT
@@ -339,45 +308,6 @@ export async function getSavedAnswersAction(attemptId: number) {
       FROM attempt_answers
       WHERE attempt_id = ${attemptId}
     `
-
-  if (quizResult.length === 0) {
-    throw new Error('Quiz not found');
-  }
-
-  const { max_attempts } = quizResult[0];
-
-  if (max_attempts !== null) {
-    const attemptCount = await sql`
-            SELECT COUNT(*)::int AS count
-            FROM quiz_attempts
-            WHERE quiz_id = ${quiz_id}
-                AND user_id = ${user_id};
-        `;
-
-    if (attemptCount[0].count >= max_attempts) {
-      throw new Error('You have reached the maximum number of attempts for this quiz.');
-    }
-  }
-
-  // Create new attempt if not
-  const newAttempt = await sql`
-        INSERT INTO quiz_attempts (
-            quiz_id,
-            user_id, 
-            attempt_number,
-            total_questions
-        ) VALUES (
-            ${quiz_id},
-            ${user_id},
-            (
-                SELECT COALESCE(MAX(attempt_number), 0) + 1
-                FROM quiz_attempts
-                WHERE quiz_id = ${quiz_id}
-                AND user_id = ${user_id}
-            ),
-            ${total_questions}
-        )
-        RETURNING *
     return rows as Array<{ question_id: number; selected_option_id: any }>
   } catch (error) {
     console.error("getSavedAnswersAction error:", error)
@@ -420,13 +350,24 @@ export async function startQuizAttemptAction(quizId: number, userId: number) {
       VALUES (${quizId}, ${userId}, ${attemptNumber}, 'in_progress', NOW())
       RETURNING *
     `
-  return newAttempt[0] as QuizAttempt
+
+    await sql`COMMIT`
+    return result[0] as QuizAttempt
+  } catch (error) {
+    await sql`ROLLBACK`
+    console.error("startQuizAttemptAction error:", error)
+    throw new Error("Failed to start quiz attempt")
+  }
 }
 
+/**
+ * Lưu câu trả lời của người dùng
+ */
 // NhatTT
-export async function submitQuizAttemptAction(
+export async function saveAttemptAnswerAction(
   attemptId: number,
-  userId: number
+  questionId: number,
+  selectedOptionId: number | number[]
 ) {
   try {
     const selectedOptionIdJson = Array.isArray(selectedOptionId)
@@ -465,62 +406,49 @@ export async function submitQuizAttemptAction(attemptId: number) {
 
     if (attemptRows.length === 0) {
       throw new Error("Attempt not found")
-    // 1️⃣ Begin transaction
-    await sql`BEGIN`;
-
-    // 2️⃣ Lock attempt
-    const attemptResult = await sql`
-            SELECT id, status, started_at
-            FROM quiz_attempts
-            WHERE id = ${attemptId}
-                AND user_id = ${userId}
-            FOR UPDATE;
-        ` as AttemptRow[];
-
-    if (attemptResult.length === 0) {
-      throw new Error('Attempt not found');
     }
 
-    if (attemptResult[0].status !== 'in_progress') {
-      throw new Error('Attempt already submitted');
-    }
+    const quizId = attemptRows[0].quiz_id as number
 
-    // 3️⃣ Calculate stats
-    const stats = await sql`
-            SELECT
-            COUNT(*) FILTER (WHERE is_correct = true) AS correct_answers,
-            COALESCE(SUM(points_earned), 0)          AS score
-            FROM attempt_answers
-            WHERE attempt_id = ${attemptId};
-        ` as AttemptStats[];
+    // Count total questions
+    const totalRows = await sql`
+      SELECT COUNT(*) as count FROM questions WHERE quiz_id = ${quizId}
+    `
+    const totalQuestions = totalRows[0].count as number
 
-    const { correct_answers, score } =
-      stats[0];
+    // Count correct answers
+    const correctRows = await sql`
+      SELECT COUNT(*) as count
+      FROM attempt_answers aa
+      INNER JOIN questions q ON aa.question_id = q.id
+      WHERE aa.attempt_id = ${attemptId}
+      AND aa.selected_option_id = q.correct_answer::text
+    `
+    const correctAnswers = correctRows[0].count as number
 
-    // 4️⃣ Finalize attempt
-    const updated = await sql`
-            UPDATE quiz_attempts
-            SET
-            status = 'submitted',
-            submitted_at = CURRENT_TIMESTAMP,
-            correct_answers = ${correct_answers},
-            score = ${score},
-            time_spent_seconds = EXTRACT(
-            EPOCH FROM (CURRENT_TIMESTAMP - started_at)
-            )::int
-            WHERE id = ${attemptId}
-            RETURNING *;
-        `;
+    // Calculate score
+    const score =
+      totalQuestions > 0 ? (correctAnswers / totalQuestions) * 100 : 0
 
-    // 5️⃣ Commit
-    await sql`COMMIT`;
+    // Update attempt
+    const result = await sql`
+      UPDATE quiz_attempts
+      SET 
+        status = 'completed',
+        submitted_at = NOW(),
+        correct_answers = ${correctAnswers},
+        score = ${score},
+        time_spent_seconds = EXTRACT(EPOCH FROM (NOW() - started_at))::int
+      WHERE id = ${attemptId}
+      RETURNING *
+    `
 
-    return updated[0];
-
+    await sql`COMMIT`
+    return result[0] as QuizAttempt
   } catch (error) {
-    // 6️⃣ Rollback on failure
-    await sql`ROLLBACK`;
-    throw error;
+    await sql`ROLLBACK`
+    console.error("submitQuizAttemptAction error:", error)
+    throw new Error("Failed to submit quiz attempt")
   }
 }
 
@@ -671,190 +599,4 @@ export async function updateQuizQuestionsAction(
     console.error("updateQuizQuestionsAction error:", error)
     throw new Error("Failed to update quiz questions")
   }
-}
-
-export async function saveAttemptAnswerAction(
-  attemptId: number,
-  userId: number,
-  questionId: number,
-  selectedAnswer: number | number[]
-) {
-  // 1️⃣ Verify attempt is valid and active
-  const attempt = await sql`
-    SELECT id, status
-    FROM quiz_attempts
-    WHERE id = ${attemptId}
-        AND user_id = ${userId};
-  `;
-
-  if (attempt.length === 0) {
-    throw new Error('Attempt not found');
-  }
-
-  if (attempt[0].status !== 'in_progress') {
-    throw new Error('Cannot answer a submitted attempt');
-  }
-
-  // 2️⃣ Load question data
-  const questionResult = (await sql`
-    SELECT type, correct_answer
-    FROM question_bank
-    WHERE id = ${questionId}
-      AND is_deleted = false;
-  `) as QuestionRow[];
-
-  if (questionResult.length === 0) {
-    throw new Error('Question not found');
-  }
-
-  const { type, correct_answer } = questionResult[0];
-
-  // 3️⃣ Determine correctness
-  let isCorrect = false;
-
-  if (type === 'single_choice') {
-    isCorrect = selectedAnswer === correct_answer;
-
-  } else if (type === 'multiple_choice') {
-
-    const selectedArray = Array.isArray(selectedAnswer)
-      ? selectedAnswer
-      : [selectedAnswer];
-
-    if (!Array.isArray(correct_answer)) {
-      throw new Error('Invalid answer format');
-    }
-
-    const selectedSet = new Set(selectedArray);
-    const correctSet = new Set(correct_answer);
-
-    isCorrect =
-      selectedSet.size === correctSet.size &&
-      [...selectedSet].every(v => correctSet.has(v));
-  }
-
-  // 4️⃣ Calculate points
-  const pointsEarned = isCorrect ? 1 : 0;
-
-  // 5️⃣ UPSERT answer
-  await sql`
-    INSERT INTO attempt_answers (
-      attempt_id,
-      question_id,
-      selected_option_id,
-      is_correct,
-      points_earned
-    )
-    VALUES (
-      ${attemptId},
-      ${questionId},
-      ${JSON.stringify(selectedAnswer)},
-      ${isCorrect},
-      ${pointsEarned}
-    )
-    ON CONFLICT (attempt_id, question_id)
-    DO UPDATE SET
-      selected_option_id = EXCLUDED.selected_option_id,
-      is_correct = EXCLUDED.is_correct,
-      points_earned = EXCLUDED.points_earned,
-      answered_at = CURRENT_TIMESTAMP;
-  `;
-}
-
-export async function getQuestionsForAttemptAction(attemptId: number): Promise<Question[]> {
-  const result = await sql`
-        SELECT qb.id, qb.question_text, qb.type, qb.options
-        FROM question_bank qb
-        JOIN quiz_questions qq ON qb.id = qq.question_id
-        JOIN quiz_attempts qa ON qa.quiz_id = qq.quiz_id
-        WHERE qa.id = ${attemptId} AND qb.is_deleted = FALSE
-    `;
-  return result as Question[];
-}
-
-export async function getTimeLimitForAttemptAction(attemptId: number): Promise<number | null> {
-  const result = await sql`
-        SELECT q.time_limit_minutes
-        FROM quizzes q
-        JOIN quiz_attempts qa ON qa.quiz_id = q.id
-        WHERE qa.id = ${attemptId}
-    `;
-  return result[0]?.time_limit_minutes || null;
-}
-
-export async function getSavedAnswersAction(attemptId: number) {
-  return sql`
-    SELECT
-      question_id,
-      selected_option_id
-    FROM attempt_answers
-    WHERE attempt_id = ${attemptId};
-  `;
-}
-
-export async function getQuizDetailsByAttemptAction(attemptId: number): Promise<Quiz> {
-  const result = await sql`
-        SELECT q.*
-        FROM quizzes q
-        JOIN quiz_attempts qa ON qa.quiz_id = q.id
-        WHERE qa.id = ${attemptId} AND q.deleted_at IS NULL
-    `;
-  return result[0] as Quiz
-}
-
-export async function getAttemptResultAction(
-  attemptId: number
-): Promise<AttemptResult> {
-  // 1. Get attempt + quiz info
-  const attemptResult = await sql`
-    SELECT
-      q.title,
-      qa.attempt_number,
-      qa.time_spent_seconds,
-      qa.score
-    FROM quiz_attempts qa
-    JOIN quizzes q ON q.id = qa.quiz_id
-    WHERE qa.id = ${attemptId} AND qa.status = 'submitted'
-  `;
-
-  //   a.total_score,
-  //   a.passed
-
-  if (attemptResult.length === 0) {
-    throw new Error('Attempt not found');
-  }
-
-  // 2. Get question-level results
-  const questionResults = await sql`
-    SELECT
-      qb.id AS question_id,
-      qb.question_text,
-      qb.type,
-      qb.options,
-      aa.selected_option_id as selected_answers,
-      qb.correct_answer as correct_answers,
-      qb.explanation
-    FROM attempt_answers aa
-    JOIN question_bank qb ON qb.id = aa.question_id
-    WHERE aa.attempt_id = ${attemptId}
-    ORDER BY qb.id
-  `;
-
-  return {
-    title: attemptResult[0].title,
-    attempt_number: attemptResult[0].attempt_number,
-    time_spent_seconds: attemptResult[0].time_spent_seconds,
-    score: attemptResult[0].score,
-    // total_score: attemptResult[0].total_score,
-    // passed: attemptResult[0].passed,
-    questions: questionResults.map((q) => ({
-      id: q.question_id,
-      questionText: q.question_text,
-      type: q.type,
-      options: q.options,
-      selectedAnswers: q.selected_answers,
-      correctAnswers: q.correct_answers,
-      explanation: q.explanation,
-    })),
-  };
 }

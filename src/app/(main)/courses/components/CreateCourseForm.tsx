@@ -66,7 +66,13 @@ export type Lesson = {
   title: string
   duration_minutes: number | null
 }
-export type Quiz = { id: number; title: string; question_count: number }
+
+export type Quiz = {
+  id: number
+  title: string
+  question_count: number
+}
+
 export type CurriculumItem = {
   id: string
   order: number
@@ -76,12 +82,14 @@ export type CurriculumItem = {
   duration_minutes?: number | null
   question_count?: number
 }
+
 export type Section = {
   id: string
   title: string
   order: number
   items: CurriculumItem[]
 }
+
 export type CreateCoursePayload = {
   title?: string
   description?: string
@@ -89,6 +97,19 @@ export type CreateCoursePayload = {
   status?: string
   duration_hours?: number
   curriculum: Section[]
+}
+
+export type ContentType = "text_media" | "video" | "pdf"
+
+export type ModalState = {
+  type: "Section"
+  sectionId?: string
+} | null
+
+export type UploadOptions = {
+  file: File
+  onSuccess?: (result: string) => void
+  onError?: (error: any) => void
 }
 
 const steps = ["Basic Information", "Advance Information"]

@@ -22,7 +22,7 @@ export async function createComment(formData: FormData) {
 
     const result = await createCommentAction({
       article_id,
-      user_id: currentUser.id,
+      user_id: parseInt(currentUser.id),
       content: content.trim(),
       parent_id: parent_id ? parseInt(parent_id) : null,
     })

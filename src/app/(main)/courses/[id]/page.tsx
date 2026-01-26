@@ -68,27 +68,23 @@ export default async function CourseDetailPage({ params }: Props) {
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           <div className="lg:col-span-3">
             <div className="bg-white p-6 rounded shadow">
-              <h1 className="text-2xl font-bold">{course.title}</h1>
+              <h1 className="text-2xl font-bold text-gray-900">
+                {course.title}
+              </h1>
               <div className="mt-2 text-sm text-gray-600 flex items-center gap-4">
                 <div>By Creator #{course.creator_id}</div>
                 <div>·</div>
                 <div>{course.enrollment_count} students</div>
-                <div>·</div>
-                <div>
-                  {course.published_at
-                    ? new Date(course.published_at).toLocaleDateString()
-                    : "Unpublished"}
-                </div>
               </div>
 
               <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="md:col-span-2">
                   {course.thumbnail_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
+                    <Image
                       src={course.thumbnail_url}
                       alt={course.title}
                       className="w-full h-72 object-cover rounded"
+                      preview
                     />
                   ) : (
                     <div className="w-full h-72 bg-gray-100 rounded flex items-center justify-center text-gray-400">
@@ -207,8 +203,7 @@ export default async function CourseDetailPage({ params }: Props) {
           </div>
 
           <div className="lg:col-span-1">
-            <div className="bg-white p-4 rounded shadow">
-              <h4 className="font-semibold">Related Courses</h4>
+            <Card title="Related Courses">
               <div className="mt-3 space-y-3">
                 {related.length === 0 && (
                   <p className="text-gray-400 text-sm">No related courses.</p>
@@ -217,23 +212,25 @@ export default async function CourseDetailPage({ params }: Props) {
                   <Link
                     key={r.id}
                     href={`/courses/${r.id}`}
-                    className="flex items-center gap-3"
+                    className="flex items-center gap-3 hover:bg-gray-50 p-2 rounded transition-colors"
                   >
-                    <div className="w-14 h-10 bg-gray-100 rounded overflow-hidden">
+                    <div className="w-14 h-10 bg-gray-100 rounded overflow-hidden flex-shrink-0">
                       {r.thumbnail_url ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
+                        <Image
                           src={r.thumbnail_url}
                           alt={r.title}
                           className="w-full h-full object-cover"
+                          preview={false}
                         />
                       ) : null}
                     </div>
-                    <div className="text-sm truncate">{r.title}</div>
+                    <div className="text-sm truncate font-medium text-gray-700">
+                      {r.title}
+                    </div>
                   </Link>
                 ))}
               </div>
-            </div>
+            </Card>
           </div>
         </div>
       </div>

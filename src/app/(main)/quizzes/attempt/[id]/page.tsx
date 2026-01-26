@@ -1,3 +1,4 @@
+'use client'
 import QuizForm from '@/components/forms/quiz-form';
 import PageWrapper from '@/components/ui/questions/page-wrapper';
 import { getQuestionsForAttemptAction, getTimeLimitForAttemptAction, getSavedAnswersAction } from '@/service/quiz.service';
@@ -5,9 +6,9 @@ import { getQuestionsForAttemptAction, getTimeLimitForAttemptAction, getSavedAns
 export default async function Page({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
-  const attemptId = Number(params.id);
+  const attemptId = Number((await params).id);
 
   if (!Number.isInteger(attemptId)) {
     throw new Error('Invalid attempt ID');
