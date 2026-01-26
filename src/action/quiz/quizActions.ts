@@ -19,53 +19,7 @@ import {
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 import { sanitizeTitle, sanitizeDescription } from "@/utils/sanitize"
-
-// ============================================
-// DTO & VALIDATION SCHEMAS (Zod)
-// ============================================
-
-/**
- * Validation schema cho Quiz metadata (Title + Description)
- * AC1: Trường Title là bắt buộc (Required)
- * AC2: Trường Description là tùy chọn (Optional)
- */
-const QuizMetadataDto = z.object({
-  title: z
-    .string()
-    .min(1, "Vui lòng nhập tên bài thi")
-    .max(255, "Tên bài thi không vượt quá 255 ký tự"),
-  description: z
-    .string()
-    .max(1000, "Mô tả không vượt quá 1000 ký tự")
-    .optional()
-    .default(""),
-})
-
-type QuizMetadataDtoType = z.infer<typeof QuizMetadataDto>
-
-/**
- * Full Quiz schema (cho lúc submit hoàn toàn)
- * Bao gồm: title, description, course_id, status
- */
-const QuizCreateDto = z.object({
-  title: z
-    .string()
-    .min(1, "Vui lòng nhập tên bài thi")
-    .max(255, "Tên bài thi không vượt quá 255 ký tự"),
-  description: z
-    .string()
-    .max(1000, "Mô tả không vượt quá 1000 ký tự")
-    .optional()
-    .default(""),
-  course_id: z.number().positive("Invalid course ID"),
-  status: z.enum(["draft", "published", "archived"]).default("draft"),
-  time_limit_minutes: z.number().positive().optional(),
-  passing_score: z.number().min(0).max(100).default(70),
-  max_attempts: z.number().positive().default(3),
-})
-
-type QuizCreateDtoType = z.infer<typeof QuizCreateDto>
-
+import { QuizMetadataDto, QuizCreateDto, parseAndValidateQuizFormData } from "./quizHelper"
 // ============================================
 // SERVER ACTIONS
 // ============================================

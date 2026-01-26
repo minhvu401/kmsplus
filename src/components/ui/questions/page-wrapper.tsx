@@ -11,7 +11,7 @@ export default function PageWrapper({ children }: { children: React.ReactNode })
       <Flex vertical justify="space-between" style={{ minHeight: "100vh" }}>
         
         {/* Content section */}
-        <Flex vertical flex={1} style={{ padding: "2rem 2rem 0 2rem" }}>
+        <Flex vertical flex={1} style={{ padding: "0.25rem 2rem 0 2rem" }}>
           <Flex
             vertical
             style={{
