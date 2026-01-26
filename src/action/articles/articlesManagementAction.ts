@@ -1,14 +1,7 @@
 "use server"
 
 import { requireAuth } from "@/lib/auth"
-import {
-  getAllArticlesAction,
-  filterByTagAction,
-  getAllTagsAction,
-  createArticleAction,
-  deleteArticleAction,
-  getAllCategoriesAction,
-} from "@/service/articles.service"
+import { getAllArticlesAction, filterByTagAction, getAllTagsAction, createArticleAction, deleteArticleAction, getAllCategoriesAction, getArticleByIdAction, updateArticleAction, restoreArticleAction, approveArticleAction, rejectArticleAction } from "@/service/articles.service"
 
 export async function getAllArticles() {
   await requireAuth()
@@ -29,15 +22,31 @@ export async function filterByTagAndCategory(
   searchQuery: string,
   tagFilter?: string,
   categoryId?: number,
-  statusFilter?: string
+  statusFilter?: string,
+  isDeletedFilter?: boolean | 'all'
 ) {
   await requireAuth()
-  return filterByTagAction(searchQuery, tagFilter, categoryId, statusFilter)
+  return filterByTagAction(searchQuery, tagFilter, categoryId, statusFilter, isDeletedFilter)
 }
 
 export async function deleteArticle(id: number) {
   await requireAuth()
   return deleteArticleAction(id)
+}
+
+export async function restoreArticle(id: number) {
+  await requireAuth()
+  return restoreArticleAction(id)
+}
+
+export async function approveArticle(id: number) {
+  await requireAuth()
+  return approveArticleAction(id)
+}
+
+export async function rejectArticle(id: number) {
+  await requireAuth()
+  return rejectArticleAction(id)
 }
 
 export async function getAllCategories() {
@@ -49,31 +58,30 @@ export async function createArticle(formData: FormData) {
   try {
     // Lấy thông tin user hiện tại (đã authenticated)
     const currentUser = await requireAuth()
-    console.log("Current user:", currentUser)
-
-    const title = formData.get("title") as string
-    const content = formData.get("content") as string
-    const status = ((formData.get("status") as string) || "draft") as
-      | "draft"
-      | "pending"
-      | "published"
-    const tags = formData.get("tags") as string
-    const categoryIdRaw = formData.get("category_id") as string | null
+    console.log('Current user:', currentUser)
+    
+    const title = formData.get('title') as string
+    const content = formData.get('content') as string
+    const status = ((formData.get('status') as string) || 'draft') as 'draft' | 'pending' | 'published'
+    const tags = formData.get('tags') as string
+    const categoryIdRaw = formData.get('category_id') as string | null
     const category_id = categoryIdRaw ? parseInt(categoryIdRaw, 10) : null
+    const image_url = (formData.get('image_url') as string) || null
+    const thumbnail_url = (formData.get('thumbnail_url') as string) || null
 
-    console.log("Form data:", { title, content, status, tags, category_id })
+    console.log('Form data:', { title, content, status, tags, category_id, image_url, thumbnail_url })
 
     // Validate input
     if (!title || !content) {
-      return {
-        success: false,
-        message: "Title and content are required",
+      return { 
+        success: false, 
+        message: 'Title and content are required' 
       }
     }
 
     // Cast author_id sang số (bigint trong database)
     const authorId = parseInt(currentUser.id, 10)
-    console.log("Author ID:", authorId)
+    console.log('Author ID:', authorId)
 
     // Parse tags from JSON string
     let parsedTags: string[] = []
@@ -81,7 +89,7 @@ export async function createArticle(formData: FormData) {
       try {
         parsedTags = JSON.parse(tags)
       } catch (e) {
-        console.error("Error parsing tags:", e)
+        console.error('Error parsing tags:', e)
       }
     }
 
@@ -93,20 +101,85 @@ export async function createArticle(formData: FormData) {
       author_id: authorId,
       status,
       category_id,
+      image_url,
+      thumbnail_url
     })
 
-    console.log("Create article result:", result)
+    console.log('Create article result:', result)
     return result
+
   } catch (error: any) {
-    console.error("Error in createArticle action:", error)
-    console.error("Error details:", {
+    console.error('Error in createArticle action:', error)
+    console.error('Error details:', {
       message: error?.message,
       code: error?.code,
-      detail: error?.detail,
+      detail: error?.detail
     })
-    return {
-      success: false,
-      message: `Error: ${error?.message || "Failed to create article"}`,
+    return { 
+      success: false, 
+      message: `Error: ${error?.message || 'Failed to create article'}` 
+    }
+  }
+}
+
+export async function getArticleById(id: number) {
+  try {
+    await requireAuth()
+    return await getArticleByIdAction(id)
+  } catch (error: any) {
+    console.error('Error fetching article:', error)
+    return { 
+      success: false, 
+      message: error?.message || 'Failed to fetch article' 
+    }
+  }
+}
+
+export async function updateArticle(formData: FormData) {
+  try {
+    await requireAuth()
+    
+    const id = formData.get('id') as string
+    const title = formData.get('title') as string
+    const content = formData.get('content') as string
+    const tags = formData.get('tags') as string
+    const categoryIdRaw = formData.get('category_id') as string | null
+    const category_id = categoryIdRaw ? parseInt(categoryIdRaw, 10) : null
+    const image_url = (formData.get('image_url') as string) || null
+    const thumbnail_url = (formData.get('thumbnail_url') as string) || null
+
+    if (!title || !content) {
+      return { 
+        success: false, 
+        message: 'Title and content are required' 
+      }
+    }
+
+    let parsedTags: string[] = []
+    if (tags) {
+      try {
+        parsedTags = JSON.parse(tags)
+      } catch (e) {
+        console.error('Error parsing tags:', e)
+      }
+    }
+
+    const result = await updateArticleAction({
+      id: parseInt(id),
+      title,
+      content,
+      tags: parsedTags,
+      category_id,
+      image_url,
+      thumbnail_url
+    })
+
+    return result
+  } catch (error: any) {
+    console.error('Error in updateArticle action:', error)
+    return { 
+      success: false, 
+      message: error?.message || 'Failed to update article' 
     }
   }
 }

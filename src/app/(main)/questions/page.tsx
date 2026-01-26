@@ -1,4 +1,3 @@
-// List questions in Q&A Forum
 import PageWrapper from "@/components/ui/questions/page-wrapper"
 import Search from "@/components/ui/questions/search"
 import { CreateQuestion } from "@/components/ui/questions/create-button"
@@ -44,22 +43,23 @@ export default async function Page(props: {
     pageSize
   )
 
-  const questions = await fetchFilteredQuestions(
-    query,
-    category,
-    status,
-    sort,
-    currentPage,
-    pageSize
-  ) ?? []
-  
+  const questions =
+    (await fetchFilteredQuestions(
+      query,
+      category,
+      status,
+      sort,
+      currentPage,
+      pageSize
+    )) ?? []
+
   const noSearchResults = query !== "" && questions.length === 0
   const isEmpty = questions.length === 0
   const categories = await getActiveCategories()
 
   return (
     <PageWrapper>
-      <QuestionsNotification/>
+      <QuestionsNotification />
 
       <Flex align="center" gap={28} style={{ marginBottom: 24 }}>
         <Search placeholder="Search questions..." />

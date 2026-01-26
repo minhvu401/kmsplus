@@ -14,15 +14,9 @@ export default function Header() {
         <img src="/logo.png" alt="KMSPlus Logo" className="h-8 w-auto object-contain" />
         <div className="text-blue-600 font-bold text-lg">KMSPlus</div>
         <nav className="hidden md:flex gap-6 text-sm text-gray-600">
-          <a href="#" className="hover:text-blue-600">
-            Dashboard
-          </a>
-          <a href="#" className="hover:text-blue-600">
-            Questions
-          </a>
-          <a href="#" className="hover:text-blue-600">
-            Reports
-          </a>
+          <a href="#" className="hover:text-blue-600">Dashboard</a>
+          <a href="#" className="hover:text-blue-600">Questions</a>
+          <a href="#" className="hover:text-blue-600">Reports</a>
         </nav>
       </div>
 
@@ -35,5 +29,5 @@ export default function Header() {
         <div className="w-8 h-8 rounded-full bg-gray-300"></div>
       </div>
     </header>
-  )
+  );
 }
