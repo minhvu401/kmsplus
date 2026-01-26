@@ -1,14 +1,142 @@
-import { getQuizDetailsAction } from "@/service/quiz.service";
-import QuizDetails from "@/components/ui/quizzes/quiz-details";
-import PageWrapper from "@/components/ui/questions/page-wrapper";
+"use client"
 
-export default async function Page({
-    params
-}: {
-    params: { id: string };
-}) {
-    const id = params.id;
-    const quiz = await getQuizDetailsAction(Number(id));
+import { useEffect, useState } from "react"
+import { useParams, useRouter } from "next/navigation"
+import {
+  Button,
+  Card,
+  Descriptions,
+  Spin,
+  message,
+  Tag,
+  Empty,
+  Table,
+  Divider,
+} from "antd"
+import {
+  ArrowLeftOutlined,
+  EditOutlined,
+  ClockCircleOutlined,
+  TrophyOutlined,
+  ReloadOutlined,
+  FileTextOutlined,
+} from "@ant-design/icons"
+import { getQuizById, getQuizQuestions } from "@/action/quiz/quizActions"
+import EditQuizModal from "../components/EditQuizModal"
+
+interface Quiz {
+  id: number
+  course_id: number
+  title: string
+  description: string | null
+  time_limit_minutes: number | null
+  passing_score: number
+  max_attempts: number
+  available_from: Date | null
+  available_until: Date | null
+  created_at: Date
+  updated_at: Date
+}
+
+interface QuizQuestion {
+  quiz_question_id: number
+  question_id: number
+  question_text: string
+  type: string
+  question_order: number
+  explanation: string | null
+}
+
+export default function QuizDetailPage() {
+  const params = useParams()
+  const router = useRouter()
+  const quizId = Number(params.id)
+
+  const [quiz, setQuiz] = useState<Quiz | null>(null)
+  const [questions, setQuestions] = useState<QuizQuestion[]>([])
+  const [loading, setLoading] = useState(true)
+  const [isEditModalVisible, setIsEditModalVisible] = useState(false)
+
+  useEffect(() => {
+    loadQuizDetail()
+  }, [quizId])
+
+  const loadQuizDetail = async () => {
+    if (!quizId) return
+
+    setLoading(true)
+    try {
+      const [quizData, questionsData] = await Promise.all([
+        getQuizById(quizId),
+        getQuizQuestions(quizId),
+      ])
+
+      if (quizData) {
+        setQuiz(quizData)
+        setQuestions(questionsData as QuizQuestion[])
+      } else {
+        message.error("Không tìm thấy bài thi")
+      }
+    } catch (error) {
+      console.error("Failed to load quiz:", error)
+      message.error("Không thể tải thông tin bài thi")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const formatDate = (date: Date | null) => {
+    if (!date) return "Không xác định"
+    return new Date(date).toLocaleString("vi-VN")
+  }
+
+  const questionColumns = [
+    {
+      title: "STT",
+      dataIndex: "question_order",
+      key: "question_order",
+      width: "8%",
+      render: (_: any, __: any, index: number) => index + 1,
+    },
+    {
+      title: "Câu Hỏi",
+      dataIndex: "question_text",
+      key: "question_text",
+      width: "55%",
+    },
+    {
+      title: "Loại",
+      dataIndex: "type",
+      key: "type",
+      width: "15%",
+      render: (type: string) => (
+        <Tag color={type === "single_choice" ? "blue" : "green"}>
+          {type === "single_choice" ? "Một đáp án" : "Nhiều đáp án"}
+        </Tag>
+      ),
+    },
+    {
+      title: "Giải thích",
+      dataIndex: "explanation",
+      key: "explanation",
+      width: "22%",
+      render: (text: string | null) => (
+        <span className="text-gray-500 text-sm">{text || "Không có"}</span>
+      ),
+    },
+  ]
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-96">
+        <Spin size="large" tip="Đang tải...">
+          <div className="p-12" />
+        </Spin>
+      </div>
+    )
+  }
+
+  if (!quiz) {
     return (
       <div className="p-6">
         <Empty description="Không tìm thấy bài thi">
@@ -113,7 +241,10 @@ export default async function Page({
         {questions.length > 0 ? (
           <Table
             columns={questionColumns}
-            dataSource={questions.map((q, index) => ({ ...q, key: q.quiz_question_id || index }))}
+            dataSource={questions.map((q, index) => ({
+              ...q,
+              key: q.quiz_question_id || index,
+            }))}
             pagination={questions.length > 10 ? { pageSize: 10 } : false}
             size="small"
           />

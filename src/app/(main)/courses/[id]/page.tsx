@@ -1,13 +1,23 @@
-"use server"
+/**
+ * Course Detail Page
+ * @/(main)/courses/[id]
+ */
 
 import type { Metadata } from "next"
 import { notFound } from "next/navigation"
+import CourseCurriculum from "@/app/(main)/courses/components/CourseCurriculum"
+import EnrollButton from "../components/EnrollButton"
+import { checkEnrollmentStatus } from "@/action/enrollment/enrollmentAction"
+import { getCurrentUser } from "@/lib/auth"
+
 import {
   getCourseByIdAction,
   getAllCoursesAction,
 } from "@/service/course.service"
 import type { Course } from "@/service/course.service"
 import Link from "next/link"
+import { Button, Tabs, Card, Image, Progress } from "antd"
+import { PlayCircleOutlined, UserOutlined } from "@ant-design/icons" // Đã có PlayCircleOutlined ở đây
 
 type Props = {
   params: Promise<{ id: string }>
@@ -15,31 +25,48 @@ type Props = {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params
-  const numId = Number(id)
-  if (!numId || Number.isNaN(numId)) return { title: "Course" }
-  const course = await getCourseByIdAction(numId)
-  return { title: course ? course.title : "Course" }
+  const courseId = Number(id)
+  if (isNaN(courseId)) {
+    return { title: "Invalid Course" }
+  }
+  const course = await getCourseByIdAction(courseId)
+  return {
+    title: course?.title || "Course Details",
+  }
 }
 
 export default async function CourseDetailPage({ params }: Props) {
   const { id } = await params
-  const numId = Number(id)
-  if (!numId || Number.isNaN(numId)) return notFound()
+  const courseId = Number(id)
 
-  // Fetch course from DB (server-side). Using service directly to read from Neon.
-  const course: Course | null = await getCourseByIdAction(numId)
-  if (!course) return notFound()
+  if (isNaN(courseId)) {
+    notFound()
+  }
 
-  // Optional: fetch related courses for the bottom section
-  const related =
-    (await getAllCoursesAction({ page: 1, limit: 6 })).courses || []
+  // 1. Lấy thông tin người dùng hiện tại
+  const user = await getCurrentUser()
+
+  // 2. Fetch dữ liệu song song (Tối ưu hiệu năng)
+  const [course, enrollment, coursesRes] = await Promise.all([
+    getCourseByIdAction(courseId),
+    // ✅ FIX LỖI 3: Khai báo và gán giá trị cho biến enrollment ở đây
+    user ? checkEnrollmentStatus(courseId, Number(user.id)) : null,
+    getAllCoursesAction({ limit: 6, page: 1, sort: "newest" }),
+  ])
+
+  if (!course) {
+    notFound()
+  }
+
+  const related = (coursesRes?.courses || [])
+    .filter((c) => c.id !== courseId)
+    .slice(0, 5)
 
   return (
     <main className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           <div className="lg:col-span-3">
-            {/* Header: title, meta, thumbnail/video */}
             <div className="bg-white p-6 rounded shadow">
               <h1 className="text-2xl font-bold">{course.title}</h1>
               <div className="mt-2 text-sm text-gray-600 flex items-center gap-4">
@@ -56,7 +83,6 @@ export default async function CourseDetailPage({ params }: Props) {
 
               <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="md:col-span-2">
-                  {/* Thumbnail or video preview */}
                   {course.thumbnail_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
@@ -72,87 +98,121 @@ export default async function CourseDetailPage({ params }: Props) {
                 </div>
 
                 <aside className="bg-gray-50 p-4 rounded">
-                  <div className="text-xl font-semibold">
-                    {course.status === "published" ? "$99" : "$0"}
+                  <div className="text-sm text-gray-600 mt-2 mb-4">
+                    Course Duration: {course.duration_hours ?? "0"} hours
                   </div>
-                  <div className="text-sm text-gray-600 mt-2">
-                    Course Duration: {course.duration_hours ?? "-"} hours
-                  </div>
-                  <div className="mt-4">
-                    <button className="w-full px-4 py-2 bg-sky-600 text-white rounded">
-                      Add To Cart
-                    </button>
-                    <button className="w-full px-4 py-2 mt-2 border rounded">
-                      Buy Now
-                    </button>
-                  </div>
+
+                  {/* ✅ LOGIC HIỂN THỊ NÚT: Đã có biến enrollment để kiểm tra */}
+                  {enrollment ? (
+                    <div className="space-y-4">
+                      <div className="flex justify-between text-sm font-bold">
+                        <span className="text-gray-600">Your Progress</span>
+                        <span className="text-blue-600">
+                          {/* Dùng progress_percentage từ DB của bạn */}
+                          {Number(enrollment.progress_percentage)}%
+                        </span>
+                      </div>
+                      <Progress
+                        percent={Number(enrollment.progress_percentage)}
+                        showInfo={false}
+                        strokeColor="#22c55e"
+                        status="active"
+                      />
+                      <Link href={`/courses/${id}/learning`}>
+                        <Button
+                          type="primary"
+                          size="large"
+                          block
+                          className="bg-blue-600 h-12 font-bold text-lg"
+                        >
+                          <PlayCircleOutlined /> Continue Learning
+                        </Button>
+                      </Link>
+                    </div>
+                  ) : (
+                    <EnrollButton
+                      courseId={courseId}
+                      courseTitle={course.title}
+                    />
+                  )}
                 </aside>
               </div>
 
-              {/* Tabs: Overview / Curriculum / Instructor / Review */}
               <div className="mt-6 border-t pt-4">
-                <nav className="flex gap-4 text-sm text-gray-600">
-                  <a className="px-3 py-2 border-b-2 border-sky-600">
-                    Overview
-                  </a>
-                  <a className="px-3 py-2">Curriculum</a>
-                  <a className="px-3 py-2">Instructor</a>
-                  <a className="px-3 py-2">Review</a>
-                </nav>
-
-                {/* Overview content */}
-                <section className="mt-6">
-                  <h2 className="text-lg font-semibold mb-2">Description</h2>
-                  <p className="text-gray-700 whitespace-pre-line">
-                    {course.description ?? "No description provided."}
-                  </p>
-                </section>
-
-                {/* Curriculum placeholder */}
-                <section className="mt-8">
-                  <h3 className="text-lg font-semibold mb-2">Curriculum</h3>
-                  <div className="bg-white p-4 rounded shadow">
-                    <p className="text-sm text-gray-600">
-                      Curriculum items coming from DB — implement course
-                      sections/lectures table and query them to display real
-                      data.
-                    </p>
-                  </div>
-                </section>
-
-                {/* Instructors placeholder */}
-                <section className="mt-8">
-                  <h3 className="text-lg font-semibold mb-2">
-                    Course instructor
-                  </h3>
-                  <div className="bg-white p-4 rounded shadow">
-                    <p className="text-sm text-gray-600">
-                      Instructor info not yet modeled in DB — currently showing
-                      creator id #{course.creator_id}.
-                    </p>
-                  </div>
-                </section>
-
-                {/* Reviews placeholder */}
-                <section className="mt-8">
-                  <h3 className="text-lg font-semibold mb-2">
-                    Students Feedback
-                  </h3>
-                  <div className="space-y-4">
-                    <div className="bg-white p-4 rounded shadow">
-                      No reviews yet.
-                    </div>
-                  </div>
-                </section>
+                <Tabs
+                  defaultActiveKey="1"
+                  items={[
+                    {
+                      key: "1",
+                      label: "Overview",
+                      children: (
+                        <section>
+                          <h2 className="text-lg font-semibold mb-2">
+                            Description
+                          </h2>
+                          <p className="text-gray-700 whitespace-pre-line">
+                            {course.description ?? "No description provided."}
+                          </p>
+                        </section>
+                      ),
+                    },
+                    {
+                      key: "2",
+                      label: "Curriculum",
+                      children: (
+                        <section>
+                          <h3 className="text-lg font-semibold mb-4 text-gray-800">
+                            Nội dung khóa học
+                          </h3>
+                          <CourseCurriculum
+                            sections={(course as any).curriculum || []}
+                          />
+                        </section>
+                      ),
+                    },
+                    {
+                      key: "3",
+                      label: "Instructor",
+                      children: (
+                        <section>
+                          <h3 className="text-lg font-semibold mb-2">
+                            Course instructor
+                          </h3>
+                          <Card>
+                            <p className="text-sm text-gray-600">
+                              Creator id #{course.creator_id}.
+                            </p>
+                          </Card>
+                        </section>
+                      ),
+                    },
+                    {
+                      key: "4",
+                      label: "Review",
+                      children: (
+                        <section>
+                          <h3 className="text-lg font-semibold mb-2">
+                            Students Feedback
+                          </h3>
+                          <div className="space-y-4">
+                            <Card>No reviews yet.</Card>
+                          </div>
+                        </section>
+                      ),
+                    },
+                  ]}
+                />
               </div>
             </div>
           </div>
 
-          {/* Related / right column for smaller screens we already show price box inside header */}
           <div className="lg:col-span-1">
             <div className="bg-white p-4 rounded shadow">
               <h4 className="font-semibold">Related Courses</h4>
               <div className="mt-3 space-y-3">
+                {related.length === 0 && (
+                  <p className="text-gray-400 text-sm">No related courses.</p>
+                )}
                 {related.map((r) => (
                   <Link
                     key={r.id}
