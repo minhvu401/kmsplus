@@ -8,34 +8,33 @@ type Category = {
     name: string;
 }
 
-const { Text } = Typography;
+const { Text } = Typography
 
-//------------------------------- CATEGORY FILTER ---------------------------------
 export function FilterCategory({ categories }: { categories: Category[] }) {
-    const searchParams = useSearchParams();
-    const pathname = usePathname();
-    const { replace } = useRouter();
+  const searchParams = useSearchParams()
+  const pathname = usePathname()
+  const { replace } = useRouter()
 
-    const currentCategory = searchParams.get('category') || 'any';
-    const [selected, setSelected] = useState(currentCategory);
+  const currentCategory = searchParams.get("category") || "any"
+  const [selected, setSelected] = useState(currentCategory)
 
-    useEffect(() => {
-        setSelected(currentCategory);
-    }, [currentCategory]);
+  useEffect(() => {
+    setSelected(currentCategory)
+  }, [currentCategory])
 
-    const handleChange = (value: string) => {
-        const params = new URLSearchParams(searchParams);
-        params.set('page', '1');
+  const handleChange = (value: string) => {
+    const params = new URLSearchParams(searchParams)
+    params.set("page", "1")
 
-        if (value === 'any') {
-            params.delete('category');
-        } else {
-            params.set('category', value);
-        }
+    if (value === "any") {
+      params.delete("category")
+    } else {
+      params.set("category", value)
+    }
 
-        replace(`${pathname}?${params.toString()}`);
-        setSelected(value);
-    };
+    replace(`${pathname}?${params.toString()}`)
+    setSelected(value)
+  }
 
     return (
         <Flex align="center" gap={8}>
@@ -54,37 +53,39 @@ export function FilterCategory({ categories }: { categories: Category[] }) {
     );
 }
 
-// -------------------- STATUS FILTER --------------------
 export function FilterStatus() {
-  const searchParams = useSearchParams();
-  const pathname = usePathname();
-  const { replace } = useRouter();
+  const searchParams = useSearchParams()
+  const pathname = usePathname()
+  const { replace } = useRouter()
 
-  const currentStatus = searchParams.get('status') || 'any';
-  const [selected, setSelected] = useState(currentStatus);
+  const currentStatus = searchParams.get("status") || "any"
+  const [selected, setSelected] = useState(currentStatus)
 
   useEffect(() => {
-    setSelected(currentStatus);
-  }, [currentStatus]);
+    setSelected(currentStatus)
+  }, [currentStatus])
 
   const handleChange = (value: string) => {
-    const params = new URLSearchParams(searchParams);
-    params.set('page', '1');
+    const params = new URLSearchParams(searchParams)
+    params.set("page", "1")
 
-    if (value === 'any') {
-      params.delete('status');
+    if (value === "any") {
+      params.delete("status")
     } else {
-      params.set('status', value);
+      params.set("status", value)
     }
 
-    replace(`${pathname}?${params.toString()}`);
-    setSelected(value);
-  };
+    replace(`${pathname}?${params.toString()}`)
+    setSelected(value)
+  }
 
   return (
-    <Flex align="center" gap={8}>
-      <Text strong>Status:</Text>
-      <Select
+    <div className="flex items-center gap-2">
+      <label htmlFor="status" className="text-sm font-medium text-gray-700">
+        Status:
+      </label>
+      <select
+        id="status"
         value={selected}
         onChange={handleChange}
         style={{ width: 160 }}
@@ -99,32 +100,34 @@ export function FilterStatus() {
   );
 }
 
-// -------------------- SORT FILTER --------------------
-export function QuestionsSortBy() {
-  const searchParams = useSearchParams();
-  const pathname = usePathname();
-  const { replace } = useRouter();
+export function SortBy() {
+  const searchParams = useSearchParams()
+  const pathname = usePathname()
+  const { replace } = useRouter()
 
-  const currentSortCondition = searchParams.get('sort') || 'newest';
-  const [selected, setSelected] = useState(currentSortCondition);
+  const currentSortCondition = searchParams.get("sort") || "newest"
+  const [selected, setSelected] = useState(currentSortCondition)
 
   useEffect(() => {
-    setSelected(currentSortCondition);
-  }, [currentSortCondition]);
+    setSelected(currentSortCondition)
+  }, [currentSortCondition])
 
   const handleChange = (value: string) => {
-    const params = new URLSearchParams(searchParams);
-    params.set('page', '1');
-    params.set('sort', value);
+    const params = new URLSearchParams(searchParams)
+    params.set("page", "1")
+    params.set("sort", value)
 
-    replace(`${pathname}?${params.toString()}`);
-    setSelected(value);
-  };
+    replace(`${pathname}?${params.toString()}`)
+    setSelected(value)
+  }
 
   return (
-    <Flex align="center" gap={8}>
-      <Text strong>Sort by:</Text>
-      <Select
+    <div className="flex items-center gap-2">
+      <label htmlFor="sort" className="text-sm font-medium text-gray-700">
+        Sort by:
+      </label>
+      <select
+        id="sort"
         value={selected}
         onChange={handleChange}
         style={{ width: 180 }}

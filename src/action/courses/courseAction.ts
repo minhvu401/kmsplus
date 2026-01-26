@@ -1,17 +1,23 @@
-//Course Action
+// src/action/courses/courseAction.ts
+// This file contains server actions for course management
+
 "use server"
 
 import { requireAuth } from "@/lib/auth"
+import { CourseStatus } from "@/enum/course-status.enum"
 import {
   getAllCoursesAction,
   getCourseByIdAction,
   createCourseAction,
-  updateCourseAction,
+  updateFullCourseAction,
   deleteCourseAction,
+  approveCourseAction,
+  // 👇 Import Type để code an toàn hơn
+  type CreateCoursePayload,
 } from "@/service/course.service"
 import { revalidatePath } from "next/cache"
-import { redirect } from "next/navigation"
 
+// --- TYPES ---
 type GetAllCoursesParams = {
   query?: string
   page?: number
@@ -33,62 +39,61 @@ export async function getAllCourses(params: GetAllCoursesParams) {
   return getAllCoursesAction(params)
 }
 
-/**
- * Lấy chi tiết một khóa học theo ID.
- * - Tham số: id (number)
- * - Trả về Course | null
- * - Yêu cầu xác thực (requireAuth)
- */
 export async function getCourseById(id: number) {
   await requireAuth()
   return getCourseByIdAction(id)
 }
 
+// --- MUTATION ACTIONS ---
+
 /**
- * Tạo mới một khóa học từ FormData gửi lên.
- * - FormData expected fields: creator_id, title, slug, description, thumbnail_url, status, duration_hours
- * - Kiểm tra các trường bắt buộc và chuyển đổi kiểu
- * - Sau khi tạo xong sẽ revalidate /courses và redirect về /courses
- +* - Yêu cầu xác thực (requireAuth)
+ * Xóa mềm (Soft Delete)
  */
-export async function createCourse(formData: FormData) {
-  await requireAuth()
+// export async function deleteCourseAPI(courseId: number) {
+//   try {
+//     const user = await requireAuth()
+//     if (!user) throw new Error("Unauthorized")
 
-  const creator_id = Number(formData.get("creator_id"))
-  const title = (formData.get("title") as string) || ""
-  const slug = (formData.get("slug") as string) || ""
-  const description = (formData.get("description") as string) || undefined
-  const thumbnail_url = (formData.get("thumbnail_url") as string) || undefined
-  const status = (formData.get("status") as string) || "draft"
-  let duration_hours: number | undefined = Number(
-    formData.get("duration_hours")
-  )
-  if (isNaN(duration_hours)) duration_hours = undefined
-
-  if (!creator_id || !title || !slug) {
-    throw new Error("Missing required fields: creator_id, title, slug")
+//     console.log("Deleting course (Soft Delete):", courseId)
+//     return await deleteCourseAction(courseId)
+//   } catch (error) {
+//     console.error("Delete error:", error)
+//     return {
+//       success: false,
+//       error: error instanceof Error ? error.message : "Failed to delete course",
+//     }
+//   }
+// }
+export async function deleteCourseAPI(courseId: number) {
+  try {
+    const user = await requireAuth()
+    if (!user) throw new Error("Unauthorized")
+    console.log("🔥 [API] Deleting course (Soft Delete):", courseId)
+    // 1. Gọi Service (Service của bạn đang trả về { success: true/false, ... })
+    const result = await deleteCourseAction(courseId)
+    // 2. Kiểm tra: Nếu Service báo thành công thì mới Revalidate
+    // (Lưu ý: Service của bạn dùng try/catch nên nó không throw error ra ngoài mà trả về object)
+    if (result.success) {
+      // 👇 DÒNG QUAN TRỌNG BỊ THIẾU
+      revalidatePath("/courses/manage")
+      revalidatePath("/courses")
+      return { success: true }
+    } else {
+      // Nếu Service báo lỗi (success: false)
+      return { success: false, error: result.error || "Failed to delete" }
+    }
+  } catch (error) {
+    console.error("Delete error:", error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to delete course",
+    }
   }
-
-  await createCourseAction({
-    creator_id,
-    title,
-    slug,
-    description,
-    thumbnail_url,
-    status,
-    duration_hours,
-  })
-
-  revalidatePath("/courses")
-  redirect("/courses")
 }
 
 /**
- * Cập nhật một khóa học từ FormData gửi lên.
- * - FormData expected fields: id, title, slug, description, thumbnail_url, status, duration_hours
- * - Nếu duration_hours không hợp lệ (NaN) sẽ bỏ qua
- * - Sau khi cập nhật sẽ revalidate các path liên quan và redirect về /courses
- * - Yêu cầu xác thực (requireAuth)
+ * Tạo khóa học mới (JSON Payload)
+ * Sử dụng Omit để không yêu cầu creator_id từ Client
  */
 export async function createCourseAPI(
   data: Omit<CreateCoursePayload, "creator_id">
