@@ -4,9 +4,8 @@ import { useState, useEffect } from "react"
 import { Typography } from "antd"
 import { Category } from "@/service/question.service"
 
-const { Text } = Typography;
+const { Text } = Typography
 
-//------------------------------- CATEGORY FILTER ---------------------------------
 export function FilterCategory({ categories }: { categories: Category[] }) {
   const searchParams = useSearchParams()
   const pathname = usePathname()
@@ -55,7 +54,6 @@ export function FilterCategory({ categories }: { categories: Category[] }) {
   )
 }
 
-// -------------------- STATUS FILTER --------------------
 export function FilterStatus() {
   const searchParams = useSearchParams()
   const pathname = usePathname()
@@ -70,7 +68,7 @@ export function FilterStatus() {
 
   const handleChange = (value: string) => {
     const params = new URLSearchParams(searchParams)
-    params.set("page", "1") // reset pagination
+    params.set("page", "1")
 
     if (value === "any") {
       params.delete("status")
@@ -121,8 +119,7 @@ export function SortBy() {
 
   const handleChange = (value: string) => {
     const params = new URLSearchParams(searchParams)
-    params.set("page", "1") // reset pagination
-
+    params.set("page", "1")
     params.set("sort", value)
 
     replace(`${pathname}?${params.toString()}`)

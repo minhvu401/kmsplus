@@ -36,7 +36,7 @@ export async function loginAction(
 
   const { email, password } = parsed.data
 
-  // Kiểm tra user tồn tại và lấy role
+  // Kiểm tra user tồn tại
   const users = await sql`
     SELECT 
       u.id, 
@@ -77,14 +77,10 @@ export async function loginAction(
     }
   }
 
-  // Tạo token (kèm role)
-  const userRole = user.role_name || "EMPLOYEE" // Default là EMPLOYEE nếu không có role
-  console.log(`[LOGIN] User: ${user.email}, Role: ${userRole}`)
-
+  // Tạo token
   const token = await signToken({
     id: user.id,
     email: user.email,
-    role: userRole,
   })
 
   // Set cookie

@@ -1,10 +1,6 @@
 import { Role } from "@/enum/role.enum"
 import { Permission } from "@/enum/permission.enum"
 
-/**
- * Mapping quyền cho từng role
- * Dựa trên bảng role_permissions trong database
- */
 export const rolePermissionsMap: Record<Role, Permission[]> = {
   [Role.EMPLOYEE]: [
     Permission.READ_ARTICLE,
@@ -61,9 +57,6 @@ export const rolePermissionsMap: Record<Role, Permission[]> = {
   ],
 }
 
-/**
- * Kiểm tra user có role được cấp không
- */
 export function hasRole(
   userRole: Role | undefined,
   requiredRole: Role
@@ -71,9 +64,6 @@ export function hasRole(
   return userRole === requiredRole
 }
 
-/**
- * Kiểm tra user có quyền được cấp không
- */
 export function hasPermission(
   userRole: Role | undefined,
   requiredPermission: Permission
@@ -83,9 +73,6 @@ export function hasPermission(
   return permissions.includes(requiredPermission)
 }
 
-/**
- * Kiểm tra user có tất cả quyền được cấp không
- */
 export function hasAllPermissions(
   userRole: Role | undefined,
   requiredPermissions: Permission[]
@@ -97,9 +84,6 @@ export function hasAllPermissions(
   )
 }
 
-/**
- * Kiểm tra user có ít nhất một trong các quyền được cấp không
- */
 export function hasAnyPermission(
   userRole: Role | undefined,
   requiredPermissions: Permission[]

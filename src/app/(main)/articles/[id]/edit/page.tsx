@@ -1,38 +1,44 @@
 'use client';
 
 import { useState, useEffect, useRef, type KeyboardEvent, type ClipboardEvent } from 'react';
-import { Form, Select, Button, Card, Space, Flex, Typography, Divider, message } from 'antd';
+import { useRouter, useParams } from 'next/navigation';
+import { Form, Select, Button, Card, Space, Flex, Typography, Divider, message, Modal, Spin } from 'antd';
 import {
-  CloseOutlined,
   SendOutlined,
   BoldOutlined,
   ItalicOutlined,
   UnderlineOutlined,
   UnorderedListOutlined,
   OrderedListOutlined,
+  CloseOutlined,
 } from '@ant-design/icons';
-import { useRouter } from 'next/navigation';
-import { getAllTags, createArticle, getAllCategories } from '@/action/articles/articlesManagementAction';
+import { getAllTags, getAllCategories } from '@/action/articles/articlesManagementAction';
+import { getArticleById, updateArticle } from '@/action/articles/articlesManagementAction';
 import type { Tag } from '@/service/articles.service';
-import './editor.css';
+import '../../create/editor.css';
 
 const { Title, Text } = Typography;
 
-export default function CreateArticlePage() {
+export default function EditArticlePage() {
+  const router = useRouter();
+  const params = useParams();
+  const articleId = params.id as string;
+
   const [form] = Form.useForm();
   const [titleContent, setTitleContent] = useState('');
   const [contentValue, setContentValue] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [tags, setTags] = useState<Tag[]>([]);
   const [categories, setCategories] = useState<{ id: number; name: string }[]>([]);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [loadingTags, setLoadingTags] = useState(false);
   const [loadingCategories, setLoadingCategories] = useState(false);
-  const [submitStatus, setSubmitStatus] = useState<'draft' | 'published'>('published');
+  const [showConfirm, setShowConfirm] = useState(false);
   const titleEditorRef = useRef<HTMLDivElement>(null);
   const contentEditorRef = useRef<HTMLDivElement>(null);
   const savedSelectionRef = useRef<Range | null>(null);
-  const router = useRouter();
+  const pendingValuesRef = useRef<any>(null);
 
   const saveSelection = () => {
     const selection = window.getSelection();
@@ -55,23 +61,23 @@ export default function CreateArticlePage() {
     }
   };
 
-  const focusEditor = (editorRef: React.RefObject<HTMLDivElement>) => {
+  const focusEditor = (editorRef: React.RefObject<HTMLDivElement | null>) => {
     editorRef.current?.focus({ preventScroll: true });
   };
 
-  const applyFormat = (command: string, editorRef: React.RefObject<HTMLDivElement>) => {
+  const applyFormat = (command: string, editorRef: React.RefObject<HTMLDivElement | null>) => {
     restoreSelection();
     document.execCommand(command, false);
     focusEditor(editorRef);
   };
 
-  const applyHeading = (level: string, editorRef: React.RefObject<HTMLDivElement>) => {
+  const applyHeading = (level: string, editorRef: React.RefObject<HTMLDivElement | null>) => {
     restoreSelection();
     document.execCommand('formatBlock', false, level);
     focusEditor(editorRef);
   };
 
-  const applyQuote = (editorRef: React.RefObject<HTMLDivElement>) => {
+  const applyQuote = (editorRef: React.RefObject<HTMLDivElement | null>) => {
     restoreSelection();
     document.execCommand('formatBlock', false, '<blockquote>');
     focusEditor(editorRef);
@@ -107,86 +113,102 @@ export default function CreateArticlePage() {
     saveSelection();
   };
 
-  // Load tags & categories từ database khi component mount
+  // Load article data
   useEffect(() => {
     (async () => {
-      setLoadingTags(true);
-      setLoadingCategories(true);
+      setLoading(true);
       try {
-        const [tagsRes, categoriesRes] = await Promise.all([
+        const [articleRes, tagsRes, categoriesRes] = await Promise.all([
+          getArticleById(parseInt(articleId)),
           getAllTags(),
           getAllCategories(),
         ]);
+
+        if (!articleRes.success || !('data' in articleRes) || !articleRes.data) {
+          message.error('Failed to load article');
+          router.push('/articles/management');
+          return;
+        }
+
+        const article = articleRes.data;
+        setTitleContent(article.title);
+        setContentValue(article.content);
+        setSelectedTags(article.tags || []);
         setTags(tagsRes || []);
         setCategories(categoriesRes || []);
+
+        form.setFieldsValue({
+          title: article.title,
+          content: article.content,
+          categoryId: article.category_id,
+          tags: article.tags,
+        });
+
+        // Set editor content
+        if (titleEditorRef.current) {
+          titleEditorRef.current.innerText = article.title;
+        }
+        if (contentEditorRef.current) {
+          contentEditorRef.current.innerHTML = article.content;
+        }
       } catch (err: any) {
-        console.error('Error loading tags/categories:', err);
-        message.error('Failed to load tags or categories');
-        setTags([]);
-        setCategories([]);
+        console.error('Error loading article:', err);
+        message.error('Failed to load article');
+        router.push('/articles/management');
       } finally {
-        setLoadingTags(false);
-        setLoadingCategories(false);
+        setLoading(false);
       }
     })();
-  }, []);
+  }, [articleId, form, router]);
 
   const handleSubmit = async (values: any) => {
-    console.log('Form values:', values);
-    setLoading(true);
-    
+    pendingValuesRef.current = values;
+    setShowConfirm(true);
+  };
+
+  const handleConfirmUpdate = async () => {
+    const values = pendingValuesRef.current;
+    setShowConfirm(false);
+    setSubmitting(true);
+
     try {
-      // Tạo FormData để gửi lên server
       const formData = new FormData();
+      formData.append('id', articleId);
       formData.append('title', titleContent);
       formData.append('content', contentValue);
-      formData.append('status', submitStatus);
-      formData.append('tags', JSON.stringify(selectedTags));
       formData.append('category_id', values?.categoryId ? String(values.categoryId) : '');
+      formData.append('tags', JSON.stringify(selectedTags));
 
-      console.log('Sending data:', {
-        title: titleContent,
-        content: contentValue,
-        status: submitStatus,
-        tags: selectedTags,
-        category_id: values?.categoryId ?? null,
-      });
-
-      // Gọi server action
-      const result = await createArticle(formData);
-      
-      console.log('Create article result:', result);
+      const result = await updateArticle(formData);
 
       if (result.success) {
-        message.success(result.message || 'Article created successfully!');
-        setTitleContent('');
-        setContentValue('');
-        setSelectedTags([]);
-        form.resetFields();
-        setSubmitStatus('published');
-        
-        // Redirect về trang management sau 1 giây
-        setTimeout(() => {
-          router.push('/articles/management');
-        }, 1000);
+        message.success(result.message || 'Article updated successfully!');
+        router.push('/articles/management');
       } else {
-        console.error('Failed to create article:', result.message);
-        message.error(result.message || 'Failed to create article');
+        message.error(result.message || 'Failed to update article');
       }
     } catch (error: any) {
-      console.error('Error creating article:', error);
+      console.error('Error updating article:', error);
       message.error(error?.message || 'An error occurred');
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
+
+  if (loading) {
+    return (
+      <Flex vertical className="flex-1 justify-center items-center">
+        <Spin size="large" tip="Loading article..." />
+      </Flex>
+    );
+  }
 
   return (
     <Flex vertical className="flex-1">
       <main className="flex-1 overflow-auto px-8 py-6">
         <Card className="max-w-4xl mx-auto">
           <Title level={2} className="!mb-6">
-            Create An Article
+            Edit Article
           </Title>
 
           <Form
@@ -269,7 +291,7 @@ export default function CreateArticlePage() {
                       { label: 'H3', value: 'h3' },
                     ]}
                     onChange={(value) => applyHeading(`<${value}>`, contentEditorRef)}
-                    dropdownMatchSelectWidth={false}
+                    popupMatchSelectWidth={false}
                   />
                   <Button 
                     type="text" 
@@ -392,35 +414,19 @@ export default function CreateArticlePage() {
               <Flex justify="flex-end" gap="middle" className="pt-4">
                 <Button
                   size="large"
-                  icon={<SendOutlined />}
-                  onClick={() => setSubmitStatus('draft')}
-                  htmlType="submit"
-                  loading={loading}
-                >
-                  Save Draft
-                </Button>
-                <Button
-                  size="large"
                   danger
                   icon={<CloseOutlined />}
-                  onClick={() => {
-                    form.resetFields();
-                    setTitleContent('');
-                    setContentValue('');
-                    setSelectedTags([]);
-                    setSubmitStatus('published');
-                  }}
-                  disabled={loading}
+                  onClick={() => router.push('/articles/management')}
+                  disabled={submitting}
                 >
-                  Leave
+                  Cancel
                 </Button>
                 <Button
                   type="primary"
                   htmlType="submit"
                   size="large"
                   icon={<SendOutlined />}
-                  onClick={() => setSubmitStatus('published')}
-                  loading={loading}
+                  loading={submitting}
                 >
                   Post
                 </Button>
@@ -429,6 +435,19 @@ export default function CreateArticlePage() {
           </Form>
         </Card>
       </main>
+
+      {/* Confirmation Modal */}
+      <Modal
+        title="Confirm Update"
+        open={showConfirm}
+        onOk={handleConfirmUpdate}
+        onCancel={() => setShowConfirm(false)}
+        okText="Post"
+        cancelText="Cancel"
+        okButtonProps={{ loading: submitting }}
+      >
+        <Text>Are you sure you want to post this updated article?</Text>
+      </Modal>
 
       {/* Footer */}
       <footer className="bg-white border-t px-8 py-4">
