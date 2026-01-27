@@ -1,3 +1,4 @@
+'use client'
 import PageWrapper from "@/components/ui/questions/page-wrapper";
 import { getAttemptResultAction } from "@/service/quiz.service";
 import QuizResult from "@/components/ui/quizzes/quiz-result";
@@ -5,11 +6,10 @@ import QuizResult from "@/components/ui/quizzes/quiz-result";
 export default async function Page({
     params
 }: {
-  params: Promise<{ id: string }>;
+    params: Promise<{ id: string }>;
 }) {
 
-    const { id } = await params;
-    const attemptId = Number(id);
+    const attemptId = Number((await params).id);
     const result = await getAttemptResultAction(attemptId);
 
     return (

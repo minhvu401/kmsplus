@@ -1,23 +1,22 @@
-"use client"
+'use client';
 
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect } from 'react';
 // Import các icon cho thanh toolbar
-import { Bold, Italic, Underline, List } from "lucide-react"
+import { Bold, Italic, Underline, List } from 'lucide-react';
 
 // Giả lập dữ liệu bài viết được fetch về
 const fetchedArticle = {
   title: "Tại sao Trái đất chỉ có 70% là nước?",
-  content:
-    "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit...",
+  content: "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit...",
   category: "Fun Fact",
-}
+};
 
 export default function EditArticlePage() {
   // State cho các trường input, được gán giá trị mặc định từ data fetch về
-  const [title, setTitle] = useState("")
-  const [content, setContent] = useState("")
-  const [category, setCategory] = useState("")
-  const [isLoading, setIsLoading] = useState(true)
+  const [title, setTitle] = useState('');
+  const [content, setContent] = useState('');
+  const [category, setCategory] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
 
   // Giả lập việc fetch data khi component được load
   useEffect(() => {
@@ -28,13 +27,13 @@ export default function EditArticlePage() {
     //   setCategory(data.category);
     //   setIsLoading(false);
     // });
-
+    
     // Giả lập:
-    setTitle(fetchedArticle.title)
-    setContent(fetchedArticle.content)
-    setCategory(fetchedArticle.category)
-    setIsLoading(false)
-  }, []) // Chạy 1 lần khi load trang
+    setTitle(fetchedArticle.title);
+    setContent(fetchedArticle.content);
+    setCategory(fetchedArticle.category);
+    setIsLoading(false);
+  }, []); // Chạy 1 lần khi load trang
 
   // Hàm render thanh toolbar (giả lập theo UI)
   const renderToolbar = () => (
@@ -52,7 +51,7 @@ export default function EditArticlePage() {
         <List className="w-4 h-4" />
       </button>
     </div>
-  )
+  );
 
   // Hiển thị loading trong khi chờ data
   if (isLoading) {
@@ -60,7 +59,7 @@ export default function EditArticlePage() {
       <div className="flex-1 flex flex-col items-center justify-center">
         <p>Loading article data...</p>
       </div>
-    )
+    );
   }
 
   return (
@@ -76,18 +75,15 @@ export default function EditArticlePage() {
 
           <form
             onSubmit={(e) => {
-              e.preventDefault()
+              e.preventDefault();
               // Xử lý logic submit (update) ở đây
-              console.log("Saving changes:", { title, content, category })
+              console.log("Saving changes:", { title, content, category });
             }}
             className="space-y-6"
           >
             {/* 1. PHẦN TITLE */}
             <div>
-              <label
-                htmlFor="title"
-                className="block text-base font-medium text-gray-800 mb-2"
-              >
+              <label htmlFor="title" className="block text-base font-medium text-gray-800 mb-2">
                 Title
               </label>
               <input
@@ -112,10 +108,7 @@ export default function EditArticlePage() {
 
             {/* 2. PHẦN CONTENT */}
             <div>
-              <label
-                htmlFor="content"
-                className="block text-base font-medium text-gray-800 mb-2"
-              >
+              <label htmlFor="content" className="block text-base font-medium text-gray-800 mb-2">
                 Content
               </label>
               <textarea
@@ -140,10 +133,7 @@ export default function EditArticlePage() {
 
             {/* 3. PHẦN CATEGORY */}
             <div>
-              <label
-                htmlFor="category"
-                className="block text-base font-medium text-gray-800 mb-2"
-              >
+              <label htmlFor="category" className="block text-base font-medium text-gray-800 mb-2">
                 Category
               </label>
               <select
@@ -162,7 +152,7 @@ export default function EditArticlePage() {
             {/* 4. PHẦN NÚT BẤM (ACTIONS) */}
             <div className="flex justify-end items-center gap-4 pt-4">
               <button
-                type="button"
+                type="button" 
                 className="px-6 py-2 text-red-500 font-medium rounded-lg hover:bg-red-50"
               >
                 Leave
@@ -182,23 +172,14 @@ export default function EditArticlePage() {
       {/* Footer (Copy từ code ArticleManagement của mày) */}
       <footer className="bg-white border-t px-8 py-4 mt-auto">
         <div className="flex justify-between items-center text-sm text-gray-600">
-          <p>
-            © 2025 - KMSPlus. Designed by{" "}
-            <span className="font-medium">KMS Team</span>. All rights reserved
-          </p>
+          <p>© 2025 - KMSPlus. Designed by <span className="font-medium">KMS Team</span>. All rights reserved</p>
           <div className="flex gap-6">
-            <a href="#" className="hover:text-gray-900">
-              FAQs
-            </a>
-            <a href="#" className="hover:text-gray-900">
-              Privacy Policy
-            </a>
-            <a href="#" className="hover:text-gray-900">
-              Terms & Condition
-            </a>
+            <a href="#" className="hover:text-gray-900">FAQs</a>
+            <a href="#" className="hover:text-gray-900">Privacy Policy</a>
+            <a href="#" className="hover:text-gray-900">Terms & Condition</a>
           </div>
         </div>
       </footer>
     </div>
-  )
+  );
 }

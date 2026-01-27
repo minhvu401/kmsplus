@@ -32,7 +32,7 @@ export default function CompleteButton({
     try {
       const res = await updateProgress(courseId, itemId, itemType)
 
-      if (res.success) {
+      if (res.success && "progress" in res) {
         setIsCompleted(true)
         message.success(`Great job! Course progress: ${res.progress}%`)
         router.refresh() // Refresh để cập nhật thanh tiến độ bên ngoài (nếu có)

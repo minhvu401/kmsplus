@@ -45,7 +45,7 @@ export default async function Page({
   const categories = await getActiveCategories()
 
   if (!question) {
-    return notFound()
+    return notFound();
   }
 
   return (
@@ -60,5 +60,6 @@ export default async function Page({
         paginatedAnswers={paginatedAnswers}
       />
     </PageWrapper>
-  )
+  );
 }
+
