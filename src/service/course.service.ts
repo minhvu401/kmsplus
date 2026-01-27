@@ -190,9 +190,9 @@ export async function createCourseAction(courseData: CreateCoursePayload) {
   console.log("🚀 [Service] Bắt đầu tạo khóa học:", courseData.title)
 
   try {
-    const result = await sqlTransaction.begin(async (tx) => {
+    const result = await sqlTransaction.begin(async (tx: any) => {
       // 1. Insert Course
-      const [newCourse] = await tx`
+      const newCourseResult = await tx`
         INSERT INTO courses (
           creator_id, title, description, thumbnail_url, status, duration_hours, created_at, updated_at
         ) VALUES (
@@ -206,18 +206,19 @@ export async function createCourseAction(courseData: CreateCoursePayload) {
         )
         RETURNING id
       `
-      const courseId = newCourse.id
+      const courseId = newCourseResult[0].id
       console.log("✅ [Service] Tạo Course thành công, ID:", courseId)
 
       // 2. Insert Sections & Items
       if (courseData.curriculum && courseData.curriculum.length > 0) {
         for (const [sIndex, section] of courseData.curriculum.entries()) {
-          const [newSection] = await tx`
+          const newSectionResult = await tx`
             INSERT INTO sections (course_id, title, "order")
             VALUES (${courseId}, ${section.title}, ${sIndex})
             RETURNING id
           `
-          // console.log(`  -> Tạo Section "${section.title}" ID: ${newSection.id}`)
+          const newSectionId = newSectionResult[0].id
+          // console.log(`  -> Tạo Section "${section.title}" ID: ${newSectionId}`)
 
           if (section.items && section.items.length > 0) {
             for (const [iIndex, item] of section.items.entries()) {
@@ -236,7 +237,7 @@ export async function createCourseAction(courseData: CreateCoursePayload) {
                 INSERT INTO curriculum_items (
                   section_id, type, "order", lesson_id, quiz_id
                 ) VALUES (
-                  ${newSection.id},
+                  ${newSectionId},
                   ${item.type},
                   ${iIndex},
                   ${lessonId},
@@ -264,7 +265,7 @@ export async function createCourseAction(courseData: CreateCoursePayload) {
 export async function updateFullCourseAction(id: number, data: any) {
   try {
     // Sử dụng sqlTransaction đã khởi tạo ở đầu file để thực hiện Transaction
-    return await sqlTransaction.begin(async (tx) => {
+    return await sqlTransaction.begin(async (tx: any) => {
       // 1. Cập nhật bảng 'courses'
       await tx`
         UPDATE courses
