@@ -43,16 +43,15 @@ export default async function Page(props: {
     pageSize
   )
 
-  const questions =
-    (await fetchFilteredQuestions(
-      query,
-      category,
-      status,
-      sort,
-      currentPage,
-      pageSize
-    )) ?? []
-
+  const questions = await fetchFilteredQuestions(
+    query,
+    category,
+    status,
+    sort,
+    currentPage,
+    pageSize
+  )
+  
   const noSearchResults = query !== "" && questions.length === 0
   const isEmpty = questions.length === 0
   const categories = await getActiveCategories()
