@@ -138,6 +138,7 @@ export default function ArticleManagement() {
     published: 'green',
     draft: 'blue',
     pending: 'gold',
+    rejected: 'red',
     archived: 'red',
   };
 
@@ -410,6 +411,7 @@ export default function ArticleManagement() {
     { label: 'Draft', value: 'draft' },
     { label: 'Published', value: 'published' },
     { label: 'Pending', value: 'pending' },
+    { label: 'Rejected', value: 'rejected' },
     { label: 'Archived', value: 'archived' },
   ];
 
