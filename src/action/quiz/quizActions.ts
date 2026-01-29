@@ -219,13 +219,22 @@ export async function updateQuizQuestions(quizId: number, questionIds: number[])
 export async function startQuizAttempt(quizId: number) {
   const user = await requireAuth()
 
-  return startQuizAttemptAction(quizId, Number(user.id))
+  // totalQuestions should come from DB, not frontend
+  const result = await sql`
+    SELECT COUNT(*)::int AS count
+    FROM question_bank qb
+    JOIN quiz_questions qq ON qb.id = qq.question_id
+    WHERE qq.quiz_id = ${quizId} AND qb.deleted_at IS NULL;
+  `;
+
+  const totalQuestions = result[0].count;
+
+  return startQuizAttemptAction(quizId, Number(user.id), totalQuestions);
 }
 
 export async function submitQuizAttempt(attemptId: number) {
-  const user = await requireAuth()
-
-  return submitQuizAttemptAction(attemptId)
+  const user = await requireAuth();
+  return submitQuizAttemptAction(attemptId, Number(user.id));
 }
 
 const SaveAnswerSchema = z.object({
@@ -235,22 +244,27 @@ const SaveAnswerSchema = z.object({
     z.coerce.number().int(),
     z.array(z.coerce.number().int()),
   ]),
-})
+});
 export async function saveAttemptAnswer(input: unknown) {
   // 1️⃣ Validate payload
-  const parsed = SaveAnswerSchema.safeParse(input)
+  const parsed = SaveAnswerSchema.safeParse(input);
   if (!parsed.success) {
-    throw new Error("Invalid answer payload")
+    throw new Error('Invalid answer payload');
   }
 
-  const { attemptId, questionId, selectedAnswer } = parsed.data
+  const { attemptId, questionId, selectedAnswer } = parsed.data;
 
   // 2️⃣ Auth
-  const user = await requireAuth()
+  const user = await requireAuth();
 
   // 3️⃣ Save answer
-  await saveAttemptAnswerAction(attemptId, questionId, selectedAnswer)
+  await saveAttemptAnswerAction(
+    attemptId,
+    Number(user.id),
+    questionId,
+    selectedAnswer
+  );
 
   // 4️⃣ Minimal response
-  return { success: true }
+  return { success: true };
 }
