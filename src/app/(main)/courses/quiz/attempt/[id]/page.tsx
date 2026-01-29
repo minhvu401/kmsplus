@@ -1,4 +1,3 @@
-'use client'
 import QuizForm from '@/components/forms/quiz-form';
 import PageWrapper from '@/components/ui/questions/page-wrapper';
 import { getQuestionsForAttemptAction, getTimeLimitForAttemptAction, getSavedAnswersAction } from '@/service/quiz.service';

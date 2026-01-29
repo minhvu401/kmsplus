@@ -9,16 +9,44 @@ import {
     MinusCircleOutlined,
 } from '@ant-design/icons';
 
-const normalizeArray = (v: unknown): number[] => {
-    if (Array.isArray(v)) return v;
-    if (typeof v === 'number') return [v];
+const normalizeArray = (v: unknown): string[] => {
+    if (Array.isArray(v)) return v.map(String);
+    
+    // Handle {"correct": "B"} or {"correct": ["A","B"]} format (already parsed object)
+    if (typeof v === 'object' && v !== null && 'correct' in v) {
+        const correct = (v as { correct: unknown }).correct;
+        return Array.isArray(correct) ? correct.map(String) : [String(correct)];
+    }
+    
     if (typeof v === 'string') {
         try {
             const parsed = JSON.parse(v);
-            return Array.isArray(parsed) ? parsed : [];
+            // Handle {"correct": "B"} or {"correct": ["A","B"]} format (parsed from string)
+            if (parsed?.correct !== undefined) {
+                return Array.isArray(parsed.correct) ? parsed.correct : [parsed.correct];
+            }
+            return Array.isArray(parsed) ? parsed.map(String) : [String(parsed)];
+        } catch {
+            return [v]; // It's already a plain string like "B"
+        }
+    }
+    if (typeof v === 'number') return [String(v)];
+    return [];
+};
+
+const parseOptions = (opts: unknown): [string, string][] => {
+    if (typeof opts === 'string') {
+        try {
+            opts = JSON.parse(opts);
         } catch {
             return [];
         }
+    }
+    if (typeof opts === 'object' && opts !== null && !Array.isArray(opts)) {
+        return Object.entries(opts) as [string, string][];
+    }
+    if (Array.isArray(opts)) {
+        return opts.map((opt, idx) => [String.fromCharCode(65 + idx), String(opt)] as [string, string]);
     }
     return [];
 };
@@ -110,11 +138,11 @@ export function ResultDetails({
 }) {
     const {
         questionText,
-        options,
         explanation,
         type,
     } = question;
 
+    const optionsList = parseOptions(question.options);
     const selectedAnswers = normalizeArray(question.selectedAnswers);
     const correctAnswers = normalizeArray(question.correctAnswers);
 
@@ -128,35 +156,34 @@ export function ResultDetails({
 
                 {/* Options */}
                 <Space direction="vertical" size={6}>
-                    {options.map((opt, idx) => {
-                        const isSelected = selectedAnswers.includes(idx);
-                        const isCorrect = correctAnswers.includes(idx);
+                    {optionsList.map(([key, text]) => {
+                        const isSelected = selectedAnswers.includes(key);
+                        const isCorrect = correctAnswers.includes(key);
 
                         let icon = null;
-                        let color: 'success' | 'error' | undefined;
+                        let color: string | undefined;
 
                         if (isSelected && isCorrect) {
                             icon = <CheckCircleOutlined />;
-                            color = 'success';
+                            color = 'green'; // preset color with light background
                         } else if (isSelected && !isCorrect) {
                             icon = <CloseCircleOutlined />;
                             color = 'error';
                         } else if (!isSelected && isCorrect) {
                             icon = <MinusCircleOutlined />;
-                            color = 'success';
+                            color = 'gold'; // yellow
                         }
 
                         return (
                             <Tag
-                                key={idx}
+                                key={key}
                                 color={color}
                                 style={{
                                     padding: '6px 10px',
-                                    opacity: !isSelected && isCorrect ? 0.7 : 1,
                                 }}
                             >
                                 {icon && <span style={{ marginRight: 6 }}>{icon}</span>}
-                                {opt}
+                                {key}. {text}
                             </Tag>
                         );
                     })}
@@ -165,7 +192,7 @@ export function ResultDetails({
                 {/* Explanation */}
                 <Paragraph type="secondary">
                     <strong>Correct:</strong>{' '}
-                    {correctAnswers.map(i => options[i]).join(', ')}
+                    {correctAnswers.join(', ')}
                     <br />
                     {explanation && (
                         <>

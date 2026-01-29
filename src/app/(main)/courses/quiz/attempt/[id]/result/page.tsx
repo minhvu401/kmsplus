@@ -1,4 +1,3 @@
-'use client'
 import PageWrapper from "@/components/ui/questions/page-wrapper";
 import { getAttemptResultAction } from "@/service/quiz.service";
 import QuizResult from "@/components/ui/quizzes/quiz-result";
