@@ -436,7 +436,7 @@ export async function saveAttemptAnswerAction(
   attemptId: number,
   userId: number,
   questionId: number,
-  selectedAnswer: number | number[]
+  selectedAnswer: string | string[]
 ) {
   try {
     // 1️⃣ Verify attempt is valid and active
@@ -469,34 +469,42 @@ export async function saveAttemptAnswerAction(
 
     const { type, correct_answer } = questionResult[0];
 
-    // 3️⃣ Determine correctness
+    // 3️⃣ Parse correct_answer format: {"correct":"B"} or {"correct":["A","B"]}
+    let correctAnswerParsed = correct_answer;
+    if (typeof correct_answer === 'string') {
+      correctAnswerParsed = JSON.parse(correct_answer);
+    }
+    const correctValue = correctAnswerParsed?.correct;
+
+    // 4️⃣ Determine correctness
     let isCorrect = false;
 
     if (type === 'single_choice') {
-      isCorrect = selectedAnswer === correct_answer;
+      // selectedAnswer is "B", correctValue is "B"
+      isCorrect = selectedAnswer === correctValue;
 
     } else if (type === 'multiple_choice') {
-
+      // selectedAnswer is ["A", "B"], correctValue is ["A", "B"]
       const selectedArray = Array.isArray(selectedAnswer)
         ? selectedAnswer
         : [selectedAnswer];
 
-      if (!Array.isArray(correct_answer)) {
-        throw new Error('Invalid answer format');
-      }
+      const correctArray = Array.isArray(correctValue)
+        ? correctValue
+        : [correctValue];
 
       const selectedSet = new Set(selectedArray);
-      const correctSet = new Set(correct_answer);
+      const correctSet = new Set(correctArray);
 
       isCorrect =
         selectedSet.size === correctSet.size &&
         [...selectedSet].every(v => correctSet.has(v));
     }
 
-    // 4️⃣ Calculate points
+    // 5️⃣ Calculate points
     const pointsEarned = isCorrect ? 1 : 0;
 
-    // 5️⃣ UPSERT answer
+    // 6️⃣ UPSERT answer
     await sql`
       INSERT INTO attempt_answers (
         attempt_id,
@@ -627,7 +635,11 @@ export async function getAttemptResultAction(
     throw new Error('Attempt not found');
   }
 
-  // 2. Get question-level results
+  // 2. Get ALL questions for this quiz, with user's answers (if any)
+  const quizId = (await sql`
+    SELECT quiz_id FROM quiz_attempts WHERE id = ${attemptId}
+  `)[0].quiz_id;
+
   const questionResults = await sql`
     SELECT
       qb.id AS question_id,
@@ -637,10 +649,12 @@ export async function getAttemptResultAction(
       aa.selected_option_id as selected_answers,
       qb.correct_answer as correct_answers,
       qb.explanation
-    FROM attempt_answers aa
-    JOIN question_bank qb ON qb.id = aa.question_id
-    WHERE aa.attempt_id = ${attemptId}
-    ORDER BY qb.id
+    FROM quiz_questions qq
+    JOIN question_bank qb ON qb.id = qq.question_id
+    LEFT JOIN attempt_answers aa ON aa.question_id = qb.id AND aa.attempt_id = ${attemptId}
+    WHERE qq.quiz_id = ${quizId}
+      AND qb.is_deleted = false
+    ORDER BY qq.question_order, qb.id
   `;
 
   return {

@@ -149,7 +149,7 @@ export function StartQuizButton({
         try {
             setLoading(true);
             const attemptId = await startQuizAttempt(quizId);
-            window.location.href = `/quizzes/attempt/${attemptId.id}`;
+            window.location.href = `/courses/quiz/attempt/${attemptId.id}`;
         } catch (err) {
             messageApi.error(
                 err instanceof Error ? err.message : 'Failed to start quiz'

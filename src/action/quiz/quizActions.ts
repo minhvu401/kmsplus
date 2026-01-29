@@ -241,8 +241,8 @@ const SaveAnswerSchema = z.object({
   attemptId: z.coerce.number().int(),
   questionId: z.coerce.number().int(),
   selectedAnswer: z.union([
-    z.coerce.number().int(),
-    z.array(z.coerce.number().int()),
+    z.string(),
+    z.array(z.string()),
   ]),
 });
 export async function saveAttemptAnswer(input: unknown) {
