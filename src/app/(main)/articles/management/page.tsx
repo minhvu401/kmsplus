@@ -93,6 +93,7 @@ export default function ArticleManagement() {
   const [selectedTag, setSelectedTag] = useState('All Tags');
   const [selectedCategory, setSelectedCategory] = useState<number | 'All'>('All');
   const [selectedStatus, setSelectedStatus] = useState('All');
+  const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
   const [currentPage, setCurrentPage] = useState(1);
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
 
@@ -137,8 +138,7 @@ export default function ArticleManagement() {
     published: 'green',
     draft: 'blue',
     pending: 'gold',
-    archived: 'default',
-    deleted: 'red',
+    archived: 'red',
   };
 
   const refreshCurrentArticles = async (showLoader: boolean = true) => {
@@ -149,14 +149,22 @@ export default function ArticleManagement() {
       let statusFilter = selectedStatus === 'All' ? undefined : selectedStatus;
       let isDeletedFilter: 'all' | boolean = 'all';
       
-      // If status filter is 'deleted', set isDeletedFilter to true and reset statusFilter
-      if (statusFilter === 'deleted') {
+      // If status filter is 'archived', set isDeletedFilter to true and reset statusFilter
+      if (statusFilter === 'archived') {
         isDeletedFilter = true;
         statusFilter = undefined;
       }
       
       const res = await filterByTagAndCategory(debouncedSearchQuery, selectedTag, catId, statusFilter, isDeletedFilter);
-      setArticles(res || []);
+      
+      // Sort articles based on sortOrder
+      const sortedArticles = (res || []).sort((a, b) => {
+        const dateA = new Date((a as any).created_at).getTime();
+        const dateB = new Date((b as any).created_at).getTime();
+        return sortOrder === 'newest' ? dateB - dateA : dateA - dateB;
+      });
+      
+      setArticles(sortedArticles);
     } catch (err: any) {
       setArticlesError(err?.message || String(err));
       setArticles([]);
@@ -218,7 +226,7 @@ export default function ArticleManagement() {
 
   useEffect(() => {
     refreshCurrentArticles();
-  }, [debouncedSearchQuery, selectedTag, selectedCategory, selectedStatus]);
+  }, [debouncedSearchQuery, selectedTag, selectedCategory, selectedStatus, sortOrder]);
 
   useEffect(() => {
     (async () => {
@@ -348,8 +356,8 @@ export default function ArticleManagement() {
       key: 'status',
       width: 120,
       render: (status: string, record: Article) => {
-        const displayStatus = record.is_deleted ? 'deleted' : status;
-        const displayText = record.is_deleted ? 'Deleted' : status;
+        const displayStatus = record.is_deleted ? 'archived' : status;
+        const displayText = record.is_deleted ? 'Archived' : status;
         return <AntTag color={statusColors[displayStatus] || 'default'}>{displayText}</AntTag>;
       },
     },
@@ -402,13 +410,13 @@ export default function ArticleManagement() {
     { label: 'Draft', value: 'draft' },
     { label: 'Published', value: 'published' },
     { label: 'Pending', value: 'pending' },
-    { label: 'Deleted', value: 'deleted' },
+    { label: 'Archived', value: 'archived' },
   ];
 
   const handleArchiveClick = async (articleId: number, isDeleted: boolean) => {
     const confirmText = isDeleted
       ? 'Restore this article?'
-      : 'Delete this article? (This will mark it as deleted)';
+      : 'Archive this article? (This will mark it as archived)';
     const ok = window.confirm(confirmText);
     if (!ok) return;
     try {
@@ -594,6 +602,20 @@ export default function ArticleManagement() {
                   className="w-full"
                 />
               </Space>
+
+              <Space direction="vertical" style={{ minWidth: 140, flex: 1 }}>
+                <Text type="secondary">Sort by:</Text>
+                <Select
+                  value={sortOrder}
+                  onChange={setSortOrder}
+                  options={[
+                    { label: 'Newest First', value: 'newest' },
+                    { label: 'Oldest First', value: 'oldest' },
+                  ]}
+                  size="large"
+                  className="w-full"
+                />
+              </Space>
             </Flex>
           </Space>
 
@@ -643,7 +665,7 @@ export default function ArticleManagement() {
                     .split(',')
                     .map((t) => t.trim())
                     .filter(Boolean);
-                  const displayStatus = article.is_deleted ? 'deleted' : article.status;
+                  const displayStatus = article.is_deleted ? 'archived' : article.status;
                   const displayText = article.is_deleted ? 'Deleted' : article.status;
                   return (
                     <Col xs={24} sm={12} lg={8} xl={6} key={article.id}>

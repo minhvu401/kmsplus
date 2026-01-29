@@ -421,3 +421,26 @@ export async function updateArticleAction(input: UpdateArticleInput): Promise<{ 
     return { success: false, message: error?.message || 'Failed to update article' }
   }
 }
+
+/**
+ * Update articles table constraint to allow 'rejected' status
+ * This function modifies the CHECK constraint on the status column
+ */
+export async function updateArticlesStatusConstraint(): Promise<{ success: boolean; message: string }> {
+  try {
+    // Drop existing constraint
+    await sql`
+      ALTER TABLE articles DROP CONSTRAINT IF EXISTS articles_status_check
+    `
+    
+    // Add new constraint with 'rejected' status
+    await sql`
+      ALTER TABLE articles ADD CONSTRAINT articles_status_check CHECK (status IN ('draft', 'pending', 'published', 'rejected'))
+    `
+    
+    return { success: true, message: 'Articles status constraint updated successfully' }
+  } catch (error: any) {
+    console.error('Error updating articles status constraint:', error)
+    return { success: false, message: error?.message || 'Failed to update constraint' }
+  }
+}
