@@ -39,6 +39,8 @@ export default function ArticleDetailPage() {
   const [rejecting, setRejecting] = useState(false);
   const [showApproveModal, setShowApproveModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
+  const [showRejectReasonModal, setShowRejectReasonModal] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editingCommentText, setEditingCommentText] = useState('');
   const [updatingComment, setUpdatingComment] = useState(false);
@@ -208,15 +210,26 @@ export default function ArticleDetailPage() {
   };
 
   const confirmReject = async () => {
-    console.log('🟠 Reject confirmed, sending request...');
+    // Close reject confirmation modal and open reason modal
+    setShowRejectModal(false);
+    setShowRejectReasonModal(true);
+  };
+
+  const confirmRejectWithReason = async () => {
+    if (!rejectReason.trim()) {
+      message.warning('Please enter a reason for rejection');
+      return;
+    }
+
+    console.log('🟠 Reject confirmed with reason, sending request...');
     setRejecting(true);
     try {
-      console.log('📤 Sending POST to /api/articles/reject with id:', articleId);
+      console.log('📤 Sending POST to /api/articles/reject with id:', articleId, 'reason:', rejectReason);
       const response = await fetch('/api/articles/reject', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ id: parseInt(articleId, 10) }),
+        body: JSON.stringify({ id: parseInt(articleId, 10), reason: rejectReason }),
       });
 
       console.log('📥 Response status:', response.status, response.statusText);
@@ -225,7 +238,8 @@ export default function ArticleDetailPage() {
 
       if (response.ok && result.success) {
         message.success(result.message || 'Article rejected successfully');
-        setShowRejectModal(false);
+        setShowRejectReasonModal(false);
+        setRejectReason('');
         await loadArticleAndComments();
       } else {
         console.error('❌ Reject failed:', result);
@@ -338,6 +352,16 @@ export default function ArticleDetailPage() {
           </div>
         )}
 
+        {/* Rejection Reason (for rejected articles) */}
+        {article.status === 'rejected' && article.reason && (
+          <Card className="mb-6 border-l-4 border-l-red-500">
+            <Title level={4} className="!text-red-500 !mb-2">Rejection Reason</Title>
+            <Paragraph className="!mb-0 whitespace-pre-wrap">
+              {article.reason}
+            </Paragraph>
+          </Card>
+        )}
+
         {/* Approve Modal */}
         <Modal
           title="Approve article"
@@ -363,6 +387,28 @@ export default function ArticleDetailPage() {
           confirmLoading={rejecting}
         >
           <p>Are you sure you want to reject this article?</p>
+        </Modal>
+
+        {/* Reject Reason Modal */}
+        <Modal
+          title="Rejection Reason"
+          open={showRejectReasonModal}
+          onOk={confirmRejectWithReason}
+          onCancel={() => {
+            setShowRejectReasonModal(false);
+            setRejectReason('');
+          }}
+          okText="Submit"
+          cancelText="Cancel"
+          confirmLoading={rejecting}
+        >
+          <p className="mb-4">Please provide a reason for rejecting this article:</p>
+          <TextArea
+            value={rejectReason}
+            onChange={(e) => setRejectReason(e.target.value)}
+            placeholder="Enter rejection reason..."
+            autoSize={{ minRows: 4, maxRows: 8 }}
+          />
         </Modal>
 
         {/* Delete Comment Modal */}

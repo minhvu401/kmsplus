@@ -277,11 +277,11 @@ export async function approveArticleAction(articleId: number): Promise<{ success
   }
 }
 
-export async function rejectArticleAction(articleId: number): Promise<{ success: boolean; message: string }> {
+export async function rejectArticleAction(articleId: number, reason: string = ''): Promise<{ success: boolean; message: string }> {
   try {
     const result = await sql`
       UPDATE articles
-      SET status = 'rejected', updated_at = NOW()
+      SET status = 'rejected', reason = ${reason}, updated_at = NOW()
       WHERE id = ${articleId}
       RETURNING id
     `
@@ -305,6 +305,7 @@ export async function getArticleByIdAction(articleId: number): Promise<{ success
         a.title,
         a.content,
         a.status,
+        a.reason,
         a.category_id,
         a.author_id,
         a.image_url,
@@ -319,7 +320,7 @@ export async function getArticleByIdAction(articleId: number): Promise<{ success
       LEFT JOIN tags t ON at.tag_id = t.id
       LEFT JOIN users u ON a.author_id = u.id
       WHERE a.id = ${articleId}
-      GROUP BY a.id, a.title, a.content, a.status, a.category_id, a.author_id, a.image_url, a.thumbnail_url, a.created_at, a.updated_at, u.full_name, u.email
+      GROUP BY a.id, a.title, a.content, a.status, a.reason, a.category_id, a.author_id, a.image_url, a.thumbnail_url, a.created_at, a.updated_at, u.full_name, u.email
       LIMIT 1
     `
 
@@ -337,6 +338,7 @@ export async function getArticleByIdAction(articleId: number): Promise<{ success
         title: article.title,
         content: article.content,
         status: article.status,
+        reason: article.reason,
         category_id: article.category_id,
         author_id: article.author_id,
         author_name: article.author_name,
