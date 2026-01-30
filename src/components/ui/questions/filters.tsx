@@ -1,15 +1,12 @@
-'use client';
-import { useSearchParams, useRouter, usePathname } from 'next/navigation';
-import { useState, useEffect } from 'react';
-import { Select, Flex, Typography } from 'antd';
+"use client"
+import { useSearchParams, useRouter, usePathname } from "next/navigation"
+import { useState, useEffect } from "react"
+import { Typography } from "antd"
+import { Category } from "@/service/question.service"
 
-type Category = {
-    id: number;
-    name: string;
-}
+const { Text } = Typography;
 
-const { Text } = Typography
-
+//------------------------------- CATEGORY FILTER ---------------------------------
 export function FilterCategory({ categories }: { categories: Category[] }) {
   const searchParams = useSearchParams()
   const pathname = usePathname()
@@ -36,21 +33,26 @@ export function FilterCategory({ categories }: { categories: Category[] }) {
     setSelected(value)
   }
 
-    return (
-        <Flex align="center" gap={8}>
-            <Text strong>Category:</Text>
-            <Select
-                value={selected}
-                onChange={handleChange}
-                style={{ width: 180 }}
-                size="middle"
-                options={[
-                    { label: 'Any', value: 'any' },
-                    ...categories.map((cat) => ({ label: cat.name, value: cat.id })),
-                ]}
-            />
-        </Flex>
-    );
+  return (
+    <div className="flex items-center gap-2">
+      <label htmlFor="category" className="text-sm font-medium text-gray-700">
+        Category:
+      </label>
+      <select
+        id="category"
+        value={selected}
+        onChange={(e) => handleChange(e.target.value)}
+        className="block w-auto rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+      >
+        <option value="any">Any</option>
+        {categories.map((cat) => (
+          <option key={cat.id} value={cat.id}>
+            {cat.name}
+          </option>
+        ))}
+      </select>
+    </div>
+  )
 }
 
 export function FilterStatus() {
@@ -87,23 +89,22 @@ export function FilterStatus() {
       <select
         id="status"
         value={selected}
-        onChange={handleChange}
-        style={{ width: 160 }}
-        size="middle"
-        options={[
-          { label: 'Any', value: 'any' },
-          { label: 'Open', value: 'open' },
-          { label: 'Closed', value: 'closed' },
-        ]}
-      />
-    </Flex>
-  );
+        onChange={(e) => handleChange(e.target.value)}
+        className="block w-auto rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+      >
+        <option value="any">Any</option>
+        <option value="open">Open</option>
+        <option value="closed">Closed</option>
+      </select>
+    </div>
+  )
 }
 
-export function SortBy() {
-  const searchParams = useSearchParams()
-  const pathname = usePathname()
-  const { replace } = useRouter()
+// -------------------- SORT FILTER --------------------
+export function QuestionsSortBy() {
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const { replace } = useRouter();
 
   const currentSortCondition = searchParams.get("sort") || "newest"
   const [selected, setSelected] = useState(currentSortCondition)
@@ -129,14 +130,16 @@ export function SortBy() {
       <select
         id="sort"
         value={selected}
-        onChange={handleChange}
-        style={{ width: 180 }}
-        size="middle"
-        options={[
-          { label: 'Newest', value: 'newest' },
-          { label: 'Most Answers', value: 'most-answers' },
-        ]}
-      />
-    </Flex>
-  );
+        onChange={(e) => handleChange(e.target.value)}
+        className="block w-40 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+      >
+        <option key="Newest" value="newest">
+          Newest
+        </option>
+        <option key="Most Answers" value="most-answers">
+          Most Answers
+        </option>
+      </select>
+    </div>
+  )
 }
