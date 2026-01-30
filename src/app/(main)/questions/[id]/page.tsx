@@ -1,48 +1,34 @@
 // app/questions/[id]/page.tsx
 // view question details & answers
-import {
-  getQuestionDetails,
-  getAnswersForQuestion,
-  fetchFilteredAnswers,
-  getActiveCategories,
-} from "@/action/question/questionActions"
-import AnswerSection from "@/components/ui/questions/answer-section"
-import PageWrapper from "@/components/ui/questions/page-wrapper"
-import QuestionDetails from "@/components/ui/questions/question-details"
-import QuestionsNotification from "@/components/ui/questions/questions-notification"
-import { requireAuth } from "@/lib/auth"
-import { notFound } from "next/navigation"
+import { getQuestionDetails, getAnswersForQuestion, fetchFilteredAnswers } from "@/action/question/questionActions";
+import AnswerSection from "@/components/ui/questions/answer-section";
+import PageWrapper from "@/components/ui/questions/page-wrapper";
+import QuestionDetails from "@/components/ui/questions/question-details";
+import { QuestionDetailsNotification } from "@/components/ui/questions/questions-notification";
+import { notFound } from "next/navigation";
 
 export default async function Page({
   params,
   searchParams,
 }: {
-  params: Promise<{ id: string }>
-  searchParams?: Promise<{
-    page?: string
-    limit?: string
-    opened?: string
-    closed?: string
-    updated?: string
-    answerCreated?: string
-    answerDeleted?: string
-  }>
+  params: { id: string };
+  searchParams?: {
+    sort?: string;
+    page?: string;
+    opened?: string;
+    closed?: string;
+    updated?: string;
+    answerCreated?: string;
+    answerDeleted?: string;
+  };
 }) {
-  const { id } = await params
-  const resolvedSearchParams = await searchParams
-  const currentPage = Number(resolvedSearchParams?.page) || 1
-  const pageSize = Number(resolvedSearchParams?.limit) || 5
-  const user = await requireAuth()
+  const id = params.id;
+  const currentPage = Number(searchParams?.page) || 1;
 
   // Fetch question details
-  const question = await getQuestionDetails(id)
-  const answers = await getAnswersForQuestion(Number(id))
-  const paginatedAnswers = await fetchFilteredAnswers(
-    currentPage,
-    Number(id),
-    pageSize
-  )
-  const categories = await getActiveCategories()
+  const question = await getQuestionDetails(id);
+  const answers = await getAnswersForQuestion(Number(id));
+  const paginatedAnswers = await fetchFilteredAnswers(currentPage, Number(id));
 
   if (!question) {
     return notFound();
@@ -50,15 +36,12 @@ export default async function Page({
 
   return (
     <PageWrapper>
-      <QuestionsNotification scroll={false} />
-      <QuestionDetails userId={Number(user.id)} question={question} categories={categories} />
-      <AnswerSection
-        questionId={Number(id)}
-        answer_count={question.answer_count}
-        is_closed={question.is_closed}
-        answers={answers}
-        paginatedAnswers={paginatedAnswers}
+      <QuestionDetailsNotification
+        id={id}
+        key={`${id}-${searchParams?.closed}-${searchParams?.opened}-${searchParams?.updated}-${searchParams?.answerCreated}-${searchParams?.answerDeleted}`}
       />
+      <QuestionDetails question={question} />
+      <AnswerSection questionId={Number(id)} answer_count={question.answer_count} is_closed={question.is_closed} answers={answers} paginatedAnswers={paginatedAnswers} />
     </PageWrapper>
   );
 }

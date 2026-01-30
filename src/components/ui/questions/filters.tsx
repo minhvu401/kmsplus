@@ -4,8 +4,9 @@ import { useState, useEffect } from "react"
 import { Typography } from "antd"
 import { Category } from "@/service/question.service"
 
-const { Text } = Typography
+const { Text } = Typography;
 
+//------------------------------- CATEGORY FILTER ---------------------------------
 export function FilterCategory({ categories }: { categories: Category[] }) {
   const searchParams = useSearchParams()
   const pathname = usePathname()
