@@ -14,6 +14,7 @@ export type Article = {
   category_name?: string | null
   author_name?: string | null
   status: string
+  created_at: Date
   updated_at: Date
   is_deleted: boolean
   image_url?: string | null
@@ -132,6 +133,7 @@ export async function getAllArticlesAction(): Promise<Article[]> {
       a.title, 
       a.content,
       a.status, 
+      a.created_at,
       a.updated_at,
       a.is_deleted,
       a.image_url,
@@ -144,7 +146,7 @@ export async function getAllArticlesAction(): Promise<Article[]> {
     LEFT JOIN tags t ON at.tag_id = t.id
     LEFT JOIN categories c ON a.category_id = c.id
     LEFT JOIN users u ON a.author_id = u.id
-    GROUP BY a.id, a.title, a.content, a.status, a.updated_at, a.is_deleted, a.image_url, a.thumbnail_url, c.name, u.full_name
+    GROUP BY a.id, a.title, a.content, a.status, a.created_at, a.updated_at, a.is_deleted, a.image_url, a.thumbnail_url, c.name, u.full_name
     ORDER BY a.updated_at DESC
   `
   return articles as Article[]
@@ -173,6 +175,7 @@ export async function filterByTagAction(
       a.id, 
       a.title, 
       a.status, 
+      a.created_at,
       a.updated_at,
       a.is_deleted,
       a.image_url,
@@ -192,7 +195,7 @@ export async function filterByTagAction(
       ${isDeletedFilter === true ? sql`AND a.is_deleted = TRUE` : isDeletedFilter === false ? sql`AND a.is_deleted = FALSE` : sql``}
     
     GROUP BY 
-      a.id, a.title, a.status, a.updated_at, a.is_deleted, a.image_url, a.thumbnail_url, c.name, u.full_name
+      a.id, a.title, a.status, a.created_at, a.updated_at, a.is_deleted, a.image_url, a.thumbnail_url, c.name, u.full_name
     ORDER BY 
       a.id ASC
   `
