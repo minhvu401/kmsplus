@@ -78,13 +78,9 @@ export default function CreateAnswerForm({
                         rules={[{ required: true, message: 'Please provide more details' },
                         {
                             validator: (_, value) => {
-                                // Only validate length if user has entered content
-                                if (!value) {
-                                    return Promise.resolve(); // Let required rule handle empty case
-                                }
                                 // Strip HTML tags to get plain text for validation
-                                const plainText = value.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
-                                if (plainText.length > 0 && plainText.length < 15) {
+                                const plainText = value ? value.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim() : '';
+                                if (plainText.length < 15) {
                                     return Promise.reject('Answers must be at least 15 characters');
                                 }
                                 return Promise.resolve();

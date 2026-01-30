@@ -77,17 +77,6 @@ body {
   @apply text-blue-600 underline hover:text-blue-800;
 }
 
-.prose img {
-  @apply h-auto my-2 rounded-lg;
-  max-width: min(100%, 600px);
-  object-fit: contain;
-}
-
-.prose p img {
-  display: inline-block;
-  vertical-align: middle;
-}
-
 /* ===== Login Page Animations ===== */
 @keyframes fade-in {
   from {
