@@ -314,7 +314,7 @@ export async function fetchFilteredQuestionsAction(
   sort: string,
   currentPage: number,
   limit: number = DEFAULT_QUESTIONS_PER_PAGE
-) {
+): Promise<Question[]> {
   const pageSize = Math.max(1, limit || DEFAULT_QUESTIONS_PER_PAGE)
   const offset = (currentPage - 1) * pageSize
 
@@ -327,38 +327,30 @@ export async function fetchFilteredQuestionsAction(
       AND questions.deleted_at IS NULL
     `;
 
-    // Add optional filters dynamically
-    // Only filter by category if it's a valid numeric ID
+    // Add category filter if it's a valid numeric ID
     const categoryId = parseInt(category, 10)
     if (category !== "any" && !isNaN(categoryId)) {
-      // Only filter by category if it's a valid numeric ID
-      const categoryId = parseInt(category, 10)
-      if (category !== "any" && !isNaN(categoryId)) {
-        sqlQuery = sql`
-      ${sqlQuery} 
-      AND categories.id = ${categoryId}
-      AND categories.id = ${categoryId}
+      sqlQuery = sql`
+        ${sqlQuery} 
+        AND categories.id = ${categoryId}
       `
-      }
+    }
 
-      if (status !== "any") {
-        let isClosed
-        if (status === "closed") {
-          isClosed = true
-        } else if (status === "open") {
-          isClosed = false
-        }
-        sqlQuery = sql`${sqlQuery} AND questions.is_closed = ${isClosed}`
-      }
+    // Add status filter
+    if (status !== "any") {
+      const isClosed = status === "closed"
+      sqlQuery = sql`${sqlQuery} AND questions.is_closed = ${isClosed}`
+    }
 
-      if (sort !== "newest") {
-        sqlQuery = sql`${sqlQuery} ORDER BY questions.answer_count DESC`
-      } else {
-        sqlQuery = sql`${sqlQuery} ORDER BY questions.created_at DESC`
-      }
+    // Add sort order
+    if (sort !== "newest") {
+      sqlQuery = sql`${sqlQuery} ORDER BY questions.answer_count DESC`
+    } else {
+      sqlQuery = sql`${sqlQuery} ORDER BY questions.created_at DESC`
+    }
 
-      // Final query
-      const result = (await sql`
+    // Final query
+    const result = (await sql`
       SELECT questions.*, users.full_name AS user_name, categories.name AS category_name
       FROM questions
       JOIN users ON questions.user_id = users.id
@@ -367,8 +359,7 @@ export async function fetchFilteredQuestionsAction(
       LIMIT ${pageSize} OFFSET ${offset};
     `) as Question[]
 
-      return result
-    }
+    return result
   } catch (error) {
     console.error("Database Error:", error)
     throw new Error("Failed to fetch filtered questions.")

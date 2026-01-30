@@ -98,13 +98,14 @@ export async function updateCommentAction(input: {
 export async function deleteCommentAction(commentId: number): Promise<{ success: boolean; message: string }> {
   try {
     const result = await sql`
-      DELETE FROM comments
-      WHERE id = ${commentId}
+      UPDATE comments
+      SET deleted_at = NOW()
+      WHERE id = ${commentId} AND deleted_at IS NULL
       RETURNING id
     `
 
     if (result.length === 0) {
-      return { success: false, message: 'Comment not found' }
+      return { success: false, message: 'Comment not found or already deleted' }
     }
 
     return { success: true, message: 'Comment deleted successfully' }

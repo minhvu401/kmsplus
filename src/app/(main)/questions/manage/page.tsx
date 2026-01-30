@@ -51,7 +51,7 @@ export default async function QuestionsManagePage(props: {
         sort,
         currentPage,
         pageSize
-    ) ?? []
+    )
 
     return (
         <PageWrapper>
