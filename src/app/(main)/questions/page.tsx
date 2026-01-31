@@ -31,7 +31,9 @@ export default async function Page(props: {
   const status = searchParams?.status || "any"
   const sort = searchParams?.sort || "newest"
   const currentPage = Number(searchParams?.page) || 1
+  const pageSize = 10
   const totalPages = await fetchQuestionsPages(query, category, status)
+  const categories = await getActiveCategories()
 
   const questions =
     (await fetchFilteredQuestions(
@@ -69,7 +71,7 @@ export default async function Page(props: {
       </Flex>
 
       <Flex justify="end" align="center" style={{ marginBottom: 24 }}>
-        <Pagination totalPages={totalPages} />
+        <Pagination totalPages={totalPages.totalPages} />
       </Flex>
     </PageWrapper>
   )

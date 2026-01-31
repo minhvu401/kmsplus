@@ -1,17 +1,19 @@
-import { getQuizDetailsAction } from "@/service/quiz.service";
 import QuizDetails from "@/components/ui/quizzes/quiz-details";
 import PageWrapper from "@/components/ui/questions/page-wrapper";
+import { Typography } from "antd";
+
+const { Title } = Typography;
 
 export default async function Page({
     params
 }: {
-    params: { id: string };
+    params: Promise<{ id: string }>;
 }) {
-    const id = params.id;
-    const quiz = await getQuizDetailsAction(Number(id));
+    const { id } = await params;
+    
     return (
         <PageWrapper>
-            <QuizDetails quiz={quiz} />
+            <Title level={2}>Quiz {id} - Details Coming Soon</Title>
         </PageWrapper>  
     );
 }
