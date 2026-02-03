@@ -4,6 +4,7 @@ import {
   getQuestionDetails,
   getAnswersForQuestion,
   fetchFilteredAnswers,
+  fetchAnswerPages,
   getActiveCategories,
 } from "@/action/question/questionActions"
 import AnswerSection from "@/components/ui/questions/answer-section"
@@ -42,6 +43,7 @@ export default async function Page({
     Number(id),
     pageSize
   )
+  const { totalItems: topLevelAnswerCount, totalPages } = await fetchAnswerPages(Number(id), pageSize)
   const categories = await getActiveCategories()
 
   if (!question) {
@@ -54,10 +56,11 @@ export default async function Page({
       <QuestionDetails userId={Number(user.id)} question={question} categories={categories} />
       <AnswerSection
         questionId={Number(id)}
-        answer_count={question.answer_count}
+        answer_count={topLevelAnswerCount}
         is_closed={question.is_closed}
         answers={answers}
         paginatedAnswers={paginatedAnswers}
+        totalPages={totalPages}
       />
     </PageWrapper>
   );

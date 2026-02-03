@@ -62,6 +62,7 @@ export const CreateAnswerDto = z.object({
   ),
   user_id: z.coerce.number().int(),
   question_id: z.coerce.number().int(),
+  parent_id: z.coerce.number().int().nullable().optional(),
 })
 
 export type CreateAnswerDtoType = z.infer<typeof CreateAnswerDto>
