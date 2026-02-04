@@ -77,7 +77,7 @@ export default function QuestionDetails({ userId, question, categories }: { user
                     <Avatar size="small">
                         {(question.user_name?.trim()?.[0] ?? "?").toUpperCase()}
                     </Avatar>
-                    <Text>{question.user_name}</Text>
+                    <Text strong>{question.user_name}</Text>
                 </Flex>
                 <Tag color="blue">{question.category_name}</Tag>
                 <Tag color={question.is_closed ? "red" : "green"}>
