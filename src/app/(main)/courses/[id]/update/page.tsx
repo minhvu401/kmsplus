@@ -10,7 +10,7 @@ import { notFound } from "next/navigation"
 import { getCourseByIdAction } from "@/service/course.service"
 import UpdateCourseForm from "@/app/(main)/courses/components/UpdateCourseForm"
 import { getAllLessonsAction } from "@/service/lesson.service"
-import { getAllQuizzesAction } from "@/service/quiz.service"
+import { getAllQuizzes } from "@/action/quiz/quizActions"
 
 type Lesson = { id: number; title: string; duration_minutes: number | null }
 type Quiz = { id: number; title: string; question_count: number }
@@ -39,7 +39,7 @@ export default async function UpdateCoursePage({
   const [course, lessonsRes, quizzesRes] = await Promise.all([
     getCourseByIdAction(courseId),
     getAllLessonsAction({ limit: 1000 }), // Lấy số lượng lớn để hiện trong bank
-    getAllQuizzesAction({}),
+    getAllQuizzes({}),
   ])
   if (!course) notFound()
   // 👇 3. MAP DỮ LIỆU VỀ ĐÚNG ĐỊNH DẠNG CỦA UI

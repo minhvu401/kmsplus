@@ -15,10 +15,10 @@ export type Question = {
 // Quiz Attempt Type
 export type QuizAttempt = {
   id: number
-  quiz_id: number
+  curriculum_item_id: number
   user_id: number
   attempt_number: number
-  status: "in_progress" | "completed"
+  status: "in_progress" | "submitted"
   started_at: Date
   submitted_at?: Date
   correct_answers?: number
@@ -296,12 +296,12 @@ export async function deleteQuizAction(id: number) {
 // -------------- NhatTT -----------------------
 
 // NhatTT
-export async function startQuizAttemptAction(quiz_id: number, user_id: number, total_questions: number): Promise<QuizAttempt> {
+export async function startQuizAttemptAction(curriculum_item_id: number, user_id: number, total_questions: number): Promise<QuizAttempt> {
   try {
     // Check for existing in-progress attempt
     const existingAttempt = await sql`
           SELECT * FROM quiz_attempts
-          WHERE quiz_id = ${quiz_id} AND user_id = ${user_id} AND status = 'in_progress'
+          WHERE curriculum_item_id = ${curriculum_item_id} AND user_id = ${user_id} AND status = 'in_progress'
           LIMIT 1
       `
     if (existingAttempt.length > 0) {
@@ -309,9 +309,10 @@ export async function startQuizAttemptAction(quiz_id: number, user_id: number, t
     }
 
     const quizResult = await sql`
-          SELECT max_attempts
-          FROM quizzes
-          WHERE id = ${quiz_id}
+          SELECT q.max_attempts
+          FROM curriculum_items ci
+          JOIN quizzes q ON q.id = ci.quiz_id
+          WHERE ci.id = ${curriculum_item_id}
       `
 
     if (quizResult.length === 0) {
@@ -324,7 +325,7 @@ export async function startQuizAttemptAction(quiz_id: number, user_id: number, t
       const attemptCount = await sql`
               SELECT COUNT(*)::int AS count
               FROM quiz_attempts
-              WHERE quiz_id = ${quiz_id}
+            WHERE curriculum_item_id = ${curriculum_item_id}
                   AND user_id = ${user_id};
           `;
 
@@ -336,17 +337,17 @@ export async function startQuizAttemptAction(quiz_id: number, user_id: number, t
     // Create new attempt if not
     const newAttempt = await sql`
           INSERT INTO quiz_attempts (
-              quiz_id,
+              curriculum_item_id,
               user_id, 
               attempt_number,
               total_questions
           ) VALUES (
-              ${quiz_id},
+              ${curriculum_item_id},
               ${user_id},
               (
                   SELECT COALESCE(MAX(attempt_number), 0) + 1
                   FROM quiz_attempts
-                  WHERE quiz_id = ${quiz_id}
+                  WHERE curriculum_item_id = ${curriculum_item_id}
                   AND user_id = ${user_id}
               ),
               ${total_questions}
@@ -541,10 +542,11 @@ export async function getQuestionsForAttemptAction(attemptId: number) {
   try {
     const rows = await sql`
       SELECT qb.id, qb.question_text, qb.type, qb.options
-        FROM question_bank qb
-        JOIN quiz_questions qq ON qb.id = qq.question_id
-        JOIN quiz_attempts qa ON qa.quiz_id = qq.quiz_id
-        WHERE qa.id = ${attemptId} AND qb.is_deleted = FALSE
+      FROM quiz_attempts qa
+      JOIN curriculum_items ci ON ci.id = qa.curriculum_item_id
+      JOIN quiz_questions qq ON qq.quiz_id = ci.quiz_id
+      JOIN question_bank qb ON qb.id = qq.question_id
+      WHERE qa.id = ${attemptId} AND qb.is_deleted = FALSE
     `
     return rows as Question[]
   } catch (error) {
@@ -579,7 +581,8 @@ export async function getTimeLimitForAttemptAction(attemptId: number) {
     const rows = await sql`
         SELECT q.time_limit_minutes
         FROM quizzes q
-        JOIN quiz_attempts qa ON qa.quiz_id = q.id
+        JOIN curriculum_items ci ON ci.quiz_id = q.id
+        JOIN quiz_attempts qa ON qa.curriculum_item_id = ci.id
         WHERE qa.id = ${attemptId}
     `;
     return rows[0]?.time_limit_minutes || null;
@@ -595,7 +598,8 @@ export async function getQuizByAttemptAction(attemptId: number): Promise<Quiz> {
     const result = await sql`
           SELECT q.*
           FROM quizzes q
-          JOIN quiz_attempts qa ON qa.quiz_id = q.id
+          JOIN curriculum_items ci ON ci.quiz_id = q.id
+          JOIN quiz_attempts qa ON qa.curriculum_item_id = ci.id
           WHERE qa.id = ${attemptId} AND q.deleted_at IS NULL
       `;
     if (result.length === 0) {
@@ -624,7 +628,8 @@ export async function getAttemptResultAction(
         qa.time_spent_seconds,
         qa.score
       FROM quiz_attempts qa
-      JOIN quizzes q ON q.id = qa.quiz_id
+      JOIN curriculum_items ci ON ci.id = qa.curriculum_item_id
+      JOIN quizzes q ON q.id = ci.quiz_id
       WHERE qa.id = ${attemptId} AND qa.status = 'submitted'
     `;
 
@@ -637,7 +642,10 @@ export async function getAttemptResultAction(
 
   // 2. Get ALL questions for this quiz, with user's answers (if any)
   const quizId = (await sql`
-    SELECT quiz_id FROM quiz_attempts WHERE id = ${attemptId}
+    SELECT ci.quiz_id
+    FROM quiz_attempts qa
+    JOIN curriculum_items ci ON ci.id = qa.curriculum_item_id
+    WHERE qa.id = ${attemptId}
   `)[0].quiz_id;
 
   const questionResults = await sql`
@@ -677,6 +685,25 @@ export async function getAttemptResultAction(
   } catch (error) {
     console.error("getAttemptResultAction error:", error);
     throw error;
+  }
+}
+
+/**
+ * Lấy chi tiết quiz thông qua curriculum_item_id.
+ */
+export async function getQuizByCurriculumItemIdAction(curriculumItemId: number) {
+  try {
+    const rows = await sql`
+      SELECT q.*
+      FROM curriculum_items ci
+      JOIN quizzes q ON q.id = ci.quiz_id
+      WHERE ci.id = ${curriculumItemId} AND q.is_deleted = FALSE
+      LIMIT 1
+    `
+    return rows.length > 0 ? (rows[0] as Quiz) : null
+  } catch (error) {
+    console.error("getQuizByCurriculumItemIdAction error:", error)
+    return null
   }
 }
 

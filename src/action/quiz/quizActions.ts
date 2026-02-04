@@ -7,6 +7,7 @@ import { requireAuth } from "@/lib/auth"
 import {
   getAllQuizzesAction,
   getQuizByIdAction,
+  getQuizByCurriculumItemIdAction,
   createQuizAction,
   updateQuizAction,
   deleteQuizAction,
@@ -15,6 +16,10 @@ import {
   startQuizAttemptAction,
   submitQuizAttemptAction,
   saveAttemptAnswerAction,
+  getQuestionsForAttemptAction,
+  getSavedAnswersAction,
+  getTimeLimitForAttemptAction,
+  getAttemptResultAction,
 } from "@/service/quiz.service"
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
@@ -28,6 +33,19 @@ type GetAllQuizzesParams = {
   query?: string
   page?: number
   limit?: number
+  course_id?: number
+}
+
+async function requireAttemptOwner(attemptId: number, userId: number) {
+  const rows = await sql`
+    SELECT id
+    FROM quiz_attempts
+    WHERE id = ${attemptId} AND user_id = ${userId}
+    LIMIT 1;
+  `
+  if (rows.length === 0) {
+    throw new Error("Attempt not found")
+  }
 }
 
 /**
@@ -50,6 +68,11 @@ export async function getAllQuizzes(params: GetAllQuizzesParams) {
 export async function getQuizById(id: number) {
   await requireAuth()
   return getQuizByIdAction(id)
+}
+
+export async function getQuizByCurriculumItemId(curriculumItemId: number) {
+  await requireAuth()
+  return getQuizByCurriculumItemIdAction(curriculumItemId)
 }
 
 /**
@@ -216,25 +239,50 @@ export async function updateQuizQuestions(quizId: number, questionIds: number[])
   revalidatePath("/quizzes")
 }
 
-export async function startQuizAttempt(quizId: number) {
+export async function startQuizAttempt(curriculumItemId: number) {
   const user = await requireAuth()
 
   // totalQuestions should come from DB, not frontend
   const result = await sql`
     SELECT COUNT(*)::int AS count
-    FROM question_bank qb
-    JOIN quiz_questions qq ON qb.id = qq.question_id
-    WHERE qq.quiz_id = ${quizId} AND qb.deleted_at IS NULL;
+    FROM curriculum_items ci
+    JOIN quiz_questions qq ON qq.quiz_id = ci.quiz_id
+    JOIN question_bank qb ON qb.id = qq.question_id
+    WHERE ci.id = ${curriculumItemId} AND qb.is_deleted = FALSE;
   `;
 
   const totalQuestions = result[0].count;
 
-  return startQuizAttemptAction(quizId, Number(user.id), totalQuestions);
+  return startQuizAttemptAction(curriculumItemId, Number(user.id), totalQuestions);
 }
 
 export async function submitQuizAttempt(attemptId: number) {
   const user = await requireAuth();
   return submitQuizAttemptAction(attemptId, Number(user.id));
+}
+
+export async function getQuestionsForAttempt(attemptId: number) {
+  const user = await requireAuth()
+  await requireAttemptOwner(attemptId, Number(user.id))
+  return getQuestionsForAttemptAction(attemptId)
+}
+
+export async function getSavedAnswers(attemptId: number) {
+  const user = await requireAuth()
+  await requireAttemptOwner(attemptId, Number(user.id))
+  return getSavedAnswersAction(attemptId)
+}
+
+export async function getTimeLimitForAttempt(attemptId: number) {
+  const user = await requireAuth()
+  await requireAttemptOwner(attemptId, Number(user.id))
+  return getTimeLimitForAttemptAction(attemptId)
+}
+
+export async function getAttemptResult(attemptId: number) {
+  const user = await requireAuth()
+  await requireAttemptOwner(attemptId, Number(user.id))
+  return getAttemptResultAction(attemptId)
 }
 
 const SaveAnswerSchema = z.object({
