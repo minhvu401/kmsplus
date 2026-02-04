@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from 'react';
 import { Card, Button, Typography, Radio, Space, Checkbox, Divider, Modal, message } from 'antd';
 import { saveAttemptAnswer, submitQuizAttempt } from '@/action/quiz/quizActions';
-import { Question } from '@/service/quiz.service';
+import type { Question } from '@/service/quiz.service';
 
 const { Text } = Typography;
 const { confirm } = Modal;

@@ -2,12 +2,12 @@
 
 import { useState } from 'react';
 import { startQuizAttempt } from "@/action/quiz/quizActions";
-import { Quiz } from "@/service/quiz.service";
+import type { Quiz } from "@/service/quiz.service";
 import { Card, Row, Col, Typography, Statistic, Space, Divider, message, Button, Modal } from 'antd'
 const { Title, Text } = Typography;
 import { format } from 'date-fns'
 
-export default function QuizDetails({ quiz }: { quiz: Quiz }) {
+export default function QuizDetails({ quiz, curriculumItemId }: { quiz: Quiz; curriculumItemId: number }) {
     const hasFrom = !!quiz.available_from
     const hasTo = !!quiz.available_until
 
@@ -127,7 +127,7 @@ export default function QuizDetails({ quiz }: { quiz: Quiz }) {
             {/* Start Quiz */}
             <Card style={{ width: '100%' }} styles={{ body: { padding: 24 } }}>
                 <Space direction="vertical" size={12}>
-                    <StartQuizButton quizId={quiz.id} />
+                    <StartQuizButton curriculumItemId={curriculumItemId} />
                 </Space>
             </Card>
 
@@ -136,9 +136,9 @@ export default function QuizDetails({ quiz }: { quiz: Quiz }) {
 }
 
 export function StartQuizButton({
-    quizId,
+    curriculumItemId,
 }: {
-    quizId: number;
+    curriculumItemId: number;
 }) {
 
     const [messageApi, contextHolder] = message.useMessage();
@@ -148,7 +148,7 @@ export function StartQuizButton({
     async function handleConfirmStart() {
         try {
             setLoading(true);
-            const attemptId = await startQuizAttempt(quizId);
+            const attemptId = await startQuizAttempt(curriculumItemId);
             window.location.href = `/courses/quiz/attempt/${attemptId.id}`;
         } catch (err) {
             messageApi.error(

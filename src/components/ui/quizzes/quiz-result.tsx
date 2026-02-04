@@ -2,7 +2,7 @@
 
 import { Card, Row, Col, Typography, Statistic, Space, Tag } from 'antd';
 const { Title, Text, Paragraph } = Typography;
-import { AttemptResult, QuestionResult } from '@/service/quiz.service';
+import type { AttemptResult, QuestionResult } from '@/service/quiz.service';
 import {
     CheckCircleOutlined,
     CloseCircleOutlined,

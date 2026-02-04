@@ -1,5 +1,5 @@
 import PageWrapper from "@/components/ui/questions/page-wrapper";
-import { getAttemptResultAction } from "@/service/quiz.service";
+import { getAttemptResult } from "@/action/quiz/quizActions";
 import QuizResult from "@/components/ui/quizzes/quiz-result";
 
 export default async function Page({
@@ -9,7 +9,7 @@ export default async function Page({
 }) {
 
     const attemptId = Number((await params).id);
-    const result = await getAttemptResultAction(attemptId);
+    const result = await getAttemptResult(attemptId);
 
     return (
         <PageWrapper>
