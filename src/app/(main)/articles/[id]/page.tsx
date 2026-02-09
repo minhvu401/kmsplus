@@ -37,9 +37,16 @@ export default function ArticleDetailPage() {
   const [submitting, setSubmitting] = useState(false);
   const [approving, setApproving] = useState(false);
   const [rejecting, setRejecting] = useState(false);
+  const [showApproveModal, setShowApproveModal] = useState(false);
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [showRejectReasonModal, setShowRejectReasonModal] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editingCommentText, setEditingCommentText] = useState('');
   const [updatingComment, setUpdatingComment] = useState(false);
+  const [deleteCommentId, setDeleteCommentId] = useState<string | null>(null);
+  const [showDeleteCommentModal, setShowDeleteCommentModal] = useState(false);
+  const [deletingComment, setDeletingComment] = useState(false);
 
   const renderedContent = useMemo(() => {
     if (!article?.content) return '';
@@ -136,88 +143,114 @@ export default function ArticleDetailPage() {
   };
 
   const handleDeleteComment = (commentId: string) => {
-    Modal.confirm({
-      title: 'Delete Comment',
-      content: 'Are you sure you want to delete this comment?',
-      okText: 'Delete',
-      okType: 'danger',
-      cancelText: 'Cancel',
-      onOk: async () => {
-        try {
-          const result = await deleteComment(parseInt(commentId));
-          if (result.success) {
-            message.success('Comment deleted successfully');
-            await loadArticleAndComments();
-          } else {
-            message.error(result.message || 'Failed to delete comment');
-          }
-        } catch (error: any) {
-          message.error('An error occurred');
-        }
-      },
-    });
+    setDeleteCommentId(commentId);
+    setShowDeleteCommentModal(true);
+  };
+
+  const confirmDeleteComment = async () => {
+    if (!deleteCommentId) return;
+    setDeletingComment(true);
+    try {
+      const result = await deleteComment(parseInt(deleteCommentId));
+      if (result.success) {
+        message.success('Comment deleted successfully');
+        setShowDeleteCommentModal(false);
+        setDeleteCommentId(null);
+        await loadArticleAndComments();
+      } else {
+        message.error(result.message || 'Failed to delete comment');
+      }
+    } catch (error: any) {
+      message.error('An error occurred');
+    } finally {
+      setDeletingComment(false);
+    }
   };
 
   const handleApprove = () => {
-    Modal.confirm({
-      title: 'Approve article',
-      content: 'Are you sure you want to publish this article?',
-      okText: 'Approve',
-      cancelText: 'Cancel',
-      okButtonProps: { type: 'primary', loading: approving, icon: <CheckCircleOutlined /> },
-      onOk: async () => {
-        setApproving(true);
-        try {
-          const res = await fetch('/api/articles/approve', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify({ id: parseInt(articleId) }),
-          }).then((r) => r.json());
-          if (res.success) {
-            message.success(res.message || 'Article approved');
-            await loadArticleAndComments();
-          } else {
-            message.error(res.message || 'Failed to approve');
-          }
-        } catch (err: any) {
-          message.error(err?.message || 'Failed to approve');
-        } finally {
-          setApproving(false);
-        }
-      },
-    });
+    console.log('🔵 handleApprove clicked');
+    setShowApproveModal(true);
+  };
+
+  const confirmApprove = async () => {
+    console.log('🟢 Approve confirmed, sending request...');
+    setApproving(true);
+    try {
+      console.log('📤 Sending POST to /api/articles/approve with id:', articleId);
+      const response = await fetch('/api/articles/approve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ id: parseInt(articleId, 10) }),
+      });
+
+      console.log('📥 Response status:', response.status, response.statusText);
+      const result = await response.json();
+      console.log('📥 Response data:', result);
+
+      if (response.ok && result.success) {
+        message.success(result.message || 'Article approved successfully');
+        setShowApproveModal(false);
+        await loadArticleAndComments();
+      } else {
+        console.error('❌ Approve failed:', result);
+        message.error(result.message || 'Failed to approve article');
+      }
+    } catch (err: any) {
+      console.error('❌ Approve error:', err);
+      message.error(err?.message || 'Failed to approve');
+    } finally {
+      setApproving(false);
+    }
   };
 
   const handleReject = () => {
-    Modal.confirm({
-      title: 'Reject article',
-      content: 'Are you sure you want to reject this article?',
-      okText: 'Reject',
-      cancelText: 'Cancel',
-      okButtonProps: { danger: true, loading: rejecting, icon: <CloseCircleOutlined /> },
-      onOk: async () => {
-        setRejecting(true);
-        try {
-          const res = await fetch('/api/articles/reject', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify({ id: parseInt(articleId) }),
-          }).then((r) => r.json());
-          if (res.success) {
-            message.success(res.message || 'Article rejected');
-            await loadArticleAndComments();
-          } else {
-            message.error(res.message || 'Failed to reject');
-          }
-        } catch (err: any) {
-          message.error(err?.message || 'Failed to reject');
-        } finally {
-          setRejecting(false);
-        }
-      },
-    });
+    console.log('🔴 handleReject clicked');
+    setShowRejectModal(true);
+  };
+
+  const confirmReject = async () => {
+    // Close reject confirmation modal and open reason modal
+    setShowRejectModal(false);
+    setShowRejectReasonModal(true);
+  };
+
+  const confirmRejectWithReason = async () => {
+    if (!rejectReason.trim()) {
+      message.warning('Please enter a reason for rejection');
+      return;
+    }
+
+    console.log('🟠 Reject confirmed with reason, sending request...');
+    setRejecting(true);
+    try {
+      console.log('📤 Sending POST to /api/articles/reject with id:', articleId, 'reason:', rejectReason);
+      const response = await fetch('/api/articles/reject', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ id: parseInt(articleId, 10), reason: rejectReason }),
+      });
+
+      console.log('📥 Response status:', response.status, response.statusText);
+      const result = await response.json();
+      console.log('📥 Response data:', result);
+
+      if (response.ok && result.success) {
+        message.success(result.message || 'Article rejected successfully');
+        setShowRejectReasonModal(false);
+        setRejectReason('');
+        await loadArticleAndComments();
+      } else {
+        console.error('❌ Reject failed:', result);
+        message.error(result.message || 'Failed to reject article');
+      }
+    } catch (err: any) {
+      console.error('❌ Reject error:', err);
+      message.error(err?.message || 'Failed to reject');
+    } finally {
+      setRejecting(false);
+    }
   };
 
   if (loading) {
@@ -319,8 +352,81 @@ export default function ArticleDetailPage() {
           </div>
         )}
 
+        {/* Rejection Reason (for rejected articles) */}
+        {article.status === 'rejected' && article.reason && (
+          <Card className="mb-6 border-l-4 border-l-red-500">
+            <Title level={4} className="!text-red-500 !mb-2">Rejection Reason</Title>
+            <Paragraph className="!mb-0 whitespace-pre-wrap">
+              {article.reason}
+            </Paragraph>
+          </Card>
+        )}
+
+        {/* Approve Modal */}
+        <Modal
+          title="Approve article"
+          open={showApproveModal}
+          onOk={confirmApprove}
+          onCancel={() => setShowApproveModal(false)}
+          okText="Approve"
+          cancelText="Cancel"
+          confirmLoading={approving}
+        >
+          <p>Are you sure you want to publish this article?</p>
+        </Modal>
+
+        {/* Reject Modal */}
+        <Modal
+          title="Reject article"
+          open={showRejectModal}
+          onOk={confirmReject}
+          onCancel={() => setShowRejectModal(false)}
+          okText="Reject"
+          cancelText="Cancel"
+          okButtonProps={{ danger: true }}
+          confirmLoading={rejecting}
+        >
+          <p>Are you sure you want to reject this article?</p>
+        </Modal>
+
+        {/* Reject Reason Modal */}
+        <Modal
+          title="Rejection Reason"
+          open={showRejectReasonModal}
+          onOk={confirmRejectWithReason}
+          onCancel={() => {
+            setShowRejectReasonModal(false);
+            setRejectReason('');
+          }}
+          okText="Submit"
+          cancelText="Cancel"
+          confirmLoading={rejecting}
+        >
+          <p className="mb-4">Please provide a reason for rejecting this article:</p>
+          <TextArea
+            value={rejectReason}
+            onChange={(e) => setRejectReason(e.target.value)}
+            placeholder="Enter rejection reason..."
+            autoSize={{ minRows: 4, maxRows: 8 }}
+          />
+        </Modal>
+
+        {/* Delete Comment Modal */}
+        <Modal
+          title="Delete Comment"
+          open={showDeleteCommentModal}
+          onOk={confirmDeleteComment}
+          onCancel={() => setShowDeleteCommentModal(false)}
+          okText="Delete"
+          cancelText="Cancel"
+          okButtonProps={{ danger: true }}
+          confirmLoading={deletingComment}
+        >
+          <p>Are you sure you want to delete this comment?</p>
+        </Modal>
+
         {/* Comments Section */}
-        {article.status !== 'pending' && (
+        {article.status !== 'pending' && article.status !== 'rejected' && (
           <Card title={<Title level={4} className="!mb-0">Comments ({comments.length})</Title>}>
             {/* Comment Input */}
             <div className="mb-6">

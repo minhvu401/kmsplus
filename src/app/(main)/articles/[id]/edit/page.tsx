@@ -15,7 +15,6 @@ import {
 import { getAllTags, getAllCategories } from '@/action/articles/articlesManagementAction';
 import { getArticleById, updateArticle } from '@/action/articles/articlesManagementAction';
 import type { Tag } from '@/service/articles.service';
-import '../../create/editor.css';
 
 const { Title, Text } = Typography;
 
