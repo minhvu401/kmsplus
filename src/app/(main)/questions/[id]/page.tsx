@@ -1,34 +1,50 @@
 // app/questions/[id]/page.tsx
 // view question details & answers
-import { getQuestionDetails, getAnswersForQuestion, fetchFilteredAnswers } from "@/action/question/questionActions";
-import AnswerSection from "@/components/ui/questions/answer-section";
-import PageWrapper from "@/components/ui/questions/page-wrapper";
-import QuestionDetails from "@/components/ui/questions/question-details";
-import { notFound } from "next/navigation";
+import {
+  getQuestionDetails,
+  getAnswersForQuestion,
+  fetchFilteredAnswers,
+  fetchAnswerPages,
+  getActiveCategories,
+} from "@/action/question/questionActions"
+import AnswerSection from "@/components/ui/questions/answer-section"
+import PageWrapper from "@/components/ui/questions/page-wrapper"
+import QuestionDetails from "@/components/ui/questions/question-details"
+import QuestionsNotification from "@/components/ui/questions/questions-notification"
+import { requireAuth } from "@/lib/auth"
+import { notFound } from "next/navigation"
 
 export default async function Page({
   params,
   searchParams,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ id: string }>
   searchParams?: Promise<{
-    sort?: string;
-    page?: string;
-    opened?: string;
-    closed?: string;
-    updated?: string;
-    answerCreated?: string;
-    answerDeleted?: string;
-  }>;
+    page?: string
+    limit?: string
+    opened?: string
+    closed?: string
+    updated?: string
+    answerCreated?: string
+    answerDeleted?: string
+  }>
 }) {
-  const { id } = await params;
-  const sp = await searchParams;
-  const currentPage = Number(sp?.page) || 1;
+  const { id } = await params
+  const resolvedSearchParams = await searchParams
+  const currentPage = Number(resolvedSearchParams?.page) || 1
+  const pageSize = Number(resolvedSearchParams?.limit) || 5
+  const user = await requireAuth()
 
   // Fetch question details
-  const question = await getQuestionDetails(id);
-  const answers = await getAnswersForQuestion(Number(id));
-  const paginatedAnswers = await fetchFilteredAnswers(currentPage, Number(id));
+  const question = await getQuestionDetails(id)
+  const answers = await getAnswersForQuestion(Number(id))
+  const paginatedAnswers = await fetchFilteredAnswers(
+    currentPage,
+    Number(id),
+    pageSize
+  )
+  const { totalItems: topLevelAnswerCount, totalPages } = await fetchAnswerPages(Number(id), pageSize)
+  const categories = await getActiveCategories()
 
   if (!question) {
     return notFound();
@@ -36,7 +52,16 @@ export default async function Page({
 
   return (
     <PageWrapper>
-      <AnswerSection questionId={Number(id)} answer_count={question.answer_count} is_closed={question.is_closed} answers={answers} paginatedAnswers={paginatedAnswers} />
+      <QuestionsNotification scroll={false} />
+      <QuestionDetails userId={Number(user.id)} question={question} categories={categories} />
+      <AnswerSection
+        questionId={Number(id)}
+        answer_count={topLevelAnswerCount}
+        is_closed={question.is_closed}
+        answers={answers}
+        paginatedAnswers={paginatedAnswers}
+        totalPages={totalPages}
+      />
     </PageWrapper>
   );
 }

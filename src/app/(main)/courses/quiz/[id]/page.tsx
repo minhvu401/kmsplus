@@ -1,18 +1,19 @@
-import { getQuizByIdAction } from "@/service/quiz.service";
+import { getQuizByCurriculumItemId } from "@/action/quiz/quizActions";
 import QuizDetails from "@/components/ui/quizzes/quiz-details";
 import PageWrapper from "@/components/ui/questions/page-wrapper";
 import { notFound } from "next/navigation";
 
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  
-    const quiz = await getQuizByIdAction(Number(id));
+
+    const curriculumItemId = Number(id)
+    const quiz = await getQuizByCurriculumItemId(curriculumItemId);
     if (!quiz) {
       notFound();
     }
     return (
         <PageWrapper>
-            <QuizDetails quiz={quiz} />
+            <QuizDetails quiz={quiz} curriculumItemId={curriculumItemId} />
         </PageWrapper>  
     );
 }
