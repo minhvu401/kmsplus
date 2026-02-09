@@ -4,7 +4,6 @@ import { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import { Card, Typography, Divider, Avatar, Input, Button, Space, Spin, message, Empty, Modal, Dropdown } from 'antd';
 import { UserOutlined, SendOutlined, CheckCircleOutlined, CloseCircleOutlined, MoreOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
-import type { MenuProps } from 'antd';
 import { getArticleById } from '@/action/articles/articlesManagementAction';
 import { getComments, createComment, updateComment, deleteComment } from '@/action/comments/commentsAction';
 import type { Comment } from '@/service/comments.service';
@@ -44,6 +43,9 @@ export default function ArticleDetailPage() {
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editingCommentText, setEditingCommentText] = useState('');
   const [updatingComment, setUpdatingComment] = useState(false);
+  const [replyToId, setReplyToId] = useState<string | null>(null);
+  const [replyText, setReplyText] = useState('');
+  const [replying, setReplying] = useState(false);
   const [deleteCommentId, setDeleteCommentId] = useState<string | null>(null);
   const [showDeleteCommentModal, setShowDeleteCommentModal] = useState(false);
   const [deletingComment, setDeletingComment] = useState(false);
@@ -52,6 +54,30 @@ export default function ArticleDetailPage() {
     if (!article?.content) return '';
     return mdParser.render(article.content);
   }, [article?.content]);
+
+  const threadedComments = useMemo(() => {
+    const ROOT_KEY = 'root';
+    const map = new Map<string, Comment[]>();
+
+    comments.forEach((comment) => {
+      const key = comment.parent_id ?? ROOT_KEY;
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(comment);
+    });
+
+    map.forEach((list) => {
+      list.sort(
+        (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      );
+    });
+
+    const roots = map.get(ROOT_KEY) ?? [];
+    roots.sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
+
+    return { map, roots };
+  }, [comments]);
 
   useEffect(() => {
     loadArticleAndComments();
@@ -101,6 +127,46 @@ export default function ArticleDetailPage() {
       message.error('An error occurred');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleReplyClick = (commentId: string) => {
+    setReplyToId(commentId);
+    setReplyText('');
+  };
+
+  const handleCancelReply = () => {
+    setReplyToId(null);
+    setReplyText('');
+  };
+
+  const handleSubmitReply = async () => {
+    if (!replyToId) return;
+    if (!replyText.trim()) {
+      message.warning('Please enter a reply');
+      return;
+    }
+
+    setReplying(true);
+    try {
+      const formData = new FormData();
+      formData.append('article_id', articleId);
+      formData.append('content', replyText);
+      formData.append('parent_id', replyToId);
+
+      const result = await createComment(formData);
+      if (result.success) {
+        message.success('Reply posted successfully');
+        setReplyToId(null);
+        setReplyText('');
+        await loadArticleAndComments();
+      } else {
+        message.error(result.message || 'Failed to post reply');
+      }
+    } catch (error: any) {
+      message.error('An error occurred');
+    } finally {
+      setReplying(false);
     }
   };
 
@@ -253,6 +319,127 @@ export default function ArticleDetailPage() {
     }
   };
 
+  const renderCommentItem = (comment: Comment, depth: number = 0) => {
+    const isEditing = editingCommentId === comment.id;
+    const isReplying = replyToId === comment.id;
+    const children = threadedComments.map.get(comment.id) || [];
+
+    return (
+      <div
+        key={comment.id}
+        className={`flex items-start space-x-3 ${depth > 0 ? 'pl-4 border-l border-gray-200' : ''}`}
+      >
+        <Avatar icon={<UserOutlined />} className="bg-gray-400 flex-shrink-0" />
+        <div className="flex-1">
+          {isEditing ? (
+            <div className="space-y-2">
+              <Input.TextArea
+                value={editingCommentText}
+                onChange={(e) => setEditingCommentText(e.target.value)}
+                autoSize={{ minRows: 2, maxRows: 6 }}
+              />
+              <Space>
+                <Button
+                  type="primary"
+                  size="small"
+                  onClick={() => handleUpdateComment(comment.id)}
+                  loading={updatingComment}
+                >
+                  Save
+                </Button>
+                <Button size="small" onClick={handleCancelEdit}>
+                  Cancel
+                </Button>
+              </Space>
+            </div>
+          ) : (
+            <>
+              <div className="bg-gray-100 rounded-lg p-3 relative">
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <Text strong className="block mb-1">
+                      {comment.user_name || 'Anonymous User'}
+                    </Text>
+                    <Text>{comment.content}</Text>
+                  </div>
+                  <Dropdown menu={{ items: [
+                    {
+                      key: 'edit',
+                      label: 'Edit',
+                      icon: <EditOutlined />,
+                      onClick: () => handleEditComment(comment.id, comment.content),
+                    },
+                    {
+                      key: 'delete',
+                      label: 'Delete',
+                      icon: <DeleteOutlined />,
+                      danger: true,
+                      onClick: () => handleDeleteComment(comment.id),
+                    },
+                  ] }} trigger={['click']}>
+                    <Button
+                      type="text"
+                      size="small"
+                      icon={<MoreOutlined />}
+                      className="ml-2"
+                    />
+                  </Dropdown>
+                </div>
+              </div>
+              <div className="mt-1 flex items-center justify-between">
+                <Text type="secondary" className="text-xs">
+                  {new Date(comment.created_at).toLocaleDateString('vi-VN')} at{' '}
+                  {new Date(comment.created_at).toLocaleTimeString('vi-VN', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}
+                </Text>
+                <Button
+                  type="link"
+                  size="small"
+                  className="!px-0"
+                  onClick={() => handleReplyClick(comment.id)}
+                >
+                  Reply
+                </Button>
+              </div>
+            </>
+          )}
+
+          {isReplying && (
+            <div className="mt-2 space-y-2">
+              <Input.TextArea
+                value={replyText}
+                onChange={(e) => setReplyText(e.target.value)}
+                autoSize={{ minRows: 2, maxRows: 6 }}
+                placeholder="Write a reply..."
+              />
+              <Space>
+                <Button
+                  type="primary"
+                  size="small"
+                  onClick={handleSubmitReply}
+                  loading={replying}
+                >
+                  Reply
+                </Button>
+                <Button size="small" onClick={handleCancelReply}>
+                  Cancel
+                </Button>
+              </Space>
+            </div>
+          )}
+
+          {children.length > 0 && (
+            <div className="mt-4 space-y-4">
+              {children.map((child) => renderCommentItem(child, depth + 1))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
@@ -273,94 +460,150 @@ export default function ArticleDetailPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-4xl mx-auto py-8 px-4">
-        {/* Article Content */}
-        <Card className="mb-6">
-          {/* Date */}
-          <Text type="secondary" className="block mb-4">
-            📅 {new Date(article.created_at).toLocaleDateString('vi-VN')}
-          </Text>
+      <div className="max-w-6xl mx-auto py-8 px-4">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-8">
+          {/* Main Column */}
+          <div className="space-y-6">
+            {/* Article Content */}
+            <Card className="border border-gray-100 shadow-sm">
+              {/* Date */}
+              <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-gray-500 mb-3">
+                <span className="inline-flex h-2 w-2 rounded-full bg-gray-400" />
+                <span>{new Date(article.created_at).toLocaleDateString('vi-VN')}</span>
+              </div>
 
-          {/* Title */}
-          <Title level={2} className="!mb-6">
-            {article.title}
-          </Title>
-
-          {/* Thumbnail Placeholder */}
-          <div className="mb-6 bg-gradient-to-r from-blue-100 to-purple-100 rounded-lg overflow-hidden">
-            <img
-              src={
-                article.thumbnail_url 
-                  ? article.thumbnail_url 
-                  : "https://images.unsplash.com/photo-1499750310107-5fef28a66643?w=800&h=400&fit=crop"
-              }
-              alt="Article thumbnail"
-              className="w-full h-64 object-cover"
-              onError={(e) => {
-                (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1499750310107-5fef28a66643?w=800&h=400&fit=crop"
-              }}
-            />
-          </div>
-
-          {/* Content */}
-          <div 
-            className="prose max-w-none"
-            dangerouslySetInnerHTML={{ __html: renderedContent }}
-          />
-        </Card>
-
-        {/* Author Info */}
-        <Card className="mb-6">
-          <div className="flex items-center space-x-4">
-            <Avatar size={64} icon={<UserOutlined />} className="bg-blue-500" />
-            <div>
-              <Title level={5} className="!mb-1">
-                {article.author_name || 'Nguyễn Văn A'}
+              {/* Title */}
+              <Title level={1} className="!mb-4 !text-3xl md:!text-4xl !leading-tight">
+                {article.title}
               </Title>
-              <Text type="secondary">Dream Jobs, Analyist</Text>
-              <br />
-              <Button type="link" size="small" className="!px-0">
-                Follow
-              </Button>
-            </div>
-          </div>
-        </Card>
 
-        {/* Approval Actions (for pending articles) */}
-        {article.status === 'pending' && (
-          <div className="mb-6 flex justify-center">
-            <Space size="large">
-              <Button 
-                type="primary" 
-                size="large"
-                icon={<CheckCircleOutlined />} 
-                loading={approving}
-                onClick={handleApprove}
-              >
-                Approve
-              </Button>
-              <Button 
-                danger 
-                size="large"
-                icon={<CloseCircleOutlined />} 
-                loading={rejecting}
-                onClick={handleReject}
-              >
-                Reject
-              </Button>
-            </Space>
-          </div>
-        )}
+              {/* Thumbnail */}
+              <div className="mb-6 rounded-xl overflow-hidden border border-gray-100">
+                <img
+                  src={
+                    article.thumbnail_url 
+                      ? article.thumbnail_url 
+                      : "https://images.unsplash.com/photo-1499750310107-5fef28a66643?w=1200&h=600&fit=crop"
+                  }
+                  alt="Article thumbnail"
+                  className="w-full h-72 md:h-80 object-cover"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1499750310107-5fef28a66643?w=1200&h=600&fit=crop"
+                  }}
+                />
+              </div>
 
-        {/* Rejection Reason (for rejected articles) */}
-        {article.status === 'rejected' && article.reason && (
-          <Card className="mb-6 border-l-4 border-l-red-500">
-            <Title level={4} className="!text-red-500 !mb-2">Rejection Reason</Title>
-            <Paragraph className="!mb-0 whitespace-pre-wrap">
-              {article.reason}
-            </Paragraph>
-          </Card>
-        )}
+              {/* Content */}
+              <div 
+                className="prose max-w-none article-content"
+                dangerouslySetInnerHTML={{ __html: renderedContent }}
+              />
+            </Card>
+
+            {/* Approval Actions (for pending articles) */}
+            {article.status === 'pending' && (
+              <div className="flex justify-start">
+                <Space size="large">
+                  <Button 
+                    type="primary" 
+                    size="large"
+                    icon={<CheckCircleOutlined />} 
+                    loading={approving}
+                    onClick={handleApprove}
+                  >
+                    Approve
+                  </Button>
+                  <Button 
+                    danger 
+                    size="large"
+                    icon={<CloseCircleOutlined />} 
+                    loading={rejecting}
+                    onClick={handleReject}
+                  >
+                    Reject
+                  </Button>
+                </Space>
+              </div>
+            )}
+
+            {/* Rejection Reason (for rejected articles) */}
+            {article.status === 'rejected' && article.reason && (
+              <Card className="border-l-4 border-l-red-500">
+                <Title level={4} className="!text-red-500 !mb-2">Rejection Reason</Title>
+                <Paragraph className="!mb-0 whitespace-pre-wrap">
+                  {article.reason}
+                </Paragraph>
+              </Card>
+            )}
+
+            {/* Comments Section */}
+            {article.status !== 'pending' && article.status !== 'rejected' && (
+              <Card title={<Title level={4} className="!mb-0">Comments ({comments.length})</Title>}>
+                {/* Comment Input */}
+                <div className="mb-6">
+                  <div className="flex items-start space-x-3">
+                    <Avatar icon={<UserOutlined />} className="bg-gray-400 flex-shrink-0" />
+                    <div className="flex-1">
+                      <TextArea
+                        placeholder="Comment"
+                        value={commentText}
+                        onChange={(e) => setCommentText(e.target.value)}
+                        autoSize={{ minRows: 3, maxRows: 6 }}
+                        className="mb-2"
+                      />
+                      <div className="flex justify-end">
+                        <Button
+                          type="primary"
+                          icon={<SendOutlined />}
+                          onClick={handleSubmitComment}
+                          loading={submitting}
+                        >
+                          Send
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <Divider />
+
+                {/* Show 1 comment text */}
+                {comments.length > 0 && (
+                  <Button type="link" className="!px-0 mb-4">
+                    Show {comments.length} comment{comments.length > 1 ? 's' : ''}
+                  </Button>
+                )}
+
+                {/* Comments List */}
+                <Space direction="vertical" size="large" className="w-full">
+                  {threadedComments.roots.map((comment) => renderCommentItem(comment))}
+                </Space>
+
+                {comments.length === 0 && (
+                  <Empty description="No comments yet. Be the first to comment!" />
+                )}
+              </Card>
+            )}
+          </div>
+
+          {/* Sidebar */}
+          <aside className="space-y-6 lg:pt-8">
+            <Card className="border border-gray-100 shadow-sm">
+              <Text type="secondary" className="block mb-3 text-xs uppercase tracking-wide">
+                Authors
+              </Text>
+              <div className="flex items-start space-x-4">
+                <Avatar size={56} icon={<UserOutlined />} className="bg-blue-500" />
+                <div>
+                  <Title level={5} className="!mb-1">
+                    {article.author_name || 'Nguyễn Văn A'}
+                  </Title>
+                  <Text type="secondary">Dream Jobs, Analyist</Text>
+                </div>
+              </div>
+            </Card>
+          </aside>
+        </div>
 
         {/* Approve Modal */}
         <Modal
@@ -425,130 +668,6 @@ export default function ArticleDetailPage() {
           <p>Are you sure you want to delete this comment?</p>
         </Modal>
 
-        {/* Comments Section */}
-        {article.status !== 'pending' && article.status !== 'rejected' && (
-          <Card title={<Title level={4} className="!mb-0">Comments ({comments.length})</Title>}>
-            {/* Comment Input */}
-            <div className="mb-6">
-              <div className="flex items-start space-x-3">
-                <Avatar icon={<UserOutlined />} className="bg-gray-400 flex-shrink-0" />
-                <div className="flex-1">
-                  <TextArea
-                    placeholder="Comment"
-                    value={commentText}
-                    onChange={(e) => setCommentText(e.target.value)}
-                    autoSize={{ minRows: 3, maxRows: 6 }}
-                    className="mb-2"
-                  />
-                  <div className="flex justify-end">
-                    <Button
-                      type="primary"
-                      icon={<SendOutlined />}
-                      onClick={handleSubmitComment}
-                      loading={submitting}
-                    >
-                      Send
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <Divider />
-
-            {/* Show 1 comment text */}
-            {comments.length > 0 && (
-              <Button type="link" className="!px-0 mb-4">
-                Show {comments.length} comment{comments.length > 1 ? 's' : ''}
-              </Button>
-            )}
-
-            {/* Comments List */}
-            <Space direction="vertical" size="large" className="w-full">
-              {comments.map((comment) => {
-                const isEditing = editingCommentId === comment.id;
-                const menuItems: MenuProps['items'] = [
-                  {
-                    key: 'edit',
-                    label: 'Edit',
-                    icon: <EditOutlined />,
-                    onClick: () => handleEditComment(comment.id, comment.content),
-                  },
-                  {
-                    key: 'delete',
-                    label: 'Delete',
-                    icon: <DeleteOutlined />,
-                    danger: true,
-                    onClick: () => handleDeleteComment(comment.id),
-                  },
-                ];
-
-                return (
-                  <div key={comment.id} className="flex items-start space-x-3">
-                    <Avatar icon={<UserOutlined />} className="bg-gray-400 flex-shrink-0" />
-                    <div className="flex-1">
-                      {isEditing ? (
-                        <div className="space-y-2">
-                          <Input.TextArea
-                            value={editingCommentText}
-                            onChange={(e) => setEditingCommentText(e.target.value)}
-                            autoSize={{ minRows: 2, maxRows: 6 }}
-                          />
-                          <Space>
-                            <Button
-                              type="primary"
-                              size="small"
-                              onClick={() => handleUpdateComment(comment.id)}
-                              loading={updatingComment}
-                            >
-                              Save
-                            </Button>
-                            <Button size="small" onClick={handleCancelEdit}>
-                              Cancel
-                            </Button>
-                          </Space>
-                        </div>
-                      ) : (
-                        <>
-                          <div className="bg-gray-100 rounded-lg p-3 relative">
-                            <div className="flex justify-between items-start">
-                              <div className="flex-1">
-                                <Text strong className="block mb-1">
-                                  {comment.user_name || 'Anonymous User'}
-                                </Text>
-                                <Text>{comment.content}</Text>
-                              </div>
-                              <Dropdown menu={{ items: menuItems }} trigger={['click']}>
-                                <Button
-                                  type="text"
-                                  size="small"
-                                  icon={<MoreOutlined />}
-                                  className="ml-2"
-                                />
-                              </Dropdown>
-                            </div>
-                          </div>
-                          <Text type="secondary" className="text-xs mt-1 block">
-                            {new Date(comment.created_at).toLocaleDateString('vi-VN')} at{' '}
-                            {new Date(comment.created_at).toLocaleTimeString('vi-VN', {
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })}
-                          </Text>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </Space>
-
-            {comments.length === 0 && (
-              <Empty description="No comments yet. Be the first to comment!" />
-            )}
-          </Card>
-        )}
-
         {/* Footer */}
         <footer className="mt-8 py-6 border-t">
           <div className="flex justify-between items-center text-sm text-gray-600">
@@ -562,6 +681,20 @@ export default function ArticleDetailPage() {
             </Space>
           </div>
         </footer>
+        <style jsx global>{`
+          .article-content img {
+            display: block;
+            margin: 1.5rem auto;
+            max-width: 100%;
+            width: 100%;
+            height: auto;
+          }
+          @media (min-width: 768px) {
+            .article-content img {
+              width: 85%;
+            }
+          }
+        `}</style>
       </div>
     </div>
   );
