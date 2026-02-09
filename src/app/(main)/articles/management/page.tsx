@@ -160,8 +160,14 @@ export default function ArticleManagement() {
       
       // Sort articles based on sortOrder
       const sortedArticles = (res || []).sort((a, b) => {
-        const dateA = new Date((a as any).created_at).getTime();
-        const dateB = new Date((b as any).created_at).getTime();
+        const getSortTime = (item: any) => {
+          const raw = item.approved_at ?? item.created_at;
+          const time = new Date(raw).getTime();
+          return Number.isFinite(time) ? time : 0;
+        };
+
+        const dateA = getSortTime(a as any);
+        const dateB = getSortTime(b as any);
         return sortOrder === 'newest' ? dateB - dateA : dateA - dateB;
       });
       
