@@ -14,6 +14,7 @@ export type Article = {
   category_name?: string | null
   author_name?: string | null
   status: string
+  created_at: Date
   updated_at: Date
   is_deleted: boolean
   image_url?: string | null
@@ -132,6 +133,7 @@ export async function getAllArticlesAction(): Promise<Article[]> {
       a.title, 
       a.content,
       a.status, 
+      a.created_at,
       a.updated_at,
       a.is_deleted,
       a.image_url,
@@ -144,7 +146,7 @@ export async function getAllArticlesAction(): Promise<Article[]> {
     LEFT JOIN tags t ON at.tag_id = t.id
     LEFT JOIN categories c ON a.category_id = c.id
     LEFT JOIN users u ON a.author_id = u.id
-    GROUP BY a.id, a.title, a.content, a.status, a.updated_at, a.is_deleted, a.image_url, a.thumbnail_url, c.name, u.full_name
+    GROUP BY a.id, a.title, a.content, a.status, a.created_at, a.updated_at, a.is_deleted, a.image_url, a.thumbnail_url, c.name, u.full_name
     ORDER BY a.updated_at DESC
   `
   return articles as Article[]
@@ -173,6 +175,7 @@ export async function filterByTagAction(
       a.id, 
       a.title, 
       a.status, 
+      a.created_at,
       a.updated_at,
       a.is_deleted,
       a.image_url,
@@ -192,7 +195,7 @@ export async function filterByTagAction(
       ${isDeletedFilter === true ? sql`AND a.is_deleted = TRUE` : isDeletedFilter === false ? sql`AND a.is_deleted = FALSE` : sql``}
     
     GROUP BY 
-      a.id, a.title, a.status, a.updated_at, a.is_deleted, a.image_url, a.thumbnail_url, c.name, u.full_name
+      a.id, a.title, a.status, a.created_at, a.updated_at, a.is_deleted, a.image_url, a.thumbnail_url, c.name, u.full_name
     ORDER BY 
       a.id ASC
   `
@@ -277,11 +280,11 @@ export async function approveArticleAction(articleId: number): Promise<{ success
   }
 }
 
-export async function rejectArticleAction(articleId: number): Promise<{ success: boolean; message: string }> {
+export async function rejectArticleAction(articleId: number, reason: string = ''): Promise<{ success: boolean; message: string }> {
   try {
     const result = await sql`
       UPDATE articles
-      SET status = 'rejected', updated_at = NOW()
+      SET status = 'rejected', reason = ${reason}, updated_at = NOW()
       WHERE id = ${articleId}
       RETURNING id
     `
@@ -305,6 +308,7 @@ export async function getArticleByIdAction(articleId: number): Promise<{ success
         a.title,
         a.content,
         a.status,
+        a.reason,
         a.category_id,
         a.author_id,
         a.image_url,
@@ -319,7 +323,7 @@ export async function getArticleByIdAction(articleId: number): Promise<{ success
       LEFT JOIN tags t ON at.tag_id = t.id
       LEFT JOIN users u ON a.author_id = u.id
       WHERE a.id = ${articleId}
-      GROUP BY a.id, a.title, a.content, a.status, a.category_id, a.author_id, a.image_url, a.thumbnail_url, a.created_at, a.updated_at, u.full_name, u.email
+      GROUP BY a.id, a.title, a.content, a.status, a.reason, a.category_id, a.author_id, a.image_url, a.thumbnail_url, a.created_at, a.updated_at, u.full_name, u.email
       LIMIT 1
     `
 
@@ -337,6 +341,7 @@ export async function getArticleByIdAction(articleId: number): Promise<{ success
         title: article.title,
         content: article.content,
         status: article.status,
+        reason: article.reason,
         category_id: article.category_id,
         author_id: article.author_id,
         author_name: article.author_name,
@@ -419,5 +424,28 @@ export async function updateArticleAction(input: UpdateArticleInput): Promise<{ 
   } catch (error: any) {
     console.error('Error in updateArticleAction:', error)
     return { success: false, message: error?.message || 'Failed to update article' }
+  }
+}
+
+/**
+ * Update articles table constraint to allow 'rejected' status
+ * This function modifies the CHECK constraint on the status column
+ */
+export async function updateArticlesStatusConstraint(): Promise<{ success: boolean; message: string }> {
+  try {
+    // Drop existing constraint
+    await sql`
+      ALTER TABLE articles DROP CONSTRAINT IF EXISTS articles_status_check
+    `
+    
+    // Add new constraint with 'rejected' status
+    await sql`
+      ALTER TABLE articles ADD CONSTRAINT articles_status_check CHECK (status IN ('draft', 'pending', 'published', 'rejected'))
+    `
+    
+    return { success: true, message: 'Articles status constraint updated successfully' }
+  } catch (error: any) {
+    console.error('Error updating articles status constraint:', error)
+    return { success: false, message: error?.message || 'Failed to update constraint' }
   }
 }
