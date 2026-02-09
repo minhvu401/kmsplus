@@ -21,6 +21,15 @@ function ContentEditor({ value = '', onChange, placeholder }: ContentEditorProps
     />
   );
 }
+
+// Custom styles for placeholder text to match Rich Text Editor styling
+const placeholderStyles = `
+  .placeholder-styled::placeholder {
+    color: #4b5563 !important;
+    font-style: italic !important;
+    font-size: 14px !important;
+  }
+`;
 import {
     EllipsisOutlined,
     EditOutlined,
@@ -68,7 +77,7 @@ export default function QuestionDetails({ userId, question, categories }: { user
                     <Avatar size="small">
                         {(question.user_name?.trim()?.[0] ?? "?").toUpperCase()}
                     </Avatar>
-                    <Text>{question.user_name}</Text>
+                    <Text strong>{question.user_name}</Text>
                 </Flex>
                 <Tag color="blue">{question.category_name}</Tag>
                 <Tag color={question.is_closed ? "red" : "green"}>
@@ -354,6 +363,7 @@ export function QuestionMenu({
                     setContentCount(0);
                 }}
             >
+                <style>{placeholderStyles}</style>
                 {state?.message ? (
                     <Text type="danger" style={{ display: "block", marginBottom: 12 }}>
                         {state.message}
@@ -389,6 +399,7 @@ export function QuestionMenu({
                             maxLength={150}
                             onChange={(e) => setTitleCount(e.target.value.length)}
                             style={{ height: 40 }}
+                            className="placeholder-styled"
                         />
                     </Form.Item>
                     <Text type="secondary">Character limit {titleCount} / 150</Text>
@@ -409,9 +420,13 @@ export function QuestionMenu({
                         rules={[{ required: true, message: 'Please provide more details' },
                         {
                             validator: (_, value) => {
+                                // Only validate length if user has entered content
+                                if (!value) {
+                                    return Promise.resolve(); // Let required rule handle empty case
+                                }
                                 // Strip HTML tags to get plain text for validation
-                                const plainText = value ? value.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim() : '';
-                                if (plainText.length < 10) {
+                                const plainText = value.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
+                                if (plainText.length > 0 && plainText.length < 10) {
                                     return Promise.reject('Content must be at least 10 characters');
                                 }
                                 return Promise.resolve();
@@ -433,7 +448,7 @@ export function QuestionMenu({
                         rules={[{ required: true, message: 'Please select a category' }]}
                     >
                         <Select
-                            placeholder="Select category"
+                            placeholder={<span style={{ color: '#4b5563', fontStyle: 'italic', fontSize: '14px' }}>Select category</span>}
                             options={categories.map((cat) => ({
                                 label: cat.name,
                                 value: Number(cat.id),

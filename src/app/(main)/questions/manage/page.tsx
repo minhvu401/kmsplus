@@ -51,7 +51,7 @@ export default async function QuestionsManagePage(props: {
         sort,
         currentPage,
         pageSize
-    ) ?? []
+    )
 
     return (
         <PageWrapper>
@@ -68,7 +68,11 @@ export default async function QuestionsManagePage(props: {
 
                 <Flex align="center" gap={28} style={{ marginBottom: 24 }}>
                     <Search placeholder="Search questions..." />
-                    <CreateQuestion />
+                    <CreateQuestion
+                        categories={categories}
+                        userId={Number(user.id)}
+                        returnTo="/questions/manage"
+                    />
                 </Flex>
 
                 <Flex

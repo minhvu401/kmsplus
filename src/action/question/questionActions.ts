@@ -213,6 +213,7 @@ export async function createAnswer(
     content: formData.get("content"),
     user_id: formData.get("user_id"),
     question_id: formData.get("question_id"),
+    parent_id: null, // Top-level answers only
   })
 
   if (!validated.success) {
@@ -236,6 +237,48 @@ export async function createAnswer(
   if (result?.success) {
     revalidatePath("/questions/" + id);
     redirect("/questions/" + id + "?answerCreated=1");
+  }
+
+  return { message: null, errors: {} };
+}
+
+// Function for creating replies (nested answers with parent_id)
+export async function createReply(formData: FormData): Promise<State> {
+  const parentId = Number(formData.get("parent_id"));
+
+  if (!parentId) {
+    return {
+      message: "parent_id is required for replies.",
+      errors: { parent_id: ["parent_id is required"] },
+    };
+  }
+
+  const validated = CreateAnswerDto.safeParse({
+    content: formData.get("content"),
+    user_id: formData.get("user_id"),
+    question_id: formData.get("question_id"),
+    parent_id: parentId,
+  })
+
+  if (!validated.success) {
+    return {
+      message: "Missing or invalid fields. Failed to create reply.",
+      errors: validated.error.flatten().fieldErrors,
+    }
+  }
+
+  const result = await service.createAnswerAction(validated.data);
+  const id = validated.data.question_id;
+
+  if (result?.errors && Object.keys(result.errors).length > 0) {
+    return {
+      message: result.message ?? "Validation failed",
+      errors: result.errors,
+    };
+  }
+
+  if (result?.success) {
+    revalidatePath("/questions/" + id);
   }
 
   return { message: null, errors: {} };
@@ -302,4 +345,17 @@ export async function fetchFilteredAnswers (
 ){
   //await requireAuth()
   return service.fetchFilteredAnswersAction(currentPage, questionId, limit);
+}
+
+export async function fetchAnswerPages(
+  questionId: number,
+  limit?: number,
+) {
+  //await requireAuth()
+  return service.fetchAnswerPagesAction(questionId, limit);
+}
+
+export async function fetchFullDiscussionThread(answerId: number) {
+  //await requireAuth()
+  return service.fetchFullDiscussionThreadAction(answerId);
 }
