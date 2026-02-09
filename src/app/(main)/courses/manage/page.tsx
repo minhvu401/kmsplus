@@ -1,6 +1,6 @@
 import { getAllCourses } from "@/action/courses/courseAction"
 import ManageCoursesClient from "../components/ManageCoursesClient"
-import { getAllQuizzesAction } from "@/service/quiz.service"
+import { getAllQuizzes } from "@/action/quiz/quizActions"
 import { getAllLessonsAction } from "@/service/lesson.service"
 
 type Props = {
@@ -19,7 +19,7 @@ export default async function ManagerCoursesPage({ searchParams }: Props) {
   const [coursesData, lessonsRes, quizzesRes] = await Promise.all([
     getAllCourses({ query, page, limit }),
     getAllLessonsAction(),
-    getAllQuizzesAction(),
+    getAllQuizzes({}),
   ])
 
   // 2. Trích xuất mảng courses

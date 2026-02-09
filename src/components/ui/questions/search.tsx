@@ -1,8 +1,8 @@
-'use client';
-import { useSearchParams, useRouter, usePathname } from 'next/navigation';
-import  { useDebouncedCallback }  from 'use-debounce';
-import { Input, Flex } from 'antd';
-import { SearchOutlined } from '@ant-design/icons';
+"use client"
+import { useSearchParams, useRouter, usePathname } from "next/navigation"
+import { useDebouncedCallback } from "use-debounce"
+import { SearchOutlined } from "@ant-design/icons"
+import { Input } from "antd"
 
 export default function Search({ placeholder }: { placeholder: string }) {
 
@@ -24,19 +24,16 @@ export default function Search({ placeholder }: { placeholder: string }) {
   }, 300);
 
   return (
-     <Flex align="center" justify="start" className="w-full">
-      <Input
-        size="large"
-        placeholder={placeholder}
-        prefix={<SearchOutlined />}
-        defaultValue={searchParams.get('query')?.toString()}
-        onChange={(e) => handleSearch(e.target.value)}
-        style={{
-          borderRadius: 8,
-          width: '100%', // ✅ Fills the Flex container width
-        }}
-        allowClear // Small x icon to clear input
-      />
-    </Flex>
-  );
+    <Input
+      className="w-full"
+      size="large"
+      prefix={<SearchOutlined className="text-gray-500" />}
+      placeholder={placeholder}
+      onChange={(e) => {
+        handleSearch(e.target.value)
+      }}
+      // The defaultValue ensures that if there's a query in the URL already, it appears in the input when the page loads.
+      defaultValue={searchParams.get("query")?.toString()}
+    />
+  )
 }

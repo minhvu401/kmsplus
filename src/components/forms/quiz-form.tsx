@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from 'react';
 import { Card, Button, Typography, Radio, Space, Checkbox, Divider, Modal, message } from 'antd';
 import { saveAttemptAnswer, submitQuizAttempt } from '@/action/quiz/quizActions';
-import { Question } from '@/service/quiz.service';
+import type { Question } from '@/service/quiz.service';
 
 const { Text } = Typography;
 const { confirm } = Modal;
@@ -18,9 +18,9 @@ export default function QuizForm({
     attemptId: number;
     questions: Question[];
     durationSeconds: number | null;
-    initialAnswers: Record<number, number | number[]>;
+    initialAnswers: Record<number, string | string[]>;
 }) {
-    const [answers, setAnswers] = useState<Record<number, number | number[]>>(initialAnswers);
+    const [answers, setAnswers] = useState<Record<number, string | string[]>>(initialAnswers);
     const [timeLeft, setTimeLeft] = useState<number | null>(
         durationSeconds
     );
@@ -46,7 +46,7 @@ export default function QuizForm({
     /* ---------------- ANSWER CHANGE ---------------- */
     function handleAnswerChange(
         questionId: number,
-        value: number | number[]
+        value: string | string[]
     ) {
         setAnswers(prev => ({
             ...prev,
@@ -69,7 +69,7 @@ export default function QuizForm({
 
         try {
             await submitQuizAttempt(attemptId);
-            window.location.href = `/quizzes/attempt/${attemptId}/result`;
+            window.location.href = `/courses/quiz/attempt/${attemptId}/result`;
         } catch {
             submittedRef.current = false;
             message.error('Failed to submit quiz');
@@ -148,8 +148,8 @@ function QuestionCard({
 }: {
     index: number;
     question: any;
-    value?: number | number[];
-    onChange: (id: number, value: number | number[]) => void;
+    value?: string | string[];
+    onChange: (id: number, value: string | string[]) => void;
 }) {
     return (
         <Card size="small">
@@ -161,13 +161,13 @@ function QuestionCard({
                 {question.type === 'single_choice' ? (
                     <SingleChoice
                         question={question}
-                        value={value as number | undefined}
+                        value={value as string | undefined}
                         onChange={(v) => onChange(question.id, v)}
                     />
                 ) : (
                     <MultipleChoice
                         question={question}
-                        value={(value as number[]) || []}
+                        value={(value as string[]) || []}
                         onChange={(v) => onChange(question.id, v)}
                     />
                 )}
@@ -193,18 +193,32 @@ function SingleChoice({
     onChange,
 }: {
     question: any;
-    value?: number;
-    onChange: (v: number) => void;
+    value?: string;
+    onChange: (v: string) => void;
 }) {
+    const parseOptions = (opts: any): [string, string][] => {
+        if (typeof opts === 'string') {
+            opts = JSON.parse(opts);
+        }
+        if (typeof opts === 'object' && opts !== null && !Array.isArray(opts)) {
+            return Object.entries(opts) as [string, string][];
+        }
+        if (Array.isArray(opts)) {
+            return opts.map((opt, idx) => [String.fromCharCode(65 + idx), opt] as [string, string]);
+        }
+        return [];
+    };
+    const options = parseOptions(question.options);
+
     return (
         <Radio.Group
             value={value}
             onChange={(e) => onChange(e.target.value)}
         >
             <Space direction="vertical">
-                {question.options.map((opt: string, idx: number) => (
-                    <Radio key={idx} value={idx}>
-                        {opt}
+                {options.map(([key, text]) => (
+                    <Radio key={key} value={key}>
+                        {key}. {text}
                     </Radio>
                 ))}
             </Space>
@@ -218,18 +232,32 @@ function MultipleChoice({
     onChange,
 }: {
     question: any;
-    value?: number[];
-    onChange: (v: number[]) => void;
+    value?: string[];
+    onChange: (v: string[]) => void;
 }) {
+    const parseOptions = (opts: any): [string, string][] => {
+        if (typeof opts === 'string') {
+            opts = JSON.parse(opts);
+        }
+        if (typeof opts === 'object' && opts !== null && !Array.isArray(opts)) {
+            return Object.entries(opts) as [string, string][];
+        }
+        if (Array.isArray(opts)) {
+            return opts.map((opt, idx) => [String.fromCharCode(65 + idx), opt] as [string, string]);
+        }
+        return [];
+    };
+    const options = parseOptions(question.options);
+
     return (
         <Checkbox.Group
             value={value}
-            onChange={(vals) => onChange(vals as number[])}
+            onChange={(vals) => onChange(vals as string[])}
         >
             <Space direction="vertical">
-                {question.options.map((opt: string, idx: number) => (
-                    <Checkbox key={idx} value={idx}>
-                        {opt}
+                {options.map(([key, text]) => (
+                    <Checkbox key={key} value={key}>
+                        {key}. {text}
                     </Checkbox>
                 ))}
             </Space>
