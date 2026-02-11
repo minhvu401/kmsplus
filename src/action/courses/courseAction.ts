@@ -6,13 +6,14 @@
 import { requireAuth } from "@/lib/auth"
 import { CourseStatus } from "@/enum/course-status.enum"
 import {
+  getAllCategoriesAction, // ✅ Import hàm từ service
   getAllCoursesAction,
   getCourseByIdAction,
   createCourseAction,
   updateFullCourseAction,
   deleteCourseAction,
   approveCourseAction,
-  // 👇 Import Type để code an toàn hơn
+  rejectCourseService,
   type CreateCoursePayload,
 } from "@/service/course.service"
 import { revalidatePath } from "next/cache"
@@ -22,6 +23,8 @@ type GetAllCoursesParams = {
   query?: string
   page?: number
   limit?: number
+  sort?: "trending" | "popular" | "newest"
+  category?: string // ✅ Added filter param
 }
 
 // Định nghĩa kiểu trả về chuẩn cho API
@@ -29,13 +32,28 @@ type APIResponse =
   | { success: true; courseId: number }
   | { success: false; error: string }
 
-// Response type cho update operations (không cần courseId)
+// Response type cho update operations
 type UpdateAPIResponse = { success: true } | { success: false; error: string }
+
+// --- CATEGORY ACTIONS (New) ---
+
+/**
+ * Lấy danh sách Category cho Dropdown
+ */
+export async function getCategoriesAPI() {
+  try {
+    // Nếu muốn bảo mật thì thêm await requireAuth() ở đây
+    return await getAllCategoriesAction()
+  } catch (error) {
+    console.error("Failed to get categories:", error)
+    return []
+  }
+}
 
 // --- FETCH ACTIONS ---
 
 export async function getAllCourses(params: GetAllCoursesParams) {
-  await requireAuth()
+  await requireAuth() // Hoặc bỏ nếu trang này public
   return getAllCoursesAction(params)
 }
 
@@ -49,37 +67,20 @@ export async function getCourseById(id: number) {
 /**
  * Xóa mềm (Soft Delete)
  */
-// export async function deleteCourseAPI(courseId: number) {
-//   try {
-//     const user = await requireAuth()
-//     if (!user) throw new Error("Unauthorized")
-
-//     console.log("Deleting course (Soft Delete):", courseId)
-//     return await deleteCourseAction(courseId)
-//   } catch (error) {
-//     console.error("Delete error:", error)
-//     return {
-//       success: false,
-//       error: error instanceof Error ? error.message : "Failed to delete course",
-//     }
-//   }
-// }
 export async function deleteCourseAPI(courseId: number) {
   try {
     const user = await requireAuth()
     if (!user) throw new Error("Unauthorized")
+
     console.log("🔥 [API] Deleting course (Soft Delete):", courseId)
-    // 1. Gọi Service (Service của bạn đang trả về { success: true/false, ... })
+
     const result = await deleteCourseAction(courseId)
-    // 2. Kiểm tra: Nếu Service báo thành công thì mới Revalidate
-    // (Lưu ý: Service của bạn dùng try/catch nên nó không throw error ra ngoài mà trả về object)
+
     if (result.success) {
-      // 👇 DÒNG QUAN TRỌNG BỊ THIẾU
       revalidatePath("/courses/manage")
       revalidatePath("/courses")
       return { success: true }
     } else {
-      // Nếu Service báo lỗi (success: false)
       return { success: false, error: result.error || "Failed to delete" }
     }
   } catch (error) {
@@ -93,7 +94,6 @@ export async function deleteCourseAPI(courseId: number) {
 
 /**
  * Tạo khóa học mới (JSON Payload)
- * Sử dụng Omit để không yêu cầu creator_id từ Client
  */
 export async function createCourseAPI(
   data: Omit<CreateCoursePayload, "creator_id">
@@ -101,19 +101,25 @@ export async function createCourseAPI(
   try {
     const user = await requireAuth()
     if (!user?.id) throw new Error("Unauthorized")
+
     console.log("🔥 [API] Creating course:", data.title)
-    // Map dữ liệu
+
     const courseData: CreateCoursePayload = {
       ...data,
       creator_id: parseInt(user.id),
       status: data.status || "draft",
       duration_hours: data.duration_hours || 0,
+      // category_id sẽ được tự động lấy từ data nếu client gửi lên
     }
+
     const result = await createCourseAction(courseData)
+
     if (result.success && "courseId" in result) {
       revalidatePath("/courses")
+      revalidatePath("/courses/manage")
       return { success: true, courseId: result.courseId }
     }
+
     if (!result.success && "error" in result) {
       return {
         success: false,
@@ -133,31 +139,20 @@ export async function createCourseAPI(
 /**
  * Cập nhật khóa học
  */
-// export async function updateCourseAPI(
-//   courseId: number,
-//   data: Partial<CreateCoursePayload>
-// ): Promise<APIResponse> {
-//   try {
-//     await requireAuth()
-//     console.log("🔥 [API] Updating course:", courseId)
-
-//     const result = await updateCourseAction(courseId, data)
-//     if (result.success) {
 export async function updateCourseAPI(
   courseId: number,
   data: Partial<CreateCoursePayload>
 ): Promise<UpdateAPIResponse> {
   try {
     await requireAuth()
-    console.log("🔥 [API] Thực hiện cập nhật toàn diện Course:", courseId)
+    console.log("🔥 [API] Updating course:", courseId)
 
-    // GỌI HÀM UPDATE TOÀN DIỆN (Bao gồm cả curriculum)
     const result = await updateFullCourseAction(courseId, data as any)
 
     if (result.success) {
-      // Làm mới cache để hiển thị dữ liệu mới
       revalidatePath(`/courses/${courseId}`)
       revalidatePath("/courses/manage")
+      revalidatePath("/courses") // Refresh trang danh sách để thấy category mới
       return { success: true }
     }
 
@@ -174,7 +169,6 @@ export async function updateCourseAPI(
 export async function approveCourse(id: number) {
   try {
     const user = await requireAuth()
-
     if (!user?.id) throw new Error("Unauthorized")
 
     const adminId = Number(user.id)
@@ -185,12 +179,8 @@ export async function approveCourse(id: number) {
     const result = await approveCourseAction(id, adminId)
 
     if (result) {
-      // Refresh cache của trang quản lý để cập nhật trạng thái bảng (từ Pending -> Published)
       revalidatePath("/courses/manage")
-
-      // ✅ THÊM DÒNG NÀY: Refresh trang danh sách khóa học (Public) để user thường nhìn thấy khóa vừa duyệt
       revalidatePath("/courses")
-
       return { success: true }
     }
 
@@ -201,5 +191,33 @@ export async function approveCourse(id: number) {
   } catch (error) {
     console.error("Approve error:", error)
     return { success: false, error: "System error during approval" }
+  }
+}
+
+export async function rejectCourseAction(courseId: number, reason: string) {
+  try {
+    // 1. Bảo mật: Chỉ Admin/Manager mới được reject (Tùy logic dự án của bạn)
+    await requireAuth()
+    const user = await requireAuth()
+    if (!user) return { success: false, error: "Unauthorized" }
+
+    // 2. Validate dữ liệu
+    if (!reason || reason.trim().length === 0) {
+      return { success: false, error: "Vui lòng nhập lý do từ chối." }
+    }
+
+    // 3. Gọi Service
+    const result = await rejectCourseService(courseId, reason)
+
+    // 4. Revalidate để UI cập nhật ngay
+    if (result.success) {
+      revalidatePath("/courses/manage")
+      revalidatePath("/courses")
+    }
+
+    return result
+  } catch (error) {
+    console.error("Reject action error:", error)
+    return { success: false, error: "System error during rejection" }
   }
 }

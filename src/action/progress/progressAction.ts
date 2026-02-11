@@ -7,6 +7,7 @@ import {
   getPersonalHistoryService,
   updateProgressService,
   checkItemCompletionService,
+  getCompletedItemIds,
 } from "@/service/progress.service"
 
 /**
@@ -43,6 +44,7 @@ export async function updateProgress(
   if (result.success) {
     revalidatePath("/history")
     revalidatePath(`/courses/${courseId}`)
+    revalidatePath(`/courses/${courseId}/learning`)
   }
 
   return result

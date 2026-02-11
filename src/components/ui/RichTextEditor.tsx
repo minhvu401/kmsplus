@@ -1,20 +1,25 @@
 // @/components/ui/RichTextEditor.tsx
 "use client"
 import dynamic from "next/dynamic"
+import React from "react"
 import "react-quill-new/dist/quill.snow.css"
 
-// 👇 Thay đổi đoạn này: Dùng .then() để lấy mod.default
+// Load dynamic để tránh lỗi SSR
 const ReactQuill = dynamic(
   () => import("react-quill-new").then((mod) => mod.default),
   {
     ssr: false,
-    loading: () => <div className="h-40 bg-gray-50 animate-pulse rounded" />, // Thêm loading state cho mượt
+    loading: () => (
+      <div className="h-40 bg-gray-50 animate-pulse rounded border border-gray-200 flex items-center justify-center">
+        <div className="text-gray-500">Loading editor...</div>
+      </div>
+    ),
   }
 )
 
 interface Props {
-  value: string
-  onChange: (value: string) => void
+  value?: string
+  onChange?: (value: string) => void
   placeholder?: string
 }
 
@@ -23,6 +28,12 @@ export default function RichTextEditor({
   onChange,
   placeholder,
 }: Props) {
+  const [isClient, setIsClient] = React.useState(false)
+
+  React.useEffect(() => {
+    setIsClient(true)
+  }, [])
+
   const modules = {
     toolbar: [
       [{ header: [1, 2, false] }],
@@ -33,14 +44,59 @@ export default function RichTextEditor({
     ],
   }
 
+  const handleEditorChange = (
+    content: string,
+    delta: any,
+    source: any,
+    editor: any
+  ) => {
+    if (onChange) {
+      // Chỉ truyền content (HTML string) ra ngoài
+      onChange(content)
+    }
+  }
+
+  // Fallback textarea khi Quill không tải được
+  if (!isClient) {
+    return (
+      <div className="border border-gray-300 rounded-lg">
+        <textarea
+          value={value || ""}
+          onChange={(e) => onChange?.(e.target.value)}
+          placeholder={placeholder || "Start typing your content here..."}
+          className="w-full p-3 min-h-[150px] resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg"
+        />
+      </div>
+    )
+  }
+
   return (
-    <ReactQuill
-      theme="snow"
-      value={value}
-      onChange={onChange}
-      modules={modules}
-      placeholder={placeholder}
-      className="h-60 mb-12"
-    />
+    <div className="rich-text-editor">
+      <ReactQuill
+        theme="snow"
+        value={value || ""}
+        onChange={handleEditorChange}
+        modules={modules}
+        placeholder={placeholder}
+        className="h-60 mb-12"
+        style={{
+          minHeight: "200px",
+        }}
+      />
+      <style jsx global>{`
+        .rich-text-editor .ql-toolbar {
+          border-radius: 8px 8px 0 0;
+          border-color: #d9d9d9;
+        }
+        .rich-text-editor .ql-container {
+          border-radius: 0 0 8px 8px;
+          border-color: #d9d9d9;
+          font-size: 14px;
+        }
+        .rich-text-editor .ql-editor {
+          min-height: 150px;
+        }
+      `}</style>
+    </div>
   )
 }
