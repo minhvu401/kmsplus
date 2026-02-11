@@ -17,6 +17,11 @@ const nextConfig: NextConfig = {
   // Speed up dev build
   experimental: {
     optimizePackageImports: ["antd", "@ant-design/icons"],
+
+    serverActions: {
+      // 👇 THÊM ĐOẠN NÀY VÀO ĐÂY ĐỂ FIX LỖI 1MB LIMIT
+      bodySizeLimit: "5mb",
+    },
   },
 }
 

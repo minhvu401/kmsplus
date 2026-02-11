@@ -1,19 +1,21 @@
-//@/ Courses page component
-// This component renders the public courses page with search, sorting, and  pagination
+// src/app/(main)/courses/page.tsx
+// This component renders the public courses page with search, sorting, filtering, and pagination
 
 import React from "react"
 import type { Metadata } from "next"
 import type { Course } from "@/service/course.service"
 
-import { getAllCoursesAction } from "@/service/course.service"
+import { getPublishedCoursesService } from "@/service/course.service"
 import CourseClient from "./components/CourseClient"
 
 export const dynamic = "force-dynamic"
+
 // Metadata (Tùy chọn)
 export const metadata: Metadata = {
   title: "KMS Plus Courses",
   description: "Browse available courses.",
 }
+
 // Định nghĩa kiểu cho các giá trị sort hợp lệ
 type SortOption = "trending" | "popular" | "newest"
 const ALLOWED_SORT_OPTIONS: SortOption[] = ["trending", "popular", "newest"]
@@ -22,8 +24,9 @@ const ALLOWED_SORT_OPTIONS: SortOption[] = ["trending", "popular", "newest"]
 export type SearchParams = {
   query?: string
   page?: string
-  sort?: string // Giữ là string ở đây vì nó đến từ URL
-  // category?: string
+  sort?: string
+  category?: string // ✅ Đã có
+  rating?: string
 }
 
 const DEFAULT_LIMIT = 12
@@ -34,50 +37,48 @@ export default async function CoursesPage({
   searchParams: Promise<SearchParams>
 }) {
   const params = await searchParams
-  // Lấy tham số từ URL
+
+  // 1. Lấy tham số từ URL
   const query = params.query || ""
   const currentPage = params.page ? parseInt(params.page, 10) : 1
   const page = Math.max(1, currentPage)
 
+  // ✅ Lấy tham số Category (Mặc định là 'all' nếu không có)
+  const category = params.category || "all"
+  const rating = params.rating || "all"
+
   // Lấy và kiểm tra giá trị sort
-  const sortParam = params.sort // Lấy trực tiếp từ URL
-  // Kiểm tra xem sortParam có hợp lệ không
+  const sortParam = params.sort
   const validSort: SortOption | undefined =
     sortParam && ALLOWED_SORT_OPTIONS.includes(sortParam as SortOption)
       ? (sortParam as SortOption)
-      : undefined // Sẽ là undefined nếu không hợp lệ hoặc không có
+      : undefined
 
-  // (THAY ĐỔI) Quyết định giá trị sort cuối cùng để dùng
-  const sortToUse: SortOption = validSort || "trending" // Dùng validSort nếu có, ngược lại dùng 'trending'
+  const sortToUse: SortOption = validSort || "trending"
 
-  // const categorySlug = searchParams.category || '';
-
-  // --- KHAI BÁO BIẾN NGOÀI TRY...CATCH ---
+  // --- KHAI BÁO BIẾN ---
   let courses: Course[] = []
   let totalCount: number = 0
   let fetchError: string | null = null
 
   try {
-    // Lấy dữ liệu khóa học từ database bằng Server Action
-    // (THAY ĐỔI) Truyền 'sortToUse' vào action
-    const result = await getAllCoursesAction({
+    // 2. Gọi Service chỉ lấy khóa học Published
+    const result = await getPublishedCoursesService({
       query,
       page,
-      sort: sortToUse, // <-- Truyền biến 'sort' đã validate và có giá trị mặc định
+      sort: sortToUse,
       limit: DEFAULT_LIMIT,
-      // categorySlug,
+      category: category, // ✅ Truyền category xuống Service
     })
 
-    // Gán kết quả
     if (result) {
       courses = result.courses || []
       totalCount = result.totalCount || 0
     } else {
-      console.warn("getAllCoursesAction returned null or undefined")
+      console.warn("getPublishedCoursesService returned null or undefined")
       fetchError = "Could not load course data."
     }
   } catch (error) {
-    // Xử lý lỗi
     console.error("Error fetching courses:", error)
     fetchError =
       "An error occurred while loading courses. Please try again later."
@@ -85,7 +86,7 @@ export default async function CoursesPage({
     totalCount = 0
   }
 
-  // Truyền dữ liệu xuống Client Component
+  // 3. Truyền dữ liệu xuống Client Component
   return (
     <div className="min-h-screen bg-gray-50">
       <CourseClient
@@ -94,11 +95,11 @@ export default async function CoursesPage({
         coursesPerPage={DEFAULT_LIMIT}
         fetchError={fetchError}
         currentSearchParams={{
-          // Truyền các tham số hiện tại để client biết
           query,
           page: page.toString(),
-          sort: sortToUse, // (THAY ĐỔI) Truyền giá trị sort đã dùng xuống client
-          // category: categorySlug,
+          sort: sortToUse,
+          category: category, // ✅ Truyền lại để Client hiển thị đúng filter đang chọn
+          rating: rating,
         }}
       />
     </div>

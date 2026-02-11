@@ -5,6 +5,8 @@
 import { sql } from "@/lib/database"
 import { getCurrentUser } from "@/lib/auth"
 import { revalidatePath } from "next/cache"
+import { requireAuth } from "@/lib/auth"
+import { getEnrollmentOverviewService } from "@/service/enrollment.service"
 
 export async function enrollCourseAction(courseId: number) {
   try {
@@ -53,13 +55,42 @@ export async function enrollCourseAction(courseId: number) {
  */
 export async function checkEnrollmentStatus(courseId: number, userId: number) {
   try {
+    // ⚠️ QUAN TRỌNG: Phải select cả cột 'id'
     const result = await sql`
-      SELECT status, progress_percentage 
+      SELECT id, status, progress_percentage, completed_lesson_ids
       FROM enrollments 
       WHERE user_id = ${userId} AND course_id = ${courseId}
     `
-    return result.length > 0 ? result[0] : null
+
+    // Nếu tìm thấy, trả về phần tử đầu tiên (Object)
+    if (result && result.length > 0) {
+      return result[0]
+    }
+
+    return null // Không tìm thấy
   } catch (error) {
+    console.error("Error checking enrollment:", error)
     return null
+  }
+}
+
+// 👇 HÀM MỚI
+export async function getEnrollmentOverview(courseId?: number) {
+  try {
+    console.log(
+      "🔐 [SERVER] getEnrollmentOverview called with courseId:",
+      courseId
+    )
+    await requireAuth() // Chỉ cho phép user đã đăng nhập
+    console.log("🔐 [SERVER] Auth passed")
+    const result = await getEnrollmentOverviewService(courseId)
+    console.log("🔐 [SERVER] Service result:", result)
+    return result
+  } catch (error: any) {
+    console.error("🔐 [SERVER] Error in getEnrollmentOverview:", error)
+    return {
+      success: false,
+      error: error.message || "Authentication failed",
+    }
   }
 }

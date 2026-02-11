@@ -6,27 +6,25 @@
 
 import { sql } from "../lib/database"
 import { CourseStatus } from "../enum/course-status.enum"
-//Import thư viện postgres mới để tạo kết nối riêng
 import postgres from "postgres"
-// Tạo kết nối riêng CHỈ DÙNG cho file này để xử lý Transaction
-// ⚠️ QUAN TRỌNG: Hãy đảm bảo bạn có file config export biến env
-// Nếu bạn chưa có file src/lib/config.ts, hãy dùng process.env.DATABASE_URL nhưng cẩn thận
-// Ở đây tôi dùng process.env trực tiếp nhưng thêm kiểm tra an toà
+
+// --- DATABASE CONNECTION FOR TRANSACTIONS ---
 const connectionString = process.env.DATABASE_URL
 
 if (!connectionString) {
   throw new Error("DATABASE_URL chưa được định nghĩa trong file .env")
 }
-// Khởi tạo kết nối riêng CHỈ DÙNG cho file này
+
+// Khởi tạo kết nối riêng CHỈ DÙNG cho file này để xử lý Transaction
 const sqlTransaction = postgres(connectionString, {
   ssl: "require",
-  // max: 1, // Giới hạn connection nếu cần thiết
 })
 
 // --- TYPES ---
 export type Course = {
   id: number
   creator_id: number
+  category_id: number | null // ✅ Added category_id
   title: string
   description: string | null
   thumbnail_url: string | null
@@ -43,6 +41,7 @@ export type Course = {
 // Type cho dữ liệu tạo mới (bao gồm cả Curriculum lồng nhau)
 export type CreateCoursePayload = {
   creator_id: number
+  category_id?: number | null // ✅ Added category_id
   title: string
   description?: string | null
   thumbnail_url?: string | null
@@ -64,15 +63,39 @@ type GetAllCoursesParams = {
   page?: number
   limit?: number
   sort?: "trending" | "popular" | "newest"
+  category?: string // ✅ Added filter param
 }
+
+// --- CATEGORY ACTIONS ---
+
+// 1. Lấy danh sách Category (Mới)
+export async function getAllCategoriesAction() {
+  try {
+    const categories = await sql`
+      SELECT id, name FROM categories 
+      WHERE is_deleted = false 
+      ORDER BY name ASC
+    `
+    // Map về dạng đơn giản để dùng ở Frontend (chuyển BigInt sang Number)
+    return categories.map((c: any) => ({ id: Number(c.id), name: c.name }))
+  } catch (error) {
+    console.error("Error fetching categories:", error)
+    return []
+  }
+}
+
+// --- COURSE FETCH ACTIONS ---
 
 export async function getAllCoursesAction({
   query = "",
   page = 1,
   limit = 10,
   sort = "trending",
+  category = "all", // ✅ Default param
 }: GetAllCoursesParams) {
   const offset = (page - 1) * limit
+
+  // Xử lý Sort
   let orderBy = ""
   switch (sort) {
     case "popular":
@@ -83,27 +106,40 @@ export async function getAllCoursesAction({
       break
     case "trending":
     default:
-      // orderBy = "enrollment_count DESC, created_at DESC"// sắp xếp người học nhiều nhất
-      orderBy = "created_at DESC" // sắp xếp theo ngày tạo (created_at) giảm dần (DESC)
+      orderBy = "created_at DESC"
       break
   }
 
+  // ✅ Xử lý Filter Category (An toàn hơn)
+  // Chỉ lọc khi category khác "all", khác rỗng và tồn tại
+  const categoryCondition =
+    category && category !== "all" && category !== ""
+      ? sql`AND category_id = ${category}`
+      : sql``
+
+  // Query Courses
   const rows = await sql`
     SELECT *
     FROM courses
     WHERE deleted_at IS NULL
       AND title ILIKE ${"%" + query + "%"}
+      ${categoryCondition} 
     ORDER BY ${sql.unsafe(orderBy)}
     LIMIT ${limit}
     OFFSET ${offset}
   `
+
+  // Count Total
   const totalResult = await sql`
     SELECT COUNT(*) 
     FROM courses 
     WHERE deleted_at IS NULL
       AND title ILIKE ${"%" + query + "%"}
+      ${categoryCondition}
   `
+
   const totalCount = parseInt(totalResult[0].count as string, 10)
+
   return {
     courses: rows as Course[],
     totalCount,
@@ -118,16 +154,18 @@ export async function getCourseByIdAction(id: number) {
   `
   if (courseResult.length === 0) return null
   const course = courseResult[0] as Course
-  // 2. Lấy danh sách Sections của Course đó (Sắp xếp theo order)
+
+  // 2. Lấy danh sách Sections
   const sectionsResult = await sql`
     SELECT * FROM sections 
     WHERE course_id = ${id} 
     ORDER BY "order" ASC
   `
-  // 3. Lấy danh sách Items của các Section đó
-  // Cần JOIN với lessons và quizzes để lấy Title và Duration hiển thị lên UI
+
+  // 3. Lấy danh sách Items
   const sectionIds = sectionsResult.map((s) => s.id)
   let itemsResult: any[] = []
+
   if (sectionIds.length > 0) {
     itemsResult = await sql`
       SELECT 
@@ -137,64 +175,58 @@ export async function getCourseByIdAction(id: number) {
         ci."order",
         ci.lesson_id,
         ci.quiz_id,
-        -- Lấy thông tin từ Lesson
         l.title as lesson_title,
         l.duration_minutes as lesson_duration,
-        -- Lấy thông tin từ Quiz
         q.title as quiz_title,
-
         0 as quiz_question_count
-
       FROM curriculum_items ci
       LEFT JOIN lessons l ON ci.lesson_id = l.id
       LEFT JOIN quizzes q ON ci.quiz_id = q.id
-     
       WHERE ci.section_id = ANY(${sectionIds})
       ORDER BY ci."order" ASC
     `
   }
-  // 4. Ghép dữ liệu (Mapping) để tạo cấu trúc lồng nhau (Nested Structure)
+
+  // 4. Ghép dữ liệu (Mapping)
   const curriculum = sectionsResult.map((section) => {
-    // Lọc các item thuộc section này
     const items = itemsResult
       .filter((item) => item.section_id === section.id)
       .map((item) => ({
-        id: item.id, // ID của item trong bảng curriculum_items
+        id: item.id,
         order: item.order,
         type: item.type,
-        // Xác định Resource ID và Title dựa trên Type
         resource_id: item.type === "lesson" ? item.lesson_id : item.quiz_id,
         title: item.type === "lesson" ? item.lesson_title : item.quiz_title,
-        // Các thông tin phụ
         duration_minutes: item.lesson_duration || 0,
         question_count: item.quiz_question_count || 0,
       }))
 
     return {
-      id: section.id, // ID của Section (UUID hoặc số)
+      id: section.id,
       title: section.title,
       order: section.order,
       items: items,
     }
   })
-  // 5. Trả về object Course đầy đủ bao gồm cả curriculum
+
   return {
     ...course,
-    curriculum: curriculum, // Đây chính là dữ liệu để hiển thị cột phải
+    curriculum: curriculum,
   }
 }
 
-// --- HÀM CREATE (Dùng 'sqlTransaction' riêng) ---
-// --- HÀM CREATE (SỬA LỖI & THÊM LOG) ---
+// --- COURSE MUTATION ACTIONS ---
+
 export async function createCourseAction(courseData: CreateCoursePayload) {
   console.log("🚀 [Service] Bắt đầu tạo khóa học:", courseData.title)
 
   try {
     const result = await sqlTransaction.begin(async (tx: any) => {
-      // 1. Insert Course
+      // 1. Insert Course (✅ Đã thêm category_id)
       const newCourseResult = await tx`
         INSERT INTO courses (
-          creator_id, title, description, thumbnail_url, status, duration_hours, created_at, updated_at
+          creator_id, title, description, thumbnail_url, status, duration_hours, 
+          category_id, created_at, updated_at
         ) VALUES (
           ${courseData.creator_id},
           ${courseData.title},
@@ -202,6 +234,7 @@ export async function createCourseAction(courseData: CreateCoursePayload) {
           ${courseData.thumbnail_url || null},
           ${courseData.status || "draft"},
           ${courseData.duration_hours || 0},
+          ${courseData.category_id || null}, 
           NOW(), NOW()
         )
         RETURNING id
@@ -218,30 +251,19 @@ export async function createCourseAction(courseData: CreateCoursePayload) {
             RETURNING id
           `
           const newSectionId = newSectionResult[0].id
-          // console.log(`  -> Tạo Section "${section.title}" ID: ${newSectionId}`)
 
           if (section.items && section.items.length > 0) {
             for (const [iIndex, item] of section.items.entries()) {
               const lessonId = item.type === "lesson" ? item.resource_id : null
               const quizId = item.type === "quiz" ? item.resource_id : null
 
-              // Kiểm tra xem ID có tồn tại không để tránh lỗi Foreign Key
-              if (!lessonId && !quizId) {
-                console.warn(
-                  `⚠️ Item "${item.title}" không có resource_id hợp lệ, bỏ qua.`
-                )
-                continue
-              }
+              if (!lessonId && !quizId) continue
 
               await tx`
                 INSERT INTO curriculum_items (
                   section_id, type, "order", lesson_id, quiz_id
                 ) VALUES (
-                  ${newSectionId},
-                  ${item.type},
-                  ${iIndex},
-                  ${lessonId},
-                  ${quizId}
+                  ${newSectionId}, ${item.type}, ${iIndex}, ${lessonId}, ${quizId}
                 )
               `
             }
@@ -264,9 +286,8 @@ export async function createCourseAction(courseData: CreateCoursePayload) {
 
 export async function updateFullCourseAction(id: number, data: any) {
   try {
-    // Sử dụng sqlTransaction đã khởi tạo ở đầu file để thực hiện Transaction
     return await sqlTransaction.begin(async (tx: any) => {
-      // 1. Cập nhật bảng 'courses'
+      // 1. Cập nhật bảng 'courses' (✅ Đã thêm category_id)
       await tx`
         UPDATE courses
         SET
@@ -275,18 +296,19 @@ export async function updateFullCourseAction(id: number, data: any) {
           thumbnail_url = ${data.thumbnail_url || null},
           status = ${data.status || "draft"},
           duration_hours = ${data.duration_hours || 0},
+          category_id = ${data.category_id || null},
           updated_at = NOW()
         WHERE id = ${id}
       `
 
-      // 2. Xóa sạch Curriculum cũ (Items xóa trước, Sections xóa sau)
+      // 2. Xóa sạch Curriculum cũ
       await tx`
         DELETE FROM curriculum_items 
         WHERE section_id IN (SELECT id FROM sections WHERE course_id = ${id})
       `
       await tx`DELETE FROM sections WHERE course_id = ${id}`
 
-      // 3. Chèn lại Curriculum mới từ payload
+      // 3. Chèn lại Curriculum mới
       if (data.curriculum && data.curriculum.length > 0) {
         for (const [sIndex, section] of data.curriculum.entries()) {
           const [newSection] = await tx`
@@ -323,12 +345,11 @@ export async function deleteCourseAction(id: number) {
       UPDATE courses
       SET deleted_at = NOW()
       WHERE id = ${id}
-        AND deleted_at IS NULL  -- ✅ THÊM: Chỉ xóa nếu chưa bị xóa
+        AND deleted_at IS NULL
       RETURNING id
     `
 
     if (result.length === 0) {
-      // Message chính xác hơn: Không tìm thấy hoặc đã bị xóa trước đó
       return { success: false, error: "Course not found or already deleted" }
     }
 
@@ -343,7 +364,6 @@ export async function deleteCourseAction(id: number) {
 }
 
 export async function approveCourseAction(id: number, approvedBy: number) {
-  console.log("approveCourseAction called with:", { id, approvedBy })
   try {
     const result = await sql`
       UPDATE courses
@@ -354,13 +374,93 @@ export async function approveCourseAction(id: number, approvedBy: number) {
         updated_at = NOW()
       WHERE id = ${id} 
         AND (status = 'pending_approval' OR status = 'draft')
-        AND deleted_at IS NULL -- ✅ QUAN TRỌNG: Không được approve khóa học đang trong thùng rác
+        AND deleted_at IS NULL
       RETURNING *
     `
-    console.log("Update result:", result)
     return result.length > 0 ? (result[0] as Course) : null
   } catch (error) {
     console.error("Error in approveCourseAction:", error)
     throw error
+  }
+}
+
+export async function rejectCourseService(courseId: number, reason: string) {
+  try {
+    const result = await sql`
+      UPDATE courses 
+      SET 
+        status = 'rejected',
+        rejection_reason = ${reason},
+        updated_at = NOW()
+      WHERE id = ${courseId}
+        AND deleted_at IS NULL
+      RETURNING id, title
+    `
+    return { success: true, data: result[0] }
+  } catch (error: any) {
+    console.error("Service Error - rejectCourse:", error)
+    return { success: false, error: "Database error: " + error.message }
+  }
+}
+
+// 👇 HÀM MỚI: Chỉ lấy khóa học đã Published (Dành cho trang /courses)
+export async function getPublishedCoursesService({
+  query = "",
+  page = 1,
+  limit = 12,
+  sort = "trending",
+  category = "all",
+}: GetAllCoursesParams) {
+  const offset = (page - 1) * limit
+
+  // Xử lý Sort
+  let orderBy = ""
+  switch (sort) {
+    case "popular":
+      orderBy = "enrollment_count DESC, created_at DESC"
+      break
+    case "newest":
+      orderBy = "created_at DESC, enrollment_count DESC"
+      break
+    case "trending":
+    default:
+      orderBy = "created_at DESC"
+      break
+  }
+
+  // ✅ Xử lý Filter Category
+  const categoryCondition =
+    category && category !== "all" && category !== ""
+      ? sql`AND category_id = ${category}`
+      : sql``
+
+  // Query Courses - CHỈ LẤY PUBLISHED
+  const rows = await sql`
+    SELECT *
+    FROM courses
+    WHERE deleted_at IS NULL
+      AND status = 'published'  -- 👈 QUAN TRỌNG NHẤT: Chỉ lấy published
+      AND title ILIKE ${"%" + query + "%"}
+      ${categoryCondition} 
+    ORDER BY ${sql.unsafe(orderBy)}
+    LIMIT ${limit}
+    OFFSET ${offset}
+  `
+
+  // Count Total - CHỈ ĐẾM PUBLISHED
+  const totalResult = await sql`
+    SELECT COUNT(*) 
+    FROM courses 
+    WHERE deleted_at IS NULL
+      AND status = 'published'  -- 👈 QUAN TRỌNG NHẤT: Chỉ đếm published
+      AND title ILIKE ${"%" + query + "%"}
+      ${categoryCondition}
+  `
+
+  const totalCount = parseInt(totalResult[0].count as string, 10)
+
+  return {
+    courses: rows as Course[],
+    totalCount,
   }
 }

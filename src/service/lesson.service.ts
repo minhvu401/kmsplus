@@ -9,13 +9,14 @@ import { redirect } from "next/navigation"
 export type Lesson = {
   id: number
   course_id: number
-  section_id: number | null
+  // section_id: number | null  XOA dong nay
   title: string
   content: string | null
   video_url: string | null
   display_order: number
   duration_minutes: number | null
   file_path: string | null
+  type: string // 'video', 'text', 'quiz'
   deleted_at: Date | null
   created_at: Date
   updated_at: Date
@@ -120,20 +121,42 @@ export async function getAllLessonsAction({
  * Lấy lesson theo ID
  */
 export async function getLessonByIdAction(id: number, include_deleted = false) {
+  // 1. Kiểm tra ID đầu vào
+  if (!id || isNaN(id)) {
+    console.warn("⚠️ getLessonByIdAction received invalid ID:", id)
+    return undefined
+  }
+
   try {
     const [lesson] = await sql`
-      SELECT *
+      SELECT 
+        id, 
+        course_id, 
+        title, 
+        content, 
+        video_url, 
+        duration_minutes, 
+        type
       FROM lessons
       WHERE id = ${id}
       ${!include_deleted ? sql`AND deleted_at IS NULL` : sql``}
     `
-    return lesson as Lesson | undefined
+
+    // Nếu không tìm thấy lesson, trả về undefined thay vì lỗi
+    if (!lesson) {
+      console.warn(`⚠️ Lesson with ID ${id} not found in DB`)
+      return undefined
+    }
+
+    return lesson as Lesson
   } catch (error) {
-    console.error(`Error in getLessonByIdAction(${id}):`, error)
-    throw new Error("Failed to fetch lesson")
+    // 2. Log lỗi chi tiết ra Terminal của Server để debug
+    console.error(`❌ DB Error in getLessonByIdAction(${id}):`, error)
+
+    // 3. Trả về undefined để Client không bị crash
+    return undefined
   }
 }
-
 /**
  * Tạo mới lesson
  */
@@ -366,5 +389,89 @@ export async function updateLessonsOrderAction(
     throw new Error("Failed to update lessons order")
   }
 }
-// Lưu ý
-// Database của bạn không có cột section_id trong bảng lessons, nhưng code trong file src/service/lesson.service.ts lại đang cố gắng INSERT dữ liệu vào cột này.
+
+/**
+ * 1. CHECK DEPENDENCY: Kiểm tra lesson đang được dùng ở đâu
+ */
+export async function checkLessonUsageService(lessonId: number) {
+  try {
+    // Logic: Đếm số lượng khóa học đang liên kết với bài học này
+    // Giả sử bài học liên kết với khóa học qua cột course_id (1-N)
+    // Nếu bạn có bảng trung gian (curriculum_items), hãy sửa query JOIN tương ứng
+    const usage = await sql`
+      SELECT 
+        c.status,
+        COUNT(c.id) as count
+      FROM lessons l
+      JOIN courses c ON l.course_id = c.id
+      WHERE l.id = ${lessonId}
+      GROUP BY c.status
+    `
+
+    const result = { total: 0, published: 0, draft: 0 }
+
+    usage.forEach((row: any) => {
+      const count = Number(row.count)
+      result.total += count
+      if (row.status === "published") result.published += count
+      else result.draft += count
+    })
+
+    return result
+  } catch (error) {
+    console.error("Check Usage Error:", error)
+    return { total: 0, published: 0, draft: 0 }
+  }
+}
+
+/**
+ * 2. SOFT DELETE (Lưu trữ)
+ */
+export async function softDeleteLessonService(id: number) {
+  await sql`
+    UPDATE lessons 
+    SET deleted_at = NOW() 
+    WHERE id = ${id}
+  `
+  return { success: true }
+}
+
+/**
+ * 3. HARD DELETE (Xóa vĩnh viễn)
+ */
+export async function hardDeleteLessonService(id: number) {
+  await sql`DELETE FROM lessons WHERE id = ${id}`
+  return { success: true }
+}
+
+/**
+ * 4. CLONE LESSON (Lưu thành bài mới)
+ */
+export async function cloneLessonService(originalId: number, newData: any) {
+  // Lấy data cũ
+  const [original] = await sql`SELECT * FROM lessons WHERE id = ${originalId}`
+  if (!original) throw new Error("Original lesson not found")
+
+  // Data mới ưu tiên, nếu không có thì lấy cũ
+  const title = newData.title || `${original.title} (Copy)`
+  const content =
+    newData.content !== undefined ? newData.content : original.content
+  const type = newData.type || original.type
+  const video_url =
+    newData.video_url !== undefined ? newData.video_url : original.video_url
+  const file_path =
+    newData.file_path !== undefined ? newData.file_path : original.file_path
+
+  // Insert bài mới
+  const [newLesson] = await sql`
+    INSERT INTO lessons (
+      title, content, type, video_url, file_path, duration_minutes, course_id
+    ) VALUES (
+      ${title}, ${content}, ${type}, ${video_url}, ${file_path}, 
+      ${original.duration_minutes}, ${null} 
+    )
+    RETURNING id, title, duration_minutes, type, content, video_url, file_path
+  `
+  // Note: course_id set null để nó thành bài trong Content Bank (Orphan)
+  return newLesson
+}

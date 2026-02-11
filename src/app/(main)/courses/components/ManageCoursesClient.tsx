@@ -18,6 +18,7 @@ import {
   getCourseById,
   deleteCourseAPI,
   approveCourse,
+  rejectCourseAction,
 } from "@/action/courses/courseAction"
 import { COURSE_STATUS_LABELS } from "@/enum/course-status.enum"
 import UpdateCourseForm, { CoursePayload } from "./UpdateCourseForm"
@@ -54,6 +55,14 @@ export default function ManageCoursesClient({
   const [selectedCourse, setSelectedCourse] = useState<
     Course | CoursePayload | null
   >(null)
+
+  // State cho Reject Modal
+  const [isRejectModalOpen, setIsRejectModalOpen] = useState(false)
+  const [rejectingCourseId, setRejectingCourseId] = useState<number | null>(
+    null
+  )
+  const [rejectReason, setRejectReason] = useState("")
+  const [isRejecting, setIsRejecting] = useState(false)
 
   const handleOpenUpdate = async (course: Course) => {
     const hide = message.loading("Loading course details...", 0)
@@ -168,20 +177,34 @@ export default function ManageCoursesClient({
   }
 
   // --- Reject ---
-  const handleReject = (id: number, title: string) => {
-    Modal.confirm({
-      title: "Reject Course",
-      content: `Are you sure you want to reject "${title}"? This course will be moved back to Draft status.`,
-      okText: "Reject",
-      okType: "danger",
-      cancelText: "Cancel",
-      centered: true,
-      onOk: async () => {
-        // Tại đây bạn sẽ gọi API để cập nhật status thành 'draft'
-        message.info("Course has been rejected and moved to Draft.")
+  const openRejectModal = (id: number) => {
+    setRejectingCourseId(id)
+    setRejectReason("") // Reset lý do
+    setIsRejectModalOpen(true)
+  }
+
+  const handleSubmitReject = async () => {
+    if (!rejectingCourseId) return
+    if (!rejectReason.trim()) {
+      message.error("Vui lòng nhập lý do từ chối!")
+      return
+    }
+
+    setIsRejecting(true)
+    try {
+      const res = await rejectCourseAction(rejectingCourseId, rejectReason)
+      if (res.success) {
+        message.success("Đã từ chối khóa học thành công.")
+        setIsRejectModalOpen(false)
         router.refresh()
-      },
-    })
+      } else {
+        message.error(res.error || "Lỗi khi từ chối khóa học")
+      }
+    } catch (error) {
+      message.error("Lỗi hệ thống")
+    } finally {
+      setIsRejecting(false)
+    }
   }
 
   // --- Delete ---
@@ -253,6 +276,7 @@ export default function ManageCoursesClient({
         if (status === "published") color = "success"
         if (status === "pending_approval") color = "processing"
         if (status === "draft") color = "warning"
+        if (status === "rejected") color = "error"
 
         return (
           <Tag color={color} className="uppercase text-xs font-semibold">
@@ -311,7 +335,7 @@ export default function ManageCoursesClient({
                 size="small"
                 icon={<CloseOutlined />}
                 className="hover:!bg-red-50"
-                onClick={() => handleReject(record.id, record.title)}
+                onClick={() => openRejectModal(record.id)}
               >
                 Reject
               </Button>
@@ -338,10 +362,11 @@ export default function ManageCoursesClient({
         >
           {/* Nút Edit mới dùng để mở Modal */}
           <Button
-            type="default"
+            type="text"
             icon={<EditOutlined />}
             size="small"
-            className="border-blue-600 text-blue-600 hover:!border-blue-700 hover:!text-blue-700 hover:bg-blue-50"
+            // className="border-blue-600 text-blue-600 hover:!border-blue-700 hover:!text-blue-700 hover:bg-blue-50"
+            className="text-blue-600 hover:!text-blue-700 hover:bg-blue-50"
             onClick={(e) => {
               e.stopPropagation() // Chặn sự kiện click vào hàng
               handleOpenUpdate(record) // Gọi hàm mở Modal với dữ liệu hàng hiện tại
@@ -350,9 +375,12 @@ export default function ManageCoursesClient({
 
           {/* Nút Delete */}
           <Button
+            type="text"
             danger
             icon={<DeleteOutlined />}
             size="small"
+            // ✅ Thêm nền đỏ nhạt khi hover
+            className="hover:bg-red-50"
             onClick={(e) => {
               // 🛑 Ngăn chặn hành vi mặc định và lan truyền
               e.stopPropagation()
@@ -461,6 +489,35 @@ export default function ManageCoursesClient({
           availableQuizzes={availableQuizzes}
           onSuccess={handleCreateSuccess}
         />
+      </Modal>
+
+      {/* Reject Modal */}
+      <Modal
+        title={
+          <span className="text-red-600 font-bold">⛔ Từ chối khóa học</span>
+        }
+        open={isRejectModalOpen}
+        onCancel={() => setIsRejectModalOpen(false)}
+        onOk={handleSubmitReject}
+        confirmLoading={isRejecting}
+        okText="Xác nhận Từ chối"
+        okType="danger"
+        cancelText="Hủy bỏ"
+        centered
+      >
+        <div className="py-4">
+          <p className="mb-2 text-gray-600">
+            Vui lòng nhập lý do từ chối để Creator biết cần sửa những gì:
+          </p>
+          <Input.TextArea
+            rows={4}
+            placeholder="Ví dụ: Video bài 3 bị mờ, nội dung Section 2 chưa đầy đủ..."
+            value={rejectReason}
+            onChange={(e) => setRejectReason(e.target.value)}
+            className="w-full"
+            autoFocus
+          />
+        </div>
       </Modal>
     </div>
   )
