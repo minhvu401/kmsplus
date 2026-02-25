@@ -48,15 +48,20 @@ export default function ManageCoursesClient({
     firstQuiz: availableQuizzes?.[0],
   })
   const router = useRouter()
+  const [messageApi, contextHolder] = message.useMessage()
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [searchInput, setSearchInput] = useState(query)
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false)
   const [selectedCourse, setSelectedCourse] = useState<
     Course | CoursePayload | null
   >(null)
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+  const [courseToDelete, setCourseToDelete] = useState<Course | null>(null)
+  const [isApproveModalOpen, setIsApproveModalOpen] = useState(false)
+  const [courseToApprove, setCourseToApprove] = useState<Course | null>(null)
 
   const handleOpenUpdate = async (course: Course) => {
-    const hide = message.loading("Loading course details...", 0)
+    const hide = messageApi.loading("Loading course details...", 0)
 
     try {
       // 1. Gọi API lấy thông tin chi tiết (bao gồm curriculum)
@@ -82,19 +87,19 @@ export default function ManageCoursesClient({
 
       const safeCurriculum = Array.isArray(rawCurriculum)
         ? rawCurriculum.map((section: any) => ({
-            ...section,
-            id: String(section.id), // ✅ Ép ID Section thành String
-            items: Array.isArray(section.items) // Hoặc section.curriculum_items
-              ? section.items.map((item: any) => ({
-                  ...item,
-                  id: String(item.id), // ✅ Ép ID Item thành String
-                  resource_id: Number(item.resource_id),
-                  type: item.type || "lesson",
-                  duration_minutes: item.duration_minutes || 0,
-                  question_count: item.question_count || 0,
-                }))
-              : [],
-          }))
+          ...section,
+          id: String(section.id), // ✅ Ép ID Section thành String
+          items: Array.isArray(section.items) // Hoặc section.curriculum_items
+            ? section.items.map((item: any) => ({
+              ...item,
+              id: String(item.id), // ✅ Ép ID Item thành String
+              resource_id: Number(item.resource_id),
+              type: item.type || "lesson",
+              duration_minutes: item.duration_minutes || 0,
+              question_count: item.question_count || 0,
+            }))
+            : [],
+        }))
         : []
 
       // 3. Tạo payload
@@ -110,7 +115,7 @@ export default function ManageCoursesClient({
       setIsUpdateModalOpen(true)
     } catch (error) {
       console.error(error)
-      message.error("Failed to load course details.")
+      messageApi.error("Failed to load course details.")
     } finally {
       hide()
     }
@@ -133,38 +138,53 @@ export default function ManageCoursesClient({
     router.push(`/courses/manage?${params.toString()}`)
   }
 
-  // --- Approve (Đã tối ưu) ---
-  const handleApprove = (id: number, title: string) => {
-    Modal.confirm({
-      title: "Approve Course",
-      content: (
-        <div>
-          Are you sure you want to approve <b>"{title}"</b>?
-          <br />
-          <span className="text-gray-500 text-sm">
-            This course will be published and visible to students.
-          </span>
-        </div>
-      ),
-      okText: "Approve",
-      cancelText: "Cancel",
-      okButtonProps: { type: "primary" }, // Màu xanh cho nút Approve
-      centered: true,
-      // 👇 Modal tự động chờ Promise này chạy xong mới đóng -> Tạo hiệu ứng loading
-      onOk: async () => {
-        try {
-          const res = await approveCourse(id)
-          if (res.success) {
-            message.success("Course approved successfully! 🎉")
-            router.refresh() // Làm mới dữ liệu
-          } else {
-            message.error(res.error || "Failed to approve course")
-          }
-        } catch (error) {
-          message.error("System error occurred")
-        }
-      },
+  // --- Approve ---
+  const handleApprove = (course: Course) => {
+    setCourseToApprove(course)
+    setIsApproveModalOpen(true)
+  }
+
+  const confirmApprove = async () => {
+    if (!courseToApprove) return
+
+    const messageKey = `approve-course-${courseToApprove.id}`
+    messageApi.open({
+      key: messageKey,
+      type: "loading",
+      content: "Approving course...",
+      duration: 0,
     })
+
+    try {
+      const res = await approveCourse(courseToApprove.id)
+      if (res.success) {
+        messageApi.open({
+          key: messageKey,
+          type: "success",
+          content: "Course approved successfully",
+          duration: 2,
+        })
+
+        setTimeout(() => router.refresh(), 200)
+      } else {
+        messageApi.open({
+          key: messageKey,
+          type: "error",
+          content: res.error || "Failed to approve course",
+          duration: 3,
+        })
+      }
+    } catch (error) {
+      messageApi.open({
+        key: messageKey,
+        type: "error",
+        content: "System error occurred",
+        duration: 3,
+      })
+    } finally {
+      setIsApproveModalOpen(false)
+      setCourseToApprove(null)
+    }
   }
 
   // --- Reject ---
@@ -178,35 +198,69 @@ export default function ManageCoursesClient({
       centered: true,
       onOk: async () => {
         // Tại đây bạn sẽ gọi API để cập nhật status thành 'draft'
-        message.info("Course has been rejected and moved to Draft.")
+        messageApi.info("Course has been rejected and moved to Draft.")
         router.refresh()
       },
     })
   }
 
   // --- Delete ---
-  const handleDelete = (courseId: number, courseTitle: string) => {
-    Modal.confirm({
-      title: "Delete Course",
-      content: `Delete "${courseTitle}"? It will be moved to trash.`,
-      okText: "Delete",
-      okType: "danger",
-      cancelText: "Cancel",
-      maskClosable: true,
-      onOk: async () => {
-        try {
-          const res = await deleteCourseAPI(courseId)
-          if (res.success) {
-            message.success("Course moved to trash")
-            router.refresh()
-          } else {
-            message.error(res.error || "Failed to delete")
-          }
-        } catch (error) {
-          message.error("System error occurred")
-        }
-      },
+  const handleDelete = (course: Course) => {
+    if (course.status === "pending_approval") {
+      messageApi.warning(
+        "You can't delete a course that is pending approval."
+      )
+      return
+    } else if (course.status === "published") {
+      messageApi.warning(
+        "You can't delete a course that is already published."
+      )
+      return
+    }
+
+    setCourseToDelete(course)
+    setIsDeleteModalOpen(true)
+  }
+
+  const confirmDelete = async () => {
+    if (!courseToDelete) return
+
+    const messageKey = `delete-course-${courseToDelete.id}`
+    messageApi.open({
+      key: messageKey,
+      type: "loading",
+      content: "Deleting course...",
+      duration: 0,
     })
+    try {
+      const res = await deleteCourseAPI(courseToDelete.id)
+      if (res.success) {
+        messageApi.open({
+          key: messageKey,
+          type: "success",
+          content: "Course moved to trash",
+          duration: 2,
+        })
+        router.refresh()
+      } else {
+        messageApi.open({
+          key: messageKey,
+          type: "error",
+          content: res.error || "Failed to delete",
+          duration: 3,
+        })
+      }
+    } catch (error) {
+      messageApi.open({
+        key: messageKey,
+        type: "error",
+        content: "System error occurred",
+        duration: 3,
+      })
+    } finally {
+      setIsDeleteModalOpen(false)
+      setCourseToDelete(null)
+    }
   }
 
   // --- Pagination ---
@@ -302,7 +356,7 @@ export default function ManageCoursesClient({
                 size="small"
                 icon={<CheckOutlined />}
                 className="bg-blue-600 border-none hover:!bg-blue-700"
-                onClick={() => handleApprove(record.id, record.title)}
+                onClick={() => handleApprove(record)}
               >
                 Approve
               </Button>
@@ -330,11 +384,6 @@ export default function ManageCoursesClient({
       render: (_: any, record: Course) => (
         <div
           className="flex gap-2"
-          onClick={(e) => {
-            // 🛑 Chặn sự kiện click lan ra ngoài (quan trọng nếu click vào hàng để xem chi tiết)
-            e.stopPropagation()
-            e.preventDefault()
-          }}
         >
           {/* Nút Edit mới dùng để mở Modal */}
           <Button
@@ -361,7 +410,7 @@ export default function ManageCoursesClient({
               // 🟢 Kiểm tra Console trình duyệt (F12) xem dòng này có hiện không
               console.log("🔴 Client: Đã bấm nút Delete ID:", record.id)
 
-              handleDelete(record.id, record.title)
+              handleDelete(record)
             }}
           />
         </div>
@@ -371,6 +420,7 @@ export default function ManageCoursesClient({
 
   return (
     <div className="space-y-6">
+      {contextHolder}
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
@@ -461,6 +511,46 @@ export default function ManageCoursesClient({
           availableQuizzes={availableQuizzes}
           onSuccess={handleCreateSuccess}
         />
+      </Modal>
+
+      {/* Approve Confirmation Modal */}
+      <Modal
+        title="Approve Course"
+        open={isApproveModalOpen}
+        onOk={confirmApprove}
+        onCancel={() => {
+          setIsApproveModalOpen(false)
+          setCourseToApprove(null)
+        }}
+        okText="Approve"
+        cancelText="Cancel"
+        okButtonProps={{ type: "primary" }}
+        centered
+      >
+        <div>
+          Are you sure you want to approve <b>"{courseToApprove?.title}"</b>?
+          <br />
+          <span className="text-gray-500 text-sm">
+            This course will be published and visible to students.
+          </span>
+        </div>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        title="Delete Course"
+        open={isDeleteModalOpen}
+        onOk={confirmDelete}
+        onCancel={() => setIsDeleteModalOpen(false)}
+        okText="Delete"
+        okType="danger"
+        cancelText="Cancel"
+        centered
+      >
+        <p>
+          Are you sure you want to delete "<b>{courseToDelete?.title}</b>"? This
+          action will move the course to the trash.
+        </p>
       </Modal>
     </div>
   )
