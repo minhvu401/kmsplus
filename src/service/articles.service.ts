@@ -303,6 +303,82 @@ export async function rejectArticleAction(articleId: number, reason: string = ''
   }
 }
 
+export async function resubmitArticleAction(
+  articleId: number,
+  title: string,
+  content: string,
+  tags?: string[],
+  category_id?: number | null,
+  image_url?: string | null,
+  thumbnail_url?: string | null
+): Promise<{ success: boolean; message: string }> {
+  try {
+    // Update article with new content and reset status back to pending
+    const result = await sql`
+      UPDATE articles
+      SET 
+        title = ${title},
+        content = ${content},
+        status = 'pending',
+        reason = null,
+        category_id = ${category_id ?? null},
+        image_url = ${image_url ?? null},
+        thumbnail_url = ${thumbnail_url ?? null},
+        updated_at = NOW()
+      WHERE id = ${articleId}
+      RETURNING id
+    `
+
+    if (result.length === 0) {
+      return { success: false, message: 'Article not found' }
+    }
+
+    // Delete existing tags
+    await sql`
+      DELETE FROM article_tags WHERE article_id = ${articleId}
+    `
+
+    // Insert new tags
+    if (tags && tags.length > 0) {
+      let defaultCategoryId: number | null = null
+      const catRes = await sql`SELECT id FROM categories WHERE is_deleted = false ORDER BY id ASC LIMIT 1`
+      if (catRes.length > 0) {
+        defaultCategoryId = catRes[0].id
+      }
+
+      for (const tagName of tags) {
+        const tagResult = await sql`
+          SELECT id FROM tags WHERE name = ${tagName} LIMIT 1
+        `
+        let tagId: number | null = null
+
+        if (tagResult.length > 0) {
+          tagId = tagResult[0].id
+        } else if (defaultCategoryId !== null) {
+          const newTagResult = await sql`
+            INSERT INTO tags (name, category_id, created_at)
+            VALUES (${tagName}, ${defaultCategoryId}, NOW())
+            RETURNING id
+          `
+          tagId = newTagResult[0].id
+        }
+
+        if (tagId !== null) {
+          await sql`
+            INSERT INTO article_tags (article_id, tag_id)
+            VALUES (${articleId}, ${tagId})
+          `
+        }
+      }
+    }
+
+    return { success: true, message: 'Article resubmitted successfully' }
+  } catch (error: any) {
+    console.error('Error resubmitting article:', error)
+    return { success: false, message: error?.message || 'Failed to resubmit article' }
+  }
+}
+
 export async function getArticleByIdAction(articleId: number): Promise<{ success: boolean; data?: any; message?: string }> {
   try {
     const articles = await sql`
