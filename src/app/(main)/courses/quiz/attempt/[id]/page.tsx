@@ -1,6 +1,23 @@
 import QuizForm from '@/components/forms/quiz-form';
 import PageWrapper from '@/components/ui/questions/page-wrapper';
-import { getQuestionsForAttempt, getTimeLimitForAttempt, getSavedAnswers } from '@/action/quiz/quizActions';
+import { getQuestionsForAttempt, getTimeLimitForAttempt, getSavedAnswers, getAttemptMeta } from '@/action/quiz/quizActions';
+
+const normalizeSelectedOptionId = (value: unknown): string | string[] => {
+  if (Array.isArray(value)) return value.map(String);
+  if (typeof value === 'string') {
+    // DB may store either JSON (e.g. "[\"A\",\"B\"]") or a raw string (e.g. "A")
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) return parsed.map(String);
+      if (typeof parsed === 'string') return parsed;
+      return String(parsed);
+    } catch {
+      return value;
+    }
+  }
+  if (value == null) return '';
+  return String(value);
+};
 
 export default async function Page({
   params,
@@ -16,13 +33,12 @@ export default async function Page({
   const questions = await getQuestionsForAttempt(attemptId);
   const timeLimit = await getTimeLimitForAttempt(attemptId);
   const savedAnswers = await getSavedAnswers(attemptId);
+  const attemptMeta = await getAttemptMeta(attemptId);
   
   const initialAnswers = Object.fromEntries(
     savedAnswers.map(a => [
       a.question_id,
-      Array.isArray(a.selected_option_id)
-        ? a.selected_option_id
-        : JSON.parse(a.selected_option_id),
+      normalizeSelectedOptionId(a.selected_option_id),
     ])
   );
 
@@ -30,6 +46,7 @@ export default async function Page({
     <PageWrapper>
       <QuizForm
         attemptId={attemptId}
+        attemptNumber={attemptMeta.attempt_number}
         questions={questions}
         durationSeconds={timeLimit ? timeLimit * 60 : null}
         initialAnswers={initialAnswers}

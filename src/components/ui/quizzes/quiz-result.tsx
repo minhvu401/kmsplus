@@ -69,6 +69,8 @@ export default function QuizResult({ result }: { result: AttemptResult }) {
     const totalQuestions = result.questions.length;
     const correctCount = result.questions.filter(isQuestionCorrect).length;
     const incorrectCount = totalQuestions - correctCount;
+    const passingScore = result.passing_score ?? 50;
+    const isPassed = result.score >= passingScore;
 
     // Formatting time
     const formatTime = (seconds: number) => {
@@ -95,8 +97,8 @@ export default function QuizResult({ result }: { result: AttemptResult }) {
                      <Space direction="vertical" size={2}>
                         <Title level={4} style={{ margin: 0 }}>{result.title}</Title>
                         <Space>
-                            <Tag color={result.score >= 50 ? 'success' : 'error'}>
-                                {result.score >= 50 ? 'Passed' : 'Failed'}
+                            <Tag color={isPassed ? 'success' : 'error'}>
+                                {isPassed ? 'Passed' : 'Failed'}
                             </Tag>
                             <Text type="secondary">Score: {result.score}%</Text>
                         </Space>
@@ -153,7 +155,7 @@ export default function QuizResult({ result }: { result: AttemptResult }) {
                                 Attempt #{result.attempt_number}
                             </Tag>
                             <Title level={1} style={{ color: 'white', margin: 0, fontSize: 32 }}>
-                                {result.score >= 50 ? 'Congratulations!' : 'Quiz Completed'}
+                                {isPassed ? 'Congratulations!' : 'Quiz Completed'}
                             </Title>
                             <Text style={{ color: 'rgba(255,255,255,0.85)', fontSize: 16 }}>
                                 You have completed the <strong>{result.title}</strong> quiz.
@@ -201,7 +203,7 @@ export default function QuizResult({ result }: { result: AttemptResult }) {
                                 <PercentageOutlined style={{ fontSize: 36, color: '#1677ff' }} />
                             </div>
                             <Text type="secondary" style={{ textTransform: 'uppercase', fontSize: 12, letterSpacing: '1px' }}>Total Score</Text>
-                            <Title level={3} style={{ margin: '4px 0 0' }}>{result.score}%</Title>
+                            <Title level={3} style={{ margin: '4px 0 0' }}>{result.score}</Title>
                         </div>
                     </Card>
                 </Col>
