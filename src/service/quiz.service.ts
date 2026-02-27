@@ -12,6 +12,10 @@ export type Question = {
   time_limit?: number
 }
 
+export type AttemptMeta = {
+  attempt_number: number
+}
+
 // Quiz Attempt Type
 export type QuizAttempt = {
   id: number
@@ -30,11 +34,11 @@ type AttemptRow = {
   id: number;
   status: 'in_progress' | 'submitted';
   started_at: Date;
+  total_questions: number | null;
 }
 
 type AttemptStats = {
   correct_answers: number;
-  score: number;
 }
 
 type QuestionRow = {
@@ -59,6 +63,7 @@ export type AttemptResult = {
   attempt_number: number
   time_spent_seconds: number
   score: number
+  passing_score: number
   questions: QuestionResult[]
 }
 
@@ -375,12 +380,12 @@ export async function submitQuizAttemptAction(
 
     // 2️⃣ Lock attempt
     const attemptResult = await sql`
-            SELECT id, status, started_at
-            FROM quiz_attempts
-            WHERE id = ${attemptId}
-                AND user_id = ${userId}
-            FOR UPDATE;
-        ` as AttemptRow[];
+        SELECT id, status, started_at, total_questions
+        FROM quiz_attempts
+        WHERE id = ${attemptId}
+          AND user_id = ${userId}
+        FOR UPDATE;
+      ` as AttemptRow[];
 
     if (attemptResult.length === 0) {
       throw new Error('Attempt not found');
@@ -392,14 +397,29 @@ export async function submitQuizAttemptAction(
 
     // 3️⃣ Calculate stats
     const stats = await sql`
-            SELECT
-            COUNT(*) FILTER (WHERE is_correct = true) AS correct_answers,
-            COALESCE(SUM(points_earned), 0)          AS score
-            FROM attempt_answers
-            WHERE attempt_id = ${attemptId};
-        ` as AttemptStats[];
+        SELECT
+        COUNT(*) FILTER (WHERE is_correct = true) AS correct_answers
+        FROM attempt_answers
+        WHERE attempt_id = ${attemptId};
+      ` as AttemptStats[];
 
-    const { correct_answers, score } = stats[0];
+    const correct_answers = Number(stats[0]?.correct_answers ?? 0);
+
+    // Score is always out of 100. Each question is worth 100/total_questions.
+    let totalQuestions = Number(attemptResult[0]?.total_questions ?? 0);
+    if (!Number.isFinite(totalQuestions) || totalQuestions <= 0) {
+      const countRows = await sql`
+        SELECT COUNT(*)::int AS total_questions
+        FROM quiz_attempts qa
+        JOIN curriculum_items ci ON ci.id = qa.curriculum_item_id
+        JOIN quiz_questions qq ON qq.quiz_id = ci.quiz_id
+        WHERE qa.id = ${attemptId};
+      `;
+      totalQuestions = Number(countRows[0]?.total_questions ?? 0);
+    }
+    const score = totalQuestions > 0
+      ? Math.round((correct_answers * 100) / totalQuestions)
+      : 0;
 
     // 4️⃣ Finalize attempt
     const updated = await sql`
@@ -575,6 +595,27 @@ export async function getSavedAnswersAction(attemptId: number) {
   }
 }
 
+// Fetch basic attempt info (used for UI headers)
+export async function getAttemptMetaAction(attemptId: number, userId: number): Promise<AttemptMeta> {
+  try {
+    const rows = await sql`
+      SELECT attempt_number
+      FROM quiz_attempts
+      WHERE id = ${attemptId} AND user_id = ${userId}
+      LIMIT 1;
+    `;
+
+    if (rows.length === 0) {
+      throw new Error('Attempt not found');
+    }
+
+    return { attempt_number: Number(rows[0].attempt_number) };
+  } catch (error) {
+    console.error('getAttemptMetaAction error:', error);
+    throw error;
+  }
+}
+
 // NhatTT
 export async function getTimeLimitForAttemptAction(attemptId: number) {
   try {
@@ -624,9 +665,12 @@ export async function getAttemptResultAction(
     const attemptResult = await sql`
       SELECT
         q.title,
+        q.passing_score,
         qa.attempt_number,
         qa.time_spent_seconds,
-        qa.score
+        qa.score,
+        qa.correct_answers,
+        qa.total_questions
       FROM quiz_attempts qa
       JOIN curriculum_items ci ON ci.id = qa.curriculum_item_id
       JOIN quizzes q ON q.id = ci.quiz_id
@@ -665,11 +709,41 @@ export async function getAttemptResultAction(
     ORDER BY qq.question_order, qb.id
   `;
 
+  // Prefer percentage score out of 100 (each question = 100 / total_questions).
+  // This also makes older attempts (that stored raw points like 6) display correctly.
+  let totalQuestions = Number(attemptResult[0].total_questions ?? 0);
+  if (!Number.isFinite(totalQuestions) || totalQuestions <= 0) {
+    const countRows = await sql`
+      SELECT COUNT(*)::int AS total_questions
+      FROM quiz_attempts qa
+      JOIN curriculum_items ci ON ci.id = qa.curriculum_item_id
+      JOIN quiz_questions qq ON qq.quiz_id = ci.quiz_id
+      WHERE qa.id = ${attemptId};
+    `;
+    totalQuestions = Number(countRows[0]?.total_questions ?? 0);
+  }
+
+  let correctAnswers = Number(attemptResult[0].correct_answers ?? 0);
+  if (!Number.isFinite(correctAnswers) || correctAnswers < 0) correctAnswers = 0;
+  if ((correctAnswers === 0 && totalQuestions > 0) || attemptResult[0].correct_answers == null) {
+    const statsRows = await sql`
+      SELECT COUNT(*) FILTER (WHERE is_correct = true) AS correct_answers
+      FROM attempt_answers
+      WHERE attempt_id = ${attemptId};
+    `;
+    correctAnswers = Number(statsRows[0]?.correct_answers ?? 0);
+  }
+
+  const computedScore = totalQuestions > 0
+    ? Math.round((correctAnswers * 100) / totalQuestions)
+    : Number(attemptResult[0].score ?? 0);
+
   return {
     title: attemptResult[0].title,
     attempt_number: attemptResult[0].attempt_number,
-    time_spent_seconds: attemptResult[0].time_spent_seconds,
-    score: attemptResult[0].score,
+    time_spent_seconds: Number(attemptResult[0].time_spent_seconds ?? 0),
+    score: Number.isFinite(computedScore) ? computedScore : 0,
+    passing_score: Number(attemptResult[0].passing_score ?? 0),
     // total_score: attemptResult[0].total_score,
     // passed: attemptResult[0].passed,
     questions: questionResults.map((q) => ({
