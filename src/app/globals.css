@@ -29,6 +29,22 @@ body {
 }
 
 /* ===== Rich Text Editor Content Styles ===== */
+.prose {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.prose pre {
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+.prose code {
+  word-break: break-word;
+}
+
 .prose p:empty {
   min-height: 1em;
 }
@@ -75,6 +91,17 @@ body {
 
 .prose a {
   @apply text-blue-600 underline hover:text-blue-800;
+}
+
+.prose img {
+  @apply h-auto my-2 rounded-lg;
+  max-width: min(100%, 600px);
+  object-fit: contain;
+}
+
+.prose p img {
+  display: inline-block;
+  vertical-align: middle;
 }
 
 /* ===== Login Page Animations ===== */
