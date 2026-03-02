@@ -54,6 +54,7 @@ export default function ViewArticlePage() {
   const [tags, setTags] = useState<string[]>([])
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [searchQuery, setSearchQuery] = useState<string>("")
+  const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest')
   const [currentPage, setCurrentPage] = useState(1)
   const [loading, setLoading] = useState(true)
   const [commentCounts, setCommentCounts] = useState<Record<string, number>>({})
@@ -74,7 +75,7 @@ export default function ViewArticlePage() {
 
   useEffect(() => {
     loadData()
-  }, [])
+  }, [sortOrder])
 
   const loadData = async () => {
     setLoading(true)
@@ -88,7 +89,15 @@ export default function ViewArticlePage() {
       const filteredArticles = (articlesRes || []).filter(
         (a: any) => !a.is_deleted
       )
-      setArticles(filteredArticles)
+      
+      // Sort articles based on sortOrder
+      const sortedArticles = filteredArticles.sort((a, b) => {
+        const dateA = new Date(a.created_at).getTime();
+        const dateB = new Date(b.created_at).getTime();
+        return sortOrder === 'newest' ? dateB - dateA : dateA - dateB;
+      });
+      
+      setArticles(sortedArticles)
 
       const tagNames = (tagsRes || []).map((t: any) => t.name)
       setTags(tagNames)
@@ -306,6 +315,17 @@ export default function ViewArticlePage() {
                 options={tags.map((tag) => ({ label: tag, value: tag }))}
                 showSearch
                 optionFilterProp="label"
+              />
+              <div className="text-sm text-gray-700 font-semibold">Sort by</div>
+              <Select
+                size="large"
+                style={{ width: '100%' }}
+                value={sortOrder}
+                onChange={setSortOrder}
+                options={[
+                  { label: 'Newest First', value: 'newest' },
+                  { label: 'Oldest First', value: 'oldest' },
+                ]}
               />
             </Space>
           </Card>

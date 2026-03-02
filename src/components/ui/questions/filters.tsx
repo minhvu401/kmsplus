@@ -4,8 +4,9 @@ import { useState, useEffect } from "react"
 import { Typography } from "antd"
 import { Category } from "@/service/question.service"
 
-const { Text } = Typography
+const { Text } = Typography;
 
+//------------------------------- CATEGORY FILTER ---------------------------------
 export function FilterCategory({ categories }: { categories: Category[] }) {
   const searchParams = useSearchParams()
   const pathname = usePathname()
@@ -89,26 +90,21 @@ export function FilterStatus() {
         id="status"
         value={selected}
         onChange={(e) => handleChange(e.target.value)}
-        className="block w-40 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+        className="block w-auto rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
       >
-        <option key="Any" value="any">
-          Any
-        </option>
-        <option key="Open" value="open">
-          Open
-        </option>
-        <option key="Closed" value="closed">
-          Closed
-        </option>
+        <option value="any">Any</option>
+        <option value="open">Open</option>
+        <option value="closed">Closed</option>
       </select>
     </div>
   )
 }
 
-export function SortBy() {
-  const searchParams = useSearchParams()
-  const pathname = usePathname()
-  const { replace } = useRouter()
+// -------------------- SORT FILTER --------------------
+export function QuestionsSortBy() {
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const { replace } = useRouter();
 
   const currentSortCondition = searchParams.get("sort") || "newest"
   const [selected, setSelected] = useState(currentSortCondition)
@@ -147,3 +143,5 @@ export function SortBy() {
     </div>
   )
 }
+
+export const SortBy = QuestionsSortBy;

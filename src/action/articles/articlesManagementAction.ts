@@ -1,7 +1,12 @@
 "use server"
 
 import { requireAuth } from "@/lib/auth"
-import { getAllArticlesAction, filterByTagAction, getAllTagsAction, createArticleAction, deleteArticleAction, getAllCategoriesAction, getArticleByIdAction, updateArticleAction, restoreArticleAction, approveArticleAction, rejectArticleAction } from "@/service/articles.service"
+import { getAllArticlesAction, filterByTagAction, getAllTagsAction, createArticleAction, deleteArticleAction, getAllCategoriesAction, getArticleByIdAction, updateArticleAction, restoreArticleAction, approveArticleAction, rejectArticleAction, updateArticlesStatusConstraint } from "@/service/articles.service"
+
+export async function setupArticlesConstraint() {
+  await requireAuth()
+  return updateArticlesStatusConstraint()
+}
 
 export async function getAllArticles() {
   await requireAuth()
