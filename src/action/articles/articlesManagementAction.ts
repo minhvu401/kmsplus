@@ -1,7 +1,7 @@
 "use server"
 
 import { requireAuth } from "@/lib/auth"
-import { getAllArticlesAction, filterByTagAction, getAllTagsAction, createArticleAction, deleteArticleAction, getAllCategoriesAction, getArticleByIdAction, updateArticleAction, restoreArticleAction, approveArticleAction, rejectArticleAction, updateArticlesStatusConstraint } from "@/service/articles.service"
+import { getAllArticlesAction, filterByTagAction, getAllTagsAction, createArticleAction, deleteArticleAction, getAllCategoriesAction, getArticleByIdAction, updateArticleAction, restoreArticleAction, approveArticleAction, rejectArticleAction, resubmitArticleAction, updateArticlesStatusConstraint } from "@/service/articles.service"
 
 export async function setupArticlesConstraint() {
   await requireAuth()
@@ -52,6 +52,19 @@ export async function approveArticle(id: number) {
 export async function rejectArticle(id: number) {
   await requireAuth()
   return rejectArticleAction(id)
+}
+
+export async function resubmitArticle(
+  id: number,
+  title: string,
+  content: string,
+  tags?: string[],
+  category_id?: number | null,
+  image_url?: string | null,
+  thumbnail_url?: string | null
+) {
+  await requireAuth()
+  return resubmitArticleAction(id, title, content, tags, category_id, image_url, thumbnail_url)
 }
 
 export async function getAllCategories() {
