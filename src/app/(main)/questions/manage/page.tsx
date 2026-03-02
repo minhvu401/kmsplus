@@ -68,11 +68,7 @@ export default async function QuestionsManagePage(props: {
 
                 <Flex align="center" gap={28} style={{ marginBottom: 24 }}>
                     <Search placeholder="Search questions..." />
-                    <CreateQuestion
-                        categories={categories}
-                        userId={Number(user.id)}
-                        returnTo="/questions/manage"
-                    />
+                    <CreateQuestion />
                 </Flex>
 
                 <Flex
