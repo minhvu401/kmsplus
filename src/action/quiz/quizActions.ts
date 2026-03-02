@@ -18,6 +18,7 @@ import {
   saveAttemptAnswerAction,
   getQuestionsForAttemptAction,
   getSavedAnswersAction,
+  getAttemptMetaAction,
   getTimeLimitForAttemptAction,
   getAttemptResultAction,
 } from "@/service/quiz.service"
@@ -271,6 +272,12 @@ export async function getSavedAnswers(attemptId: number) {
   const user = await requireAuth()
   await requireAttemptOwner(attemptId, Number(user.id))
   return getSavedAnswersAction(attemptId)
+}
+
+export async function getAttemptMeta(attemptId: number) {
+  const user = await requireAuth()
+  await requireAttemptOwner(attemptId, Number(user.id))
+  return getAttemptMetaAction(attemptId, Number(user.id))
 }
 
 export async function getTimeLimitForAttempt(attemptId: number) {
