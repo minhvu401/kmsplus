@@ -1,13 +1,15 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams } from 'next/navigation';
-import { Card, Typography, Divider, Avatar, Input, Button, Space, Spin, message, Empty, Modal, Dropdown } from 'antd';
-import { UserOutlined, SendOutlined, CheckCircleOutlined, CloseCircleOutlined, MoreOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
+import { Card, Typography, Divider, Avatar, Input, Button, Space, Spin, message, Empty, Modal, Dropdown, Form, Select, Upload, Flex } from 'antd';
+import { UserOutlined, SendOutlined, CheckCircleOutlined, CloseCircleOutlined, MoreOutlined, EditOutlined, DeleteOutlined, UploadOutlined } from '@ant-design/icons';
 import { getArticleById } from '@/action/articles/articlesManagementAction';
+import { getAllCategories, resubmitArticle } from '@/action/articles/articlesManagementAction';
 import { getComments, createComment, updateComment, deleteComment } from '@/action/comments/commentsAction';
 import type { Comment } from '@/service/comments.service';
-import { getCloudinaryContentImageUrl, getCloudinaryThumbnailUrl } from '@/lib/cloudinary';
+import { getCloudinaryContentImageUrl, getCloudinaryThumbnailUrl, uploadImageToCloudinary } from '@/lib/cloudinary';
+import RichTextEditor from '@/components/ui/RichTextEditor';
 import MarkdownIt from 'markdown-it';
 // @ts-ignore
 import markdownItUnderline from 'markdown-it-underline';
@@ -49,6 +51,18 @@ export default function ArticleDetailPage() {
   const [deleteCommentId, setDeleteCommentId] = useState<string | null>(null);
   const [showDeleteCommentModal, setShowDeleteCommentModal] = useState(false);
   const [deletingComment, setDeletingComment] = useState(false);
+  const [showResubmitModal, setShowResubmitModal] = useState(false);
+  const [resubmitForm] = Form.useForm();
+  const [resubmitTitle, setResubmitTitle] = useState('');
+  const [resubmitContent, setResubmitContent] = useState('');
+  const [resubmitThumbnail, setResubmitThumbnail] = useState('');
+  const [resubmitTags, setResubmitTags] = useState<string[]>([]);
+  const [resubmitCategory, setResubmitCategory] = useState<number | null>(null);
+  const [resubmitting, setResubmitting] = useState(false);
+  const [uploadingResubmitThumbnail, setUploadingResubmitThumbnail] = useState(false);
+  const [categories, setCategories] = useState<{ id: number; name: string }[]>([]);
+  const [loadingCategories, setLoadingCategories] = useState(false);
+  const titleEditorRef = useRef<HTMLDivElement>(null);
 
   const renderedContent = useMemo(() => {
     if (!article?.content) return '';
@@ -82,6 +96,34 @@ export default function ArticleDetailPage() {
   useEffect(() => {
     loadArticleAndComments();
   }, [articleId]);
+
+  useEffect(() => {
+    (async () => {
+      setLoadingCategories(true);
+      try {
+        const res = await getAllCategories();
+        setCategories(res || []);
+      } catch (err) {
+        console.error('Error loading categories:', err);
+        setCategories([]);
+      } finally {
+        setLoadingCategories(false);
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    if (showResubmitModal && titleEditorRef.current) {
+      titleEditorRef.current.innerText = resubmitTitle;
+    }
+  }, [showResubmitModal, resubmitTitle]);
+
+  useEffect(() => {
+    if (showResubmitModal && resubmitContent) {
+      // Ensure form field is set when modal opens
+      resubmitForm.setFieldsValue({ content: resubmitContent });
+    }
+  }, [showResubmitModal, resubmitContent, resubmitForm]);
 
   const loadArticleAndComments = async () => {
     setLoading(true);
@@ -319,6 +361,96 @@ export default function ArticleDetailPage() {
     }
   };
 
+  const handleResubmitThumbnailUpload = async (file: File) => {
+    setUploadingResubmitThumbnail(true);
+    try {
+      const result = await uploadImageToCloudinary(file, 'article-thumbnails');
+      setResubmitThumbnail(result.secure_url);
+      message.success('Thumbnail uploaded successfully');
+    } catch (error: any) {
+      console.error('Upload error:', error);
+      message.error(error?.message || 'Failed to upload thumbnail');
+    } finally {
+      setUploadingResubmitThumbnail(false);
+    }
+  };
+
+  const handleResubmit = () => {
+    // Debug log to check article content
+    console.log('Article data:', {
+      title: article.title,
+      content: article.content?.substring(0, 100),
+      contentLength: article.content?.length,
+      thumbnail: article.thumbnail_url,
+      category: article.category_id,
+      tags: article.tags,
+    });
+
+    // Populate the form with current article data
+    const tags = article.tags ? (Array.isArray(article.tags) 
+      ? article.tags 
+      : article.tags.split(',').map((t: string) => t.trim())) : [];
+    
+    setResubmitTitle(article.title || '');
+    setResubmitContent(article.content || '');
+    setResubmitThumbnail(article.thumbnail_url || '');
+    setResubmitCategory(article.category_id || null);
+    setResubmitTags(tags);
+    
+    // Set all form fields including content
+    setTimeout(() => {
+      resubmitForm.setFieldsValue({
+        title: article.title || '',
+        content: article.content || '',
+        category: article.category_id || undefined,
+        tags: tags,
+      });
+    }, 0);
+    
+    setShowResubmitModal(true);
+  };
+
+  const confirmResubmit = async () => {
+    setResubmitting(true);
+    try {
+      const response = await fetch('/api/articles/resubmit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          id: parseInt(articleId, 10),
+          title: resubmitTitle,
+          content: resubmitContent,
+          tags: resubmitTags,
+          category_id: resubmitCategory,
+          image_url: article.image_url,
+          thumbnail_url: resubmitThumbnail,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        message.success(result.message || 'Article resubmitted successfully');
+        setShowResubmitModal(false);
+        setResubmitTitle('');
+        setResubmitContent('');
+        setResubmitTags([]);
+        setResubmitThumbnail('');
+        setResubmitCategory(null);
+        resubmitForm.resetFields();
+        await loadArticleAndComments();
+      } else {
+        message.error(result.message || 'Failed to resubmit article');
+      }
+    } catch (err: any) {
+      console.error('Resubmit error:', err);
+      message.error(err?.message || 'Failed to resubmit');
+    } finally {
+      setResubmitting(false);
+    }
+  };
+
   const renderCommentItem = (comment: Comment, depth: number = 0) => {
     const isEditing = editingCommentId === comment.id;
     const isReplying = replyToId === comment.id;
@@ -528,12 +660,21 @@ export default function ArticleDetailPage() {
 
             {/* Rejection Reason (for rejected articles) */}
             {article.status === 'rejected' && article.reason && (
-              <Card className="border-l-4 border-l-red-500">
-                <Title level={4} className="!text-red-500 !mb-2">Rejection Reason</Title>
-                <Paragraph className="!mb-0 whitespace-pre-wrap">
-                  {article.reason}
-                </Paragraph>
-              </Card>
+              <div className="space-y-4">
+                <Card className="border-l-4 border-l-red-500">
+                  <Title level={4} className="!text-red-500 !mb-2">Rejection Reason</Title>
+                  <Paragraph className="!mb-0 whitespace-pre-wrap">
+                    {article.reason}
+                  </Paragraph>
+                </Card>
+                <Button 
+                  type="primary" 
+                  size="large"
+                  onClick={handleResubmit}
+                >
+                  Resubmit Article
+                </Button>
+              </div>
             )}
 
             {/* Comments Section */}
@@ -652,6 +793,229 @@ export default function ArticleDetailPage() {
             placeholder="Enter rejection reason..."
             autoSize={{ minRows: 4, maxRows: 8 }}
           />
+        </Modal>
+
+        {/* Resubmit Modal */}
+        <Modal
+          title={<Title level={3} className="!mb-0">Resubmit Article</Title>}
+          open={showResubmitModal}
+          onCancel={() => {
+            setShowResubmitModal(false);
+            resubmitForm.resetFields();
+            setResubmitTitle('');
+            setResubmitContent('');
+            setResubmitTags([]);
+            setResubmitThumbnail('');
+            setResubmitCategory(null);
+          }}
+          footer={null}
+          width={900}
+          style={{ maxHeight: '90vh', overflow: 'auto' }}
+          getContainer={() => document.body}
+        >
+          <Form
+            form={resubmitForm}
+            layout="vertical"
+            onFinish={confirmResubmit}
+            validateTrigger="onBlur"
+          >
+            <Form.Item
+              label={<Text strong className="text-xl">Title</Text>}
+              name="title"
+              rules={[
+                { 
+                  required: true, 
+                  validator: (_, value) => {
+                    const textContent = resubmitTitle.trim();
+                    if (!textContent) {
+                      return Promise.reject('Please enter a title');
+                    }
+                    if (textContent.length > 150) {
+                      return Promise.reject('Title must be less than 150 characters');
+                    }
+                    return Promise.resolve();
+                  }
+                },
+              ]}
+            >
+              <div
+                ref={titleEditorRef}
+                contentEditable
+                onInput={() => {
+                  if (titleEditorRef.current) {
+                    setResubmitTitle(titleEditorRef.current.innerText);
+                  }
+                }}
+                onKeyDown={(e: any) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                  }
+                }}
+                onPaste={(e: any) => {
+                  e.preventDefault();
+                  const text = e.clipboardData.getData('text/plain').replace(/\s+/g, ' ').trim();
+                  document.execCommand('insertText', false, text);
+                }}
+                className="border border-gray-300 rounded p-3 min-h-[60px] focus:outline-none focus:border-blue-500 text-lg font-medium"
+                style={{ backgroundColor: 'white' }}
+                suppressContentEditableWarning
+              >
+              </div>
+            </Form.Item>
+
+            <div className="flex justify-end mb-4">
+              <Text type="secondary" className="text-sm">
+                {resubmitTitle.length} / 150
+              </Text>
+            </div>
+
+            <Divider />
+
+            <Form.Item
+              label={<Text strong className="text-base">Thumbnail Image</Text>}
+              name="thumbnail"
+            >
+              <div className="space-y-3">
+                {resubmitThumbnail && (
+                  <img 
+                    src={resubmitThumbnail} 
+                    alt="Thumbnail preview" 
+                    className="w-40 h-30 object-cover rounded-lg border"
+                  />
+                )}
+                <Upload
+                  maxCount={1}
+                  accept="image/*"
+                  showUploadList={false}
+                  beforeUpload={(file) => {
+                    handleResubmitThumbnailUpload(file);
+                    return false;
+                  }}
+                >
+                  <Button 
+                    icon={<UploadOutlined />} 
+                    loading={uploadingResubmitThumbnail}
+                    disabled={uploadingResubmitThumbnail}
+                  >
+                    {uploadingResubmitThumbnail ? 'Uploading...' : 'Click to Upload Thumbnail'}
+                  </Button>
+                </Upload>
+              </div>
+            </Form.Item>
+
+            <Divider />
+
+            <Form.Item
+              label={<Text strong className="text-base">Content</Text>}
+              name="content"
+              valuePropName="value"
+              getValueFromEvent={(value) => value}
+              rules={[
+                { 
+                  required: true, 
+                  validator: (_, value) => {
+                    const stripHtml = (html: string) => {
+                      const tmp = document.createElement('DIV');
+                      tmp.innerHTML = html;
+                      return tmp.textContent || tmp.innerText || '';
+                    }
+                    // Use resubmitContent from state instead of form field
+                    const textContent = stripHtml(resubmitContent || value || '').trim();
+                    if (!textContent) {
+                      return Promise.reject('Please enter content');
+                    }
+                    if (textContent.length > 5000) {
+                      return Promise.reject('Content must be less than 5000 characters');
+                    }
+                    return Promise.resolve();
+                  }
+                },
+              ]}
+            >
+              <RichTextEditor
+                value={resubmitContent}
+                onChange={(newValue) => {
+                  setResubmitContent(newValue);
+                  // Also update form field
+                  resubmitForm.setFieldsValue({ content: newValue });
+                }}
+                placeholder="Write your content here..."
+              />
+            </Form.Item>
+
+            <div className="flex justify-end mb-4">
+              <Text type="secondary" className="text-sm">
+                {resubmitContent.replace(/<[^>]*>/g, '').trim().length} / 5,000
+              </Text>
+            </div>
+
+            <Divider />
+
+            <Form.Item
+              label={<Text strong className="text-base">Category</Text>}
+              name="category"
+              rules={[{ required: true, message: 'Please select a category' }]}
+            >
+              <Select
+                size="large"
+                placeholder="Select a category"
+                loading={loadingCategories}
+                options={categories.map((cat) => ({ label: cat.name, value: cat.id }))}
+                value={resubmitCategory}
+                onChange={setResubmitCategory}
+                optionFilterProp="label"
+                showSearch
+                allowClear
+              />
+            </Form.Item>
+
+            <Divider />
+
+            <Form.Item
+              label={<Text strong className="text-base">Tags</Text>}
+              name="tags"
+            >
+              <Select
+                mode="tags"
+                size="large"
+                placeholder="Type to search or add new tags"
+                value={resubmitTags}
+                onChange={setResubmitTags}
+                maxTagCount="responsive"
+                showSearch
+                tokenSeparators={[',']}
+              />
+            </Form.Item>
+
+            <Form.Item className="!mb-0">
+              <Flex justify="flex-end" gap="middle">
+                <Button
+                  size="large"
+                  onClick={() => {
+                    setShowResubmitModal(false);
+                    resubmitForm.resetFields();
+                    setResubmitTitle('');
+                    setResubmitContent('');
+                    setResubmitTags([]);
+                    setResubmitThumbnail('');
+                    setResubmitCategory(null);
+                  }}
+                  disabled={resubmitting}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="primary"
+                  htmlType="submit"
+                  size="large"
+                  icon={<SendOutlined />}
+                  loading={resubmitting}
+                >
+                  Resubmit
+                </Button>
+              </Flex>
+            </Form.Item>
+          </Form>
         </Modal>
 
         {/* Delete Comment Modal */}
