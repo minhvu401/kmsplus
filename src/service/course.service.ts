@@ -191,6 +191,9 @@ export async function createCourseAction(courseData: CreateCoursePayload) {
 
   try {
     const result = await sqlTransaction.begin(async (tx: any) => {
+      const currentTimestamp = new Date().toLocaleString("en-US", {
+        timeZone: "Asia/Ho_Chi_Minh",
+      })
       // 1. Insert Course
       const newCourseResult = await tx`
         INSERT INTO courses (
@@ -202,7 +205,7 @@ export async function createCourseAction(courseData: CreateCoursePayload) {
           ${courseData.thumbnail_url || null},
           ${courseData.status || "draft"},
           ${courseData.duration_hours || 0},
-          NOW(), NOW()
+          ${currentTimestamp}, ${currentTimestamp}
         )
         RETURNING id
       `
@@ -264,6 +267,9 @@ export async function createCourseAction(courseData: CreateCoursePayload) {
 
 export async function updateFullCourseAction(id: number, data: any) {
   try {
+    const currentTimestamp = new Date().toLocaleString("en-US", {
+      timeZone: "Asia/Ho_Chi_Minh",
+    })
     // Sử dụng sqlTransaction đã khởi tạo ở đầu file để thực hiện Transaction
     return await sqlTransaction.begin(async (tx: any) => {
       // 1. Cập nhật bảng 'courses'
@@ -275,7 +281,7 @@ export async function updateFullCourseAction(id: number, data: any) {
           thumbnail_url = ${data.thumbnail_url || null},
           status = ${data.status || "draft"},
           duration_hours = ${data.duration_hours || 0},
-          updated_at = NOW()
+          updated_at = ${currentTimestamp}
         WHERE id = ${id}
       `
 
@@ -319,11 +325,32 @@ export async function updateFullCourseAction(id: number, data: any) {
 
 export async function deleteCourseAction(id: number) {
   try {
+    const existing = await sql`
+      SELECT status, deleted_at
+      FROM courses
+      WHERE id = ${id}
+    `
+
+    if (existing.length === 0 || existing[0].deleted_at) {
+      return { success: false, error: "Course not found or already deleted" }
+    }
+
+    const status = String(existing[0].status)
+    if (status === "published" || status === "pending_approval") {
+      return {
+        success: false,
+        error: "Cannot delete a course that is Published or Pending Approval",
+      }
+    }
+
+    const currentTimestamp = new Date().toLocaleString("en-US", {
+      timeZone: "Asia/Ho_Chi_Minh",
+    })
     const result = await sql`
       UPDATE courses
-      SET deleted_at = NOW()
+      SET deleted_at = ${currentTimestamp}
       WHERE id = ${id}
-        AND deleted_at IS NULL  -- ✅ THÊM: Chỉ xóa nếu chưa bị xóa
+        AND deleted_at IS NULL
       RETURNING id
     `
 
@@ -345,16 +372,19 @@ export async function deleteCourseAction(id: number) {
 export async function approveCourseAction(id: number, approvedBy: number) {
   console.log("approveCourseAction called with:", { id, approvedBy })
   try {
+    const currentTimestamp = new Date().toLocaleString("en-US", {
+      timeZone: "Asia/Ho_Chi_Minh",
+    })
     const result = await sql`
       UPDATE courses
       SET
         status = 'published',
         approved_by = ${approvedBy},
-        approved_at = NOW(),
-        updated_at = NOW()
+        approved_at = ${currentTimestamp},
+        updated_at = ${currentTimestamp}
       WHERE id = ${id} 
         AND (status = 'pending_approval' OR status = 'draft')
-        AND deleted_at IS NULL -- ✅ QUAN TRỌNG: Không được approve khóa học đang trong thùng rác
+        AND deleted_at IS NULL
       RETURNING *
     `
     console.log("Update result:", result)
