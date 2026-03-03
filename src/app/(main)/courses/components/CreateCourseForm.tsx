@@ -3,8 +3,16 @@
 
 import React, { useState, useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
-import { createCourseAPI } from "@/action/courses/courseAction"
-import { createNewLessonAPI } from "@/action/lesson/lessonActions"
+import {
+  getCategoriesAPI,
+  createCourseAPI,
+} from "@/action/courses/courseAction"
+// ✅ Sử dụng các API cơ bản (Basic CRUD)
+import {
+  createNewLessonAPI,
+  updateLessonAPI,
+  deleteLessonAPI,
+} from "@/action/lesson/lessonActions"
 import { COURSE_STATUS_LABELS } from "@/enum/course-status.enum"
 import RichTextEditor from "@/components/ui/RichTextEditor"
 import {
@@ -45,6 +53,7 @@ import {
   Upload,
   Form,
   Radio,
+  Popconfirm,
 } from "antd"
 import {
   PlusOutlined,
@@ -65,6 +74,8 @@ export type Lesson = {
   id: number
   title: string
   duration_minutes: number | null
+  type?: "text_media" | "video" | "pdf"
+  content?: string
 }
 
 export type Quiz = {
@@ -94,6 +105,7 @@ export type CreateCoursePayload = {
   title?: string
   description?: string
   thumbnail_url?: string
+  category_id?: number | null
   status?: string
   duration_hours?: number
   curriculum: Section[]
@@ -155,14 +167,53 @@ export default function CreateCourseForm({
     useState<Lesson[]>(initialLessons)
   const [availableQuizzes, setAvailableQuizzes] =
     useState<Quiz[]>(initialQuizzes)
+  const [categories, setCategories] = useState<{ id: number; name: string }[]>(
+    []
+  )
 
   useEffect(() => {
     setAvailableLessons(initialLessons)
     setAvailableQuizzes(initialQuizzes)
   }, [initialLessons, initialQuizzes])
 
+  // Fetch danh mục
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const data = await getCategoriesAPI()
+        setCategories(data)
+      } catch (error) {
+        console.error("Failed to load categories")
+      }
+    }
+    fetchCategories()
+  }, [])
+
   const handleLessonCreated = (newLesson: Lesson) => {
     setAvailableLessons((prev) => [newLesson, ...prev])
+  }
+
+  // 1. Hàm xử lý khi sửa xong lesson
+  const handleLessonUpdated = (updatedLesson: Lesson) => {
+    setAvailableLessons((prev) =>
+      prev.map((l) => (l.id === updatedLesson.id ? updatedLesson : l))
+    )
+    // message đã hiện ở hàm submit
+  }
+
+  // 2. Hàm xử lý khi xóa lesson
+  const handleLessonDeleted = (deletedId: number) => {
+    // Xóa khỏi danh sách Available
+    setAvailableLessons((prev) => prev.filter((l) => l.id !== deletedId))
+    // Xóa khỏi Curriculum nếu đang được chọn
+    setPayload((prev) => ({
+      ...prev,
+      curriculum: prev.curriculum.map((section) => ({
+        ...section,
+        items: section.items.filter((item) => item.resource_id !== deletedId),
+      })),
+    }))
+    message.success("Lesson deleted successfully")
   }
 
   const router = useRouter()
@@ -174,6 +225,7 @@ export default function CreateCourseForm({
     status: "pending_approval",
     duration_hours: 0,
     curriculum: [],
+    category_id: null,
   })
 
   const [stepStatus, setStepStatus] = useState<StepStatus[]>(
@@ -333,6 +385,7 @@ export default function CreateCourseForm({
         title: payload.title || "Untitled Course",
         description: payload.description,
         thumbnail_url: payload.thumbnail_url,
+        category_id: payload.category_id,
         status: payload.status,
         duration_hours: payload.duration_hours,
         curriculum: payload.curriculum,
@@ -384,7 +437,9 @@ export default function CreateCourseForm({
         {current === 0 && (
           <section className="space-y-4">
             <div>
-              <label className="block text-sm font-medium mb-1">Title</label>
+              <label className="block text-sm font-medium mb-1">
+                Title <span className="text-red-500">*</span>
+              </label>
               <Input
                 value={payload.title || ""}
                 onChange={(e) => update("title", e.target.value)}
@@ -395,6 +450,33 @@ export default function CreateCourseForm({
                     : ""
                 }
                 showCount
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">
+                Category <span className="text-red-500">*</span>
+              </label>
+              <Select
+                placeholder="Select a category"
+                className="w-full"
+                value={payload.category_id}
+                onChange={(val) => update("category_id", val)}
+                options={categories.map((c) => ({
+                  value: c.id,
+                  label: c.name,
+                }))}
+                status={
+                  stepStatus[0] === "invalid" && !payload.category_id
+                    ? "error"
+                    : ""
+                }
+                showSearch
+                optionFilterProp="label"
+                filterOption={(input, option) =>
+                  (option?.label ?? "")
+                    .toLowerCase()
+                    .includes(input.toLowerCase())
+                }
               />
             </div>
             <div>
@@ -480,6 +562,8 @@ export default function CreateCourseForm({
               activeSectionId={activeSectionId}
               setActiveSectionId={setActiveSectionId}
               onLessonCreated={handleLessonCreated}
+              onLessonUpdated={handleLessonUpdated}
+              onLessonDeleted={handleLessonDeleted}
             />
           </section>
         )}
@@ -511,7 +595,7 @@ export default function CreateCourseForm({
   )
 }
 
-// --- CURRICULUM CONTENT BANK (Nơi chứa Modal Create Lesson Mới) ---
+// --- CURRICULUM CONTENT BANK (Nơi chứa Modal Create/Edit Lesson) ---
 
 interface CurriculumContentBankProps {
   modal: any
@@ -525,6 +609,8 @@ interface CurriculumContentBankProps {
   activeSectionId: string | null
   setActiveSectionId: (id: string | null) => void
   onLessonCreated: (l: Lesson) => void
+  onLessonUpdated: (l: Lesson) => void
+  onLessonDeleted: (id: number) => void
 }
 
 function CurriculumContentBank({
@@ -539,6 +625,8 @@ function CurriculumContentBank({
   activeSectionId,
   setActiveSectionId,
   onLessonCreated,
+  onLessonUpdated,
+  onLessonDeleted,
 }: CurriculumContentBankProps) {
   const router = useRouter()
   const [modalState, setModalState] = useState<{
@@ -548,7 +636,7 @@ function CurriculumContentBank({
   const [activeTab, setActiveTab] = useState<"lessons" | "quizzes">("lessons")
   const [searchTerm, setSearchTerm] = useState("")
 
-  // --- States cho Create Lesson Modal (Updated) ---
+  // --- States cho Create/Edit Lesson Modal ---
   const [form] = Form.useForm()
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false)
@@ -561,6 +649,7 @@ function CurriculumContentBank({
   const [pdfFile, setPdfFile] = useState<{ name: string; url: string } | null>(
     null
   )
+  const [editingLessonId, setEditingLessonId] = useState<number | null>(null)
 
   const handleAddSection = () => {
     const newSection: Section = {
@@ -650,7 +739,7 @@ function CurriculumContentBank({
     )
   }
 
-  // --- Logic Helpers cho Create Lesson (Updated) ---
+  // --- Logic Helpers cho Create/Edit Lesson ---
   const handleUploadPDF = async (file: File) => {
     const hide = message.loading("Uploading PDF...", 0)
     try {
@@ -682,23 +771,76 @@ function CurriculumContentBank({
     return match && match[2].length === 11 ? match[2] : null
   }
 
+  // --- HÀM XỬ LÝ CLICK EDIT (Cây bút) - BASIC ---
+  const handleEditItemAction = (item: any, type: "lesson" | "quiz") => {
+    if (type === "quiz") return message.info("Quiz editing coming soon")
+
+    const lesson = item as Lesson
+    setEditingLessonId(lesson.id) // Lưu ID bài đang sửa
+    setIsCreateModalOpen(true) // Mở Modal lên
+
+    // Đổ dữ liệu cũ vào form để sửa
+    form.setFieldsValue({
+      title: lesson.title,
+      type: lesson.type || "text_media",
+      content: lesson.content,
+    })
+
+    // Cập nhật hiển thị phụ (Video/PDF)
+    const cType = lesson.type || "text_media"
+    setContentType(cType)
+    if (cType === "video" && lesson.content) setVideoUrl(lesson.content)
+    if (cType === "pdf" && lesson.content)
+      setPdfFile({ name: "Existing File", url: lesson.content })
+  }
+
+  // --- HÀM XỬ LÝ KHI BẤM NÚT XÓA (Thùng rác) - BASIC ---
+  const handleDeleteItemAction = async (
+    id: number,
+    type: "lesson" | "quiz"
+  ) => {
+    if (type === "quiz") return
+    try {
+      await deleteLessonAPI(id) // Gọi API xóa thật
+      onLessonDeleted(id) // Báo cho cha để cập nhật danh sách
+    } catch (error) {
+      message.error("Failed to delete lesson")
+    }
+  }
+
+  // --- HÀM SUBMIT FORM (TẠO MỚI HOẶC CẬP NHẬT) - BASIC ---
   const handleCreateSubmit = async (values: any) => {
     setIsCreating(true)
     try {
-      const res = await createNewLessonAPI({
-        title: values.title,
-        type: values.type,
-        content: values.content,
-      })
-      onLessonCreated(res as unknown as Lesson)
-      setIsCreateModalOpen(false)
-      setCreatedLessonName(res.title)
-      setIsSuccessModalOpen(true)
+      if (editingLessonId) {
+        // --- TRƯỜNG HỢP SỬA ---
+        const updated = await updateLessonAPI(editingLessonId, {
+          title: values.title,
+          type: values.type,
+          content: values.content,
+        })
+        onLessonUpdated(updated as unknown as Lesson) // Cập nhật danh sách UI
+        message.success("Lesson updated!")
+        setIsCreateModalOpen(false)
+        setEditingLessonId(null) // Reset về chế độ tạo mới
+      } else {
+        // --- TRƯỜNG HỢP TẠO MỚI ---
+        const res = await createNewLessonAPI({
+          title: values.title,
+          type: values.type,
+          content: values.content,
+        })
+        onLessonCreated(res as unknown as Lesson)
+        setIsCreateModalOpen(false)
+        setCreatedLessonName(res.title)
+        setIsSuccessModalOpen(true)
+      }
+
       form.resetFields()
       setVideoUrl("")
       setPdfFile(null)
     } catch {
-      message.error("Failed to create lesson")
+      message.error(editingLessonId ? "Failed to update" : "Failed to create")
     } finally {
       setIsCreating(false)
     }
@@ -730,7 +872,14 @@ function CurriculumContentBank({
             type="primary"
             size="small"
             icon={<Plus size={16} />}
-            onClick={() => setIsCreateModalOpen(true)}
+            onClick={() => {
+              setEditingLessonId(null) // Reset edit state khi tạo mới
+              form.resetFields()
+              setVideoUrl("")
+              setPdfFile(null)
+              setContentType("text_media")
+              setIsCreateModalOpen(true)
+            }}
             className="bg-[#1677ff] hover:bg-blue-500 shadow-sm"
           >
             New Lesson
@@ -780,6 +929,9 @@ function CurriculumContentBank({
                 icon={<BookOpen size={16} />}
                 title={l.title}
                 meta={`${l.duration_minutes || 0} min`}
+                // ✅ Logic Edit/Delete
+                onEdit={() => handleEditItemAction(l, "lesson")}
+                onDelete={() => handleDeleteItemAction(l.id, "lesson")}
                 onAdd={() =>
                   activeSectionId
                     ? handleAddItem(activeSectionId, l, "lesson")
@@ -794,6 +946,9 @@ function CurriculumContentBank({
                 icon={<FileQuestion size={16} />}
                 title={q.title}
                 meta={`${q.question_count} Qs`}
+                // Quiz chưa có logic edit/delete nên chỉ log ra
+                onEdit={() => handleEditItemAction(q, "quiz")}
+                onDelete={() => handleDeleteItemAction(q.id, "quiz")}
                 onAdd={() =>
                   activeSectionId
                     ? handleAddItem(activeSectionId, q, "quiz")
@@ -921,9 +1076,13 @@ function CurriculumContentBank({
         />
       )}
 
-      {/* Modal Create Lesson (FULL FUNCTIONALITY) */}
+      {/* Modal Create/Edit Lesson */}
       <Modal
-        title={<span className="text-lg font-bold">Create New Lesson</span>}
+        title={
+          <span className="text-lg font-bold">
+            {editingLessonId ? "Edit Lesson" : "Create New Lesson"}
+          </span>
+        }
         open={isCreateModalOpen}
         onCancel={() => {
           setIsCreateModalOpen(false)
@@ -931,6 +1090,7 @@ function CurriculumContentBank({
           setVideoUrl("")
           setPdfFile(null)
           setContentType("text_media")
+          setEditingLessonId(null) // Reset khi đóng
         }}
         footer={null}
         width={750}
@@ -971,6 +1131,7 @@ function CurriculumContentBank({
               }}
               buttonStyle="solid"
               className="w-full flex"
+              value={contentType}
             >
               <Radio.Button value="text_media" className="flex-1 text-center">
                 Text & Media
@@ -991,8 +1152,20 @@ function CurriculumContentBank({
               rules={[{ required: true, message: "Please enter content" }]}
             >
               <RichTextEditor
+                // 1. Gán giá trị trực tiếp từ form
                 value={form.getFieldValue("content")}
-                onChange={(val) => form.setFieldValue("content", val)}
+                // 2. Xử lý thủ công để chỉ lấy chuỗi text, chặn Event Object gây lỗi
+                onChange={(val: any) => {
+                  // Chỉ chấp nhận val là chuỗi (string)
+                  // Nếu val là object (Event, Delta...) -> bỏ qua hoặc lấy rỗng
+                  const content = typeof val === "string" ? val : ""
+
+                  // Chỉ setFieldValue khi giá trị thực sự thay đổi
+                  const currentContent = form.getFieldValue("content")
+                  if (content !== currentContent) {
+                    form.setFieldValue("content", content)
+                  }
+                }}
                 placeholder="Start typing your lesson content here..."
               />
             </Form.Item>
@@ -1024,6 +1197,7 @@ function CurriculumContentBank({
                       src={`https://www.youtube.com/embed/${getYoutubeEmbedId(videoUrl)}`}
                       title="Video Preview"
                       frameBorder="0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                       allowFullScreen
                       className="rounded shadow-sm"
                     ></iframe>
@@ -1117,7 +1291,7 @@ function CurriculumContentBank({
               size="large"
               className="bg-[#1677ff] hover:bg-blue-700 font-semibold px-8 shadow-md"
             >
-              Create Lesson
+              {editingLessonId ? "Save Changes" : "Create Lesson"}
             </Button>
           </div>
         </Form>
@@ -1134,10 +1308,10 @@ function CurriculumContentBank({
         <div className="text-center py-4">
           <CheckCircleFilled className="text-green-500 text-5xl mb-4" />
           <h2 className="text-xl font-bold mb-2">
-            Lesson Created Successfully
+            Lesson {editingLessonId ? "Updated" : "Created"} Successfully
           </h2>
           <p className="text-gray-500 mb-6">
-            The lesson <strong>"{createdLessonName}"</strong> has been created.
+            The lesson <strong>"{createdLessonName}"</strong> has been saved.
           </p>
           <Button
             block
@@ -1153,22 +1327,69 @@ function CurriculumContentBank({
   )
 }
 
-function ContentBankItem({ icon, title, meta, onAdd }: any) {
+function ContentBankItem({ icon, title, meta, onAdd, onEdit, onDelete }: any) {
   return (
-    <div className="flex items-center justify-between p-2 bg-white border rounded shadow-sm hover:shadow-md transition-shadow mb-2">
-      <div className="flex items-center gap-2 overflow-hidden">
-        <span className="text-blue-600">{icon}</span>
+    <div className="group flex items-center justify-between p-2 bg-white border rounded shadow-sm hover:shadow-md transition-shadow mb-2">
+      {/* Phần thông tin (Bên trái) */}
+      <div className="flex items-center gap-2 overflow-hidden flex-1">
+        <span className="text-blue-600 flex-shrink-0">{icon}</span>
         <div className="flex-1 overflow-hidden">
-          <p className="text-sm font-medium m-0 truncate">{title}</p>
+          <p className="text-sm font-medium m-0 truncate" title={title}>
+            {title}
+          </p>
           <p className="text-xs text-gray-500 m-0">{meta}</p>
         </div>
       </div>
-      <button
-        onClick={onAdd}
-        className="text-blue-500 hover:text-blue-700 p-1 rounded-full hover:bg-blue-50 transition-colors"
-      >
-        <PlusCircle size={18} />
-      </button>
+
+      {/* Phần Action Buttons (Bên phải - Hiện khi hover) */}
+      <div className="flex items-center gap-1 pl-2">
+        {/* Nút Edit */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            if (onEdit) onEdit()
+          }}
+          className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors opacity-0 group-hover:opacity-100"
+          title="Edit"
+        >
+          <Edit2 size={14} />
+        </button>
+
+        {/* Nút Delete (Có xác nhận Popconfirm) */}
+        <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+          <Popconfirm
+            title="Delete this item?"
+            description="Are you sure to delete this content?"
+            onConfirm={(e) => {
+              e?.stopPropagation()
+              if (onDelete) onDelete()
+            }}
+            onCancel={(e) => e?.stopPropagation()}
+            okText="Yes"
+            cancelText="No"
+          >
+            <button
+              onClick={(e) => e.stopPropagation()}
+              className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+              title="Delete"
+            >
+              <Trash2 size={14} />
+            </button>
+          </Popconfirm>
+        </div>
+
+        {/* Nút Add (Luôn hiện) */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            onAdd()
+          }}
+          className="text-blue-500 hover:text-blue-700 p-1 rounded-full hover:bg-blue-50 transition-colors ml-1"
+          title="Add to Curriculum"
+        >
+          <PlusCircle size={18} />
+        </button>
+      </div>
     </div>
   )
 }
