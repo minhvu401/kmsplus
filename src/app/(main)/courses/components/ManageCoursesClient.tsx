@@ -88,19 +88,19 @@ export default function ManageCoursesClient({
 
       const safeCurriculum = Array.isArray(rawCurriculum)
         ? rawCurriculum.map((section: any) => ({
-          ...section,
-          id: String(section.id), // ✅ Ép ID Section thành String
-          items: Array.isArray(section.items) // Hoặc section.curriculum_items
-            ? section.items.map((item: any) => ({
-              ...item,
-              id: String(item.id), // ✅ Ép ID Item thành String
-              resource_id: Number(item.resource_id),
-              type: item.type || "lesson",
-              duration_minutes: item.duration_minutes || 0,
-              question_count: item.question_count || 0,
-            }))
-            : [],
-        }))
+            ...section,
+            id: String(section.id), // ✅ Ép ID Section thành String
+            items: Array.isArray(section.items) // Hoặc section.curriculum_items
+              ? section.items.map((item: any) => ({
+                  ...item,
+                  id: String(item.id), // ✅ Ép ID Item thành String
+                  resource_id: Number(item.resource_id),
+                  type: item.type || "lesson",
+                  duration_minutes: item.duration_minutes || 0,
+                  question_count: item.question_count || 0,
+                }))
+              : [],
+          }))
         : []
 
       // 3. Tạo payload
@@ -198,30 +198,24 @@ export default function ManageCoursesClient({
       cancelText: "Cancel",
       centered: true,
       onOk: async () => {
-        // Tại đây bạn sẽ gọi API để cập nhật status thành 'draft'
-        messageApi.info("Course has been rejected and moved to Draft.")
-        router.refresh()
-      } else {
-        message.error(res.error || "Lỗi khi từ chối khóa học")
-      }
-    } catch (error) {
-      message.error("Lỗi hệ thống")
-    } finally {
-      setIsRejecting(false)
-    }
+        try {
+          // Tại đây bạn sẽ gọi API để cập nhật status thành 'draft'
+          messageApi.info("Course has been rejected and moved to Draft.")
+          router.refresh()
+        } catch (error) {
+          message.error("Lỗi hệ thống")
+        }
+      },
+    })
   }
 
   // --- Delete ---
   const handleDelete = (course: Course) => {
     if (course.status === "pending_approval") {
-      messageApi.warning(
-        "You can't delete a course that is pending approval."
-      )
+      messageApi.warning("You can't delete a course that is pending approval.")
       return
     } else if (course.status === "published") {
-      messageApi.warning(
-        "You can't delete a course that is already published."
-      )
+      messageApi.warning("You can't delete a course that is already published.")
       return
     }
 
@@ -373,7 +367,7 @@ export default function ManageCoursesClient({
                 size="small"
                 icon={<CloseOutlined />}
                 className="hover:!bg-red-50"
-                onClick={() => openRejectModal(record.id)}
+                onClick={() => handleReject(record.id, record.title)}
               >
                 Reject
               </Button>
@@ -390,9 +384,7 @@ export default function ManageCoursesClient({
       title: "Actions",
       key: "actions",
       render: (_: any, record: Course) => (
-        <div
-          className="flex gap-2"
-        >
+        <div className="flex gap-2">
           {/* Nút Edit mới dùng để mở Modal */}
           <Button
             type="text"
