@@ -1,15 +1,9 @@
-/**
- * CourseClient.tsx
- * @/app/(main)/courses/components/CourseClient.tsx
- * Client component for displaying a list of courses with search, sort, filters, and pagination.
- * Combined: New UI + Old Logic Structure
- * Fix: Replaced next/link with standard <a> tag to avoid build errors in preview env.
- */
-
+// @/src/app/(main)/courses/components/CourseClient.tsx
 "use client"
+
 import type { Course } from "@/service/course.service"
-import React, { useState, useMemo, useCallback } from "react"
-// import Link from "next/link" // Removed to avoid build error
+import React, { useState, useMemo, useCallback, useEffect } from "react"
+import { useRouter } from "next/navigation" // ✅ Dùng router của Next.js
 import { Clock } from "lucide-react"
 import {
   Input,
@@ -24,7 +18,10 @@ import {
   SearchOutlined,
   AppstoreOutlined,
   StarOutlined,
+  FilterOutlined,
+  ClearOutlined,
 } from "@ant-design/icons"
+import { getCategoriesAPI } from "@/action/courses/courseAction"
 
 interface SearchParams {
   query?: string
@@ -49,7 +46,10 @@ export default function CourseClient({
   fetchError,
   currentSearchParams = {},
 }: CourseClientProps) {
-  // State management (Controlled Components for UI)
+  const router = useRouter()
+
+  // --- STATE MANAGEMENT ---
+  // Các state này lưu giá trị tạm thời ở Client, chưa đẩy lên URL ngay
   const [searchInput, setSearchInput] = useState(
     currentSearchParams?.query || ""
   )
@@ -67,76 +67,65 @@ export default function CourseClient({
     Number(currentSearchParams?.page) || 1
   )
 
-  const totalPages = Math.ceil(initialTotalCount / coursesPerPage)
-
-  // --- LOGIC CŨ (OLD VERSION LOGIC) ---
-  // Giữ nguyên cách xử lý params đơn giản và spread ...currentSearchParams khi gọi hàm
-  const createQueryString = useCallback(
-    (params: Partial<SearchParams>): string => {
-      const searchParams = new URLSearchParams()
-
-      Object.entries(params).forEach(([key, value]) => {
-        if (value && value !== "all") {
-          searchParams.set(key, String(value))
-        }
-      })
-
-      return searchParams.toString()
-    },
+  const [categories, setCategories] = useState<{ id: number; name: string }[]>(
     []
   )
 
-  const handleSearch = (value: string) => {
-    // Logic cũ: Spread currentSearchParams để giữ các filter khác (nếu có)
-    const queryString = createQueryString({
-      ...currentSearchParams,
-      query: value || undefined,
-      page: "1", // Reset về trang 1 khi search
-    })
-    // Force reload để trigger server-side fetching (như logic cũ)
-    window.location.href = `?${queryString}`
+  const totalPages = Math.ceil(initialTotalCount / coursesPerPage)
+
+  // Fetch Category
+  useEffect(() => {
+    const fetchCategories = async () => {
+      const data = await getCategoriesAPI()
+      setCategories(data)
+    }
+    fetchCategories()
+  }, [])
+
+  // --- MASTER FILTER HANDLER ---
+  // ✅ Hàm này gom tất cả điều kiện và thực hiện tìm kiếm 1 lần
+  const handleApplyFilters = () => {
+    const params = new URLSearchParams()
+
+    // 1. Search Query
+    if (searchInput.trim()) {
+      params.set("query", searchInput.trim())
+    }
+
+    // 2. Category
+    if (categoryFilter && categoryFilter !== "all") {
+      params.set("category", categoryFilter)
+    }
+
+    // 3. Rating
+    if (ratingFilter && ratingFilter !== "all") {
+      params.set("rating", ratingFilter)
+    }
+
+    // 4. Sort
+    if (sortOption && sortOption !== "trending") {
+      params.set("sort", sortOption)
+    }
+
+    // Luôn reset về trang 1 khi bấm nút tìm kiếm/filter mới
+    params.set("page", "1")
+
+    // Đẩy lên URL để Server Component tải lại dữ liệu
+    router.push(`?${params.toString()}`)
   }
 
-  const handleSortChange = (value: string) => {
-    const newSort = value as SearchParams["sort"]
-    setSortOption(newSort) // Optimistic Update
-
-    const queryString = createQueryString({
-      ...currentSearchParams,
-      sort: newSort,
-      page: "1",
-    })
-    window.location.href = `?${queryString}`
+  // Handle Enter key on input
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      handleApplyFilters()
+    }
   }
 
-  const handleCategoryChange = (value: string) => {
-    setCategoryFilter(value) // Optimistic Update
-
-    const queryString = createQueryString({
-      ...currentSearchParams,
-      category: value === "all" ? undefined : value,
-      page: "1",
-    })
-    window.location.href = `?${queryString}`
-  }
-
-  const handleRatingChange = (value: string) => {
-    setRatingFilter(value) // Optimistic Update
-
-    const queryString = createQueryString({
-      ...currentSearchParams,
-      rating: value === "all" ? undefined : value,
-      page: "1",
-    })
-    window.location.href = `?${queryString}`
-  }
-
+  // Handle Pagination (Vẫn cần reload ngay khi chuyển trang)
   const handlePageChange = (newPage: number) => {
-    const queryString = createQueryString({
-      ...currentSearchParams,
-      page: String(newPage),
-    })
-    window.location.href = `?${queryString}`
+    const params = new URLSearchParams(window.location.search)
+    params.set("page", String(newPage))
+    router.push(`?${params.toString()}`)
   }
 
   const handleClearAll = () => {
@@ -144,10 +133,10 @@ export default function CourseClient({
     setSortOption("trending")
     setCategoryFilter("all")
     setRatingFilter("all")
-    window.location.href = "?"
+    router.push("?")
   }
 
-  // --- RENDER (NEW UI) ---
+  // --- RENDER ---
   return (
     <div className="min-h-screen bg-gray-50 text-gray-800">
       <div className="max-w-screen-xl mx-auto px-4 lg:px-6 xl:px-8 py-10">
@@ -164,50 +153,70 @@ export default function CourseClient({
 
       <div className="max-w-screen-xl mx-auto px-4 lg:px-6 xl:px-8 pb-12">
         <main className="w-full min-w-0">
-          {/* --- TOOLBAR: SEARCH & FILTERS (Giao diện Mới) --- */}
-          <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 mb-8 flex flex-col md:flex-row items-center gap-4">
-            {/* 1. Search Input */}
-            <div className="w-full flex-1 bg-gray-50 hover:bg-gray-100 transition-colors rounded-xl flex items-center px-4 py-1">
-              <SearchOutlined className="text-gray-400 text-lg mr-2" />
-              <Input
-                placeholder="Search courses by title, keywords..."
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-                onPressEnter={() => handleSearch(searchInput)}
-                variant="borderless"
+          {/* --- TOOLBAR: SEARCH & FILTERS --- */}
+          <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 mb-8 flex flex-col xl:flex-row items-center gap-4">
+            {/* 1. Search Input Area */}
+            <div className="w-full flex-1 flex gap-2">
+              <div className="relative w-full flex items-center bg-gray-50 hover:bg-gray-100 transition-colors rounded-xl px-4 py-1 border border-transparent focus-within:border-blue-300 focus-within:bg-white">
+                <SearchOutlined className="text-gray-400 text-lg mr-2" />
+                <Input
+                  placeholder="Search courses by title, keywords..."
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  onKeyDown={handleKeyPress} // Bấm Enter để tìm
+                  variant="borderless"
+                  size="large"
+                  className="!bg-transparent !px-0 text-gray-700 placeholder:text-gray-400 w-full"
+                />
+              </div>
+              {/* ✅ NÚT TÌM KIẾM CHÍNH (Trigger) */}
+              <Button
+                type="default" // Đổi từ primary sang default để dễ custom nền
+                size="middle" // Đổi từ large -> middle để nút bé lại
+                icon={<SearchOutlined />}
+                onClick={handleApplyFilters}
+                className="rounded-lg px-5 bg-blue-50 text-blue-600 border-blue-200 hover:!bg-blue-100 hover:!text-blue-700 hover:!border-blue-300 font-medium shadow-sm transition-all"
+              >
+                Search
+              </Button>
+              {/* 👇 NÚT CLEAR FILTER MỚI 👇 */}
+              <Button
                 size="large"
-                className="!bg-transparent !px-0 text-gray-700 placeholder:text-gray-400"
+                icon={<ClearOutlined />}
+                onClick={handleClearAll}
+                title="Clear all filters"
+                className="rounded-xl px-4 bg-white text-gray-500 border border-gray-200 hover:bg-gray-50 hover:text-red-500 hover:border-red-200 shadow-sm transition-colors"
               />
             </div>
 
-            {/* Group Filters */}
-            <div className="flex flex-wrap md:flex-nowrap gap-3 w-full md:w-auto">
-              {/* 2. Category Filter */}
-              <div className="bg-gray-50 hover:bg-gray-100 transition-colors rounded-xl flex items-center px-3 py-1 w-full md:w-auto">
+            {/* 2. Group Filters (Chỉ set State, không reload trang) */}
+            <div className="flex flex-wrap md:flex-nowrap gap-3 w-full xl:w-auto">
+              {/* Category Filter */}
+              <div className="bg-gray-50 hover:bg-gray-100 transition-colors rounded-xl flex items-center px-3 py-1 w-full md:w-auto border border-transparent hover:border-gray-200">
                 <AppstoreOutlined className="text-gray-500 mr-2" />
                 <Select
                   value={categoryFilter}
-                  onChange={handleCategoryChange}
+                  onChange={(val) => setCategoryFilter(val)} // ✅ Chỉ set State
                   variant="borderless"
                   size="large"
                   popupMatchSelectWidth={false}
                   className="!bg-transparent min-w-[140px]"
                   options={[
                     { value: "all", label: "All Categories" },
-                    { value: "development", label: "Development" },
-                    { value: "business", label: "Business" },
-                    { value: "design", label: "Design" },
-                    { value: "marketing", label: "Marketing" },
+                    ...categories.map((cat) => ({
+                      value: String(cat.id),
+                      label: cat.name,
+                    })),
                   ]}
                 />
               </div>
 
-              {/* 3. Rating Filter */}
-              <div className="bg-gray-50 hover:bg-gray-100 transition-colors rounded-xl flex items-center px-3 py-1 w-full md:w-auto">
+              {/* Rating Filter */}
+              <div className="bg-gray-50 hover:bg-gray-100 transition-colors rounded-xl flex items-center px-3 py-1 w-full md:w-auto border border-transparent hover:border-gray-200">
                 <StarOutlined className="text-gray-500 mr-2" />
                 <Select
                   value={ratingFilter}
-                  onChange={handleRatingChange}
+                  onChange={(val) => setRatingFilter(val)} // ✅ Chỉ set State
                   variant="borderless"
                   size="large"
                   className="!bg-transparent min-w-[130px]"
@@ -220,14 +229,14 @@ export default function CourseClient({
                 />
               </div>
 
-              {/* 4. Sort */}
-              <div className="bg-gray-50 hover:bg-gray-100 transition-colors rounded-xl flex items-center px-4 py-1 w-full md:w-auto">
+              {/* Sort */}
+              <div className="bg-gray-50 hover:bg-gray-100 transition-colors rounded-xl flex items-center px-4 py-1 w-full md:w-auto border border-transparent hover:border-gray-200">
                 <span className="text-gray-400 text-xs font-bold uppercase tracking-wider mr-2 whitespace-nowrap">
                   Sort:
                 </span>
                 <Select
                   value={sortOption}
-                  onChange={handleSortChange}
+                  onChange={(val) => setSortOption(val)} // ✅ Chỉ set State
                   variant="borderless"
                   size="large"
                   className="!bg-transparent font-medium text-gray-700 min-w-[110px]"
@@ -271,9 +280,8 @@ export default function CourseClient({
                 No courses found
               </h3>
               <p className="text-gray-500 mt-1">
-                {searchInput
-                  ? "Try adjusting your search or filters to find what you're looking for."
-                  : "No courses available at the moment."}
+                Try adjusting your search or filters to find what you're looking
+                for.
               </p>
               <Button type="link" onClick={handleClearAll}>
                 Clear all filters
@@ -307,11 +315,7 @@ export default function CourseClient({
 // Sub-Components
 // ==============================================================================
 
-/**
- * CourseCard component to display individual course information
- */
 function CourseCard({ course }: { course: Course }) {
-  // Generate a deterministic rating based on ID
   const mockRating = useMemo(() => {
     const idNum = Number(course.id) || 0
     const seed = Math.sin(idNum) * 10000
@@ -320,7 +324,6 @@ function CourseCard({ course }: { course: Course }) {
   }, [course.id])
 
   return (
-    // Replaced Link with a to fix build error
     <a href={`/courses/${course.id}`} className="group block h-full">
       <Card
         hoverable

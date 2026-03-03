@@ -169,7 +169,7 @@ export default function EnrollmentOverviewPage() {
           <div>
             <div className="flex items-center gap-2 mb-1">
               <Tag
-                /* ✅ Đã cập nhật màu Tag */
+                /* Đã cập nhật màu Tag */
                 color="blue"
                 className="rounded-full px-2 border-none bg-blue-50"
                 style={{ color: PRIMARY_BLUE }}

@@ -18,6 +18,7 @@ import {
   getCourseById,
   deleteCourseAPI,
   approveCourse,
+  rejectCourseAction,
 } from "@/action/courses/courseAction"
 import { COURSE_STATUS_LABELS } from "@/enum/course-status.enum"
 import UpdateCourseForm, { CoursePayload } from "./UpdateCourseForm"
@@ -87,19 +88,19 @@ export default function ManageCoursesClient({
 
       const safeCurriculum = Array.isArray(rawCurriculum)
         ? rawCurriculum.map((section: any) => ({
-          ...section,
-          id: String(section.id), // ✅ Ép ID Section thành String
-          items: Array.isArray(section.items) // Hoặc section.curriculum_items
-            ? section.items.map((item: any) => ({
-              ...item,
-              id: String(item.id), // ✅ Ép ID Item thành String
-              resource_id: Number(item.resource_id),
-              type: item.type || "lesson",
-              duration_minutes: item.duration_minutes || 0,
-              question_count: item.question_count || 0,
-            }))
-            : [],
-        }))
+            ...section,
+            id: String(section.id), // ✅ Ép ID Section thành String
+            items: Array.isArray(section.items) // Hoặc section.curriculum_items
+              ? section.items.map((item: any) => ({
+                  ...item,
+                  id: String(item.id), // ✅ Ép ID Item thành String
+                  resource_id: Number(item.resource_id),
+                  type: item.type || "lesson",
+                  duration_minutes: item.duration_minutes || 0,
+                  question_count: item.question_count || 0,
+                }))
+              : [],
+          }))
         : []
 
       // 3. Tạo payload
@@ -197,9 +198,13 @@ export default function ManageCoursesClient({
       cancelText: "Cancel",
       centered: true,
       onOk: async () => {
-        // Tại đây bạn sẽ gọi API để cập nhật status thành 'draft'
-        messageApi.info("Course has been rejected and moved to Draft.")
-        router.refresh()
+        try {
+          // Tại đây bạn sẽ gọi API để cập nhật status thành 'draft'
+          messageApi.info("Course has been rejected and moved to Draft.")
+          router.refresh()
+        } catch (error) {
+          message.error("Lỗi hệ thống")
+        }
       },
     })
   }
@@ -207,14 +212,10 @@ export default function ManageCoursesClient({
   // --- Delete ---
   const handleDelete = (course: Course) => {
     if (course.status === "pending_approval") {
-      messageApi.warning(
-        "You can't delete a course that is pending approval."
-      )
+      messageApi.warning("You can't delete a course that is pending approval.")
       return
     } else if (course.status === "published") {
-      messageApi.warning(
-        "You can't delete a course that is already published."
-      )
+      messageApi.warning("You can't delete a course that is already published.")
       return
     }
 
@@ -307,6 +308,7 @@ export default function ManageCoursesClient({
         if (status === "published") color = "success"
         if (status === "pending_approval") color = "processing"
         if (status === "draft") color = "warning"
+        if (status === "rejected") color = "error"
 
         return (
           <Tag color={color} className="uppercase text-xs font-semibold">
@@ -382,15 +384,14 @@ export default function ManageCoursesClient({
       title: "Actions",
       key: "actions",
       render: (_: any, record: Course) => (
-        <div
-          className="flex gap-2"
-        >
+        <div className="flex gap-2">
           {/* Nút Edit mới dùng để mở Modal */}
           <Button
-            type="default"
+            type="text"
             icon={<EditOutlined />}
             size="small"
-            className="border-blue-600 text-blue-600 hover:!border-blue-700 hover:!text-blue-700 hover:bg-blue-50"
+            // className="border-blue-600 text-blue-600 hover:!border-blue-700 hover:!text-blue-700 hover:bg-blue-50"
+            className="text-blue-600 hover:!text-blue-700 hover:bg-blue-50"
             onClick={(e) => {
               e.stopPropagation() // Chặn sự kiện click vào hàng
               handleOpenUpdate(record) // Gọi hàm mở Modal với dữ liệu hàng hiện tại
@@ -399,9 +400,12 @@ export default function ManageCoursesClient({
 
           {/* Nút Delete */}
           <Button
+            type="text"
             danger
             icon={<DeleteOutlined />}
             size="small"
+            // ✅ Thêm nền đỏ nhạt khi hover
+            className="hover:bg-red-50"
             onClick={(e) => {
               // 🛑 Ngăn chặn hành vi mặc định và lan truyền
               e.stopPropagation()

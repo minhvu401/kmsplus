@@ -2,8 +2,15 @@
 "use client"
 import React, { useState, useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
-import { updateCourseAPI } from "@/action/courses/courseAction"
-import { createNewLessonAPI } from "@/action/lesson/lessonActions"
+import {
+  updateCourseAPI,
+  getCategoriesAPI,
+} from "@/action/courses/courseAction"
+import {
+  createNewLessonAPI,
+  updateLessonAPI,
+  deleteLessonAPI,
+} from "@/action/lesson/lessonActions"
 import { COURSE_STATUS_LABELS } from "@/enum/course-status.enum"
 import RichTextEditor from "@/components/ui/RichTextEditor"
 import ContentBankItem from "@/components/ui/ContentBankItem"
@@ -45,6 +52,7 @@ import {
   Upload,
   Form,
   Radio,
+  Popconfirm,
 } from "antd"
 import {
   PlusOutlined as AntPlusOutlined,
@@ -65,6 +73,8 @@ export type Lesson = {
   id: number
   title: string
   duration_minutes: number | null
+  type?: "text_media" | "video" | "pdf"
+  content?: string
 }
 export type Quiz = { id: number; title: string; question_count: number }
 export type CurriculumItem = {
@@ -85,6 +95,7 @@ export type Section = {
 export type CoursePayload = {
   id?: number
   creator_id?: number
+  category_id?: number | null
   title?: string
   description?: string
   thumbnail_url?: string
@@ -148,6 +159,9 @@ export default function UpdateCourseForm({
     curriculum: initialData.curriculum,
   })
   // 1. Quản lý danh sách Available Content (Lessons & Quizzes) từ Props
+  const [categories, setCategories] = useState<{ id: number; name: string }[]>(
+    []
+  )
   const [availableLessons, setAvailableLessons] =
     useState<Lesson[]>(initialLessons)
   const [availableQuizzes, setAvailableQuizzes] =
@@ -162,10 +176,54 @@ export default function UpdateCourseForm({
     setAvailableLessons(initialLessons)
     setAvailableQuizzes(initialQuizzes)
   }, [initialLessons, initialQuizzes])
+  // ✅ Fetch Categories
+  useEffect(() => {
+    const fetchCats = async () => {
+      const data = await getCategoriesAPI()
+      setCategories(data)
+    }
+    fetchCats()
+  }, [])
 
   // Hàm thêm lesson mới vào danh sách ngay lập tức khi tạo xong
   const handleLessonCreated = (newLesson: Lesson) => {
     setAvailableLessons((prev) => [newLesson, ...prev])
+  }
+
+  // 1. Cập nhật state khi sửa xong 1 lesson
+  const handleLessonUpdated = (updatedLesson: Lesson) => {
+    setAvailableLessons((prev) =>
+      prev.map((l) => (l.id === updatedLesson.id ? updatedLesson : l))
+    )
+    // Cập nhật luôn cả trong Curriculum nếu bài đó đang được chọn
+    setPayload((prev) => ({
+      ...prev,
+      curriculum: prev.curriculum.map((section) => ({
+        ...section,
+        items: section.items.map((item) =>
+          item.resource_id === updatedLesson.id
+            ? {
+                ...item,
+                title: updatedLesson.title,
+                duration_minutes: updatedLesson.duration_minutes,
+              }
+            : item
+        ),
+      })),
+    }))
+  }
+
+  // 2. Cập nhật state khi xóa 1 lesson
+  const handleLessonDeleted = (deletedId: number) => {
+    setAvailableLessons((prev) => prev.filter((l) => l.id !== deletedId))
+    setPayload((prev) => ({
+      ...prev,
+      curriculum: prev.curriculum.map((section) => ({
+        ...section,
+        items: section.items.filter((item) => item.resource_id !== deletedId),
+      })),
+    }))
+    message.success("Lesson deleted successfully")
   }
 
   const router = useRouter()
@@ -375,6 +433,7 @@ export default function UpdateCourseForm({
         thumbnail_url: payload.thumbnail_url,
         status: payload.status,
         duration_hours: payload.duration_hours,
+        category_id: payload.category_id,
         curriculum: payload.curriculum,
       })
       if (res.success) {
@@ -444,6 +503,34 @@ export default function UpdateCourseForm({
                     : ""
                 }
                 showCount
+              />
+            </div>
+            {/* ✅ Ô CHỌN CATEGORY */}
+            <div>
+              <label className="block text-sm font-medium mb-1 text-gray-700">
+                Category
+              </label>
+              <Select
+                placeholder="Select a category"
+                className="w-full"
+                // ✅ 1. Ép giá trị hiện tại về String (nếu có) để so sánh
+                value={
+                  payload.category_id ? String(payload.category_id) : undefined
+                }
+                // ✅ 2. Khi chọn, ép ngược từ String về Number để lưu vào Payload đúng chuẩn
+                onChange={(val) => update("category_id", Number(val))}
+                // ✅ 3. Ép value trong danh sách options về String
+                options={categories.map((c) => ({
+                  value: String(c.id),
+                  label: c.name,
+                }))}
+                showSearch
+                optionFilterProp="label"
+                filterOption={(input, option) =>
+                  (option?.label ?? "")
+                    .toLowerCase()
+                    .includes(input.toLowerCase())
+                }
               />
             </div>
             <div>
@@ -553,6 +640,8 @@ export default function UpdateCourseForm({
                 setActiveSectionId={setActiveSectionId}
                 onOpenCreateModal={() => {}}
                 onLessonCreated={handleLessonCreated} // Truyền callback tạo lesson
+                onLessonUpdated={handleLessonUpdated} // Truyền callback sửa lesson
+                onLessonDeleted={handleLessonDeleted} // Truyền callback xóa lesson
               />
               {stepStatus[1] === "invalid" && (
                 <p className="mt-2 text-sm text-red-600">
@@ -697,6 +786,8 @@ interface CurriculumContentBankProps {
   setActiveSectionId: (id: string | null) => void
   onOpenCreateModal: () => void
   onLessonCreated: (lesson: Lesson) => void // Thêm prop này để nhận callback
+  onLessonUpdated: (lesson: Lesson) => void // Thêm prop sửa lesson
+  onLessonDeleted: (id: number) => void // Thêm prop xóa lesson
 }
 function CurriculumContentBank({
   value: sections,
@@ -710,6 +801,8 @@ function CurriculumContentBank({
   activeSectionId,
   setActiveSectionId,
   onLessonCreated, // Nhận prop này
+  onLessonUpdated, // Nhận prop sửa lesson
+  onLessonDeleted, // Nhận prop xóa lesson
 }: CurriculumContentBankProps) {
   const router = useRouter()
   const [modalState, setModalState] = useState<{
@@ -726,6 +819,7 @@ function CurriculumContentBank({
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false)
   const [createdLessonName, setCreatedLessonName] = useState("")
   const [isCreating, setIsCreating] = useState(false)
+  const [editingLessonId, setEditingLessonId] = useState<number | null>(null) // State theo dõi ID đang sửa
 
   const [contentType, setContentType] = useState<
     "text_media" | "video" | "pdf"
@@ -875,26 +969,79 @@ function CurriculumContentBank({
     return match && match[2].length === 11 ? match[2] : null
   }
 
+  // 👇 THÊM HÀM MỞ FORM EDIT:
+  const handleEditItemAction = (item: any, type: "lesson" | "quiz") => {
+    if (type === "quiz") return message.info("Quiz editing coming soon")
+
+    const lesson = item as Lesson
+    setEditingLessonId(lesson.id) // Lưu ID đang sửa
+    setIsCreateModalOpen(true) // Mở Modal
+
+    // Đổ dữ liệu cũ vào Form
+    form.setFieldsValue({
+      title: lesson.title,
+      type: lesson.type || "text_media",
+      content: lesson.content,
+    })
+
+    // Setup state phụ (Video/PDF)
+    const cType = lesson.type || "text_media"
+    setContentType(cType)
+    if (cType === "video" && lesson.content) setVideoUrl(lesson.content)
+    if (cType === "pdf" && lesson.content)
+      setPdfFile({ name: "Existing File", url: lesson.content })
+  }
+
+  // 👇 THÊM HÀM XÓA:
+  const handleDeleteItemAction = async (
+    id: number,
+    type: "lesson" | "quiz"
+  ) => {
+    if (type === "quiz") return
+    try {
+      await deleteLessonAPI(id)
+      onLessonDeleted(id)
+    } catch (error) {
+      message.error("Failed to delete lesson")
+    }
+  }
+
   const handleCreateSubmit = async (values: any) => {
     setIsCreating(true)
     try {
-      const newLessonResponse = await createNewLessonAPI({
-        title: values.title,
-        type: values.type,
-        content: values.content,
-      })
+      if (editingLessonId) {
+        // --- TRƯỜG HỢP SỬA ---
+        const updated = await updateLessonAPI(editingLessonId, {
+          title: values.title,
+          type: values.type,
+          content: values.content,
+        })
+        onLessonUpdated(updated as unknown as Lesson)
+        message.success("Lesson updated!")
+        setIsCreateModalOpen(false)
+        setEditingLessonId(null)
+      } else {
+        // --- TRƯỜG HỢP TẠO MỚI ---
+        const newLessonResponse = await createNewLessonAPI({
+          title: values.title,
+          type: values.type,
+          content: values.content,
+        })
 
-      // ✅ Cập nhật danh sách lesson ngay lập tức
-      if (onLessonCreated) {
-        onLessonCreated(newLessonResponse as unknown as Lesson)
+        // ✅ Cập nhật danh sách lesson ngay lập tức
+        if (onLessonCreated) {
+          onLessonCreated(newLessonResponse as unknown as Lesson)
+        }
+
+        setIsCreateModalOpen(false)
+        setCreatedLessonName(newLessonResponse.title)
+        setIsSuccessModalOpen(true)
       }
-
-      setIsCreateModalOpen(false)
-      setCreatedLessonName(newLessonResponse.title)
-      setIsSuccessModalOpen(true)
       form.resetFields()
+      setVideoUrl("")
+      setPdfFile(null)
     } catch (error) {
-      message.error("Failed to create lesson")
+      message.error(editingLessonId ? "Failed to update" : "Failed to create")
     } finally {
       setIsCreating(false)
     }
@@ -940,7 +1087,14 @@ function CurriculumContentBank({
             <Button
               type="primary"
               icon={<Plus size={16} />}
-              onClick={() => setIsCreateModalOpen(true)}
+              onClick={() => {
+                setEditingLessonId(null) // Reset ID edit về null
+                form.resetFields()
+                setVideoUrl("")
+                setPdfFile(null)
+                setContentType("text_media")
+                setIsCreateModalOpen(true)
+              }}
               className="bg-blue-600 hover:bg-blue-500 shadow-sm"
               size="small"
             >
@@ -986,6 +1140,8 @@ function CurriculumContentBank({
                   icon={<BookOpen size={16} />}
                   title={l.title}
                   meta={`${l.duration_minutes || 0} min`}
+                  onEdit={() => handleEditItemAction(l, "lesson")}
+                  onDelete={() => handleDeleteItemAction(l.id, "lesson")}
                   onAdd={() => {
                     if (!activeSectionId) {
                       message.warning("Please select a section above first")
@@ -1158,7 +1314,7 @@ function CurriculumContentBank({
 
       {/* Modal Create Lesson */}
       <Modal
-        title="Create New Lesson"
+        title={editingLessonId ? "Edit Lesson" : "Create New Lesson"}
         open={isCreateModalOpen}
         onCancel={() => {
           setIsCreateModalOpen(false)
@@ -1166,6 +1322,7 @@ function CurriculumContentBank({
           setVideoUrl("")
           setPdfFile(null)
           setContentType("text_media")
+          setEditingLessonId(null) // Reset khi đóng
         }}
         footer={null}
         width={700}
@@ -1360,7 +1517,7 @@ function CurriculumContentBank({
               size="large"
               className="bg-blue-600 hover:bg-blue-500"
             >
-              Create Lesson
+              {editingLessonId ? "Save Changes" : "Create Lesson"}
             </Button>
           </div>
         </Form>
@@ -1377,7 +1534,7 @@ function CurriculumContentBank({
         <div className="text-center py-4">
           <CheckCircleFilled className="text-green-500 text-5xl mb-4" />
           <h2 className="text-xl font-bold mb-2">
-            Lesson Created Successfully
+            Lesson {editingLessonId ? "Updated" : "Created"} Successfully
           </h2>
           <p className="text-gray-500 mb-6">
             The lesson <strong>"{createdLessonName}"</strong> has been created.
