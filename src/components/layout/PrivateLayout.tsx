@@ -7,6 +7,9 @@ import dynamic from "next/dynamic"
 // Dynamic imports to avoid hydration mismatch caused by browser extensions
 const AppSidebar = dynamic(() => import("./AppSidebar"), { ssr: false })
 const AppHeader = dynamic(() => import("./AppHeader"), { ssr: false })
+const FloatingChatBubble = dynamic(() => import("../FloatingChatBubble"), {
+  ssr: false,
+})
 
 const { Content } = Layout
 
@@ -60,7 +63,7 @@ const PrivateLayout: React.FC<LayoutProps> = ({ children }) => {
     <div className="min-h-screen w-full bg-gray-50" suppressHydrationWarning>
       {/* Sidebar - Fixed position */}
       <AppSidebar collapsed={collapsed} onToggle={handleToggle} />
-      
+
       {/* Main content area - with dynamic margin */}
       <div
         style={{
@@ -77,7 +80,7 @@ const PrivateLayout: React.FC<LayoutProps> = ({ children }) => {
           collapsed={collapsed}
           className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm"
         />
-        
+
         {/* Content area */}
         <div
           className="p-6"
@@ -98,6 +101,9 @@ const PrivateLayout: React.FC<LayoutProps> = ({ children }) => {
           </div>
         </div>
       </div>
+
+      {/* Floating Chat Bubble */}
+      <FloatingChatBubble />
     </div>
   )
 }

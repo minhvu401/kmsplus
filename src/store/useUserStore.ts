@@ -31,7 +31,9 @@ const useUserStore = create<UserStore>()(
         if (!get().user) {
           try {
             const user = await getCurrentUserInfor() // API gọi khi không có user
-            set({ user })
+            if (user) {
+              set({ user })
+            }
           } catch (error) {
             console.error("Error fetching user:", error)
           }

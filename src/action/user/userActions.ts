@@ -17,9 +17,15 @@ import { revalidatePath } from "next/cache"
  * Get current logged in user
  */
 export async function getCurrentUserInfor() {
-  await requireAuth()
-  const user = await getCurrentUserInforAction()
-  return user
+  try {
+    await requireAuth()
+    const user = await getCurrentUserInforAction()
+    return user
+  } catch (error) {
+    // Return null if not authenticated instead of throwing error
+    // This prevents unnecessary errors when user is not logged in
+    return null
+  }
 }
 
 /**
