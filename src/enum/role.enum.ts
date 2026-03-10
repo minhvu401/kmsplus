@@ -4,6 +4,7 @@ export enum Role {
   TRAINING_MANAGER = "Training Manager",
   ADMIN = "Admin",
   DASHBOARD_VIEWER = "Dashboard Viewer",
+  DIRECTOR = "Director",
 }
 
 export const RoleConfig = {
@@ -31,5 +32,10 @@ export const RoleConfig = {
     id: 5,
     name: "Dashboard Viewer",
     label: "Người xem bảng điều khiển",
+  },
+  [Role.DIRECTOR]: {
+    id: 6,
+    name: "Director",
+    label: "Giám đốc",
   },
 } as const

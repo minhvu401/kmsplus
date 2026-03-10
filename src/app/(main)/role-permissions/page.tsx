@@ -21,11 +21,7 @@ const PERMISSION_GROUPS: PermissionGroup[] = [
   {
     module: Permission.LOGIN,
     moduleKey: "module.authentication",
-    permissions: [
-      Permission.LOGIN,
-      Permission.LOGOUT,
-      Permission.VIEW_PROFILE,
-    ],
+    permissions: [Permission.LOGIN, Permission.LOGOUT, Permission.VIEW_PROFILE],
   },
   {
     module: Permission.READ_ARTICLE,
@@ -153,6 +149,7 @@ const ROLE_ORDER = [
   Role.DASHBOARD_VIEWER,
   Role.CONTRIBUTOR,
   Role.TRAINING_MANAGER,
+  Role.DIRECTOR,
   Role.ADMIN,
 ]
 
@@ -162,6 +159,7 @@ const getRoleTranslationKey = (role: Role): string => {
     [Role.EMPLOYEE]: "employee",
     [Role.CONTRIBUTOR]: "contributor",
     [Role.TRAINING_MANAGER]: "trainingmanager",
+    [Role.DIRECTOR]: "director",
     [Role.ADMIN]: "admin",
     [Role.DASHBOARD_VIEWER]: "dashboardviewer",
   }
@@ -170,13 +168,17 @@ const getRoleTranslationKey = (role: Role): string => {
 
 export default function RolePermissionPage() {
   const { language } = useLanguageStore()
-  const [permissions, setPermissions] = useState<Record<Role, Permission[]>>(
-    { ...rolePermissionsMap }
-  )
+  const [permissions, setPermissions] = useState<Record<Role, Permission[]>>({
+    ...rolePermissionsMap,
+  })
   const [hasChanges, setHasChanges] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
 
-  const handlePermissionChange = (role: Role, permission: Permission, checked: boolean) => {
+  const handlePermissionChange = (
+    role: Role,
+    permission: Permission,
+    checked: boolean
+  ) => {
     setPermissions((prev) => {
       const updated = { ...prev }
       if (checked) {
@@ -204,7 +206,7 @@ export default function RolePermissionPage() {
         try {
           setIsSaving(true)
           const result = await updateRolePermissionsAction(permissions)
-          
+
           if (result.success) {
             message.success(
               language === "vi"
@@ -218,9 +220,7 @@ export default function RolePermissionPage() {
         } catch (error) {
           console.error("Error saving permissions:", error)
           message.error(
-            language === "vi"
-              ? "Lỗi khi lưu quyền"
-              : "Error saving permissions"
+            language === "vi" ? "Lỗi khi lưu quyền" : "Error saving permissions"
           )
         } finally {
           setIsSaving(false)
@@ -233,9 +233,7 @@ export default function RolePermissionPage() {
     setPermissions({ ...rolePermissionsMap })
     setHasChanges(false)
     message.info(
-      language === "vi"
-        ? "Đã đặt lại về mặc định"
-        : "Reset to default"
+      language === "vi" ? "Đã đặt lại về mặc định" : "Reset to default"
     )
   }
 
@@ -263,17 +261,9 @@ export default function RolePermissionPage() {
       width: "30%",
       render: (text: string, record: any) => {
         if (record.isGroup) {
-          return (
-            <div className="font-bold text-blue-600 text-base">
-              {text}
-            </div>
-          )
+          return <div className="font-bold text-blue-600 text-base">{text}</div>
         }
-        return (
-          <div className="ml-6 text-gray-700">
-            {text}
-          </div>
-        )
+        return <div className="ml-6 text-gray-700">{text}</div>
       },
     },
     ...ROLE_ORDER.map((role) => ({

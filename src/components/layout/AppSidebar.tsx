@@ -1,13 +1,11 @@
-import React from "react"
+import React, { useEffect, useState } from "react"
 import { Layout, Menu, Typography, Tooltip } from "antd"
 import { useRouter, usePathname } from "next/navigation"
 import { useSidebarItems } from "@/config/SidebarConfig"
 import type { MenuProps } from "antd"
 import { PageRoute } from "@/enum/page-route.enum"
-import {
-  LeftOutlined,
-  RightOutlined,
-} from "@ant-design/icons"
+import { Role } from "@/enum/role.enum"
+import { LeftOutlined, RightOutlined } from "@ant-design/icons"
 
 const { Sider } = Layout
 const { Title, Text } = Typography
@@ -22,7 +20,33 @@ interface SidebarProps {
 }
 
 const AppSidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
-  const sidebarItems = useSidebarItems()
+  const [userRole, setUserRole] = useState<Role | undefined>(undefined)
+
+  // Get user role from JWT token on component mount
+  useEffect(() => {
+    const loadUserRole = async () => {
+      try {
+        const response = await fetch("/api/auth/me")
+        if (response.ok) {
+          const data = await response.json()
+          // Try both data.role and data.user.role
+          const roleFromAPI = data.role || data.user?.role
+
+          if (roleFromAPI) {
+            const roleValue = Object.values(Role).find(
+              (r) => r === roleFromAPI
+            ) as Role | undefined
+            setUserRole(roleValue)
+          }
+        }
+      } catch (error) {
+        console.error("Error loading user role:", error)
+      }
+    }
+    loadUserRole()
+  }, [])
+
+  const sidebarItems = useSidebarItems(userRole)
   const router = useRouter()
   const pathname = usePathname()
 
@@ -34,8 +58,8 @@ const AppSidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
   const getSelectedKeys = (): string[] => {
     const path = pathname || ""
     // Find exact match or parent path
-    const keys = Object.values(PageRoute).filter(route => 
-      path === route || path.startsWith(route + "/")
+    const keys = Object.values(PageRoute).filter(
+      (route) => path === route || path.startsWith(route + "/")
     )
     return keys.length > 0 ? [keys[0]] : [PageRoute.DASHBOARD]
   }
@@ -102,110 +126,113 @@ const AppSidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
             overflow: "hidden",
           }}
         >
-        {/* Logo Section */}
-        <div
-          style={{
-            height: 64,
-            minHeight: 64,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: collapsed ? "center" : "flex-start",
-            padding: collapsed ? "0" : "0 20px",
-            borderBottom: "1px solid #e2e8f0",
-            background: "white",
-            cursor: "pointer",
-            transition: "all 0.3s ease",
-          }}
-          onClick={handleBackToHomePage}
-        >
-          <Tooltip title={collapsed ? "KMSPlus - Knowledge Management" : ""} placement="right">
-            <img
-              src="/logo.png"
-              alt="KMSPlus Logo"
+          {/* Logo Section */}
+          <div
+            style={{
+              height: 64,
+              minHeight: 64,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: collapsed ? "center" : "flex-start",
+              padding: collapsed ? "0" : "0 20px",
+              borderBottom: "1px solid #e2e8f0",
+              background: "white",
+              cursor: "pointer",
+              transition: "all 0.3s ease",
+            }}
+            onClick={handleBackToHomePage}
+          >
+            <Tooltip
+              title={collapsed ? "KMSPlus - Knowledge Management" : ""}
+              placement="right"
+            >
+              <img
+                src="/logo.png"
+                alt="KMSPlus Logo"
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 10,
+                  objectFit: "contain",
+                  flexShrink: 0,
+                  transition: "transform 0.2s ease",
+                }}
+                className="hover:scale-105"
+              />
+            </Tooltip>
+            {!collapsed && (
+              <div style={{ marginLeft: 12, overflow: "hidden" }}>
+                <Title
+                  level={5}
+                  style={{
+                    margin: 0,
+                    fontSize: 17,
+                    fontWeight: 700,
+                    color: "#1e293b",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  KMSPlus
+                </Title>
+                <Text
+                  style={{
+                    fontSize: 11,
+                    color: "#64748b",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  Knowledge Management
+                </Text>
+              </div>
+            )}
+          </div>
+
+          {/* Menu Section - Scrollable */}
+          <div
+            style={{
+              flex: 1,
+              overflowY: "auto",
+              overflowX: "hidden",
+              paddingBottom: collapsed ? 16 : 60,
+            }}
+            className="custom-scrollbar"
+          >
+            <Menu
+              theme="light"
+              mode="inline"
+              inlineCollapsed={collapsed}
+              selectedKeys={getSelectedKeys()}
+              items={sidebarItems}
               style={{
-                width: 40,
-                height: 40,
-                borderRadius: 10,
-                objectFit: "contain",
-                flexShrink: 0,
-                transition: "transform 0.2s ease",
+                borderRight: "none",
+                padding: collapsed ? "12px 4px" : "12px 8px",
+                background: "transparent",
+                fontWeight: 500,
               }}
-              className="hover:scale-105"
+              className={`custom-sidebar-menu ${collapsed ? "collapsed-menu" : ""}`}
             />
-          </Tooltip>
+          </div>
+
+          {/* Footer Section */}
           {!collapsed && (
-            <div style={{ marginLeft: 12, overflow: "hidden" }}>
-              <Title
-                level={5}
-                style={{
-                  margin: 0,
-                  fontSize: 17,
-                  fontWeight: 700,
-                  color: "#1e293b",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                KMSPlus
-              </Title>
-              <Text
-                style={{
-                  fontSize: 11,
-                  color: "#64748b",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                Knowledge Management
+            <div
+              style={{
+                position: "absolute",
+                bottom: 0,
+                left: 0,
+                right: 0,
+                padding: "12px 20px",
+                borderTop: "1px solid #e2e8f0",
+                background: "white",
+              }}
+            >
+              <Text style={{ fontSize: 11, color: "#94a3b8" }}>
+                © 2026 KMSPlus v1.0
               </Text>
             </div>
           )}
         </div>
-
-        {/* Menu Section - Scrollable */}
-        <div
-          style={{
-            flex: 1,
-            overflowY: "auto",
-            overflowX: "hidden",
-            paddingBottom: collapsed ? 16 : 60,
-          }}
-          className="custom-scrollbar"
-        >
-          <Menu
-            theme="light"
-            mode="inline"
-            inlineCollapsed={collapsed}
-            selectedKeys={getSelectedKeys()}
-            items={sidebarItems}
-            style={{
-              borderRight: "none",
-              padding: collapsed ? "12px 4px" : "12px 8px",
-              background: "transparent",
-              fontWeight: 500,
-            }}
-            className={`custom-sidebar-menu ${collapsed ? "collapsed-menu" : ""}`}
-          />
-        </div>
-
-        {/* Footer Section */}
-        {!collapsed && (
-          <div
-            style={{
-              position: "absolute",
-              bottom: 0,
-              left: 0,
-              right: 0,
-              padding: "12px 20px",
-              borderTop: "1px solid #e2e8f0",
-              background: "white",
-            }}
-          >
-            <Text style={{ fontSize: 11, color: "#94a3b8" }}>
-              © 2026 KMSPlus v1.0
-            </Text>
-          </div>
-        )}
-      </div>
-    </Sider>
+      </Sider>
     </>
   )
 }
