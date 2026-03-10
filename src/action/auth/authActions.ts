@@ -77,10 +77,11 @@ export async function loginAction(
     }
   }
 
-  // Tạo token
+  // Tạo token (bao gồm role)
   const token = await signToken({
     id: user.id,
     email: user.email,
+    role: user.role_name, // Thêm role vào token
   })
 
   // Set cookie

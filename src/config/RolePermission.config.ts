@@ -33,11 +33,12 @@ export const rolePermissionsMap: Record<Role, Permission[]> = {
     Permission.LANGUAGE_SETTING,
   ],
 
-  // CONTRIBUTOR: 14 permissions (article write focus)
+  // CONTRIBUTOR: 26 permissions (article write + Q&A read/create focus)
   [Role.CONTRIBUTOR]: [
     Permission.LOGIN,
     Permission.LOGOUT,
     Permission.VIEW_PROFILE,
+    // Articles - Full CRUD
     Permission.VIEW_ARTICLE_LIST,
     Permission.SEARCH_ARTICLE,
     Permission.READ_ARTICLE,
@@ -47,6 +48,17 @@ export const rolePermissionsMap: Record<Role, Permission[]> = {
     Permission.COMMENT_ARTICLE,
     Permission.EDIT_ARTICLE_COMMENT,
     Permission.DELETE_ARTICLE_COMMENT,
+    // Q&A - Similar to Employee
+    Permission.VIEW_QUESTION_LIST,
+    Permission.SEARCH_QUESTION,
+    Permission.READ_QUESTION,
+    Permission.CREATE_QUESTION,
+    Permission.UPDATE_QUESTION,
+    Permission.DELETE_QUESTION,
+    Permission.CREATE_ANSWER,
+    Permission.EDIT_ANSWER,
+    Permission.DELETE_ANSWER,
+    Permission.SHARE_QUESTION,
     Permission.LANGUAGE_SETTING,
   ],
 
@@ -112,6 +124,29 @@ export const rolePermissionsMap: Record<Role, Permission[]> = {
 
   // DASHBOARD_VIEWER: 20 permissions (read-only access)
   [Role.DASHBOARD_VIEWER]: [
+    Permission.LOGIN,
+    Permission.LOGOUT,
+    Permission.VIEW_PROFILE,
+    Permission.VIEW_ARTICLE_LIST,
+    Permission.SEARCH_ARTICLE,
+    Permission.READ_ARTICLE,
+    Permission.VIEW_QUESTION_LIST,
+    Permission.SEARCH_QUESTION,
+    Permission.READ_QUESTION,
+    Permission.VIEW_COURSE_LIST,
+    Permission.SEARCH_COURSE,
+    Permission.READ_COURSE,
+    Permission.VIEW_QUIZ,
+    Permission.VIEW_QUIZ_LIST,
+    Permission.VIEW_QUESTION_BANK,
+    Permission.VIEW_PERSONAL_PROGRESS,
+    Permission.VIEW_QUIZ_RESULT,
+    Permission.LANGUAGE_SETTING,
+    Permission.VIEW_STATISTICS,
+  ],
+
+  // DIRECTOR: 20 permissions (read-only access - same as DASHBOARD_VIEWER)
+  [Role.DIRECTOR]: [
     Permission.LOGIN,
     Permission.LOGOUT,
     Permission.VIEW_PROFILE,

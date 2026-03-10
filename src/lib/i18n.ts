@@ -5,7 +5,7 @@ export const translations: Record<Language, Record<string, string>> = {
   vi: {
     // Header
     "header.notifications": "Thông báo",
-    
+
     // Sidebar
     "sidebar.dashboard": "Tổng quan",
     "sidebar.courses": "Khóa học",
@@ -13,11 +13,12 @@ export const translations: Record<Language, Record<string, string>> = {
     "sidebar.articles": "Bài viết",
     "sidebar.question_bank": "Ngân hàng câu hỏi",
     "sidebar.questions": "Hỏi đáp",
+    "sidebar.qa": "Hỏi & Đáp",
     "sidebar.user_management": "Quản lý người dùng",
     "sidebar.role_permission": "Vai trò & Quyền hạn",
     "sidebar.profile": "Hồ sơ cá nhân",
     "sidebar.settings": "Cài đặt",
-    
+
     // Profile
     "profile.title": "Hồ sơ cá nhân",
     "profile.subtitle": "Quản lý thông tin cá nhân và bảo mật tài khoản",
@@ -34,9 +35,10 @@ export const translations: Record<Language, Record<string, string>> = {
     "profile.edit_profile": "Chỉnh sửa hồ sơ",
     "profile.security_options": "Tùy chọn bảo mật",
     "profile.protect_account": "Bảo vệ tài khoản của bạn",
-    "profile.protect_account_desc": "Sử dụng mật khẩu mạnh và cập nhật thường xuyên để bảo vệ tài khoản của bạn.",
+    "profile.protect_account_desc":
+      "Sử dụng mật khẩu mạnh và cập nhật thường xuyên để bảo vệ tài khoản của bạn.",
     "profile.cancel": "Hủy bỏ",
-    
+
     // Settings
     "settings.title": "Cài đặt",
     "settings.subtitle": "Quản lý các cài đặt ứng dụng của bạn",
@@ -49,6 +51,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "role.employee": "Nhân viên",
     "role.contributor": "Người đóng góp",
     "role.trainingmanager": "Quản lý đào tạo",
+    "role.director": "Giám đốc",
     "role.admin": "Quản trị viên",
     "role.dashboardviewer": "Người xem bảng điều khiển",
 
@@ -68,7 +71,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "permission.edit_article_comment": "Chỉnh sửa bình luận bài viết",
     "permission.delete_article_comment": "Xóa bình luận bài viết",
     "permission.approve_article": "Phê duyệt bài viết",
-    
+
     // Permissions - Questions
     "permission.view_question_list": "Xem danh sách câu hỏi",
     "permission.search_question": "Tìm kiếm câu hỏi",
@@ -82,7 +85,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "permission.open_question": "Mở câu hỏi",
     "permission.close_question": "Đóng câu hỏi",
     "permission.share_question": "Chia sẻ câu hỏi",
-    
+
     // Permissions - Courses
     "permission.create_course": "Tạo khóa học",
     "permission.view_course_list": "Xem danh sách khóa học",
@@ -94,7 +97,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "permission.review_course": "Đánh giá khóa học",
     "permission.approve_course": "Phê duyệt khóa học",
     "permission.view_course_statistics": "Xem thống kê khóa học",
-    
+
     // Permissions - Quizzes
     "permission.create_quiz": "Tạo bài kiểm tra",
     "permission.view_quiz": "Xem bài kiểm tra",
@@ -107,11 +110,11 @@ export const translations: Record<Language, Record<string, string>> = {
     "permission.view_quiz_list": "Xem danh sách bài kiểm tra",
     "permission.participate_quiz": "Tham gia bài kiểm tra",
     "permission.view_quiz_result": "Xem kết quả bài kiểm tra",
-    
+
     // Permissions - Learning
     "permission.view_question_bank": "Xem ngân hàng câu hỏi",
     "permission.view_personal_progress": "Xem tiến độ học tập",
-    
+
     // Permissions - User Management
     "permission.create_account": "Tạo tài khoản",
     "permission.view_account_list": "Xem danh sách tài khoản",
@@ -119,19 +122,19 @@ export const translations: Record<Language, Record<string, string>> = {
     "permission.deactivate_account": "Vô hiệu hóa tài khoản",
     "permission.search_account": "Tìm kiếm tài khoản",
     "permission.manage_users": "Quản lý người dùng",
-    
+
     // Permissions - Categories
     "permission.create_category": "Tạo danh mục",
     "permission.view_category_list": "Xem danh sách danh mục",
     "permission.update_category": "Cập nhật danh mục",
     "permission.delete_category": "Xóa danh mục",
     "permission.search_category": "Tìm kiếm danh mục",
-    
+
     // Permissions - System Administration
     "permission.monitor_activity": "Theo dõi hoạt động",
     "permission.view_statistics": "Xem thống kê",
     "permission.export_data": "Xuất dữ liệu",
-    
+
     // Permissions - System Settings
     "permission.language_setting": "Cài đặt ngôn ngữ",
     "permission.view_role_permission": "Xem vai trò & quyền hạn",
@@ -139,7 +142,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "permission.moderate_content": "Kiểm duyệt nội dung",
     "permission.ai_explanation": "Giải thích AI",
     "permission.ai_recommendation": "Gợi ý AI",
-    
+
     // Permission Modules
     "module.authentication": "Xác thực",
     "module.article": "Bài viết",
@@ -151,7 +154,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "module.category": "Danh mục",
     "module.admin": "Quản trị",
     "module.settings": "Cài đặt",
-    
+
     // Common
     "common.save": "Lưu",
     "common.cancel": "Hủy",
@@ -160,7 +163,7 @@ export const translations: Record<Language, Record<string, string>> = {
   en: {
     // Header
     "header.notifications": "Notifications",
-    
+
     // Sidebar
     "sidebar.dashboard": "Dashboard",
     "sidebar.courses": "Courses",
@@ -168,11 +171,12 @@ export const translations: Record<Language, Record<string, string>> = {
     "sidebar.articles": "Articles",
     "sidebar.question_bank": "Question Bank",
     "sidebar.questions": "Questions",
+    "sidebar.qa": "Q&A",
     "sidebar.user_management": "User Management",
     "sidebar.role_permission": "Role & Permission",
     "sidebar.profile": "Profile",
     "sidebar.settings": "Settings",
-    
+
     // Profile
     "profile.title": "My Profile",
     "profile.subtitle": "Manage your personal information and account security",
@@ -189,9 +193,10 @@ export const translations: Record<Language, Record<string, string>> = {
     "profile.edit_profile": "Edit Profile",
     "profile.security_options": "Security Options",
     "profile.protect_account": "Protect Your Account",
-    "profile.protect_account_desc": "Use a strong password and update it regularly to protect your account.",
+    "profile.protect_account_desc":
+      "Use a strong password and update it regularly to protect your account.",
     "profile.cancel": "Cancel",
-    
+
     // Settings
     "settings.title": "Settings",
     "settings.subtitle": "Manage your application settings",
@@ -204,6 +209,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "role.employee": "Employee",
     "role.contributor": "Contributor",
     "role.trainingmanager": "Training Manager",
+    "role.director": "Director",
     "role.admin": "Admin",
     "role.dashboardviewer": "Dashboard Viewer",
 
@@ -223,7 +229,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "permission.edit_article_comment": "Edit Article Comment",
     "permission.delete_article_comment": "Delete Article Comment",
     "permission.approve_article": "Approve Article",
-    
+
     // Permissions - Questions
     "permission.view_question_list": "View Question List",
     "permission.search_question": "Search Question",
@@ -237,7 +243,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "permission.open_question": "Open Question",
     "permission.close_question": "Close Question",
     "permission.share_question": "Share Question",
-    
+
     // Permissions - Courses
     "permission.create_course": "Create Course",
     "permission.view_course_list": "View Course List",
@@ -249,7 +255,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "permission.review_course": "Review Course",
     "permission.approve_course": "Approve Course",
     "permission.view_course_statistics": "View Course Statistics",
-    
+
     // Permissions - Quizzes
     "permission.create_quiz": "Create Quiz",
     "permission.view_quiz": "View Quiz",
@@ -262,11 +268,11 @@ export const translations: Record<Language, Record<string, string>> = {
     "permission.view_quiz_list": "View Quiz List",
     "permission.participate_quiz": "Participate Quiz",
     "permission.view_quiz_result": "View Quiz Result",
-    
+
     // Permissions - Learning
     "permission.view_question_bank": "View Question Bank",
     "permission.view_personal_progress": "View Personal Progress",
-    
+
     // Permissions - User Management
     "permission.create_account": "Create Account",
     "permission.view_account_list": "View Account List",
@@ -274,19 +280,19 @@ export const translations: Record<Language, Record<string, string>> = {
     "permission.deactivate_account": "Deactivate Account",
     "permission.search_account": "Search Account",
     "permission.manage_users": "Manage Users",
-    
+
     // Permissions - Categories
     "permission.create_category": "Create Category",
     "permission.view_category_list": "View Category List",
     "permission.update_category": "Update Category",
     "permission.delete_category": "Delete Category",
     "permission.search_category": "Search Category",
-    
+
     // Permissions - System Administration
     "permission.monitor_activity": "Monitor Activity",
     "permission.view_statistics": "View Statistics",
     "permission.export_data": "Export Data",
-    
+
     // Permissions - System Settings
     "permission.language_setting": "Language Setting",
     "permission.view_role_permission": "View Role Permission",
@@ -294,7 +300,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "permission.moderate_content": "Moderate Content",
     "permission.ai_explanation": "AI Explanation",
     "permission.ai_recommendation": "AI Recommendation",
-    
+
     // Permission Modules
     "module.authentication": "Authentication",
     "module.article": "Articles",
@@ -306,7 +312,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "module.category": "Categories",
     "module.admin": "Administration",
     "module.settings": "Settings",
-    
+
     // Common
     "common.save": "Save",
     "common.cancel": "Cancel",
