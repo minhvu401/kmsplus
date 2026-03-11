@@ -266,6 +266,18 @@ const createSystemAdminSidebarItems = (
   language: "vi" | "en" = "vi"
 ): MenuItem[] => {
   return [
+    // Dashboard Metrics
+    {
+      key: PageRoute.DASHBOARD,
+      icon: <DashboardOutlined />,
+      label: t("sidebar.dashboard", language),
+      title: "Dashboard Metrics - View performance analytics",
+      route: "#",
+      onClick: () => navigate("#"),
+    },
+    {
+      type: "divider",
+    },
     // Q&A Section - Like Employee (CRUD Q & A, Share Questions)
     {
       key: PageRoute.QUESTIONS,
