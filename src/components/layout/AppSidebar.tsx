@@ -32,10 +32,16 @@ const AppSidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
           // Try both data.role and data.user.role
           const roleFromAPI = data.role || data.user?.role
 
+          console.log("🔍 API /auth/me response:", data)
+          console.log("📋 roleFromAPI:", roleFromAPI)
+          console.log("📋 Role.ADMIN:", Role.ADMIN)
+          console.log("🔄 Object.values(Role):", Object.values(Role))
+
           if (roleFromAPI) {
             const roleValue = Object.values(Role).find(
               (r) => r === roleFromAPI
             ) as Role | undefined
+            console.log("✅ Found roleValue:", roleValue)
             setUserRole(roleValue)
           }
         }

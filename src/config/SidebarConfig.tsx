@@ -268,12 +268,24 @@ const createSystemAdminSidebarItems = (
   return [
     // Dashboard Metrics
     {
-      key: PageRoute.DASHBOARD,
+      key: "dashboard-metrics",
       icon: <DashboardOutlined />,
-      label: t("sidebar.dashboard", language),
+      label: "Dashboard Metrics",
       title: "Dashboard Metrics - View performance analytics",
       route: "#",
       onClick: () => navigate("#"),
+    },
+    {
+      type: "divider",
+    },
+    // Dashboard
+    {
+      key: PageRoute.DASHBOARD,
+      icon: <DashboardOutlined />,
+      label: "Dashboard",
+      title: "Dashboard",
+      route: PageRoute.DASHBOARD,
+      onClick: () => navigate(PageRoute.DASHBOARD),
     },
     {
       type: "divider",
@@ -361,10 +373,22 @@ const createDirectorSidebarItems = (
   return [
     // Dashboard Metrics
     {
+      key: "dashboard-metrics",
+      icon: <DashboardOutlined />,
+      label: "Dashboard Metrics",
+      title: "Dashboard Metrics - View performance analytics",
+      route: "#",
+      onClick: () => navigate("#"),
+    },
+    {
+      type: "divider",
+    },
+    // Dashboard
+    {
       key: PageRoute.DASHBOARD,
       icon: <DashboardOutlined />,
-      label: t("sidebar.dashboard", language),
-      title: "Dashboard Metrics - View performance analytics",
+      label: "Dashboard",
+      title: "Dashboard",
       route: PageRoute.DASHBOARD,
       onClick: () => navigate(PageRoute.DASHBOARD),
     },
@@ -549,14 +573,7 @@ const createMenuItems = (
 export const useSidebarItems = (userRole?: Role) => {
   const { navigate } = useNavigation()
   const { language } = useLanguageStore()
-  console.log(
-    "📱 useSidebarItems called with userRole:",
-    userRole,
-    "language:",
-    language
-  ) // Debug log
   const items = useMemo(() => {
-    console.log("💾 useMemo computing sidebar items for role:", userRole) // Debug log
     return createMenuItems(navigate, userRole, language)
   }, [navigate, userRole, language])
   return items
