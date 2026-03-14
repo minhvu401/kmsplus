@@ -1,6 +1,7 @@
 "use client"
 
-import { Form, Input, Button, Typography } from "antd"
+import { Form, Input, Button, Typography, Alert } from "antd"
+import { forgotPasswordAction } from "@/action/auth/authActions"
 import {
   EyeInvisibleOutlined,
   EyeTwoTone,
@@ -8,6 +9,7 @@ import {
   LockOutlined,
   ArrowLeftOutlined,
 } from "@ant-design/icons"
+import { useState } from "react"
 
 const { Title, Text } = Typography
 
@@ -19,6 +21,9 @@ export default function ForgotPasswordForm({
   onBackToLogin,
 }: ForgotPasswordFormProps) {
   const [form] = Form.useForm()
+  const [loading, setLoading] = useState(false)
+  const [message, setMessage] = useState("")
+  const [success, setSuccess] = useState(false)
 
   return (
     <div className="bg-white rounded-2xl shadow-2xl p-8 w-full">
@@ -48,8 +53,55 @@ export default function ForgotPasswordForm({
         </Text>
       </div>
 
+      {/* Message Alert */}
+      {message && (
+        <Alert
+          message={message}
+          type={success ? "success" : "error"}
+          showIcon
+          className="mb-6 rounded-lg"
+          closable
+        />
+      )}
+
       {/* Form */}
-      <Form form={form} layout="vertical" requiredMark={false} size="large">
+      <Form 
+        form={form} 
+        layout="vertical" 
+        requiredMark={false} 
+        size="large"
+        onFinish={async (values) => {
+          setLoading(true)
+          setMessage("")
+          try {
+            const formData = new FormData()
+            formData.append("email", values.email)
+            formData.append("password", values.password)
+            formData.append("confirmPassword", values.confirmPassword)
+
+            const result = await forgotPasswordAction(formData)
+
+            if (result.success) {
+              setSuccess(true)
+              setMessage(result.message)
+              form.resetFields()
+              // Redirect back to login after 2 seconds
+              setTimeout(() => {
+                onBackToLogin?.()
+              }, 2000)
+            } else {
+              setSuccess(false)
+              setMessage(result.message)
+            }
+          } catch (error) {
+            setSuccess(false)
+            setMessage("Có lỗi xảy ra. Vui lòng thử lại.")
+            console.error("Forgot password error:", error)
+          } finally {
+            setLoading(false)
+          }
+        }}
+      >
         <Form.Item
           label={<span className="font-medium text-gray-700">Email</span>}
           name="email"
@@ -118,6 +170,7 @@ export default function ForgotPasswordForm({
             type="primary"
             htmlType="submit"
             block
+            loading={loading}
             className="!h-12 !rounded-lg !font-semibold !text-base"
             style={{ background: "linear-gradient(135deg, #69b1ff 0%, #1677ff 100%)", border: "none" }}
           >

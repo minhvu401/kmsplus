@@ -1,6 +1,7 @@
 "use client"
 
 import { ReactNode, useEffect, useState } from "react"
+import { SessionProvider } from "next-auth/react"
 import { AntdRegistry } from "@ant-design/nextjs-registry"
 import useLanguageStore from "@/store/useLanguageStore"
 
@@ -16,8 +17,16 @@ export function RootProvider({ children }: { children: ReactNode }) {
   }, [language])
 
   if (!mounted) {
-    return <AntdRegistry>{children}</AntdRegistry>
+    return (
+      <SessionProvider>
+        <AntdRegistry>{children}</AntdRegistry>
+      </SessionProvider>
+    )
   }
 
-  return <AntdRegistry>{children}</AntdRegistry>
+  return (
+    <SessionProvider>
+      <AntdRegistry>{children}</AntdRegistry>
+    </SessionProvider>
+  )
 }

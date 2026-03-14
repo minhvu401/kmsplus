@@ -24,9 +24,21 @@ const protectedRoutes = [
 export async function middleware(request: NextRequest) {
   const { pathname, search } = request.nextUrl
   const token = request.cookies.get("token")?.value
+  
+  // Check for NextAuth session - NextAuth v5 can use different cookie names
+  const nextAuthToken = 
+    request.cookies.get("next-auth.session-token")?.value ||
+    request.cookies.get("authjs.session-token")?.value ||
+    request.cookies.get("__Secure-next-auth.session-token")?.value ||
+    request.cookies.get("__Secure-authjs.session-token")?.value
+
+  // Check if user is authenticated via custom token OR NextAuth
+  const isAuthenticated = token || nextAuthToken
 
   // console.log("Middleware called for:", pathname + search)
   // console.log("Token:", token ? "exists" : "undefined")
+  // console.log("NextAuth Token:", nextAuthToken ? "exists" : "undefined")
+  // console.log("All cookies:", Array.from(request.cookies.getSetCookie() || []))
 
   const isProtectedRoute = protectedRoutes.some((route) =>
     pathname.startsWith(route)
@@ -34,12 +46,16 @@ export async function middleware(request: NextRequest) {
 
   // Nếu đã login và đang ở trang login (không có callbackUrl) → redirect về dashboard
   if (
-    token &&
+    isAuthenticated &&
     pathname === PageRoute.LOGIN &&
     !search.includes("callbackUrl")
   ) {
     try {
-      await verifyToken(token) // Verify token còn valid không
+      // If custom token exists, verify it
+      if (token) {
+        await verifyToken(token)
+      }
+      // If NextAuth token exists, just allow (NextAuth will validate it)
       console.log("Redirecting to dashboard (already logged in)")
       return NextResponse.redirect(new URL(PageRoute.DASHBOARD, request.url))
     } catch (error) {
@@ -52,14 +68,14 @@ export async function middleware(request: NextRequest) {
   }
 
   // Nếu chưa login và truy cập protected route → redirect về login
-  if (isProtectedRoute && !token) {
+  if (isProtectedRoute && !isAuthenticated) {
     console.log("No token, redirecting to login")
     const loginUrl = new URL(PageRoute.LOGIN, request.url)
     loginUrl.searchParams.set("callbackUrl", pathname)
     return NextResponse.redirect(loginUrl)
   }
 
-  // Nếu có token nhưng truy cập protected route → verify token
+  // Nếu có custom token nhưng truy cập protected route → verify token
   if (isProtectedRoute && token) {
     try {
       const decoded = await verifyToken(token)
@@ -86,6 +102,12 @@ export async function middleware(request: NextRequest) {
       response.cookies.delete("token")
       return response
     }
+  }
+
+  // Nếu có NextAuth token → cho qua (NextAuth will handle validation)
+  if (isProtectedRoute && nextAuthToken) {
+    console.log("NextAuth token verified, allowing access")
+    return NextResponse.next()
   }
 
   // Các route khác → cho qua
