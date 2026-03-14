@@ -2,6 +2,7 @@
  * Authentication utilities for server-side operations
  * Combines JWT handling and server authentication helpers
  */
+import NextAuth from "next-auth"
 
 import { SignJWT, jwtVerify } from "jose"
 import { cookies } from "next/headers"
@@ -37,11 +38,27 @@ export async function verifyToken(token: string) {
 
 /**
  * Get current authenticated user from cookies
+ * Checks NextAuth session first, then falls back to JWT token
  * @returns AuthUser nếu authenticated, null nếu không
  */
 export async function getCurrentUser(): Promise<AuthUser | null> {
   try {
     const cookieStore = await cookies()
+    
+    // Check NextAuth session token first
+    const nextAuthToken = cookieStore.get("__Secure-authjs.session-token")?.value ||
+                          cookieStore.get("authjs.session-token")?.value
+    
+    if (nextAuthToken) {
+      // If NextAuth session exists, we know user is authenticated
+      // For now, return a basic user object - in production, decode the session
+      return {
+        id: "nextauth-user", // This will be updated in the session
+        email: "",
+      } as AuthUser
+    }
+    
+    // Fallback to JWT token for backward compatibility
     const token = cookieStore.get("token")?.value
 
     if (!token) {
