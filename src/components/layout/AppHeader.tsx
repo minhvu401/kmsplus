@@ -18,6 +18,7 @@ import {
   WarningOutlined,
   MessageOutlined,
 } from "@ant-design/icons"
+import { signOut } from "next-auth/react"
 import { getCurrentUserInfor } from "@/action/user/userActions"
 import { useRouter } from "next/navigation"
 import { PageRoute } from "@/enum/page-route.enum"
@@ -74,9 +75,23 @@ export default function AppHeader({ collapsed }: HeaderProps) {
   ]
 
   const HandleLogout = async () => {
-    await logoutAction()
-    clearUser()
-    router.push(PageRoute.LOGIN)
+    try {
+      // Clear user from store FIRST (before redirecting)
+      clearUser()
+      
+      // Then call logoutAction to delete cookies
+      await logoutAction()
+      
+      // Finally call NextAuth signOut to clear NextAuth cookies
+      await signOut({ redirect: false })
+      
+      // Redirect to login
+      router.push(PageRoute.LOGIN)
+    } catch (error) {
+      console.error("Logout error:", error)
+      // Still redirect even if error
+      router.push(PageRoute.LOGIN)
+    }
   }
 
   const getUserInitials = (name: string | null | undefined) => {

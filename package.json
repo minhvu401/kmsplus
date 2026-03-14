@@ -37,6 +37,7 @@
     "markdown-it": "^14.1.0",
     "markdown-it-underline": "^1.0.1",
     "next": "15.5.7",
+    "next-auth": "5.0.0-beta.30",
     "next-cloudinary": "^6.17.5",
     "postgres": "^3.4.8",
     "quill": "^2.0.3",
