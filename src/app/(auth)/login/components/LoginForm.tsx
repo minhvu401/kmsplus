@@ -45,7 +45,7 @@ export default function LoginForm({
     setIsGoogleLoading(true)
     try {
       // Let NextAuth handle the full redirect flow
-      const callbackUrl = searchParams?.get("callbackUrl") || "/dashboard"
+      const callbackUrl = searchParams?.get("callbackUrl") || "/dashboard-metrics"
       await signIn("google", {
         callbackUrl: callbackUrl,
         redirect: true, // Let NextAuth handle redirect after session is set
@@ -104,7 +104,7 @@ export default function LoginForm({
           onSuccess()
         } else {
           const url = callbackUrl || searchParams?.get("callbackUrl")
-          window.location.replace(url || "/dashboard?loggedin=true")
+          window.location.replace(url || "/dashboard-metrics?loggedin=true")
         }
       } else if (!result.success && result.message) {
         setState((prev) => ({

@@ -33,15 +33,31 @@ export function FilterCategory({ categories }: { categories: Category[] }) {
   }
 
   return (
-    <div className="flex items-center gap-2">
-      <label htmlFor="category" className="text-sm font-medium text-gray-700">
+    <div className="flex items-center gap-3">
+      <label htmlFor="category" className="text-sm font-semibold text-gray-700 whitespace-nowrap">
         Category:
       </label>
       <select
         id="category"
         value={selected}
         onChange={(e) => handleChange(e.target.value)}
-        className="block w-auto rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+        style={{
+          height: "36px",
+          borderRadius: "0.5rem",
+          border: "1px solid #e5e7eb",
+          backgroundColor: "white",
+          padding: "0 12px",
+          fontSize: "14px",
+          color: "#374151",
+          cursor: "pointer",
+          transition: "all 0.2s"
+        }}
+        onMouseEnter={(e) => {
+          (e.target as HTMLSelectElement).style.borderColor = "#2563eb"
+        }}
+        onMouseLeave={(e) => {
+          (e.target as HTMLSelectElement).style.borderColor = "#e5e7eb"
+        }}
       >
         <option value="any">Any</option>
         {categories.map((cat) => (
@@ -81,15 +97,32 @@ export function FilterStatus() {
   }
 
   return (
-    <div className="flex items-center gap-2">
-      <label htmlFor="status" className="text-sm font-medium text-gray-700">
+    <div className="flex items-center gap-3">
+      <label htmlFor="status" className="text-sm font-semibold text-gray-700 whitespace-nowrap">
         Status:
       </label>
       <select
         id="status"
         value={selected}
         onChange={(e) => handleChange(e.target.value)}
-        className="block w-40 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+        style={{
+          height: "36px",
+          minWidth: "120px",
+          borderRadius: "0.5rem",
+          border: "1px solid #e5e7eb",
+          backgroundColor: "white",
+          padding: "0 12px",
+          fontSize: "14px",
+          color: "#374151",
+          cursor: "pointer",
+          transition: "all 0.2s"
+        }}
+        onMouseEnter={(e) => {
+          (e.target as HTMLSelectElement).style.borderColor = "#2563eb"
+        }}
+        onMouseLeave={(e) => {
+          (e.target as HTMLSelectElement).style.borderColor = "#e5e7eb"
+        }}
       >
         <option key="Any" value="any">
           Any
@@ -127,15 +160,32 @@ export function SortBy() {
   }
 
   return (
-    <div className="flex items-center gap-2">
-      <label htmlFor="sort" className="text-sm font-medium text-gray-700">
+    <div className="flex items-center gap-3">
+      <label htmlFor="sort" className="text-sm font-semibold text-gray-700 whitespace-nowrap">
         Sort by:
       </label>
       <select
         id="sort"
         value={selected}
         onChange={(e) => handleChange(e.target.value)}
-        className="block w-40 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+        style={{
+          height: "36px",
+          minWidth: "140px",
+          borderRadius: "0.5rem",
+          border: "1px solid #e5e7eb",
+          backgroundColor: "white",
+          padding: "0 12px",
+          fontSize: "14px",
+          color: "#374151",
+          cursor: "pointer",
+          transition: "all 0.2s"
+        }}
+        onMouseEnter={(e) => {
+          (e.target as HTMLSelectElement).style.borderColor = "#2563eb"
+        }}
+        onMouseLeave={(e) => {
+          (e.target as HTMLSelectElement).style.borderColor = "#e5e7eb"
+        }}
       >
         <option key="Newest" value="newest">
           Newest
