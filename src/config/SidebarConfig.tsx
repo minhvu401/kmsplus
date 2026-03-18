@@ -47,17 +47,6 @@ const createEmployeeSidebarItems = (
   language: "vi" | "en" = "vi"
 ): MenuItem[] => {
   return [
-    {
-      key: PageRoute.DASHBOARD,
-      icon: <DashboardOutlined />,
-      label: t("sidebar.dashboard", language),
-      title: t("sidebar.dashboard", language),
-      route: PageRoute.DASHBOARD,
-      onClick: () => navigate(PageRoute.DASHBOARD),
-    },
-    {
-      type: "divider",
-    },
     // Q&A Section - CRUD Q & A, share Q published
     {
       key: PageRoute.QUESTIONS,
@@ -177,14 +166,40 @@ const createContributorSidebarItems = (
 }
 
 /**
- * Training Manager Sidebar: Q&A (CRUD), Articles (view only), Courses (CRUD), Contribution, Category, Profile
+ * Training Manager Sidebar: Dashboard, Knowledge, Management sections with all items visible
  */
 const createTrainingManagerSidebarItems = (
   navigate: (route: string) => void,
   language: "vi" | "en" = "vi"
 ): MenuItem[] => {
   return [
-    // Q&A Section - Like Employee (CRUD Q & A, Share Questions)
+    // Dashboard Section Header
+    {
+      key: "dashboard-header",
+      label: "DASHBOARD",
+      disabled: true,
+      style: { textAlign: "left", fontSize: "11px", color: "#999", marginTop: "8px", marginBottom: "8px" },
+    } as MenuItem,
+    // Dashboard Metrics
+    {
+      key: PageRoute.DASHBOARD_METRICS,
+      icon: <DashboardOutlined />,
+      label: "Dashboard Metrics",
+      title: "Dashboard Metrics - View performance analytics",
+      route: PageRoute.DASHBOARD_METRICS,
+      onClick: () => navigate(PageRoute.DASHBOARD_METRICS),
+    },
+    {
+      type: "divider",
+    },
+    // Knowledge Section Header
+    {
+      key: "knowledge-header",
+      label: "KNOWLEDGE",
+      disabled: true,
+      style: { textAlign: "left", fontSize: "11px", color: "#999", marginTop: "8px", marginBottom: "8px" },
+    } as MenuItem,
+    // Q&A
     {
       key: PageRoute.QUESTIONS,
       icon: <MessageOutlined />,
@@ -194,10 +209,7 @@ const createTrainingManagerSidebarItems = (
       route: PageRoute.QUESTIONS,
       onClick: () => navigate(PageRoute.QUESTIONS),
     },
-    {
-      type: "divider",
-    },
-    // Articles - View only
+    // Articles
     {
       key: PageRoute.ARTICLES,
       icon: <FileTextOutlined />,
@@ -206,42 +218,60 @@ const createTrainingManagerSidebarItems = (
       route: PageRoute.ARTICLES,
       onClick: () => navigate(PageRoute.ARTICLES),
     },
-    {
-      type: "divider",
-    },
-    // Courses - Full CRUD (Create, Update, Delete, Approve)
+    // Courses
     {
       key: PageRoute.COURSES,
       icon: <BookOutlined />,
       label: t("sidebar.courses", language),
-      title:
-        "Courses - Full CRUD (Create/Update/Delete/Approve) & Quiz Management",
+      title: "Courses - View & Manage Courses",
       route: PageRoute.COURSES,
       onClick: () => navigate(PageRoute.COURSES),
     },
     {
       type: "divider",
     },
-    // Contributions - Track contributions
+    // Management Section Header
     {
-      key: "contributions",
-      icon: <BulbOutlined />,
-      label: "Contributions",
-      title: "Contributions - Track your contributions",
-      disabled: true, // UI chưa làm
-      onClick: () => console.log("Contributions - ref #"),
+      key: "management-header",
+      label: "MANAGEMENT",
+      disabled: true,
+      style: { textAlign: "left", fontSize: "11px", color: "#999", marginTop: "8px", marginBottom: "8px" },
+    } as MenuItem,
+    // Quiz Management
+    {
+      key: PageRoute.QUIZ_MANAGEMENT,
+      icon: <FormOutlined />,
+      label: "Quiz Management",
+      title: "Quiz Management - Create/Update/Delete Quizzes",
+      route: PageRoute.QUIZ_MANAGEMENT,
+      onClick: () => navigate(PageRoute.QUIZ_MANAGEMENT),
     },
+    // Course Management
     {
-      type: "divider",
+      key: PageRoute.COURSE_MANAGEMENT,
+      icon: <BookOutlined />,
+      label: "Course Management",
+      title: "Course Management - Create/Update/Delete/Approve Courses",
+      route: PageRoute.COURSE_MANAGEMENT,
+      onClick: () => navigate(PageRoute.COURSE_MANAGEMENT),
     },
     // Category Management
     {
-      key: "categories",
+      key: PageRoute.CATEGORY_MANAGEMENT,
       icon: <FolderOpenOutlined />,
-      label: "Categories",
-      title: "Categories - Manage course categories",
-      disabled: true, // UI chưa làm
-      onClick: () => console.log("Categories - ref #"),
+      label: "Category Management",
+      title: "Category Management - Create/Update/Delete Categories",
+      route: PageRoute.CATEGORY_MANAGEMENT,
+      onClick: () => navigate(PageRoute.CATEGORY_MANAGEMENT),
+    },
+    // Question Bank
+    {
+      key: PageRoute.QUESTION_BANK_MANAGEMENT,
+      icon: <DatabaseOutlined />,
+      label: "Question Bank",
+      title: "Question Bank - Manage Questions for Quizzes",
+      route: PageRoute.QUESTION_BANK_MANAGEMENT,
+      onClick: () => navigate(PageRoute.QUESTION_BANK_MANAGEMENT),
     },
     {
       type: "divider",
@@ -259,38 +289,40 @@ const createTrainingManagerSidebarItems = (
 }
 
 /**
- * System Admin Sidebar: Q&A (like Employee), Articles (CRD), Courses (CRD), User Management (CRUD), Role-Permission (RU), Profile
+ * System Admin Sidebar: Dashboard, Knowledge, Management, Settings sections with all items visible
  */
 const createSystemAdminSidebarItems = (
   navigate: (route: string) => void,
   language: "vi" | "en" = "vi"
 ): MenuItem[] => {
   return [
+    // Dashboard Section Header
+    {
+      key: "dashboard-header",
+      label: "DASHBOARD",
+      disabled: true,
+      style: { textAlign: "left", fontSize: "11px", color: "#999", marginTop: "8px", marginBottom: "8px" },
+    } as MenuItem,
     // Dashboard Metrics
     {
-      key: "dashboard-metrics",
+      key: PageRoute.DASHBOARD_METRICS,
       icon: <DashboardOutlined />,
       label: "Dashboard Metrics",
       title: "Dashboard Metrics - View performance analytics",
-      route: "#",
-      onClick: () => navigate("#"),
+      route: PageRoute.DASHBOARD_METRICS,
+      onClick: () => navigate(PageRoute.DASHBOARD_METRICS),
     },
     {
       type: "divider",
     },
-    // Dashboard
+    // Knowledge Section Header
     {
-      key: PageRoute.DASHBOARD,
-      icon: <DashboardOutlined />,
-      label: "Dashboard",
-      title: "Dashboard",
-      route: PageRoute.DASHBOARD,
-      onClick: () => navigate(PageRoute.DASHBOARD),
-    },
-    {
-      type: "divider",
-    },
-    // Q&A Section - Like Employee (CRUD Q & A, Share Questions)
+      key: "knowledge-header",
+      label: "KNOWLEDGE",
+      disabled: true,
+      style: { textAlign: "left", fontSize: "11px", color: "#999", marginTop: "8px", marginBottom: "8px" },
+    } as MenuItem,
+    // Q&A
     {
       key: PageRoute.QUESTIONS,
       icon: <MessageOutlined />,
@@ -300,10 +332,7 @@ const createSystemAdminSidebarItems = (
       route: PageRoute.QUESTIONS,
       onClick: () => navigate(PageRoute.QUESTIONS),
     },
-    {
-      type: "divider",
-    },
-    // Articles - CRD (Create, Read, Delete)
+    // Articles
     {
       key: PageRoute.ARTICLES,
       icon: <FileTextOutlined />,
@@ -312,22 +341,72 @@ const createSystemAdminSidebarItems = (
       route: PageRoute.ARTICLES,
       onClick: () => navigate(PageRoute.ARTICLES),
     },
-    {
-      type: "divider",
-    },
-    // Courses - CRD (Create, Read, Delete)
+    // Courses
     {
       key: PageRoute.COURSES,
       icon: <BookOutlined />,
       label: t("sidebar.courses", language),
-      title: "Courses - Create/Read/Delete Courses",
+      title: "Courses - Manage All Courses",
       route: PageRoute.COURSES,
       onClick: () => navigate(PageRoute.COURSES),
     },
     {
       type: "divider",
     },
-    // User Management - CRUD
+    // Management Section Header
+    {
+      key: "management-header",
+      label: "MANAGEMENT",
+      disabled: true,
+      style: { textAlign: "left", fontSize: "11px", color: "#999", marginTop: "8px", marginBottom: "8px" },
+    } as MenuItem,
+    // Quiz Management
+    {
+      key: PageRoute.QUIZ_MANAGEMENT,
+      icon: <FormOutlined />,
+      label: "Quiz Management",
+      title: "Quiz Management - Create/Update/Delete Quizzes",
+      route: PageRoute.QUIZ_MANAGEMENT,
+      onClick: () => navigate(PageRoute.QUIZ_MANAGEMENT),
+    },
+    // Course Management
+    {
+      key: PageRoute.COURSE_MANAGEMENT,
+      icon: <BookOutlined />,
+      label: "Course Management",
+      title: "Course Management - Create/Update/Delete Courses",
+      route: PageRoute.COURSE_MANAGEMENT,
+      onClick: () => navigate(PageRoute.COURSE_MANAGEMENT),
+    },
+    // Category Management
+    {
+      key: PageRoute.CATEGORY_MANAGEMENT,
+      icon: <FolderOpenOutlined />,
+      label: "Category Management",
+      title: "Category Management - Create/Update/Delete Categories",
+      route: PageRoute.CATEGORY_MANAGEMENT,
+      onClick: () => navigate(PageRoute.CATEGORY_MANAGEMENT),
+    },
+    // Question Bank
+    {
+      key: PageRoute.QUESTION_BANK_MANAGEMENT,
+      icon: <DatabaseOutlined />,
+      label: "Question Bank",
+      title: "Question Bank - Manage Questions for Quizzes",
+      route: PageRoute.QUESTION_BANK_MANAGEMENT,
+      onClick: () => navigate(PageRoute.QUESTION_BANK_MANAGEMENT),
+    },
+    {
+      type: "divider",
+    },
+    // Settings Section Header
+    {
+      key: "settings-header",
+      label: "SETTINGS",
+      disabled: true,
+      style: { textAlign: "left", fontSize: "11px", color: "#999", marginTop: "8px", marginBottom: "8px" },
+    } as MenuItem,
+    // User Management
     {
       key: PageRoute.USER_MANAGEMENT,
       icon: <TeamOutlined />,
@@ -336,17 +415,23 @@ const createSystemAdminSidebarItems = (
       route: PageRoute.USER_MANAGEMENT,
       onClick: () => navigate(PageRoute.USER_MANAGEMENT),
     },
-    {
-      type: "divider",
-    },
-    // Role-Permission - RU (Read, Update)
+    // Role & Permission
     {
       key: PageRoute.ROLE_PERMISSIONS,
-      icon: <FolderOpenOutlined />,
+      icon: <CopyOutlined />,
       label: t("sidebar.role_permission", language),
       title: "Role-Permission - View & Manage Role Permissions Matrix",
       route: PageRoute.ROLE_PERMISSIONS,
       onClick: () => navigate(PageRoute.ROLE_PERMISSIONS),
+    },
+    // System Settings
+    {
+      key: PageRoute.SYSTEM_SETTINGS,
+      icon: <SettingOutlined />,
+      label: "System Settings",
+      title: "System Settings - Configure System Parameters",
+      route: PageRoute.SYSTEM_SETTINGS,
+      onClick: () => navigate(PageRoute.SYSTEM_SETTINGS),
     },
     {
       type: "divider",
@@ -364,37 +449,39 @@ const createSystemAdminSidebarItems = (
 }
 
 /**
- * Director Sidebar: Q&A, Articles, Courses, Dashboard Metrics, Profile (all view only)
+ * Director Sidebar: Dashboard, Knowledge sections (all view only)
  */
 const createDirectorSidebarItems = (
   navigate: (route: string) => void,
   language: "vi" | "en" = "vi"
 ): MenuItem[] => {
   return [
+    // Dashboard Section Header
+    {
+      key: "dashboard-header",
+      label: "DASHBOARD",
+      disabled: true,
+      style: { textAlign: "left", fontSize: "11px", color: "#999", marginTop: "8px", marginBottom: "8px" },
+    } as MenuItem,
     // Dashboard Metrics
     {
-      key: "dashboard-metrics",
+      key: PageRoute.DASHBOARD_METRICS,
       icon: <DashboardOutlined />,
       label: "Dashboard Metrics",
       title: "Dashboard Metrics - View performance analytics",
-      route: "#",
-      onClick: () => navigate("#"),
+      route: PageRoute.DASHBOARD_METRICS,
+      onClick: () => navigate(PageRoute.DASHBOARD_METRICS),
     },
     {
       type: "divider",
     },
-    // Dashboard
+    // Knowledge Section Header
     {
-      key: PageRoute.DASHBOARD,
-      icon: <DashboardOutlined />,
-      label: "Dashboard",
-      title: "Dashboard",
-      route: PageRoute.DASHBOARD,
-      onClick: () => navigate(PageRoute.DASHBOARD),
-    },
-    {
-      type: "divider",
-    },
+      key: "knowledge-header",
+      label: "KNOWLEDGE",
+      disabled: true,
+      style: { textAlign: "left", fontSize: "11px", color: "#999", marginTop: "8px", marginBottom: "8px" },
+    } as MenuItem,
     // Q&A Section - View only
     {
       key: PageRoute.QUESTIONS,
@@ -404,9 +491,6 @@ const createDirectorSidebarItems = (
       route: PageRoute.QUESTIONS,
       onClick: () => navigate(PageRoute.QUESTIONS),
     },
-    {
-      type: "divider",
-    },
     // Articles - View only
     {
       key: PageRoute.ARTICLES,
@@ -415,9 +499,6 @@ const createDirectorSidebarItems = (
       title: "Articles - View Articles",
       route: PageRoute.ARTICLES,
       onClick: () => navigate(PageRoute.ARTICLES),
-    },
-    {
-      type: "divider",
     },
     // Courses - View only
     {
@@ -473,17 +554,6 @@ const createMenuItems = (
 
   // Default sidebar (existing behavior)
   const baseItems: MenuItem[] = [
-    {
-      key: PageRoute.DASHBOARD,
-      icon: <DashboardOutlined />,
-      label: t("sidebar.dashboard", language),
-      title: t("sidebar.dashboard", language),
-      route: PageRoute.DASHBOARD,
-      onClick: () => navigate(PageRoute.DASHBOARD),
-    },
-    {
-      type: "divider",
-    },
     {
       key: PageRoute.COURSES,
       icon: <BookOutlined />,

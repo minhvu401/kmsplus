@@ -528,3 +528,38 @@ export async function updateArticlesStatusConstraint(): Promise<{ success: boole
     return { success: false, message: error?.message || 'Failed to update constraint' }
   }
 }
+
+export type TopAuthor = {
+  id: string
+  name: string
+  articleCount: number
+}
+
+/**
+ * Get top authors by published article count
+ */
+export async function getTopAuthorsAction(limit: number = 5): Promise<TopAuthor[]> {
+  try {
+    const result = await sql`
+      SELECT 
+        u.id,
+        COALESCE(u.full_name, u.email, 'Anonymous') as name,
+        COUNT(a.id) as article_count
+      FROM articles a
+      RIGHT JOIN users u ON a.author_id = u.id
+      WHERE a.status = 'published' AND a.is_deleted = false
+      GROUP BY u.id, u.full_name, u.email
+      ORDER BY COUNT(a.id) DESC
+      LIMIT ${limit}
+    `
+    
+    return result.map((row: any) => ({
+      id: row.id,
+      name: row.name,
+      articleCount: parseInt(row.article_count, 10),
+    }))
+  } catch (error: any) {
+    console.error('Error fetching top authors:', error)
+    return []
+  }
+}

@@ -57,7 +57,7 @@ const AppSidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
   const pathname = usePathname()
 
   const handleBackToHomePage = () => {
-    router.push(PageRoute.DASHBOARD)
+    router.push(PageRoute.DASHBOARD_METRICS)
   }
 
   // Determine active menu key based on current pathname
@@ -67,7 +67,7 @@ const AppSidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
     const keys = Object.values(PageRoute).filter(
       (route) => path === route || path.startsWith(route + "/")
     )
-    return keys.length > 0 ? [keys[0]] : [PageRoute.DASHBOARD]
+    return keys.length > 0 ? [keys[0]] : [PageRoute.DASHBOARD_METRICS]
   }
 
   return (
