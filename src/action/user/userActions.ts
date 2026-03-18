@@ -132,7 +132,7 @@ export async function createUser(formData: FormData) {
   const result = await createUserAction(userData)
 
   if (result.success) {
-    revalidatePath("/dashboard/users")
+    revalidatePath("/user-management")
   }
 
   return result
@@ -153,7 +153,7 @@ export async function updateUser(email: string, formData: FormData) {
   const result = await updateUserAction(email, updateData)
 
   if (result.success) {
-    revalidatePath("/dashboard/users")
+    revalidatePath("/user-management")
     revalidatePath("/profile")
   }
 
@@ -189,7 +189,7 @@ export async function deleteUser(email: string) {
   const result = await deleteUserAction(email)
 
   if (result.success) {
-    revalidatePath("/dashboard/users")
+    revalidatePath("/user-management")
   }
 
   return result
