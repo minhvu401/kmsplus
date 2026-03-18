@@ -1,7 +1,7 @@
 "use server"
 
 import { requireAuth } from "@/lib/auth"
-import { getAllArticlesAction, filterByTagAction, getAllTagsAction, createArticleAction, deleteArticleAction, getAllCategoriesAction, getArticleByIdAction, updateArticleAction, restoreArticleAction, approveArticleAction, rejectArticleAction, resubmitArticleAction, updateArticlesStatusConstraint } from "@/service/articles.service"
+import { getAllArticlesAction, filterByTagAction, getAllTagsAction, createArticleAction, deleteArticleAction, getAllCategoriesAction, getArticleByIdAction, updateArticleAction, restoreArticleAction, approveArticleAction, rejectArticleAction, resubmitArticleAction, updateArticlesStatusConstraint, getTopAuthorsAction } from "@/service/articles.service"
 
 export async function setupArticlesConstraint() {
   await requireAuth()
@@ -199,5 +199,15 @@ export async function updateArticle(formData: FormData) {
       success: false, 
       message: error?.message || 'Failed to update article' 
     }
+  }
+}
+
+export async function getTopAuthors(limit: number = 5) {
+  try {
+    await requireAuth()
+    return await getTopAuthorsAction(limit)
+  } catch (error: any) {
+    console.error('Error fetching top authors:', error)
+    return []
   }
 }

@@ -53,3 +53,21 @@ export function sanitizeDescription(description: string): string {
     .trim()
     .substring(0, 1000)
 }
+
+/**
+ * Strip HTML tags from text (for displaying snippets/previews)
+ * Removes all HTML tags but preserves text content and whitespace
+ */
+export function stripHtml(html: string): string {
+  if (!html) return ""
+  return html
+    .replace(/<script[^>]*>.*?<\/script>/gi, "")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#039;/g, "'")
+    .trim()
+}

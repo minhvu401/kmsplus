@@ -35,7 +35,7 @@ export default function LearnerProgressPage() {
       <div className="flex justify-between items-center">
         <Breadcrumb
           items={[
-            { title: <HomeOutlined />, href: "/dashboard" },
+            { title: <HomeOutlined />, href: "/dashboard-metrics" },
             { title: "Enrollments", href: `/courses/${params.id}/enrollments` },
             { title: data.name },
           ]}
