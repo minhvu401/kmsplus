@@ -2,7 +2,6 @@
 import React, { useEffect, useState } from "react"
 import {
   Layout,
-  Avatar,
   Badge,
   Space,
   Typography,
@@ -10,15 +9,13 @@ import {
   Flex,
   MenuProps,
   Dropdown,
-  Divider,
+  Spin,
 } from "antd"
 import {
   BellOutlined,
   UserOutlined,
-  WarningOutlined,
   MessageOutlined,
 } from "@ant-design/icons"
-import { getCurrentUserInfor } from "@/action/user/userActions"
 import { useRouter } from "next/navigation"
 import { PageRoute } from "@/enum/page-route.enum"
 import LogoutIcon from "@/components/icon/LogoutIcon"
@@ -42,11 +39,25 @@ interface UserType {
   avatar_url?: string
 }
 
+type NotificationItem = {
+  id: string
+  title: string
+  content: string
+  thumbnail_url: string | null
+  type: string
+  redirect_url: string
+  is_read: boolean
+  created_at: string
+}
+
 export default function AppHeader({ collapsed }: HeaderProps) {
   const {
     token: { colorBgContainer },
   } = theme.useToken()
   const { user, clearUser, fetchUser } = useUserStore()
+  const [notifications, setNotifications] = useState<NotificationItem[]>([])
+  const [loadingNotifications, setLoadingNotifications] = useState(false)
+  const [notificationOpen, setNotificationOpen] = useState(false)
 
   // const [user, setUser] = useState<UserType | null>(null)
 
@@ -95,11 +106,146 @@ export default function AppHeader({ collapsed }: HeaderProps) {
     router.push(PageRoute.PROFILE)
   }
 
+  const loadNotifications = async () => {
+    setLoadingNotifications(true)
+    try {
+      const response = await fetch("/api/notifications", {
+        method: "GET",
+        credentials: "include",
+        cache: "no-store",
+      })
+
+      const result = await response.json()
+
+      if (response.ok && result?.success) {
+        setNotifications(result.data || [])
+      } else {
+        console.error("Failed to load notifications:", {
+          status: response.status,
+          statusText: response.statusText,
+          result,
+        })
+      }
+    } catch (error) {
+      console.error("Error loading notifications:", error)
+    } finally {
+      setLoadingNotifications(false)
+    }
+  }
+
+  const handleClickNotification = async (notification: NotificationItem) => {
+    try {
+      if (!notification.is_read) {
+        const response = await fetch("/api/notifications/read", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ id: notification.id }),
+        })
+
+        if (!response.ok) {
+          const result = await response.json().catch(() => null)
+          console.error("Failed to mark notification as read:", {
+            status: response.status,
+            statusText: response.statusText,
+            result,
+          })
+        }
+
+        setNotifications((prev) =>
+          prev.map((item) =>
+            item.id === notification.id ? { ...item, is_read: true } : item
+          )
+        )
+      }
+
+      if (notification.redirect_url) {
+        router.push(notification.redirect_url)
+      }
+    } catch (error) {
+      console.error("Error handling notification click:", error)
+      if (notification.redirect_url) {
+        router.push(notification.redirect_url)
+      }
+    }
+  }
+
+  const unreadCount = notifications.filter((item) => !item.is_read).length
+
   useEffect(() => {
     if (!user) {
       fetchUser()
     }
   }, [user, fetchUser])
+
+  useEffect(() => {
+    loadNotifications()
+    const interval = setInterval(loadNotifications, 30000)
+    return () => clearInterval(interval)
+  }, [])
+
+  useEffect(() => {
+    if (notificationOpen) {
+      loadNotifications()
+    }
+  }, [notificationOpen])
+
+  const notificationDropdown = (
+    <div className="w-[380px] max-h-[420px] overflow-y-auto rounded-lg border border-gray-100 bg-white shadow-lg">
+      <div className="px-4 py-3 border-b border-gray-100">
+        <Text strong>Notifications</Text>
+      </div>
+
+      {loadingNotifications ? (
+        <div className="py-8 flex justify-center">
+          <Spin size="small" />
+        </div>
+      ) : notifications.length === 0 ? (
+        <div className="px-4 py-8 text-center text-gray-500 text-sm">
+          No notifications yet
+        </div>
+      ) : (
+        notifications.map((notification) => (
+          <button
+            key={notification.id}
+            type="button"
+            onClick={() => handleClickNotification(notification)}
+            className={`w-full text-left px-4 py-3 border-b border-gray-100 transition-colors ${
+              notification.is_read
+                ? "bg-white hover:bg-gray-50"
+                : "bg-blue-50 hover:bg-blue-100"
+            }`}
+          >
+            <div className="flex gap-3">
+              <img
+                src={
+                  notification.thumbnail_url ||
+                  "https://images.unsplash.com/photo-1499750310107-5fef28a66643?w=200&h=120&fit=crop"
+                }
+                alt="Notification thumbnail"
+                className="w-14 h-14 rounded object-cover flex-shrink-0"
+                onError={(e) => {
+                  ;(e.target as HTMLImageElement).src =
+                    "https://images.unsplash.com/photo-1499750310107-5fef28a66643?w=200&h=120&fit=crop"
+                }}
+              />
+              <div className="min-w-0 flex-1">
+                <div className="text-sm font-semibold text-gray-900 truncate">
+                  {notification.title}
+                </div>
+                <div className="text-xs text-gray-600 line-clamp-2 mt-1">
+                  {notification.content}
+                </div>
+                <div className="text-[11px] text-gray-400 mt-1">
+                  {new Date(notification.created_at).toLocaleString("vi-VN")}
+                </div>
+              </div>
+            </div>
+          </button>
+        ))
+      )}
+    </div>
+  )
 
   // useEffect(() => {
   //   const fetchUser = async () => {
@@ -128,9 +274,17 @@ export default function AppHeader({ collapsed }: HeaderProps) {
       <Space size="middle">
         {/* <WarningOutlined style={{ fontSize: "18px", color: "#f5222d" }} /> */}
         <MessageOutlined style={{ fontSize: "18px" }} />
-        <Badge count={11} dot>
-          <BellOutlined style={{ fontSize: "18px" }} />
-        </Badge>
+        <Dropdown
+          trigger={["hover"]}
+          placement="bottomRight"
+          dropdownRender={() => notificationDropdown}
+          open={notificationOpen}
+          onOpenChange={setNotificationOpen}
+        >
+          <Badge count={unreadCount} size="small" overflowCount={99}>
+            <BellOutlined style={{ fontSize: "18px", cursor: "pointer" }} />
+          </Badge>
+        </Dropdown>
         <LanguageToggle />
         <Dropdown
           menu={{ items: profileItems }}

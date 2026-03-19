@@ -48,6 +48,94 @@ export type UpdateArticleInput = {
   thumbnail_url?: string | null
 }
 
+async function createArticleStatusNotification(params: {
+  userId: number
+  articleId: number
+  articleTitle: string
+  articleContent: string
+  thumbnailUrl?: string | null
+  type: 'article_approved' | 'article_rejected'
+  reason?: string
+}) {
+  const {
+    userId,
+    articleId,
+    articleTitle,
+    articleContent,
+    thumbnailUrl,
+    type,
+    reason,
+  } = params
+
+  const notificationTitle =
+    type === 'article_approved'
+      ? `Article approved: ${articleTitle}`
+      : `Article rejected: ${articleTitle}`
+
+  const baseContent =
+    type === 'article_approved'
+      ? `Your article "${articleTitle}" has been approved and published.`
+      : `Your article "${articleTitle}" has been rejected.${reason ? ` Reason: ${reason}` : ''}`
+
+  const maxContentLength = 400
+  const trimmedArticleContent = (articleContent || '').replace(/\s+/g, ' ').trim()
+  const articlePreview = trimmedArticleContent
+    ? ` Preview: ${trimmedArticleContent.slice(0, maxContentLength)}${trimmedArticleContent.length > maxContentLength ? '...' : ''}`
+    : ''
+
+  try {
+    await sql`
+      INSERT INTO notifications (
+        user_id,
+        title,
+        content,
+        thumbnail_url,
+        type,
+        redirect_url,
+        is_read,
+        created_at
+      )
+      VALUES (
+        ${userId},
+        ${notificationTitle},
+        ${`${baseContent}${articlePreview}`},
+        ${thumbnailUrl ?? null},
+        ${type},
+        ${`/articles/${articleId}`},
+        FALSE,
+        NOW()
+      )
+    `
+  } catch (error: any) {
+    try {
+      await sql`
+        INSERT INTO notifications (
+          user_id,
+          title,
+          content,
+          thumbnai1_url,
+          type,
+          redirect_url,
+          is_read,
+          created_at
+        )
+        VALUES (
+          ${userId},
+          ${notificationTitle},
+          ${`${baseContent}${articlePreview}`},
+          ${thumbnailUrl ?? null},
+          ${type},
+          ${`/articles/${articleId}`},
+          FALSE,
+          NOW()
+        )
+      `
+    } catch (fallbackError: any) {
+      console.error('Error creating article status notification:', fallbackError)
+    }
+  }
+}
+
 export async function createArticleAction(input: CreateArticleInput): Promise<{ success: boolean; message: string; articleId?: string }> {
   try {
     const { title, content, tags, author_id, status, category_id, image_url, thumbnail_url } = input
@@ -263,17 +351,41 @@ export async function restoreArticleAction(articleId: number): Promise<{ success
   }
 }
 
-export async function approveArticleAction(articleId: number): Promise<{ success: boolean; message: string }> {
+export async function approveArticleAction(
+  articleId: number,
+  actorUserId?: number
+): Promise<{ success: boolean; message: string }> {
   try {
     const result = await sql`
       UPDATE articles
       SET status = 'published', approved_at = NOW(), updated_at = NOW()
       WHERE id = ${articleId}
-      RETURNING id
+      RETURNING id, author_id, title, content, thumbnail_url, image_url
     `
 
     if (result.length === 0) {
       return { success: false, message: 'Article not found' }
+    }
+
+    const updatedArticle = result[0]
+    await createArticleStatusNotification({
+      userId: Number(updatedArticle.author_id),
+      articleId: Number(updatedArticle.id),
+      articleTitle: updatedArticle.title || 'Untitled article',
+      articleContent: updatedArticle.content || '',
+      thumbnailUrl: updatedArticle.thumbnail_url || updatedArticle.image_url || null,
+      type: 'article_approved',
+    })
+
+    if (actorUserId && actorUserId !== Number(updatedArticle.author_id)) {
+      await createArticleStatusNotification({
+        userId: actorUserId,
+        articleId: Number(updatedArticle.id),
+        articleTitle: updatedArticle.title || 'Untitled article',
+        articleContent: updatedArticle.content || '',
+        thumbnailUrl: updatedArticle.thumbnail_url || updatedArticle.image_url || null,
+        type: 'article_approved',
+      })
     }
 
     return { success: true, message: 'Article approved successfully' }
@@ -283,17 +395,44 @@ export async function approveArticleAction(articleId: number): Promise<{ success
   }
 }
 
-export async function rejectArticleAction(articleId: number, reason: string = ''): Promise<{ success: boolean; message: string }> {
+export async function rejectArticleAction(
+  articleId: number,
+  reason: string = '',
+  actorUserId?: number
+): Promise<{ success: boolean; message: string }> {
   try {
     const result = await sql`
       UPDATE articles
       SET status = 'rejected', reason = ${reason}, updated_at = NOW()
       WHERE id = ${articleId}
-      RETURNING id
+      RETURNING id, author_id, title, content, thumbnail_url, image_url
     `
 
     if (result.length === 0) {
       return { success: false, message: 'Article not found' }
+    }
+
+    const updatedArticle = result[0]
+    await createArticleStatusNotification({
+      userId: Number(updatedArticle.author_id),
+      articleId: Number(updatedArticle.id),
+      articleTitle: updatedArticle.title || 'Untitled article',
+      articleContent: updatedArticle.content || '',
+      thumbnailUrl: updatedArticle.thumbnail_url || updatedArticle.image_url || null,
+      type: 'article_rejected',
+      reason,
+    })
+
+    if (actorUserId && actorUserId !== Number(updatedArticle.author_id)) {
+      await createArticleStatusNotification({
+        userId: actorUserId,
+        articleId: Number(updatedArticle.id),
+        articleTitle: updatedArticle.title || 'Untitled article',
+        articleContent: updatedArticle.content || '',
+        thumbnailUrl: updatedArticle.thumbnail_url || updatedArticle.image_url || null,
+        type: 'article_rejected',
+        reason,
+      })
     }
 
     return { success: true, message: 'Article rejected successfully' }
