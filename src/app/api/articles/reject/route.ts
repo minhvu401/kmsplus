@@ -4,14 +4,14 @@ import { rejectArticleAction } from '@/service/articles.service'
 
 export async function POST(request: Request) {
   try {
-    await requireAuth()
+    const user = await requireAuth()
     const { id, reason } = await request.json()
     const articleId = Number(id)
     if (!articleId) {
       return NextResponse.json({ success: false, message: 'Invalid article id' }, { status: 400 })
     }
 
-    const result = await rejectArticleAction(articleId, reason || '')
+    const result = await rejectArticleAction(articleId, reason || '', Number(user.id))
     return NextResponse.json(result)
   } catch (error: any) {
     console.error('Reject article error:', error)
