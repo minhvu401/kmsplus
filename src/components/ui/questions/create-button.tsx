@@ -2,7 +2,7 @@
 
 import { useState, useActionState, startTransition } from "react"
 import { Button, Form, Modal, Typography, Input, Select, Divider } from "antd"
-import { PlusCircleOutlined } from "@ant-design/icons"
+import { EditOutlined } from "@ant-design/icons"
 import { State, createQuestion } from '@/action/question/questionActions';
 import RichTextEditor from "@/components/ui/RichTextEditor";
 
@@ -35,29 +35,17 @@ const placeholderStyles = `
   }
 `;
 
-// import Link from "next/link"
-// export function CreateQuestion() {
-//   return (
-//     <Link
-//       href="/questions/create"
-//       className="flex h-10 items-center gap-2 whitespace-nowrap rounded-lg bg-blue-600 px-4 text-sm font-medium text-white transition-colors hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 shadow-lg"
-//       aria-label="Ask A Question"
-//     >
-//       <PlusCircleOutlined className="w-5 h-5" />
-//       <span>Ask A Question</span>
-//     </Link>
-//   )
-// }
-
 
 export function CreateQuestion({
   categories,
   userId,
   returnTo,
+  isFullWidth = false,
 }: {
   categories: { id: number; name: string }[];
   userId: number;
   returnTo?: string;
+  isFullWidth?: boolean;
 }) {
 
   const [form] = Form.useForm();
@@ -87,16 +75,43 @@ export function CreateQuestion({
   return (
     <>
       <Button
-        className="flex h-10 items-center gap-2 whitespace-nowrap rounded-lg bg-blue-600 px-4 text-sm font-medium text-white transition-colors hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 shadow-lg"
-        aria-label="Ask A Question"
+        size={isFullWidth ? 'large' : 'middle'}
+        style={{
+          background: '#ffffff',
+          borderColor: '#1e40af',
+          borderWidth: '1.5px',
+          borderRadius: '0.375rem',
+          color: '#1e40af',
+          fontSize: isFullWidth ? '15px' : '12px',
+          fontWeight: isFullWidth ? 700 : 500,
+          height: isFullWidth ? '52px' : '36px',
+          paddingInline: isFullWidth ? '28px' : '14px',
+          width: isFullWidth ? '100%' : 'auto',
+          boxShadow: '0 2px 8px rgba(30, 64, 175, 0.12)',
+          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+          whiteSpace: 'nowrap',
+        }}
+        onMouseEnter={(e) => {
+          const button = e.currentTarget as HTMLButtonElement;
+          button.style.background = '#f8fafc';
+          button.style.boxShadow = '0 8px 20px rgba(30, 64, 175, 0.2)';
+          button.style.borderColor = '#1e3a8a';
+        }}
+        onMouseLeave={(e) => {
+          const button = e.currentTarget as HTMLButtonElement;
+          button.style.background = '#ffffff';
+          button.style.boxShadow = '0 2px 8px rgba(30, 64, 175, 0.12)';
+          button.style.borderColor = '#1e40af';
+        }}
+        aria-label="Ask Question"
         onClick={() => setCreateVisible(true)}
       >
-        <PlusCircleOutlined className="w-5 h-5" />
-        <span>Ask A Question</span>
+        <EditOutlined style={{ marginRight: isFullWidth ? '8px' : '5px', fontSize: isFullWidth ? '14px' : '12px' }} />
+        <span>{isFullWidth ? 'Ask Question - Share Your Knowledge' : 'Ask A Question'}</span>
       </Button>
 
       <Modal
-        title="Ask A Question"
+        title="Ask Question"
         centered
         open={isCreateVisible}
         onCancel={() => setLeaveVisible(true)}
