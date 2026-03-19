@@ -228,7 +228,7 @@ export default function CourseEnrollmentsPage() {
       <Breadcrumb
         className="text-gray-500"
         items={[
-          { title: <HomeOutlined />, href: "/dashboard" },
+          { title: <HomeOutlined />, href: "/dashboard-metrics" },
           { title: "Courses", href: "/courses/manage" },
           {
             title: "Introduction to Python",

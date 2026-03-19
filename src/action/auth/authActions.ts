@@ -112,11 +112,95 @@ export async function loginAction(
 export async function logoutAction() {
   try {
     const cookieStore = await cookies()
+    
+    // Delete custom JWT token
     cookieStore.delete("token")
+    
+    // Delete NextAuth session cookies (multiple possible names for v5)
+    cookieStore.delete("next-auth.session-token")
+    cookieStore.delete("authjs.session-token")
+    cookieStore.delete("__Secure-next-auth.session-token")
+    cookieStore.delete("__Secure-authjs.session-token")
 
     const { clearUser } = useUserStore.getState() // Lấy phương thức clearUser từ store
     clearUser()
 
     // redirect(PageRoute.LOGIN)
-  } catch (error) {}
+  } catch (error) {
+    console.error("Error in logoutAction:", error)
+  }
+}
+
+export type ForgotPasswordState = {
+  success: boolean
+  message: string
+  errors?: Record<string, string[]>
+}
+
+export async function forgotPasswordAction(
+  formData: FormData
+): Promise<ForgotPasswordState> {
+  try {
+    const email = formData.get("email") as string
+    const password = formData.get("password") as string
+    const confirmPassword = formData.get("confirmPassword") as string
+
+    // Validate inputs
+    if (!email || !password || !confirmPassword) {
+      return {
+        success: false,
+        message: "Vui lòng điền tất cả các trường",
+      }
+    }
+
+    if (password !== confirmPassword) {
+      return {
+        success: false,
+        message: "Mật khẩu không khớp",
+      }
+    }
+
+    if (password.length < 6) {
+      return {
+        success: false,
+        message: "Mật khẩu phải có ít nhất 6 ký tự",
+      }
+    }
+
+    // Check if user exists
+    const users = await sql`
+      SELECT id, email FROM users WHERE email = ${email.toLowerCase()} AND is_deleted = false
+    `
+
+    if (!users || users.length === 0) {
+      return {
+        success: false,
+        message: "Email không tồn tại trong hệ thống",
+      }
+    }
+
+    const userId = users[0].id
+
+    // Hash new password
+    const bcrypt = require("bcryptjs")
+    const hashedPassword = await bcrypt.hash(password, 10)
+
+    // Update password
+    await sql`
+      UPDATE users 
+      SET password_hash = ${hashedPassword}
+      WHERE id = ${userId}
+    `
+
+    return {
+      success: true,
+      message: "Mật khẩu đã được đặt lại thành công. Vui lòng đăng nhập lại.",
+    }
+  } catch (error) {
+    console.error("Error in forgotPasswordAction:", error)
+    return {
+      success: false,
+      message: "Có lỗi xảy ra. Vui lòng thử lại.",
+    }
+  }
 }

@@ -42,6 +42,13 @@ export type Answer = {
   user_name: string
 };
 
+// TYPE FOR 'TOP SHARER' RESPONSE
+export type TopSharer = {
+  id: number
+  name: string
+  score: number
+};
+
 // GET ALL QUESTIONS
 export async function getAllQuestionsAction(): Promise<Question[]> {
   const questions = await sql`
@@ -754,5 +761,26 @@ export async function fetchFullDiscussionThreadAction(answerId: number): Promise
   } catch (error) {
     console.error("Database Error:", error)
     throw new Error("Failed to fetch full discussion thread.")
+  }
+}
+
+// GET TOP KNOWLEDGE SHARERS
+export async function getTopKnowledgeSharers(limit: number = 5): Promise<TopSharer[]> {
+  try {
+    const result = await sql`
+      SELECT 
+        users.id, 
+        users.full_name AS name, 
+        COUNT(answers.id) AS score
+      FROM users
+      LEFT JOIN answers ON users.id = answers.user_id
+      GROUP BY users.id, users.full_name
+      ORDER BY score DESC
+      LIMIT ${limit}
+    `
+    return result as TopSharer[]
+  } catch (error) {
+    console.error("Database Error:", error)
+    throw new Error("Failed to fetch top knowledge sharers.")
   }
 }

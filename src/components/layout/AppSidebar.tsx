@@ -32,10 +32,16 @@ const AppSidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
           // Try both data.role and data.user.role
           const roleFromAPI = data.role || data.user?.role
 
+          console.log("🔍 API /auth/me response:", data)
+          console.log("📋 roleFromAPI:", roleFromAPI)
+          console.log("📋 Role.ADMIN:", Role.ADMIN)
+          console.log("🔄 Object.values(Role):", Object.values(Role))
+
           if (roleFromAPI) {
             const roleValue = Object.values(Role).find(
               (r) => r === roleFromAPI
             ) as Role | undefined
+            console.log("✅ Found roleValue:", roleValue)
             setUserRole(roleValue)
           }
         }
@@ -51,7 +57,7 @@ const AppSidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
   const pathname = usePathname()
 
   const handleBackToHomePage = () => {
-    router.push(PageRoute.DASHBOARD)
+    router.push(PageRoute.DASHBOARD_METRICS)
   }
 
   // Determine active menu key based on current pathname
@@ -61,7 +67,7 @@ const AppSidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
     const keys = Object.values(PageRoute).filter(
       (route) => path === route || path.startsWith(route + "/")
     )
-    return keys.length > 0 ? [keys[0]] : [PageRoute.DASHBOARD]
+    return keys.length > 0 ? [keys[0]] : [PageRoute.DASHBOARD_METRICS]
   }
 
   return (
