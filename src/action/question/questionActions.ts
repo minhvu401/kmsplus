@@ -359,3 +359,7 @@ export async function fetchFullDiscussionThread(answerId: number) {
   //await requireAuth()
   return service.fetchFullDiscussionThreadAction(answerId);
 }
+
+export async function getTopKnowledgeSharers(limit: number = 5) {
+  return service.getTopKnowledgeSharers(limit);
+}

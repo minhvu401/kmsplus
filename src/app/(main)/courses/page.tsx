@@ -5,7 +5,7 @@ import React from "react"
 import type { Metadata } from "next"
 import type { Course } from "@/service/course.service"
 
-import { getPublishedCoursesService } from "@/service/course.service"
+import { getPublishedCoursesService, getAllCategoriesAction } from "@/service/course.service"
 import CourseClient from "./components/CourseClient"
 
 export const dynamic = "force-dynamic"
@@ -17,8 +17,8 @@ export const metadata: Metadata = {
 }
 
 // Định nghĩa kiểu cho các giá trị sort hợp lệ
-type SortOption = "trending" | "popular" | "newest"
-const ALLOWED_SORT_OPTIONS: SortOption[] = ["trending", "popular", "newest"]
+type SortOption = "trending" | "popular" | "newest" | "top-rated"
+const ALLOWED_SORT_OPTIONS: SortOption[] = ["trending", "popular", "newest", "top-rated"]
 
 // Định nghĩa kiểu cho searchParams
 export type SearchParams = {
@@ -60,16 +60,21 @@ export default async function CoursesPage({
   let courses: Course[] = []
   let totalCount: number = 0
   let fetchError: string | null = null
+  let categories: Array<{ id: number; name: string }> = []
 
   try {
-    // 2. Gọi Service chỉ lấy khóa học Published
-    const result = await getPublishedCoursesService({
-      query,
-      page,
-      sort: sortToUse,
-      limit: DEFAULT_LIMIT,
-      category: category, // ✅ Truyền category xuống Service
-    })
+    // Fetch categories và courses in parallel
+    const [result, categoriesData] = await Promise.all([
+      getPublishedCoursesService({
+        query,
+        page,
+        sort: sortToUse,
+        limit: DEFAULT_LIMIT,
+        category: category,
+        rating: rating,
+      }),
+      getAllCategoriesAction(),
+    ])
 
     if (result) {
       courses = result.courses || []
@@ -78,27 +83,31 @@ export default async function CoursesPage({
       console.warn("getPublishedCoursesService returned null or undefined")
       fetchError = "Could not load course data."
     }
+
+    categories = categoriesData || []
   } catch (error) {
     console.error("Error fetching courses:", error)
     fetchError =
       "An error occurred while loading courses. Please try again later."
     courses = []
     totalCount = 0
+    categories = []
   }
 
   // 3. Truyền dữ liệu xuống Client Component
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50">
       <CourseClient
         initialCourses={courses}
         initialTotalCount={totalCount}
         coursesPerPage={DEFAULT_LIMIT}
         fetchError={fetchError}
+        categories={categories}
         currentSearchParams={{
           query,
           page: page.toString(),
           sort: sortToUse,
-          category: category, // ✅ Truyền lại để Client hiển thị đúng filter đang chọn
+          category: category,
           rating: rating,
         }}
       />
