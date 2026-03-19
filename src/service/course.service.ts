@@ -420,7 +420,7 @@ export async function rejectCourseService(courseId: number, reason: string) {
       SET 
         status = 'rejected',
         rejection_reason = ${reason},
-        updated_at = NOW()
+        updated_at = (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Ho_Chi_Minh')
       WHERE id = ${courseId}
         AND deleted_at IS NULL
       RETURNING id, title

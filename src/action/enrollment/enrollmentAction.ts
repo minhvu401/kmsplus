@@ -57,7 +57,18 @@ export async function checkEnrollmentStatus(courseId: number, userId: number) {
   try {
     // ⚠️ QUAN TRỌNG: Phải select cả cột 'id'
     const result = await sql`
-      SELECT id, status, progress_percentage, completed_lesson_ids
+      SELECT
+        id,
+        status,
+        progress_percentage,
+        completed_lesson_ids,
+        EXISTS(
+          SELECT 1
+          FROM feedback f
+          WHERE f.user_id = ${userId}
+            AND f.course_id = ${courseId}
+            AND f.is_deleted = false
+        ) AS has_submitted_feedback
       FROM enrollments 
       WHERE user_id = ${userId} AND course_id = ${courseId}
     `
