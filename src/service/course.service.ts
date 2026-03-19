@@ -36,8 +36,22 @@ export type Course = {
   deleted_at: Date | null
   created_at: Date
   updated_at: Date
+  visibility: "public" | "private"
+  global_due_type: "relative" | "fixed" | null
+  global_due_days: number | null
+  global_due_date: Date | null
 }
 
+// Định nghĩa Type cho Assignment Rule nhận từ Form
+export type AssignmentRulePayload = {
+  target_type: "all_employees" | "department" | "user" | "role"
+  department_id?: number | null
+  user_id?: number | null
+  role_id?: number | null
+  due_type?: "relative" | "fixed" | null
+  due_days?: number | null
+  due_date?: string | Date | null // Dạng chuỗi (YYYY-MM-DD) hoặc Date Object
+}
 // Type cho dữ liệu tạo mới (bao gồm cả Curriculum lồng nhau)
 export type CreateCoursePayload = {
   creator_id: number
@@ -47,6 +61,11 @@ export type CreateCoursePayload = {
   thumbnail_url?: string | null
   status?: CourseStatus | string
   duration_hours?: number
+  visibility?: "public" | "private"
+  global_due_type?: "relative" | "fixed" | null
+  global_due_days?: number | null
+  global_due_date?: string | null
+  assignment_rules?: AssignmentRulePayload[] // Danh sách các Rule
   // Cấu trúc Curriculum nhận từ Client
   curriculum?: {
     title: string
@@ -155,14 +174,23 @@ export async function getCourseByIdAction(id: number) {
   if (courseResult.length === 0) return null
   const course = courseResult[0] as Course
 
-  // 2. Lấy danh sách Sections
+  // 2. Lấy danh sách Assignment Rules (CẬP NHẬT MỚI)
+  const rulesResult = await sql`
+    SELECT 
+      id, target_type, department_id, user_id, role_id, 
+      due_type, due_days, due_date
+    FROM assignment_rules 
+    WHERE course_id = ${id}
+  `
+
+  // 3. Lấy danh sách Sections
   const sectionsResult = await sql`
     SELECT * FROM sections 
     WHERE course_id = ${id} 
     ORDER BY "order" ASC
   `
 
-  // 3. Lấy danh sách Items
+  // 4. Lấy danh sách Items
   const sectionIds = sectionsResult.map((s) => s.id)
   let itemsResult: any[] = []
 
@@ -187,7 +215,7 @@ export async function getCourseByIdAction(id: number) {
     `
   }
 
-  // 4. Ghép dữ liệu (Mapping)
+  // 5. Ghép dữ liệu Curriculum (Mapping)
   const curriculum = sectionsResult.map((section) => {
     const items = itemsResult
       .filter((item) => item.section_id === section.id)
@@ -211,6 +239,7 @@ export async function getCourseByIdAction(id: number) {
 
   return {
     ...course,
+    assignment_rules: rulesResult, // ✅ Ném mảng Rules vào kết quả trả về
     curriculum: curriculum,
   }
 }
@@ -225,11 +254,13 @@ export async function createCourseAction(courseData: CreateCoursePayload) {
       const currentTimestamp = new Date().toLocaleString("en-US", {
         timeZone: "Asia/Ho_Chi_Minh",
       })
-      // 1. Insert Course
+
+      // 1. Insert Course (Đã bổ sung 4 cột mới)
       const newCourseResult = await tx`
         INSERT INTO courses (
           creator_id, title, description, thumbnail_url, status, duration_hours, 
-          category_id, created_at, updated_at
+          category_id, created_at, updated_at,
+          visibility, global_due_type, global_due_days, global_due_date
         ) VALUES (
           ${courseData.creator_id},
           ${courseData.title},
@@ -237,14 +268,49 @@ export async function createCourseAction(courseData: CreateCoursePayload) {
           ${courseData.thumbnail_url || null},
           ${courseData.status || "draft"},
           ${courseData.duration_hours || 0},
-          ${currentTimestamp}, ${currentTimestamp}
+          ${courseData.category_id || null},
+          ${currentTimestamp}, 
+          ${currentTimestamp},
+          ${courseData.visibility || "private"},
+          ${courseData.global_due_type || null},
+          ${courseData.global_due_days || null},
+          ${courseData.global_due_date || null}
         )
-        RETURNING id
+        RETURNING *;
       `
       const courseId = newCourseResult[0].id
       console.log("✅ [Service] Tạo Course thành công, ID:", courseId)
 
-      // 2. Insert Sections & Items
+      // 2. Insert Assignment Rules (NẾU CÓ)
+      if (
+        courseData.assignment_rules &&
+        courseData.assignment_rules.length > 0
+      ) {
+        console.log(
+          `📦 [Service] Đang lưu ${courseData.assignment_rules.length} Assignment Rules...`
+        )
+
+        for (const rule of courseData.assignment_rules) {
+          await tx`
+            INSERT INTO assignment_rules (
+              course_id, target_type, department_id, user_id, role_id, 
+              due_type, due_days, due_date
+            ) VALUES (
+              ${courseId}, 
+              ${rule.target_type}, 
+              ${rule.department_id || null}, 
+              ${rule.user_id || null}, 
+              ${rule.role_id || null},
+              ${rule.due_type || null}, 
+              ${rule.due_days || null}, 
+              ${rule.due_date || null}
+            )
+          `
+        }
+        console.log("✅ [Service] Đã lưu Assignment Rules.")
+      }
+
+      // 3. Insert Sections & Items (Curriculum giữ nguyên code của bạn)
       if (courseData.curriculum && courseData.curriculum.length > 0) {
         for (const [sIndex, section] of courseData.curriculum.entries()) {
           const newSectionResult = await tx`
@@ -291,9 +357,9 @@ export async function updateFullCourseAction(id: number, data: any) {
     const currentTimestamp = new Date().toLocaleString("en-US", {
       timeZone: "Asia/Ho_Chi_Minh",
     })
-    // Sử dụng sqlTransaction đã khởi tạo ở đầu file để thực hiện Transaction
+
     return await sqlTransaction.begin(async (tx: any) => {
-      // 1. Cập nhật bảng 'courses' (✅ Đã thêm category_id)
+      // 1. Cập nhật bảng 'courses' (✅ Đã thêm 4 cột cấu hình mới)
       await tx`
         UPDATE courses
         SET
@@ -302,18 +368,50 @@ export async function updateFullCourseAction(id: number, data: any) {
           thumbnail_url = ${data.thumbnail_url || null},
           status = ${data.status || "draft"},
           duration_hours = ${data.duration_hours || 0},
+          category_id = ${data.category_id || null},
+          visibility = ${data.visibility || "private"},
+          global_due_type = ${data.global_due_type || null},
+          global_due_days = ${data.global_due_days || null},
+          global_due_date = ${data.global_due_date || null},
           updated_at = ${currentTimestamp}
         WHERE id = ${id}
       `
 
-      // 2. Xóa sạch Curriculum cũ
+      // 2. Cập nhật Assignment Rules (CẬP NHẬT MỚI)
+      // Cách nhanh và an toàn nhất: Xóa sạch cái cũ, insert lại cái mới
+      await tx`DELETE FROM assignment_rules WHERE course_id = ${id}`
+
+      if (data.assignment_rules && data.assignment_rules.length > 0) {
+        console.log(
+          `📦 [Update] Đang lưu lại ${data.assignment_rules.length} Assignment Rules...`
+        )
+        for (const rule of data.assignment_rules) {
+          await tx`
+            INSERT INTO assignment_rules (
+              course_id, target_type, department_id, user_id, role_id, 
+              due_type, due_days, due_date
+            ) VALUES (
+              ${id}, 
+              ${rule.target_type}, 
+              ${rule.department_id || null}, 
+              ${rule.user_id || null}, 
+              ${rule.role_id || null},
+              ${rule.due_type || null}, 
+              ${rule.due_days || null}, 
+              ${rule.due_date || null}
+            )
+          `
+        }
+      }
+
+      // 3. Xóa sạch Curriculum cũ (Giữ nguyên code cũ của bạn)
       await tx`
         DELETE FROM curriculum_items 
         WHERE section_id IN (SELECT id FROM sections WHERE course_id = ${id})
       `
       await tx`DELETE FROM sections WHERE course_id = ${id}`
 
-      // 3. Chèn lại Curriculum mới
+      // 4. Chèn lại Curriculum mới (Giữ nguyên code cũ của bạn)
       if (data.curriculum && data.curriculum.length > 0) {
         for (const [sIndex, section] of data.curriculum.entries()) {
           const [newSection] = await tx`
@@ -339,7 +437,7 @@ export async function updateFullCourseAction(id: number, data: any) {
       return { success: true }
     })
   } catch (error) {
-    console.error("❌ [Service Error]:", error)
+    console.error("❌ [Service Error - Update Course]:", error)
     return { success: false, error: "Database transaction failed" }
   }
 }

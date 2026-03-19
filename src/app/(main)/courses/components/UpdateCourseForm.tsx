@@ -2,6 +2,7 @@
 "use client"
 import React, { useState, useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
+import dayjs from "dayjs" // ✅ Cần để parse ngày tháng từ Database
 import {
   updateCourseAPI,
   getCategoriesAPI,
@@ -53,6 +54,11 @@ import {
   Form,
   Radio,
   Popconfirm,
+  DatePicker,
+  InputNumber,
+  Card,
+  Space,
+  Divider,
 } from "antd"
 import {
   PlusOutlined as AntPlusOutlined,
@@ -61,6 +67,8 @@ import {
   PlayCircleOutlined,
   FilePdfOutlined,
   DeleteOutlined,
+  SafetyCertificateOutlined,
+  PlusOutlined,
 } from "@ant-design/icons"
 
 const { TextArea } = Input
@@ -92,6 +100,20 @@ export type Section = {
   order: number
   items: CurriculumItem[]
 }
+
+// ✅ Type mới cho Assignment Rule
+export type AssignmentRulePayload = {
+  id: string | number
+  target_type: "all_employees" | "department" | "user" | "role"
+  department_id?: number | null
+  user_id?: number | null
+  role_id?: number | null
+  due_type: "relative" | "fixed" | "none"
+  due_days?: number | null
+  due_date?: any
+}
+
+// ✅ Cập nhật Payload
 export type CoursePayload = {
   id?: number
   creator_id?: number
@@ -101,6 +123,11 @@ export type CoursePayload = {
   thumbnail_url?: string
   status?: string
   duration_hours?: number
+  visibility?: "public" | "private"
+  global_due_type?: "relative" | "fixed" | "none"
+  global_due_days?: number | null
+  global_due_date?: any
+  assignment_rules?: AssignmentRulePayload[]
   curriculum: Section[]
 }
 
@@ -231,8 +258,15 @@ export default function UpdateCourseForm({
   const [current, setCurrent] = useState(0)
   const [loading, setLoading] = useState(false)
 
-  // State Payload
-  const [payload, setPayload] = useState<CoursePayload>(initialData)
+  // State Payload với các trường mới
+  const [payload, setPayload] = useState<CoursePayload>({
+    ...initialData,
+    visibility: initialData.visibility || "private",
+    global_due_type: initialData.global_due_type || "none",
+    global_due_days: initialData.global_due_days || 14,
+    global_due_date: initialData.global_due_date || null,
+    assignment_rules: initialData.assignment_rules || [],
+  })
 
   // Log khi payload thay đổi
   useEffect(() => {
@@ -427,15 +461,42 @@ export default function UpdateCourseForm({
 
     setLoading(true)
     try {
-      const res = await updateCourseAPI(payload.id, {
+      // ✅ CHUẨN HÓA DỮ LIỆU ĐỂ UPDATE
+      const finalPayload = {
         title: payload.title,
         description: payload.description,
         thumbnail_url: payload.thumbnail_url,
         status: payload.status,
         duration_hours: payload.duration_hours,
         category_id: payload.category_id,
+        visibility: payload.visibility || "private",
+        global_due_type:
+          payload.global_due_type === "none" ? null : payload.global_due_type,
+        global_due_days:
+          payload.global_due_type === "relative"
+            ? payload.global_due_days
+            : null,
+        global_due_date:
+          payload.global_due_type === "fixed" && payload.global_due_date
+            ? dayjs(payload.global_due_date).toISOString()
+            : null,
+        assignment_rules: payload.assignment_rules?.map((rule) => ({
+          target_type: rule.target_type,
+          department_id:
+            rule.target_type === "department" ? rule.department_id : null,
+          role_id: rule.target_type === "role" ? rule.role_id : null,
+          user_id: rule.target_type === "user" ? rule.user_id : null,
+          due_type: rule.due_type === "none" ? null : rule.due_type,
+          due_days: rule.due_type === "relative" ? rule.due_days : null,
+          due_date:
+            rule.due_type === "fixed" && rule.due_date
+              ? dayjs(rule.due_date).toISOString()
+              : null,
+        })),
         curriculum: payload.curriculum,
-      })
+      }
+
+      const res = await updateCourseAPI(payload.id, finalPayload)
       if (res.success) {
         message.success("Course updated successfully!")
         if (onSuccess) onSuccess()
@@ -456,17 +517,24 @@ export default function UpdateCourseForm({
   )
 
   return (
-    <div className="bg-white p-2 rounded shadow">
+    // 1. Thay đổi thẻ bao ngoài cùng: Dùng flex-col, bỏ overflow-y-auto ở đây
+    <div
+      className="bg-white flex flex-col h-full"
+      style={{ maxHeight: "85vh" }}
+    >
       {contextHolder}
-      <h1 className="text-2xl font-semibold text-gray-900">
-        Update Course: {payload.title}
-      </h1>
-      <div className="text-sm text-gray-500">
-        Step {current + 1} / {steps.length}
-      </div>
 
-      <div className="mb-6">
+      {/* 2. Bọc toàn bộ Header, Steps và Nội dung form vào 1 div flex-1 để cuộn */}
+      <div className="flex-1 overflow-y-auto custom-scrollbar p-4 pb-8">
+        <h1 className="text-2xl font-semibold text-gray-900">
+          {payload.title ? `Update Course: ${payload.title}` : "Update Course"}
+        </h1>
+        <div className="text-sm text-gray-500 mb-6">
+          Step {current + 1} / {steps.length}
+        </div>
+
         <Steps
+          className="mb-6"
           current={current}
           onChange={changeStep}
           items={steps.map((s, i) => {
@@ -484,193 +552,575 @@ export default function UpdateCourseForm({
             }
           })}
         />
-      </div>
 
-      <div>
-        {current === 0 && (
-          <section className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium mb-1 text-gray-700">
-                Title
-              </label>
-              <Input
-                value={payload.title || ""}
-                onChange={(e) => update("title", e.target.value)}
-                maxLength={255}
-                status={
-                  stepStatus[0] === "invalid" && !payload.title?.trim()
-                    ? "error"
-                    : ""
-                }
-                showCount
-              />
-            </div>
-            {/* ✅ Ô CHỌN CATEGORY */}
-            <div>
-              <label className="block text-sm font-medium mb-1 text-gray-700">
-                Category
-              </label>
-              <Select
-                placeholder="Select a category"
-                className="w-full"
-                // ✅ 1. Ép giá trị hiện tại về String (nếu có) để so sánh
-                value={
-                  payload.category_id ? String(payload.category_id) : undefined
-                }
-                // ✅ 2. Khi chọn, ép ngược từ String về Number để lưu vào Payload đúng chuẩn
-                onChange={(val) => update("category_id", Number(val))}
-                // ✅ 3. Ép value trong danh sách options về String
-                options={categories.map((c) => ({
-                  value: String(c.id),
-                  label: c.name,
-                }))}
-                showSearch
-                optionFilterProp="label"
-                filterOption={(input, option) =>
-                  (option?.label ?? "")
-                    .toLowerCase()
-                    .includes(input.toLowerCase())
-                }
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1 text-gray-700">
-                Thumbnail URL
-              </label>
-              <Input
-                value={payload.thumbnail_url || ""}
-                onChange={(e) => update("thumbnail_url", e.target.value)}
-                maxLength={500}
-                showCount
-              />
-              <div className="mt-2">
-                <Upload
-                  accept="image/*"
-                  showUploadList={false}
-                  customRequest={handleUploadThumbnail}
-                >
-                  <Button icon={<AntPlusOutlined />}>Upload Image</Button>
-                </Upload>
-              </div>
-              {imageUrl && (
-                <div className="mt-2">
-                  <img
-                    src={imageUrl}
-                    alt="Thumbnail"
-                    className="max-w-full h-32 object-cover border rounded"
-                  />
-                  <div className="mt-2">
-                    <Button onClick={() => setCropModalVisible(true)}>
-                      Crop Image
-                    </Button>
+        <div>
+          {current === 0 && (
+            <section className="space-y-6">
+              {/* --- BASIC INFO BLOCK --- */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">
+                      Title
+                    </label>
+                    <Input
+                      value={payload.title || ""}
+                      onChange={(e) => update("title", e.target.value)}
+                      maxLength={255}
+                      status={
+                        stepStatus[0] === "invalid" && !payload.title?.trim()
+                          ? "error"
+                          : ""
+                      }
+                      showCount
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">
+                      Category
+                    </label>
+                    <Select
+                      placeholder="Select a category"
+                      className="w-full"
+                      value={
+                        payload.category_id
+                          ? String(payload.category_id)
+                          : undefined
+                      }
+                      onChange={(val) => update("category_id", Number(val))}
+                      options={categories.map((c) => ({
+                        value: String(c.id),
+                        label: c.name,
+                      }))}
+                      showSearch
+                      optionFilterProp="label"
+                      filterOption={(input, option) =>
+                        (option?.label ?? "")
+                          .toLowerCase()
+                          .includes(input.toLowerCase())
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">
+                      Short Description
+                    </label>
+                    <TextArea
+                      value={payload.description || ""}
+                      onChange={(e) => update("description", e.target.value)}
+                      rows={4}
+                      showCount
+                      maxLength={500}
+                    />
                   </div>
                 </div>
-              )}
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1 text-gray-700">
-                Short Description
-              </label>
-              <TextArea
-                value={payload.description || ""}
-                onChange={(e) => update("description", e.target.value)}
-                rows={4}
-                showCount
-                maxLength={500}
-              />
-            </div>
-          </section>
-        )}
 
-        {current === 1 && (
-          <section className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-1 text-gray-700">
-                  Status
-                </label>
-                <Select
-                  value={payload.status}
-                  onChange={(value) => update("status", value)}
-                  className="w-full"
-                  options={Object.entries(COURSE_STATUS_LABELS)
-                    .filter(
-                      ([value]) =>
-                        value === "draft" || value === "pending_approval"
-                    )
-                    .map(([value, label]) => ({ value, label }))}
-                />
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Thumbnail
+                  </label>
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-blue-400 transition-colors bg-gray-50">
+                    {imageUrl ? (
+                      <div className="relative group">
+                        <img
+                          src={imageUrl}
+                          alt="Thumbnail"
+                          className="w-full h-48 object-cover rounded-md border"
+                        />
+                        <div className="absolute inset-0 bg-black bg-opacity-50 hidden group-hover:flex flex-col gap-2 items-center justify-center rounded-md">
+                          <Upload
+                            accept="image/*"
+                            showUploadList={false}
+                            customRequest={handleUploadThumbnail}
+                          >
+                            <Button ghost>Change Image</Button>
+                          </Upload>
+                          <Button
+                            ghost
+                            onClick={() => setCropModalVisible(true)}
+                          >
+                            Crop Image
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <Upload
+                        accept="image/*"
+                        showUploadList={false}
+                        customRequest={handleUploadThumbnail}
+                      >
+                        <div className="py-8 flex flex-col items-center cursor-pointer">
+                          <div className="p-3 bg-blue-100 text-blue-600 rounded-full mb-2">
+                            <InboxOutlined className="text-2xl" />
+                          </div>
+                          <p className="text-gray-600 font-medium">
+                            Click to upload thumbnail
+                          </p>
+                        </div>
+                      </Upload>
+                    )}
+                  </div>
+                  <Input
+                    value={payload.thumbnail_url || ""}
+                    onChange={(e) => {
+                      update("thumbnail_url", e.target.value)
+                      setImageUrl(e.target.value)
+                    }}
+                    placeholder="Or paste image URL here"
+                    className="mt-3"
+                  />
+                </div>
               </div>
+
+              <Divider />
+
+              {/* --- ✅ CẤU HÌNH ENROLLMENT & ASSIGNMENTS --- */}
               <div>
-                <label className="block text-sm font-medium mb-1 text-gray-700">
-                  Duration (hours)
-                </label>
-                <Input
-                  type="number"
-                  value={String(payload.duration_hours ?? "")}
-                  onChange={(e) =>
-                    update(
-                      "duration_hours",
-                      e.target.value ? Number(e.target.value) : undefined
-                    )
-                  }
-                />
-              </div>
-            </div>
-
-            <hr className="my-6 border-gray-200" />
-
-            <div>
-              <CurriculumContentBank
-                modal={modal}
-                availableLessons={availableLessons} // Dùng state đã được khởi tạo
-                availableQuizzes={availableQuizzes} // Dùng state đã được khởi tạo
-                value={payload.curriculum}
-                onChange={(newCurriculum) =>
-                  update("curriculum", newCurriculum)
-                }
-                hasError={
-                  stepStatus[1] === "invalid" &&
-                  (payload.curriculum.length === 0 ||
-                    payload.curriculum.some((s) => s.items.length === 0))
-                }
-                sensors={sensors}
-                onDragEnd={handleDragEnd}
-                activeSectionId={activeSectionId}
-                setActiveSectionId={setActiveSectionId}
-                onOpenCreateModal={() => {}}
-                onLessonCreated={handleLessonCreated} // Truyền callback tạo lesson
-                onLessonUpdated={handleLessonUpdated} // Truyền callback sửa lesson
-                onLessonDeleted={handleLessonDeleted} // Truyền callback xóa lesson
-              />
-              {stepStatus[1] === "invalid" && (
-                <p className="mt-2 text-sm text-red-600">
-                  Curriculum must have at least one section, and each section
-                  must have at least one item.
+                <h2 className="text-lg font-bold text-gray-800 mb-1">
+                  Course Visibility & Enrollment Rules
+                </h2>
+                <p className="text-sm text-gray-500 mb-6">
+                  Configure who can see this course and their learning
+                  deadlines.
                 </p>
-              )}
-            </div>
-          </section>
-        )}
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  {/* CỘT TRÁI: VISIBILITY & GLOBAL DUE DATE */}
+                  <div className="space-y-6">
+                    {/* Visibility */}
+                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                      <label className="block font-semibold text-gray-700 mb-2">
+                        1. Library Visibility
+                      </label>
+                      <Radio.Group
+                        value={payload.visibility || "private"}
+                        onChange={(e) => update("visibility", e.target.value)}
+                        className="flex flex-col gap-3 w-full"
+                      >
+                        <Radio
+                          value="public"
+                          className="bg-white p-3 border rounded-md shadow-sm w-full"
+                        >
+                          <span className="font-semibold text-blue-600">
+                            Public (Open Library)
+                          </span>
+                          <span className="block text-xs text-gray-500 mt-1">
+                            Anyone can see and self-enroll in this course.
+                          </span>
+                        </Radio>
+                        <Radio
+                          value="private"
+                          className="bg-white p-3 border rounded-md shadow-sm w-full m-0"
+                        >
+                          <span className="font-semibold text-orange-600">
+                            Private (Hidden)
+                          </span>
+                          <span className="block text-xs text-gray-500 mt-1">
+                            Hidden from library. Only assigned users can see it.
+                          </span>
+                        </Radio>
+                      </Radio.Group>
+                    </div>
+
+                    {/* Global Due Date */}
+                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                      <label className="block font-semibold text-gray-700 mb-2">
+                        2. Default Due Date
+                      </label>
+                      <p className="text-xs text-gray-500 mb-3">
+                        Applies to users who self-enroll (if Public).
+                      </p>
+
+                      <Radio.Group
+                        value={payload.global_due_type || "none"}
+                        onChange={(e) =>
+                          update("global_due_type", e.target.value)
+                        }
+                        className="flex gap-2 mb-4 w-full"
+                      >
+                        <Radio.Button
+                          value="none"
+                          className="flex-1 text-center"
+                        >
+                          No Limit
+                        </Radio.Button>
+                        <Radio.Button
+                          value="relative"
+                          className="flex-1 text-center"
+                        >
+                          Relative
+                        </Radio.Button>
+                        <Radio.Button
+                          value="fixed"
+                          className="flex-1 text-center"
+                        >
+                          Fixed Date
+                        </Radio.Button>
+                      </Radio.Group>
+
+                      <div className="min-h-[40px]">
+                        {(payload.global_due_type === "none" ||
+                          !payload.global_due_type) && (
+                          <span className="text-sm italic text-gray-500">
+                            Learners can take their time to complete course.
+                          </span>
+                        )}
+                        {payload.global_due_type === "relative" && (
+                          <div className="flex items-center gap-2 bg-white p-2 border rounded">
+                            <span className="text-sm">Complete within</span>
+                            <InputNumber
+                              min={1}
+                              value={payload.global_due_days}
+                              onChange={(v) => update("global_due_days", v)}
+                              className="w-16"
+                            />
+                            <span className="text-sm">
+                              days after enrolling.
+                            </span>
+                          </div>
+                        )}
+                        {payload.global_due_type === "fixed" && (
+                          <div className="flex items-center gap-2 bg-white p-2 border rounded">
+                            <span className="text-sm">Close course on</span>
+                            <DatePicker
+                              value={
+                                payload.global_due_date
+                                  ? dayjs(payload.global_due_date)
+                                  : null
+                              }
+                              onChange={(date) =>
+                                update("global_due_date", date)
+                              }
+                              className="w-full"
+                              format="DD/MM/YYYY"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* CỘT PHẢI: ASSIGNMENT RULES */}
+                  <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 flex flex-col h-full">
+                    <div className="flex justify-between items-start mb-4">
+                      <div>
+                        <label className="block font-semibold text-blue-900 mb-1">
+                          3. Mandatory Assignments
+                        </label>
+                        <p className="text-xs text-blue-700">
+                          Force specific groups to take this course.
+                        </p>
+                      </div>
+                      <Button
+                        type="primary"
+                        ghost
+                        size="small"
+                        icon={<PlusOutlined />}
+                        onClick={() => {
+                          const newRule: AssignmentRulePayload = {
+                            id: Date.now(),
+                            target_type: "department",
+                            due_type: "relative",
+                            due_days: 14,
+                          }
+                          update("assignment_rules", [
+                            ...(payload.assignment_rules || []),
+                            newRule,
+                          ])
+                        }}
+                      >
+                        Add Rule
+                      </Button>
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto space-y-3 pr-1 max-h-[300px]">
+                      {!payload.assignment_rules ||
+                      payload.assignment_rules.length === 0 ? (
+                        <div className="h-32 flex flex-col items-center justify-center border-2 border-dashed border-blue-200 rounded-lg text-blue-400">
+                          <SafetyCertificateOutlined className="text-2xl mb-2" />
+                          <span className="text-sm">
+                            No mandatory rules set.
+                          </span>
+                        </div>
+                      ) : (
+                        payload.assignment_rules.map((rule, index) => (
+                          <Card
+                            key={rule.id}
+                            size="small"
+                            className="shadow-sm border-blue-100"
+                          >
+                            <div className="space-y-3">
+                              {/* Target Row */}
+                              <div className="flex gap-2">
+                                <Select
+                                  value={rule.target_type}
+                                  onChange={(val) => {
+                                    const rules = [...payload.assignment_rules!]
+                                    rules[index] = {
+                                      ...rule,
+                                      target_type: val,
+                                      department_id: null,
+                                      role_id: null,
+                                      user_id: null,
+                                    }
+                                    update("assignment_rules", rules)
+                                  }}
+                                  className="w-32"
+                                  options={[
+                                    {
+                                      value: "all_employees",
+                                      label: "All Staff",
+                                    },
+                                    {
+                                      value: "department",
+                                      label: "Department",
+                                    },
+                                    { value: "role", label: "Role" },
+                                    { value: "user", label: "User" },
+                                  ]}
+                                />
+
+                                <div className="flex-1">
+                                  {rule.target_type === "department" && (
+                                    <Select
+                                      placeholder="Select Dept"
+                                      className="w-full"
+                                      value={rule.department_id}
+                                      onChange={(val) => {
+                                        const r = [...payload.assignment_rules!]
+                                        r[index].department_id = val
+                                        update("assignment_rules", r)
+                                      }}
+                                      options={[
+                                        { value: 1, label: "IT Department" },
+                                        { value: 2, label: "HR Department" },
+                                      ]} // TODO: Replace with real data
+                                    />
+                                  )}
+                                  {rule.target_type === "role" && (
+                                    <Select
+                                      placeholder="Select Role"
+                                      className="w-full"
+                                      value={rule.role_id}
+                                      onChange={(val) => {
+                                        const r = [...payload.assignment_rules!]
+                                        r[index].role_id = val
+                                        update("assignment_rules", r)
+                                      }}
+                                      options={[
+                                        { value: 1, label: "Manager" },
+                                        { value: 2, label: "Staff" },
+                                      ]} // TODO: Replace with real data
+                                    />
+                                  )}
+                                  {rule.target_type === "user" && (
+                                    <Select
+                                      placeholder="Select User"
+                                      className="w-full"
+                                      value={rule.user_id}
+                                      onChange={(val) => {
+                                        const r = [...payload.assignment_rules!]
+                                        r[index].user_id = val
+                                        update("assignment_rules", r)
+                                      }}
+                                      options={[
+                                        { value: 1, label: "John Doe" },
+                                        { value: 2, label: "Jane Smith" },
+                                      ]} // TODO: Replace with real data
+                                    />
+                                  )}
+                                  {rule.target_type === "all_employees" && (
+                                    <Input
+                                      disabled
+                                      value="Entire Company"
+                                      className="bg-gray-50 text-center"
+                                    />
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Due Date Row */}
+                              <div className="flex gap-2 items-center bg-gray-50 p-2 rounded border border-gray-200">
+                                <span className="text-xs font-semibold text-gray-500 w-16">
+                                  Deadline:
+                                </span>
+                                <Select
+                                  size="small"
+                                  value={rule.due_type}
+                                  className="w-24"
+                                  onChange={(val) => {
+                                    const r = [...payload.assignment_rules!]
+                                    r[index].due_type = val
+                                    update("assignment_rules", r)
+                                  }}
+                                  options={[
+                                    { value: "none", label: "None" },
+                                    { value: "relative", label: "Days" },
+                                    { value: "fixed", label: "Date" },
+                                  ]}
+                                />
+                                <div className="flex-1 flex justify-end">
+                                  {rule.due_type === "relative" && (
+                                    <InputNumber
+                                      size="small"
+                                      min={1}
+                                      value={rule.due_days}
+                                      onChange={(v) => {
+                                        const r = [...payload.assignment_rules!]
+                                        r[index].due_days = v
+                                        update("assignment_rules", r)
+                                      }}
+                                      addonAfter="days"
+                                      className="w-full"
+                                    />
+                                  )}
+                                  {rule.due_type === "fixed" && (
+                                    <DatePicker
+                                      size="small"
+                                      value={
+                                        rule.due_date
+                                          ? dayjs(rule.due_date)
+                                          : null
+                                      }
+                                      onChange={(d) => {
+                                        const r = [...payload.assignment_rules!]
+                                        r[index].due_date = d
+                                        update("assignment_rules", r)
+                                      }}
+                                      format="DD/MM/YYYY"
+                                      className="w-full"
+                                    />
+                                  )}
+                                  {(rule.due_type === "none" ||
+                                    !rule.due_type) && (
+                                    <span className="text-xs text-gray-400 italic">
+                                      No time limit
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                            <Button
+                              type="text"
+                              danger
+                              size="small"
+                              className="absolute top-1 right-1"
+                              icon={<DeleteOutlined />}
+                              onClick={() => {
+                                const rules = [...payload.assignment_rules!]
+                                rules.splice(index, 1)
+                                update("assignment_rules", rules)
+                              }}
+                            />
+                          </Card>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+          )}
+
+          {current === 1 && (
+            <section className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1 text-gray-700">
+                    Status
+                  </label>
+                  <Select
+                    value={payload.status}
+                    onChange={(value) => update("status", value)}
+                    className="w-full"
+                    options={Object.entries(COURSE_STATUS_LABELS)
+                      .filter(
+                        ([value]) =>
+                          value === "draft" || value === "pending_approval"
+                      )
+                      .map(([value, label]) => ({ value, label }))}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1 text-gray-700">
+                    Duration (hours)
+                  </label>
+                  <Input
+                    type="number"
+                    value={String(payload.duration_hours ?? "")}
+                    onChange={(e) =>
+                      update(
+                        "duration_hours",
+                        e.target.value ? Number(e.target.value) : undefined
+                      )
+                    }
+                  />
+                </div>
+              </div>
+
+              <hr className="my-6 border-gray-200" />
+
+              <div>
+                <CurriculumContentBank
+                  modal={modal}
+                  availableLessons={availableLessons} // Dùng state đã được khởi tạo
+                  availableQuizzes={availableQuizzes} // Dùng state đã được khởi tạo
+                  value={payload.curriculum}
+                  onChange={(newCurriculum) =>
+                    update("curriculum", newCurriculum)
+                  }
+                  hasError={
+                    stepStatus[1] === "invalid" &&
+                    (payload.curriculum.length === 0 ||
+                      payload.curriculum.some((s) => s.items.length === 0))
+                  }
+                  sensors={sensors}
+                  onDragEnd={handleDragEnd}
+                  activeSectionId={activeSectionId}
+                  setActiveSectionId={setActiveSectionId}
+                  onOpenCreateModal={() => {}}
+                  onLessonCreated={handleLessonCreated} // Truyền callback tạo lesson
+                  onLessonUpdated={handleLessonUpdated} // Truyền callback sửa lesson
+                  onLessonDeleted={handleLessonDeleted} // Truyền callback xóa lesson
+                />
+                {stepStatus[1] === "invalid" && (
+                  <p className="mt-2 text-sm text-red-600">
+                    Curriculum must have at least one section, and each section
+                    must have at least one item.
+                  </p>
+                )}
+              </div>
+            </section>
+          )}
+        </div>
       </div>
 
-      <div className="mt-6 flex items-center justify-between">
+      {/* 3. FOOTER BUTTONS: Bỏ "absolute bottom-0 left-0", thêm "mt-auto" */}
+      <div className="bg-white border-t p-4 flex justify-between rounded-b-lg shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-10 mt-auto">
         <div>
           {current > 0 && (
-            <Button onClick={() => changeStep(current - 1)}>Back</Button>
+            <Button size="large" onClick={() => changeStep(current - 1)}>
+              Back
+            </Button>
           )}
         </div>
         <div>
           {current < steps.length - 1 ? (
-            <Button type="primary" onClick={() => changeStep(current + 1)}>
-              Next
+            <Button
+              type="primary"
+              size="large"
+              onClick={() => changeStep(current + 1)}
+            >
+              Continue to Curriculum
             </Button>
           ) : (
             <Button
               type="primary"
+              size="large"
               onClick={handleSubmit}
               loading={loading}
               style={{ backgroundColor: "#10b981" }}
+              className="font-bold px-8 shadow-md"
             >
               Save Changes
             </Button>
