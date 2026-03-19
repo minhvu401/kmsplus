@@ -113,7 +113,7 @@ export default function LoginPageContent() {
               callbackUrl={searchParams?.get("callbackUrl")}
               onForgotPassword={() => setShowForgot(true)}
               onSuccess={() => {
-                const cb = searchParams?.get("callbackUrl") || "/dashboard"
+                const cb = searchParams?.get("callbackUrl") || "/dashboard-metrics"
                 window.location.replace(cb)
               }}
             />

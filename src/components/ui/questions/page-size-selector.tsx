@@ -22,12 +22,12 @@ export default function PageSizeSelector({
     }
 
     return (
-        <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-600">Items per page:</span>
+        <div className="flex items-center gap-3">
+            <span className="text-sm text-gray-700 font-medium">Items per page:</span>
             <Select
                 value={currentPageSize}
                 onChange={handleChangePageSize}
-                style={{ width: 80 }}
+                style={{ width: 80, fontSize: "14px" }}
                 options={[
                     { label: '5', value: 5 },
                     { label: '10', value: 10 },

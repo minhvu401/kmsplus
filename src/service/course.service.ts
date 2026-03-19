@@ -62,8 +62,9 @@ type GetAllCoursesParams = {
   query?: string
   page?: number
   limit?: number
-  sort?: "trending" | "popular" | "newest"
+  sort?: "trending" | "popular" | "newest" | "top-rated"
   category?: string // ✅ Added filter param
+  rating?: string // ✅ Added rating filter (all, 4plus, 3plus, 2plus)
 }
 
 // --- CATEGORY ACTIONS ---
@@ -91,7 +92,8 @@ export async function getAllCoursesAction({
   page = 1,
   limit = 10,
   sort = "trending",
-  category = "all", // ✅ Default param
+  category = "all",
+  rating = "all",
 }: GetAllCoursesParams) {
   const offset = (page - 1) * limit
 
@@ -104,18 +106,26 @@ export async function getAllCoursesAction({
     case "newest":
       orderBy = "created_at DESC, enrollment_count DESC"
       break
+    case "top-rated":
+      // TODO: Add rating column to courses table when available
+      // For now, order by enrollment_count as proxy for quality
+      orderBy = "enrollment_count DESC, created_at DESC"
+      break
     case "trending":
     default:
       orderBy = "created_at DESC"
       break
   }
 
-  // ✅ Xử lý Filter Category (An toàn hơn)
-  // Chỉ lọc khi category khác "all", khác rỗng và tồn tại
+  // ✅ Xử lý Filter Category
   const categoryCondition =
     category && category !== "all" && category !== ""
       ? sql`AND category_id = ${category}`
       : sql``
+
+  // ✅ Xử lý Filter Rating
+  // TODO: Add rating filter logic when rating column is available in database
+  // const ratingCondition = rating && rating !== "all" ? sql`AND rating >= ${getRatingValue(rating)}` : sql``
 
   // Query Courses
   const rows = await sql`
@@ -439,6 +449,7 @@ export async function getPublishedCoursesService({
   limit = 12,
   sort = "trending",
   category = "all",
+  rating = "all",
 }: GetAllCoursesParams) {
   const offset = (page - 1) * limit
 
@@ -451,6 +462,11 @@ export async function getPublishedCoursesService({
     case "newest":
       orderBy = "created_at DESC, enrollment_count DESC"
       break
+    case "top-rated":
+      // TODO: Add rating column to courses table when available
+      // For now, order by enrollment_count as proxy for quality
+      orderBy = "enrollment_count DESC, created_at DESC"
+      break
     case "trending":
     default:
       orderBy = "created_at DESC"
@@ -462,6 +478,10 @@ export async function getPublishedCoursesService({
     category && category !== "all" && category !== ""
       ? sql`AND category_id = ${category}`
       : sql``
+
+  // ✅ Xử lý Filter Rating
+  // TODO: Add rating filter logic when rating column is available in database
+  // const ratingCondition = rating && rating !== "all" ? sql`AND rating >= ${getRatingValue(rating)}` : sql``
 
   // Query Courses - CHỈ LẤY PUBLISHED
   const rows = await sql`

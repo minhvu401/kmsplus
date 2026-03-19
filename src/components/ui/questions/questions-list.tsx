@@ -1,113 +1,32 @@
 'use client';
 
-import { Flex, Typography, Tag, Divider } from 'antd';
-import Link from 'next/link';
-import { formatDistanceToNowStrict } from 'date-fns';
+import { Flex, Typography } from 'antd';
+import { MessageOutlined } from '@ant-design/icons';
+import QuestionCard, { type Question } from './question-card';
 
-const { Text, Title } = Typography;
+const { Text } = Typography;
 
-// Helper function to strip HTML tags and decode entities for preview
-function stripHtml(html: string): string {
-    return html
-        .replace(/<\/p>/gi, ' ')  // Replace closing </p> tags with space
-        .replace(/<br\s*\/?>/gi, ' ') // Replace <br> tags with space
-        .replace(/<[^>]*>/g, '') // Remove remaining HTML tags
-        .replace(/&nbsp;/g, ' ') // Replace &nbsp; with space
-        .replace(/&amp;/g, '&')  // Decode &amp;
-        .replace(/&lt;/g, '<')   // Decode &lt;
-        .replace(/&gt;/g, '>')   // Decode &gt;
-        .replace(/&quot;/g, '"') // Decode &quot;
-        .replace(/&#39;/g, "'")  // Decode &#39;
-        .replace(/\s+/g, ' ')    // Collapse multiple spaces into one
-        .trim();
-}
-
-export type Question = {
-    id: number
-    user_id: number
-    category_id: number | null
-    title: string
-    content: string
-    answer_count: number
-    is_closed: boolean
-    deleted_at?: Date | null
-    created_at: Date
-    updated_at: Date
-    user_name: string
-    category_name: string
-}
+export type { Question } from './question-card';
 
 export default function QuestionsList({ questions, noSearchResults }: { questions: Question[]; noSearchResults: boolean }) {
     
     if (!questions || questions.length === 0) {
         return (
-            <Flex justify="center" align="center" style={{ padding: '48px 0', width: '100%' }}>
-                <Text type="secondary">{noSearchResults ? "No results match your search." : "No questions found"}</Text>
+            <Flex justify="center" align="center" style={{ padding: '60px 0', width: '100%' }}>
+                <Flex vertical align="center" gap="middle">
+                    <MessageOutlined style={{ fontSize: '48px', color: '#d1d5db' }} />
+                    <Text type="secondary" style={{ fontSize: "15px" }}>
+                        {noSearchResults ? "No results match your search." : "No questions found"}
+                    </Text>
+                </Flex>
             </Flex>
         );
     }
     
     return (
-        <Flex vertical gap="large" style={{ width: '100%' }}>
-            {questions.map((q) => (
-                <Flex key={q.id} vertical gap="small">
-                    {/* Top row: Title + counts */}
-                    <Flex justify="space-between" align="flex-start">
-                        <Flex vertical gap="medium" style={{ flex: 1 }}>
-                            <Link href={`/questions/${q.id}`} className="hover:underline">
-                                <Title
-                                    level={4}
-                                    style={{
-                                        color: '#1677ff',
-                                        marginBottom: 0,
-                                        transition: 'text-decoration 0.2s ease',
-                                    }}
-                                >
-                                    {q.title}
-                                </Title>
-                            </Link>
-
-                            {/* Two-line text clamp */}
-                            <Text
-                                type="secondary"
-                                style={{
-                                    display: '-webkit-box',
-                                    WebkitLineClamp: 2,
-                                    WebkitBoxOrient: 'vertical',
-                                    overflow: 'hidden',
-                                }}
-                            >
-                                <p className="text-gray-600 line-clamp-2">
-                                    {stripHtml(q.content)}
-                                </p>
-                            </Text>
-                        </Flex>
-
-                        {/* Right side: Answer + view count */}
-                        <Flex vertical align="flex-end" style={{ minWidth: 80 }}>
-                            <Text strong>{q.answer_count} answers</Text>
-                        </Flex>
-                    </Flex>
-
-                    {/* Bottom row: tags + user info */}
-                    <Flex justify="space-between" align="center">
-                        <Flex gap={8}>
-                            <Tag color="blue">{q.category_name}</Tag>
-                            <Tag color={q.is_closed ? 'red' : 'green'}>
-                                {q.is_closed ? 'Closed' : 'Open'}
-                            </Tag>
-                        </Flex>
-
-                        <Text type="secondary" strong>
-                            {q.user_name} asked{' '}
-                            {formatDistanceToNowStrict(new Date(q.created_at), {
-                                addSuffix: true,
-                            })}
-                        </Text>
-                    </Flex>
-
-                    <Divider style={{ margin: '12px 0' }} />
-                </Flex>
+        <Flex vertical gap={12} style={{ width: '100%' }}>
+            {questions.map((question) => (
+                <QuestionCard key={question.id} question={question} />
             ))}
         </Flex>
     );
