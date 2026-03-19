@@ -17,6 +17,7 @@ import Link from "next/link"
 import { useRouter, useSearchParams, usePathname } from "next/navigation" // Import thêm hook điều hướng
 import CompleteButton from "./CompleteButton"
 import { getLessonByIdAction } from "@/service/lesson.service"
+import FeedbackBanner from "@/components/FeedbackBanner"
 
 const { Header, Sider, Content } = Layout
 
@@ -34,6 +35,10 @@ export default function LearningClient({
   const [loadingContent, setLoadingContent] = useState(false)
   const [completedIds, setCompletedIds] =
     useState<number[]>(initialCompletedIds)
+  const [hasSubmittedFeedback, setHasSubmittedFeedback] = useState(
+    Boolean(enrollment?.has_submitted_feedback)
+  )
+  const [messageApi, contextHolder] = message.useMessage()
 
   // Real-time progress from database
   const currentProgressPercentage = enrollment?.progress_percentage || 0
@@ -306,6 +311,7 @@ export default function LearningClient({
   // --- RENDER GIAO DIỆN ---
   return (
     <Layout className="h-screen overflow-hidden flex flex-col">
+      {contextHolder}
       {/* 1. HEADER */}
       <Header className="bg-white border-b px-6 flex items-center justify-between h-16 flex-shrink-0 z-10 shadow-sm">
         <div className="flex items-center gap-4">
@@ -342,6 +348,15 @@ export default function LearningClient({
         {/* 2. MAIN CONTENT AREA */}
         <Content className="flex-1 overflow-y-auto bg-gray-50 p-4 md:p-8 relative">
           <div className="max-w-5xl mx-auto pb-20">
+            {Math.round(currentProgressPercentage) === 100 &&
+              !hasSubmittedFeedback && (
+                <FeedbackBanner
+                  courseId={course.id}
+                  onSubmitted={() => setHasSubmittedFeedback(true)}
+                  onSuccessMessage={(content) => messageApi.success(content)}
+                  onErrorMessage={(content) => messageApi.error(content)}
+                />
+            )}
             {loadingContent ? (
               <div className="h-96 flex flex-col items-center justify-center gap-4">
                 <Spin size="large" />
