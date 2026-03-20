@@ -75,3 +75,96 @@ export async function generateAIResponse(
     throw new Error("Failed to generate AI response")
   }
 }
+
+// ============================================
+// AI EXPLANATION FUNCTION
+// ============================================
+
+const EXPLANATION_SYSTEM_PROMPT = `You are an expert tutor for KMS Plus educational platform. When a student asks for a deeper explanation of a quiz answer, your job is to:
+
+## Your Explanation Approach
+1. **Explain the Concept**: First, explain the underlying concept or principle being tested
+2. **Connect to the Answer**: Show how this concept applies to the correct answer
+3. **Address Misconceptions**: Gently explain common mistakes that lead to wrong answers
+4. **Real-World Examples**: Provide practical examples to illustrate the concept
+5. **Study Tips**: Give helpful tips for remembering this concept for future quizzes
+
+## How to Structure Your Response
+- Start with a brief overview of the concept
+- Explain step-by-step why the answer is correct
+- If relevant, explain why other options might seem tempting but are wrong
+- Provide an example or analogy
+- Summarize the key takeaway
+- Suggest how to practice or remember this concept
+
+## Tone and Style
+- Be encouraging and supportive
+- Use simple language - remember this is for learning
+- Break complex ideas into digestible parts
+- Use formatting (bold, bullet points) to organize information
+- Be concise but thorough - aim for 200-400 words`
+
+interface ExplanationInput {
+  questionText: string
+  explanation: string
+  correctAnswer: string
+  questionType: "single_choice" | "multiple_choice"
+  options?: string[]
+  userAnswer?: string
+  category?: string
+}
+
+export async function generateAIExplanation(
+  input: ExplanationInput
+): Promise<string> {
+  try {
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" })
+
+    // Build the explanation prompt
+    let userPrompt = `I need a deeper explanation for this quiz question:
+
+## Question
+${input.questionText}
+
+## Question Type
+${input.questionType}
+
+## Correct Answer
+${input.correctAnswer}`
+
+    if (input.options && input.options.length > 0) {
+      userPrompt += `\n\n## Available Options\n${input.options.map((opt, idx) => `${idx + 1}. ${opt}`).join("\n")}`
+    }
+
+    if (input.userAnswer) {
+      userPrompt += `\n\n## Student's Answer\n${input.userAnswer}`
+    }
+
+    if (input.category) {
+      userPrompt += `\n\n## Topic/Category\n${input.category}`
+    }
+
+    userPrompt += `\n\n## Foundation Explanation from Course\n${input.explanation}`
+
+    userPrompt += `\n\nPlease provide a comprehensive explanation that helps me understand this answer better.`
+
+    const fullPrompt = `${EXPLANATION_SYSTEM_PROMPT}\n\n${userPrompt}`
+
+    const result = await model.generateContent(fullPrompt)
+    const response = await result.response
+    const text = response.text()
+
+    return text
+  } catch (error: any) {
+    console.error("❌ Error generating AI explanation:", error)
+
+    if (error?.status === 429) {
+      console.warn(
+        "⚠️ Gemini API quota exceeded. Please upgrade your API key or wait."
+      )
+      return "I apologize, but I've temporarily reached my API quota limit. Please try again in a few moments."
+    }
+
+    throw new Error("Failed to generate AI explanation")
+  }
+}
