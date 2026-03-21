@@ -13,7 +13,6 @@ export type Review = {
   user_id: number
   rating: number
   content: string | null
-  is_deleted: boolean
   deleted_at: Date | null
   created_at: Date
   updated_at: Date
@@ -45,6 +44,12 @@ type GetAllReviewsParams = {
   limit?: number
 }
 
+type GetCourseReviewsManagementParams = {
+  course_id: number
+  page?: number
+  limit?: number
+}
+
 // --- HELPER ---
 
 /**
@@ -61,7 +66,7 @@ async function syncAverageRating(courseId: number): Promise<void> {
           SELECT ROUND(AVG(rating))::smallint
           FROM feedback
           WHERE course_id = ${courseId}
-            AND is_deleted = false
+            AND deleted_at IS NULL
         ),
         0
       ),
@@ -88,7 +93,6 @@ export async function getAllReviewsAction({
       f.user_id,
       f.rating,
       f.content,
-      f.is_deleted,
       f.deleted_at,
       f.created_at,
       f.updated_at,
@@ -97,7 +101,7 @@ export async function getAllReviewsAction({
       u.avatar_url AS user_avatar
     FROM feedback f
     LEFT JOIN users u ON f.user_id = u.id
-    WHERE f.is_deleted = false
+    WHERE f.deleted_at IS NULL
       ${courseCondition}
     ORDER BY f.created_at DESC
     LIMIT ${limit}
@@ -107,7 +111,7 @@ export async function getAllReviewsAction({
   const totalResult = await sql`
     SELECT COUNT(*)
     FROM feedback f
-    WHERE f.is_deleted = false
+    WHERE f.deleted_at IS NULL
       ${courseCondition}
   `
 
@@ -125,7 +129,6 @@ export async function getReviewByIdAction(id: number): Promise<ReviewWithUser | 
       f.user_id,
       f.rating,
       f.content,
-      f.is_deleted,
       f.deleted_at,
       f.created_at,
       f.updated_at,
@@ -135,9 +138,49 @@ export async function getReviewByIdAction(id: number): Promise<ReviewWithUser | 
     FROM feedback f
     LEFT JOIN users u ON f.user_id = u.id
     WHERE f.id = ${id}
-      AND f.is_deleted = false
+      AND f.deleted_at IS NULL
   `
   return rows.length > 0 ? (rows[0] as ReviewWithUser) : null
+}
+
+export async function getCourseReviewsForManagementAction({
+  course_id,
+  page = 1,
+  limit = 10,
+}: GetCourseReviewsManagementParams): Promise<{ reviews: ReviewWithUser[]; totalCount: number }> {
+  const offset = (page - 1) * limit
+
+  const rows = await sql`
+    SELECT
+      f.id,
+      f.course_id,
+      f.user_id,
+      f.rating,
+      f.content,
+      f.deleted_at,
+      f.created_at,
+      f.updated_at,
+      u.full_name  AS user_name,
+      u.email      AS user_email,
+      u.avatar_url AS user_avatar
+    FROM feedback f
+    LEFT JOIN users u ON f.user_id = u.id
+    WHERE f.course_id = ${course_id}
+    ORDER BY f.created_at DESC
+    LIMIT ${limit}
+    OFFSET ${offset}
+  `
+
+  const totalResult = await sql`
+    SELECT COUNT(*)
+    FROM feedback f
+    WHERE f.course_id = ${course_id}
+  `
+
+  return {
+    reviews: rows as ReviewWithUser[],
+    totalCount: parseInt(totalResult[0].count as string, 10),
+  }
 }
 
 export async function createReviewAction(
@@ -178,7 +221,7 @@ export async function updateReviewAction(
     // Verify ownership before updating
     const existing = await sql`
       SELECT id, course_id FROM feedback
-      WHERE id = ${id} AND user_id = ${user_id} AND is_deleted = false
+      WHERE id = ${id} AND user_id = ${user_id} AND deleted_at IS NULL
     `
 
     if (existing.length === 0) {
@@ -195,7 +238,7 @@ export async function updateReviewAction(
         updated_at = (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Ho_Chi_Minh')
       WHERE id = ${id}
         AND user_id = ${user_id}
-        AND is_deleted = false
+        AND deleted_at IS NULL
     `
 
     await syncAverageRating(courseId)
@@ -219,7 +262,7 @@ export async function deleteReviewAction(
     const existing = await sql`
       SELECT id, course_id FROM feedback
       WHERE id = ${id}
-        AND is_deleted = false
+        AND deleted_at IS NULL
         ${ownerCondition}
     `
 
@@ -232,7 +275,6 @@ export async function deleteReviewAction(
     await sql`
       UPDATE feedback
       SET
-        is_deleted = true,
         deleted_at = (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Ho_Chi_Minh'),
         updated_at = (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Ho_Chi_Minh')
       WHERE id = ${id}

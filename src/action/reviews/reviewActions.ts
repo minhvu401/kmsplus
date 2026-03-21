@@ -5,13 +5,16 @@
 "use server"
 
 import { requireAuth } from "@/lib/auth"
+import { requirePermission } from "@/lib/requirePermission"
+import { Permission } from "@/enum/permission.enum"
 import { revalidatePath } from "next/cache"
 import {
   getAllReviewsAction,
   getReviewByIdAction,
   createReviewAction,
   updateReviewAction,
-  deleteReviewAction
+  deleteReviewAction,
+  getCourseReviewsForManagementAction,
 } from "@/service/review.service"
 
 function isHalfStepRating(value: number) {
@@ -39,6 +42,15 @@ export async function getAllReviews(params: {
 export async function getReviewById(id: number) {
   await requireAuth()
   return getReviewByIdAction(id)
+}
+
+export async function getCourseReviewsForManagement(params: {
+  course_id: number
+  page?: number
+  limit?: number
+}) {
+  await requirePermission(Permission.UPDATE_COURSE)
+  return getCourseReviewsForManagementAction(params)
 }
 
 // --- MUTATION ACTIONS ---
@@ -177,5 +189,41 @@ export async function deleteReview(formData: FormData) {
   } catch (error: any) {
     console.error("Action Error - deleteReview:", error)
     return { success: false, error: error?.message ?? "Failed to delete review" }
+  }
+}
+
+export async function deactivateReviewByManager(payload: {
+  id: number
+  course_id: number
+}) {
+  try {
+    const currentUser = await requirePermission(Permission.UPDATE_COURSE)
+
+    if (!payload.id || Number.isNaN(payload.id)) {
+      return { success: false, error: "Invalid review ID" }
+    }
+
+    if (!payload.course_id || Number.isNaN(payload.course_id)) {
+      return { success: false, error: "Invalid course ID" }
+    }
+
+    const result = await deleteReviewAction(
+      payload.id,
+      parseInt(currentUser.id, 10),
+      true,
+    )
+
+    if (result.success) {
+      revalidatePath(`/courses/${payload.course_id}`)
+      revalidatePath(`/courses/manage/${payload.course_id}`)
+    }
+
+    return result
+  } catch (error: any) {
+    console.error("Action Error - deactivateReviewByManager:", error)
+    return {
+      success: false,
+      error: error?.message ?? "Failed to deactivate review",
+    }
   }
 }

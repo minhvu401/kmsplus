@@ -17,7 +17,7 @@ import Link from "next/link"
 import { useRouter, useSearchParams, usePathname } from "next/navigation" // Import thêm hook điều hướng
 import CompleteButton from "./CompleteButton"
 import { getLessonByIdAction } from "@/service/lesson.service"
-import FeedbackBanner from "@/components/FeedbackBanner"
+import FeedbackBanner from "@/components/ui/reviews/feedback-banner"
 
 const { Header, Sider, Content } = Layout
 

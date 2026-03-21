@@ -4,9 +4,10 @@
 import React, { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { Input, Button, Table, Pagination, message, Modal, Tag } from "antd"
+import { Input, Button, Table, Pagination, message, Modal, Tag, Rate, Typography } from "antd"
 import {
   SearchOutlined,
+  ReadOutlined,
   EditOutlined,
   DeleteOutlined,
   PlusOutlined,
@@ -31,6 +32,19 @@ interface ManageCoursesClientProps {
   page: number
   availableLessons: any[]
   availableQuizzes: any[]
+}
+
+const { Text } = Typography
+
+function normalizeRating(value: number | string | null | undefined) {
+  const parsed = typeof value === "number" ? value : Number(value)
+  const safeValue = Number.isFinite(parsed) ? parsed : 0
+  const clamped = Math.max(0, Math.min(5, safeValue))
+  return Math.round(clamped * 2) / 2
+}
+
+function formatRating(value: number) {
+  return Number(value).toFixed(1)
 }
 
 export default function ManageCoursesClient({
@@ -320,6 +334,32 @@ export default function ManageCoursesClient({
       },
     },
     {
+      title: "Avg. Rating",
+      dataIndex: "average_rating",
+      key: "average_rating",
+      render: (averageRating: number | string | null) => {
+        const normalizedRating = normalizeRating(averageRating)
+
+        if (normalizedRating === 0) {
+          return <Text className="!font-normal text-gray-500">N/A</Text>
+        }
+
+        return (
+          <div className="flex items-center gap-2 whitespace-nowrap text-gray-600">
+            <Rate
+              allowHalf
+              disabled
+              value={1}
+              count={1}
+            />
+            <Text className="!font-normal text-gray-600">
+              {formatRating(normalizedRating)}
+            </Text>
+          </div>
+        )
+      },
+    },
+    {
       title: "Enrollments",
       dataIndex: "enrollment_count",
       key: "enrollment_count",
@@ -401,11 +441,16 @@ export default function ManageCoursesClient({
           {/* Nút Delete */}
           <Button
             type="text"
-            danger
+            danger={record.status !== "published"}
             icon={<DeleteOutlined />}
             size="small"
+            disabled={record.status === "published" || record.status === "pending_approval"}
             // ✅ Thêm nền đỏ nhạt khi hover
-            className="hover:bg-red-50"
+            className={
+              record.status === "published" || record.status === "pending_approval"
+                ? "!text-gray-400 cursor-not-allowed"
+                : "hover:bg-red-50"
+            }
             onClick={(e) => {
               // 🛑 Ngăn chặn hành vi mặc định và lan truyền
               e.stopPropagation()
@@ -415,6 +460,18 @@ export default function ManageCoursesClient({
               console.log("🔴 Client: Đã bấm nút Delete ID:", record.id)
 
               handleDelete(record)
+            }}
+          />
+
+          <Button
+            type="text"
+            icon={<ReadOutlined />}
+            size="small"
+            className="text-green-600 hover:!text-green-700 hover:bg-green-50"
+            onClick={(e) => {
+              e.stopPropagation()
+              e.preventDefault()
+              router.push(`/courses/manage/${record.id}`)
             }}
           />
         </div>
