@@ -29,6 +29,7 @@ export type Course = {
   description: string | null
   thumbnail_url: string | null
   status: CourseStatus
+  average_rating: number | null
   duration_hours: number | null
   enrollment_count: number
   approved_by: number | null

@@ -67,7 +67,7 @@ export async function checkEnrollmentStatus(courseId: number, userId: number) {
           FROM feedback f
           WHERE f.user_id = ${userId}
             AND f.course_id = ${courseId}
-            AND f.is_deleted = false
+            AND f.deleted_at IS NULL
         ) AS has_submitted_feedback
       FROM enrollments 
       WHERE user_id = ${userId} AND course_id = ${courseId}

@@ -14,10 +14,12 @@ import {
   getCourseByIdAction,
   getAllCoursesAction,
 } from "@/service/course.service"
+import { getUserDetail } from "@/service/user.service"
+import { getAllReviewsAction } from "@/service/review.service"
 import type { Course } from "@/service/course.service"
 import Link from "next/link"
-import { Button, Tabs, Card, Image, Progress } from "antd"
-import { PlayCircleOutlined, UserOutlined } from "@ant-design/icons" // Đã có PlayCircleOutlined ở đây
+import { Button, Tabs, Card, Image, Progress, Avatar } from "antd"
+import { PlayCircleOutlined, UserOutlined, StarFilled } from "@ant-design/icons" // Đã có PlayCircleOutlined ở đây
 
 type Props = {
   params: Promise<{ id: string }>
@@ -47,16 +49,21 @@ export default async function CourseDetailPage({ params }: Props) {
   const user = await getCurrentUser()
 
   // 2. Fetch dữ liệu song song (Tối ưu hiệu năng)
-  const [course, enrollment, coursesRes] = await Promise.all([
+  const [course, enrollment, coursesRes, reviewsMeta] = await Promise.all([
     getCourseByIdAction(courseId),
     // ✅ FIX LỖI 3: Khai báo và gán giá trị cho biến enrollment ở đây
     user ? checkEnrollmentStatus(courseId, Number(user.id)) : null,
     getAllCoursesAction({ limit: 6, page: 1, sort: "newest" }),
+    getAllReviewsAction({ course_id: courseId, page: 1, limit: 1 }),
   ])
 
   if (!course) {
     notFound()
   }
+
+  const creator = await getUserDetail(String(course.creator_id))
+  const averageRating = Number(course.average_rating ?? 0).toFixed(1)
+  const ratingsCount = reviewsMeta.totalCount
 
   const related = (coursesRes?.courses || [])
     .filter((c) => c.id !== courseId)
@@ -72,9 +79,23 @@ export default async function CourseDetailPage({ params }: Props) {
                 {course.title}
               </h1>
               <div className="mt-2 text-sm text-gray-600 flex items-center gap-4">
-                <div>By Creator #{course.creator_id}</div>
+                <div className="flex items-center gap-2">
+                  <span>By</span>
+                  <Avatar
+                    size={20}
+                    src={creator?.avatar_url || undefined}
+                    icon={<UserOutlined />}
+                  />
+                  <span>{creator?.full_name || "Unknown creator"}</span>
+                </div>
                 <div>·</div>
                 <div>{course.enrollment_count} students</div>
+                <div>·</div>
+                <div className="flex items-center gap-1">
+                  <StarFilled className="text-yellow-500" />
+                  <span>{averageRating}</span>
+                  <span className="text-gray-500">({ratingsCount})</span>
+                </div>
               </div>
 
               <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -175,24 +196,22 @@ export default async function CourseDetailPage({ params }: Props) {
                             Course instructor
                           </h3>
                           <Card>
-                            <p className="text-sm text-gray-600">
-                              Creator id #{course.creator_id}.
-                            </p>
+                            <div className="flex items-center gap-4">
+                              <Avatar
+                                size={56}
+                                src={creator?.avatar_url || undefined}
+                                icon={<UserOutlined />}
+                              />
+                              <div>
+                                <p className="text-base font-semibold text-gray-800">
+                                  {creator?.full_name || "Unknown creator"}
+                                </p>
+                                <p className="text-sm text-gray-600">
+                                  {creator?.email || "No email available"}
+                                </p>
+                              </div>
+                            </div>
                           </Card>
-                        </section>
-                      ),
-                    },
-                    {
-                      key: "4",
-                      label: "Review",
-                      children: (
-                        <section>
-                          <h3 className="text-lg font-semibold mb-2">
-                            Students Feedback
-                          </h3>
-                          <div className="space-y-4">
-                            <Card>No reviews yet.</Card>
-                          </div>
                         </section>
                       ),
                     },
