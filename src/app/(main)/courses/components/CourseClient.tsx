@@ -2,31 +2,21 @@
 "use client"
 
 import type { Course } from "@/service/course.service"
-import React, { useState, useMemo, useCallback, useEffect } from "react"
-import { useRouter } from "next/navigation" // ✅ Dùng router của Next.js
-import { Clock } from "lucide-react"
-import {
-  Input,
-  Select,
-  Alert,
-  Card,
-  Rate,
-  Pagination as AntPagination,
-  Button,
-} from "antd"
-import {
-  SearchOutlined,
-  AppstoreOutlined,
-  StarOutlined,
-  FilterOutlined,
-  ClearOutlined,
-} from "@ant-design/icons"
-import { getCategoriesAPI } from "@/action/courses/courseAction"
+import React, { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
+import { CourseSearchHero } from "@/components/ui/courses/course-search-hero"
+import { CourseSection } from "@/components/ui/courses/course-section"
+import { TrendingCourses } from "@/components/ui/courses/trending-courses"
+import { CategoryPopularSection } from "@/components/ui/courses/category-popular-section"
+import { RelevantCoursesSection } from "@/components/ui/courses/relevant-courses-section"
+import { CTAPromo } from "@/components/ui/courses/cta-promo"
+import { FadeInOnScroll } from "@/components/ui/courses/fade-in-on-scroll"
+import { CourseCompactFilters, type FilterValues } from "@/components/ui/courses/course-compact-filters"
 
 interface SearchParams {
   query?: string
   page?: string
-  sort?: "trending" | "popular" | "newest"
+  sort?: "trending" | "popular" | "newest" | "top-rated"
   category?: string
   rating?: string
 }
@@ -36,6 +26,7 @@ interface CourseClientProps {
   initialTotalCount: number
   coursesPerPage: number
   fetchError: string | null
+  categories: Array<{ id: number; name: string }>
   currentSearchParams?: SearchParams
 }
 
@@ -44,357 +35,275 @@ export default function CourseClient({
   initialTotalCount,
   coursesPerPage,
   fetchError,
+  categories,
   currentSearchParams = {},
 }: CourseClientProps) {
   const router = useRouter()
+  
+  // State for each course section
+  const [resumeCourses, setResumeCourses] = useState<Course[]>([])
+  const [trendingCourses, setTrendingCourses] = useState<Course[]>([])
+  const [popularByCategory, setPopularByCategory] = useState<Course[]>([])
+  const [relevantCourses, setRelevantCourses] = useState<Course[]>([])
+  const [newCourses, setNewCourses] = useState<Course[]>([])
 
-  // --- STATE MANAGEMENT ---
-  // Các state này lưu giá trị tạm thời ở Client, chưa đẩy lên URL ngay
-  const [searchInput, setSearchInput] = useState(
-    currentSearchParams?.query || ""
-  )
-  const [sortOption, setSortOption] = useState<SearchParams["sort"]>(
-    currentSearchParams?.sort || "trending"
-  )
-  const [categoryFilter, setCategoryFilter] = useState<string>(
-    currentSearchParams?.category || "all"
-  )
-  const [ratingFilter, setRatingFilter] = useState<string>(
-    currentSearchParams?.rating || "all"
-  )
+  // Loading states for each section
+  const [loadingTrending, setLoadingTrending] = useState(false)
+  const [loadingPopular, setLoadingPopular] = useState(false)
+  const [loadingRelevant, setLoadingRelevant] = useState(false)
+  const [loadingNew, setLoadingNew] = useState(false)
 
-  const [currentPage, setCurrentPage] = useState(
-    Number(currentSearchParams?.page) || 1
-  )
-
-  const [categories, setCategories] = useState<{ id: number; name: string }[]>(
-    []
-  )
-
-  const totalPages = Math.ceil(initialTotalCount / coursesPerPage)
-
-  // Fetch Category
+  // Fetch different course sections on mount
   useEffect(() => {
-    const fetchCategories = async () => {
-      const data = await getCategoriesAPI()
-      setCategories(data)
+    // ========================================
+    // 1. FETCH RESUME COURSES (In-Progress)
+    // ========================================
+    // GET /api/enrollments/in-progress?userId={userId}
+    // Returns courses user is currently taking with progress & due dates
+    const fetchResumeCourses = async () => {
+      try {
+        // TODO: Replace with actual API call once endpoint is ready
+        // const response = await fetch('/api/enrollments/in-progress?userId=currentUserId')
+        // const data = await response.json()
+        // setResumeCourses(data.data)
+        
+        // For now, show first 4 courses as resume courses
+        setResumeCourses(initialCourses.slice(0, 4))
+      } catch (error) {
+        console.error('Error fetching resume courses:', error)
+        setResumeCourses([])
+      }
     }
-    fetchCategories()
-  }, [])
 
-  // --- MASTER FILTER HANDLER ---
-  // ✅ Hàm này gom tất cả điều kiện và thực hiện tìm kiếm 1 lần
-  const handleApplyFilters = () => {
+    // ========================================
+    // 2. FETCH TRENDING COURSES
+    // ========================================
+    // GET /api/courses/trending?limit=12
+    // Returns courses by enrollment count in last 7 days
+    const fetchTrendingCourses = async () => {
+      setLoadingTrending(true)
+      try {
+        // TODO: Replace with actual API call once endpoint is ready
+        // const response = await fetch('/api/courses/trending?limit=12')
+        // const data = await response.json()
+        // setTrendingCourses(data.data)
+        
+        // Simulating API with generalPublishedCourses (trending section)
+        setTrendingCourses(initialCourses.slice(0, 12))
+      } catch (error) {
+        console.error('Error fetching trending courses:', error)
+        setTrendingCourses([])
+      } finally {
+        setLoadingTrending(false)
+      }
+    }
+
+    // ========================================
+    // 3. FETCH POPULAR BY CATEGORY
+    // ========================================
+    // GET /api/courses/popular-by-category?limit=3
+    // Returns top courses grouped by 3 main categories
+    const fetchPopularByCategory = async () => {
+      setLoadingPopular(true)
+      try {
+        // TODO: Replace with actual API call once endpoint is ready
+        // const response = await fetch('/api/courses/popular-by-category?limit=3')
+        // const data = await response.json()
+        // setPopularByCategory(data.data)
+        
+        setPopularByCategory(initialCourses.slice(0, 12))
+      } catch (error) {
+        console.error('Error fetching popular courses:', error)
+        setPopularByCategory([])
+      } finally {
+        setLoadingPopular(false)
+      }
+    }
+
+    // ========================================
+    // 4. FETCH RELEVANT COURSES (Department)
+    // ========================================
+    // GET /api/courses/relevant?userId={userId}&departmentId={deptId}&limit=8
+    // Returns personalized courses based on user's department and role
+    const fetchRelevantCourses = async () => {
+      setLoadingRelevant(true)
+      try {
+        // TODO: Replace with actual API call once endpoint is ready
+        // const response = await fetch('/api/courses/relevant?userId=currentUserId&departmentId=currentDeptId&limit=8')
+        // const data = await response.json()
+        // setRelevantCourses(data.data)
+        
+        setRelevantCourses(initialCourses.slice(0, 8))
+      } catch (error) {
+        console.error('Error fetching relevant courses:', error)
+        setRelevantCourses([])
+      } finally {
+        setLoadingRelevant(false)
+      }
+    }
+
+    // ========================================
+    // 5. FETCH NEW COURSES
+    // ========================================
+    // GET /api/courses/newest?limit=12
+    // Returns recently published courses
+    const fetchNewCourses = async () => {
+      setLoadingNew(true)
+      try {
+        // TODO: Replace with actual API call once endpoint is ready
+        // const response = await fetch('/api/courses/newest?limit=12&sort=newest')
+        // const data = await response.json()
+        // setNewCourses(data.data)
+        
+        setNewCourses(initialCourses.slice(0, 12))
+      } catch (error) {
+        console.error('Error fetching new courses:', error)
+        setNewCourses([])
+      } finally {
+        setLoadingNew(false)
+      }
+    }
+
+    // Execute all fetches in parallel
+    fetchResumeCourses()
+    fetchTrendingCourses()
+    fetchPopularByCategory()
+    fetchRelevantCourses()
+    fetchNewCourses()
+  }, [initialCourses])
+
+  const handleSearch = (query: string) => {
     const params = new URLSearchParams()
-
-    // 1. Search Query
-    if (searchInput.trim()) {
-      params.set("query", searchInput.trim())
+    if (query.trim()) {
+      params.set("query", query.trim())
+      params.set("page", "1")
     }
-
-    // 2. Category
-    if (categoryFilter && categoryFilter !== "all") {
-      params.set("category", categoryFilter)
-    }
-
-    // 3. Rating
-    if (ratingFilter && ratingFilter !== "all") {
-      params.set("rating", ratingFilter)
-    }
-
-    // 4. Sort
-    if (sortOption && sortOption !== "trending") {
-      params.set("sort", sortOption)
-    }
-
-    // Luôn reset về trang 1 khi bấm nút tìm kiếm/filter mới
-    params.set("page", "1")
-
-    // Đẩy lên URL để Server Component tải lại dữ liệu
     router.push(`?${params.toString()}`)
-  }
-
-  // Handle Enter key on input
-  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
-      handleApplyFilters()
-    }
-  }
-
-  // Handle Pagination (Vẫn cần reload ngay khi chuyển trang)
-  const handlePageChange = (newPage: number) => {
-    const params = new URLSearchParams(window.location.search)
-    params.set("page", String(newPage))
-    router.push(`?${params.toString()}`)
-  }
-
-  const handleClearAll = () => {
-    setSearchInput("")
-    setSortOption("trending")
-    setCategoryFilter("all")
-    setRatingFilter("all")
-    router.push("?")
   }
 
   // --- RENDER ---
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-800">
-      <div className="max-w-screen-xl mx-auto px-4 lg:px-6 xl:px-8 py-10">
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-extrabold text-gray-900 mb-2">
-            Welcome To <span className="text-blue-600">KMS Plus</span> Course
-          </h1>
-          <p className="text-gray-500 max-w-2xl mx-auto">
-            Explore our comprehensive library of industry-leading courses
-            designed to boost your professional career.
-          </p>
+    <div>
+      {/* Hero Section with Search */}
+      <CourseSearchHero onSearch={handleSearch} />
+
+      {/* Main Content */}
+      <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '60px 60px' }}>
+        {/* Filter Widget - White Card (Compact) */}
+        <div style={{
+          backgroundColor: 'white',
+          borderRadius: '0.5rem',
+          boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+          padding: '16px',
+          marginBottom: '30px',
+        }}>
+          <CourseCompactFilters categories={categories} />
         </div>
-      </div>
 
-      <div className="max-w-screen-xl mx-auto px-4 lg:px-6 xl:px-8 pb-12">
-        <main className="w-full min-w-0">
-          {/* --- TOOLBAR: SEARCH & FILTERS --- */}
-          <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 mb-8 flex flex-col xl:flex-row items-center gap-4">
-            {/* 1. Search Input Area */}
-            <div className="w-full flex-1 flex gap-2">
-              <div className="relative w-full flex items-center bg-gray-50 hover:bg-gray-100 transition-colors rounded-xl px-4 py-1 border border-transparent focus-within:border-blue-300 focus-within:bg-white">
-                <SearchOutlined className="text-gray-400 text-lg mr-2" />
-                <Input
-                  placeholder="Search courses by title, keywords..."
-                  value={searchInput}
-                  onChange={(e) => setSearchInput(e.target.value)}
-                  onKeyDown={handleKeyPress} // Bấm Enter để tìm
-                  variant="borderless"
-                  size="large"
-                  className="!bg-transparent !px-0 text-gray-700 placeholder:text-gray-400 w-full"
-                />
-              </div>
-              {/* ✅ NÚT TÌM KIẾM CHÍNH (Trigger) */}
-              <Button
-                type="default" // Đổi từ primary sang default để dễ custom nền
-                size="middle" // Đổi từ large -> middle để nút bé lại
-                icon={<SearchOutlined />}
-                onClick={handleApplyFilters}
-                className="rounded-lg px-5 bg-blue-50 text-blue-600 border-blue-200 hover:!bg-blue-100 hover:!text-blue-700 hover:!border-blue-300 font-medium shadow-sm transition-all"
-              >
-                Search
-              </Button>
-              {/* 👇 NÚT CLEAR FILTER MỚI 👇 */}
-              <Button
-                size="large"
-                icon={<ClearOutlined />}
-                onClick={handleClearAll}
-                title="Clear all filters"
-                className="rounded-xl px-4 bg-white text-gray-500 border border-gray-200 hover:bg-gray-50 hover:text-red-500 hover:border-red-200 shadow-sm transition-colors"
-              />
-            </div>
+        {/* Resume Section - Show if user has in-progress courses */}
+        <FadeInOnScroll threshold={0.2} triggerOnce={true}>
+          {resumeCourses.length > 0 && (
+            <CourseSection
+              title="Tiếp tục học"
+              subtitle="Xem lại các khóa học bạn đang theo học"
+              courses={resumeCourses}
+              columns={4}
+            />
+          )}
+        </FadeInOnScroll>
 
-            {/* 2. Group Filters (Chỉ set State, không reload trang) */}
-            <div className="flex flex-wrap md:flex-nowrap gap-3 w-full xl:w-auto">
-              {/* Category Filter */}
-              <div className="bg-gray-50 hover:bg-gray-100 transition-colors rounded-xl flex items-center px-3 py-1 w-full md:w-auto border border-transparent hover:border-gray-200">
-                <AppstoreOutlined className="text-gray-500 mr-2" />
-                <Select
-                  value={categoryFilter}
-                  onChange={(val) => setCategoryFilter(val)} // ✅ Chỉ set State
-                  variant="borderless"
-                  size="large"
-                  popupMatchSelectWidth={false}
-                  className="!bg-transparent min-w-[140px]"
-                  options={[
-                    { value: "all", label: "All Categories" },
-                    ...categories.map((cat) => ({
-                      value: String(cat.id),
-                      label: cat.name,
-                    })),
-                  ]}
-                />
-              </div>
+        {/* Trending Courses Section */}
+        <FadeInOnScroll threshold={0.2} triggerOnce={true}>
+          {trendingCourses.length > 0 && (
+            <TrendingCourses
+              courses={trendingCourses}
+              isLoading={loadingTrending}
+            />
+          )}
+        </FadeInOnScroll>
 
-              {/* Rating Filter */}
-              <div className="bg-gray-50 hover:bg-gray-100 transition-colors rounded-xl flex items-center px-3 py-1 w-full md:w-auto border border-transparent hover:border-gray-200">
-                <StarOutlined className="text-gray-500 mr-2" />
-                <Select
-                  value={ratingFilter}
-                  onChange={(val) => setRatingFilter(val)} // ✅ Chỉ set State
-                  variant="borderless"
-                  size="large"
-                  className="!bg-transparent min-w-[130px]"
-                  options={[
-                    { value: "all", label: "All Ratings" },
-                    { value: "4.5", label: "4.5 & up ⭐" },
-                    { value: "4.0", label: "4.0 & up ⭐" },
-                    { value: "3.5", label: "3.5 & up ⭐" },
-                  ]}
-                />
-              </div>
+        {/* CTA Promo - Q&A Section */}
+        <FadeInOnScroll threshold={0.2} triggerOnce={true}>
+          <CTAPromo
+            type="qa"
+            title="Có câu hỏi?"
+            description="Hỏi đáp trực tiếp từ cộng đồng và các chuyên gia. Giải quyết vấn đề và học hỏi từ những người khác."
+            buttonText="Khám phá Q&A"
+            href="/questions"
+          />
+        </FadeInOnScroll>
 
-              {/* Sort */}
-              <div className="bg-gray-50 hover:bg-gray-100 transition-colors rounded-xl flex items-center px-4 py-1 w-full md:w-auto border border-transparent hover:border-gray-200">
-                <span className="text-gray-400 text-xs font-bold uppercase tracking-wider mr-2 whitespace-nowrap">
-                  Sort:
-                </span>
-                <Select
-                  value={sortOption}
-                  onChange={(val) => setSortOption(val)} // ✅ Chỉ set State
-                  variant="borderless"
-                  size="large"
-                  className="!bg-transparent font-medium text-gray-700 min-w-[110px]"
-                  styles={{ popup: { root: { minWidth: "150px" } } }}
-                  options={[
-                    { value: "trending", label: "Trending" },
-                    { value: "popular", label: "Most Popular" },
-                    { value: "newest", label: "Newest" },
-                  ]}
-                />
-              </div>
-            </div>
+        {/* CTA Promo - Articles Section */}
+        <FadeInOnScroll threshold={0.2} triggerOnce={true}>
+          <CTAPromo
+            type="articles"
+            title="Đọc bài viết chuyên sâu"
+            description="Tìm hiểu thêm thông qua các bài viết, hướng dẫn và kinh nghiệm từ đội KMS-Plus và các chuyên gia."
+            buttonText="Khám phá Bài viết"
+            href="/articles"
+          />
+        </FadeInOnScroll>
+
+        {/* Relevant Courses Section */}
+        <FadeInOnScroll threshold={0.2} triggerOnce={true}>
+          {relevantCourses.length > 0 && (
+            <RelevantCoursesSection
+              courses={relevantCourses}
+              departmentName="Công nghệ thông tin"
+              isLoading={loadingRelevant}
+            />
+          )}
+        </FadeInOnScroll>
+
+        {/* New Section */}
+        <FadeInOnScroll threshold={0.2} triggerOnce={true}>
+          {newCourses.length > 0 && (
+            <CourseSection
+              title="Mới nhất từ KMS Plus"
+              subtitle="Các khóa học mới được thêm gần đây"
+              courses={newCourses}
+              columns={4}
+              isLoading={loadingNew}
+            />
+          )}
+        </FadeInOnScroll>
+
+        {/* All Courses Section (if search results) */}
+        <FadeInOnScroll threshold={0.2} triggerOnce={true}>
+          {currentSearchParams?.query && initialCourses.length > 0 && (
+            <CourseSection
+              title={`Kết quả tìm kiếm cho "${currentSearchParams.query}"`}
+              courses={initialCourses}
+              columns={4}
+            />
+          )}
+        </FadeInOnScroll>
+
+        {/* Empty State */}
+        {currentSearchParams?.query && initialCourses.length === 0 && !fetchError && (
+          <div style={{ textAlign: 'center', padding: '80px 20px' }}>
+            <h3 style={{ fontSize: '24px', fontWeight: 600, marginBottom: '12px', color: '#111827' }}>
+              Không tìm thấy khóa học
+            </h3>
+            <p style={{ fontSize: '16px', color: '#6b7280', marginBottom: '24px' }}>
+              Hãy thử tìm kiếm với các từ khóa khác
+            </p>
           </div>
+        )}
 
-          {/* Error Message */}
-          {fetchError && (
-            <div className="mb-6">
-              <Alert
-                message="Error"
-                description={fetchError}
-                type="error"
-                showIcon
-                closable
-              />
-            </div>
-          )}
-
-          {/* Course Grid */}
-          {initialCourses.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {initialCourses.map((course) => (
-                <CourseCard key={course.id} course={course} />
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-16 bg-white rounded-lg border border-dashed border-gray-300">
-              <div className="mb-4">
-                <SearchOutlined style={{ fontSize: 48, color: "#d1d5db" }} />
-              </div>
-              <h3 className="text-lg font-medium text-gray-900">
-                No courses found
-              </h3>
-              <p className="text-gray-500 mt-1">
-                Try adjusting your search or filters to find what you're looking
-                for.
-              </p>
-              <Button type="link" onClick={handleClearAll}>
-                Clear all filters
-              </Button>
-            </div>
-          )}
-
-          {/* Pagination */}
-          {totalPages > 1 && !fetchError && (
-            <div className="mt-12 flex justify-center">
-              <AntPagination
-                current={currentPage}
-                total={initialTotalCount}
-                pageSize={coursesPerPage}
-                onChange={handlePageChange}
-                showSizeChanger={false}
-                showQuickJumper
-                showTotal={(total, range) =>
-                  `${range[0]}-${range[1]} of ${total} courses`
-                }
-              />
-            </div>
-          )}
-        </main>
+        {/* Error State */}
+        {fetchError && (
+          <div style={{ 
+            backgroundColor: '#fee2e2', 
+            border: '1px solid #fca5a5', 
+            borderRadius: '8px', 
+            padding: '20px',
+            color: '#991b1b'
+          }}>
+            <strong>Lỗi:</strong> {fetchError}
+          </div>
+        )}
       </div>
     </div>
-  )
-}
-
-// ==============================================================================
-// Sub-Components
-// ==============================================================================
-
-function CourseCard({ course }: { course: Course }) {
-  const mockRating = useMemo(() => {
-    const idNum = Number(course.id) || 0
-    const seed = Math.sin(idNum) * 10000
-    const random = seed - Math.floor(seed)
-    return (4.0 + random * (5.0 - 4.0)).toFixed(1)
-  }, [course.id])
-
-  return (
-    <a href={`/courses/${course.id}`} className="group block h-full">
-      <Card
-        hoverable
-        variant="borderless"
-        className="h-full flex flex-col shadow-sm hover:shadow-xl transition-shadow duration-300 rounded-xl overflow-hidden"
-        styles={{
-          body: {
-            padding: "16px",
-            flex: 1,
-            display: "flex",
-            flexDirection: "column",
-          },
-        }}
-        cover={
-          <div className="relative h-44 w-full bg-gray-100 overflow-hidden">
-            <img
-              src={
-                course.thumbnail_url ||
-                "https://placehold.co/600x400/E2E8F0/31343C?text=KMS+Course"
-              }
-              alt={course.title || "Course thumbnail"}
-              className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-500"
-              onError={(e) => {
-                ;(e.target as HTMLImageElement).src =
-                  "https://placehold.co/600x400/f3f4f6/9ca3af?text=No+Image"
-              }}
-            />
-          </div>
-        }
-      >
-        <Card.Meta
-          title={
-            <h3 className="font-bold text-base text-gray-900 line-clamp-2 mb-1 group-hover:text-blue-600 transition-colors">
-              {course.title}
-            </h3>
-          }
-          description={
-            <p className="text-sm text-gray-500 line-clamp-2 mb-2 flex-grow">
-              {course.description ||
-                "Unlock your potential with this comprehensive course."}
-            </p>
-          }
-        />
-        <div className="mt-auto pt-3 border-t border-gray-100">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-1">
-              <span className="text-yellow-400 font-bold text-sm">
-                {mockRating}
-              </span>
-              <Rate
-                disabled
-                count={5}
-                value={Number(mockRating)}
-                style={{ fontSize: 12, color: "#facc15" }}
-              />
-            </div>
-            <span className="text-xs text-gray-400 font-medium">
-              ({(course.enrollment_count || 0) + 120} students)
-            </span>
-          </div>
-          <div className="flex items-center justify-between text-xs text-gray-500 font-medium">
-            <div className="flex items-center gap-1 bg-gray-50 px-2 py-1 rounded">
-              <Clock size={12} />
-              {course.duration_hours || 0} hours
-            </div>
-            <span className="text-blue-600 bg-blue-50 px-2 py-1 rounded group-hover:bg-blue-600 group-hover:text-white transition-colors">
-              View Details
-            </span>
-          </div>
-        </div>
-      </Card>
-    </a>
   )
 }

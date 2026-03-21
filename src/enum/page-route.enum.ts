@@ -1,6 +1,6 @@
 export enum PageRoute {
   LOGIN = "/login",
-  DASHBOARD = "/dashboard",
+  DASHBOARD_METRICS = "/dashboard-metrics",
   PROFILE = "/profile",
   COURSES = "/courses",
   ARTICLES = "/articles",
@@ -10,4 +10,9 @@ export enum PageRoute {
   USER_MANAGEMENT = "/user-management",
   ROLE_PERMISSIONS = "/role-permissions",
   SETTINGS = "/settings",
+  SYSTEM_SETTINGS = "/settings",
+  QUIZ_MANAGEMENT = "/quizzes",
+  CATEGORY_MANAGEMENT = "/categories/management",
+  COURSE_MANAGEMENT = "/courses/manage",
+  QUESTION_BANK_MANAGEMENT = "/question-bank",
 }
