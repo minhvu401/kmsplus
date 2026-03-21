@@ -131,7 +131,7 @@ export type CoursePayload = {
   curriculum: Section[]
 }
 
-const steps = ["Basic Information", "Advance Information"]
+const steps = ["Thông Tin Cơ Bản", "Thông Tin Nâng Cao"]
 type StepStatus = "pending" | "valid" | "invalid"
 
 interface UpdateCourseFormProps {
@@ -450,12 +450,12 @@ export default function UpdateCourseForm({
     if (!isAllValid) {
       const firstInvalid = allStepsValidResults.findIndex((v) => !v)
       if (firstInvalid !== -1) setCurrent(firstInvalid)
-      message.error("Please complete all required fields.")
+      message.error("Vui lòng hoàn thành tất cả các trường bắt buộc.")
       return
     }
 
     if (!payload.id) {
-      message.error("Course ID missing.")
+      message.error("ID khóa học không tồn tại.")
       return
     }
 
@@ -527,7 +527,9 @@ export default function UpdateCourseForm({
       {/* 2. Bọc toàn bộ Header, Steps và Nội dung form vào 1 div flex-1 để cuộn */}
       <div className="flex-1 overflow-y-auto custom-scrollbar p-4 pb-8">
         <h1 className="text-2xl font-semibold text-gray-900">
-          {payload.title ? `Update Course: ${payload.title}` : "Update Course"}
+          {payload.title
+            ? `Cập Nhật Khóa Học: ${payload.title}`
+            : "Cập Nhật Khóa Học"}
         </h1>
         <div className="text-sm text-gray-500 mb-6">
           Step {current + 1} / {steps.length}
@@ -561,7 +563,7 @@ export default function UpdateCourseForm({
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium mb-1">
-                      Title
+                      Tiêu đề
                     </label>
                     <Input
                       value={payload.title || ""}
@@ -577,10 +579,10 @@ export default function UpdateCourseForm({
                   </div>
                   <div>
                     <label className="block text-sm font-medium mb-1">
-                      Category
+                      Danh mục
                     </label>
                     <Select
-                      placeholder="Select a category"
+                      placeholder="Chọn danh mục"
                       className="w-full"
                       value={
                         payload.category_id
@@ -603,7 +605,7 @@ export default function UpdateCourseForm({
                   </div>
                   <div>
                     <label className="block text-sm font-medium mb-1">
-                      Short Description
+                      Mô tả ngắn
                     </label>
                     <TextArea
                       value={payload.description || ""}
@@ -617,7 +619,7 @@ export default function UpdateCourseForm({
 
                 <div>
                   <label className="block text-sm font-medium mb-1">
-                    Thumbnail
+                    Ảnh đại diện
                   </label>
                   <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-blue-400 transition-colors bg-gray-50">
                     {imageUrl ? (
@@ -633,13 +635,13 @@ export default function UpdateCourseForm({
                             showUploadList={false}
                             customRequest={handleUploadThumbnail}
                           >
-                            <Button ghost>Change Image</Button>
+                            <Button ghost>Thay Đổi Ảnh</Button>
                           </Upload>
                           <Button
                             ghost
                             onClick={() => setCropModalVisible(true)}
                           >
-                            Crop Image
+                            Cắt Ảnh
                           </Button>
                         </div>
                       </div>
@@ -654,7 +656,7 @@ export default function UpdateCourseForm({
                             <InboxOutlined className="text-2xl" />
                           </div>
                           <p className="text-gray-600 font-medium">
-                            Click to upload thumbnail
+                            Nhấn để tải ảnh đại diện lên
                           </p>
                         </div>
                       </Upload>
@@ -666,7 +668,7 @@ export default function UpdateCourseForm({
                       update("thumbnail_url", e.target.value)
                       setImageUrl(e.target.value)
                     }}
-                    placeholder="Or paste image URL here"
+                    placeholder="Hoặc dán URL ảnh vào đây"
                     className="mt-3"
                   />
                 </div>
@@ -677,11 +679,11 @@ export default function UpdateCourseForm({
               {/* --- ✅ CẤU HÌNH ENROLLMENT & ASSIGNMENTS --- */}
               <div>
                 <h2 className="text-lg font-bold text-gray-800 mb-1">
-                  Course Visibility & Enrollment Rules
+                  Cấu Hình Hiển Thị & Quy Tắc Ghi Danh
                 </h2>
                 <p className="text-sm text-gray-500 mb-6">
-                  Configure who can see this course and their learning
-                  deadlines.
+                  Cấu hình ai có thể xem khóa học này và thời hạn học tập của
+                  họ.
                 </p>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -690,7 +692,7 @@ export default function UpdateCourseForm({
                     {/* Visibility */}
                     <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                       <label className="block font-semibold text-gray-700 mb-2">
-                        1. Library Visibility
+                        1. Hiển Thị Trong Thư Viện
                       </label>
                       <Radio.Group
                         value={payload.visibility || "private"}
@@ -702,10 +704,11 @@ export default function UpdateCourseForm({
                           className="bg-white p-3 border rounded-md shadow-sm w-full"
                         >
                           <span className="font-semibold text-blue-600">
-                            Public (Open Library)
+                            Công Khai (Thư Viện Mở)
                           </span>
                           <span className="block text-xs text-gray-500 mt-1">
-                            Anyone can see and self-enroll in this course.
+                            Bất kỳ ai cũng có thể xem và tự ghi danh vào khóa
+                            học này.
                           </span>
                         </Radio>
                         <Radio
@@ -713,10 +716,11 @@ export default function UpdateCourseForm({
                           className="bg-white p-3 border rounded-md shadow-sm w-full m-0"
                         >
                           <span className="font-semibold text-orange-600">
-                            Private (Hidden)
+                            Riêng Tu (Ẩn)
                           </span>
                           <span className="block text-xs text-gray-500 mt-1">
-                            Hidden from library. Only assigned users can see it.
+                            Ẩn khỏi thư viện. Chỉ người dùng được phân công mới
+                            có thể xem.
                           </span>
                         </Radio>
                       </Radio.Group>
@@ -725,10 +729,10 @@ export default function UpdateCourseForm({
                     {/* Global Due Date */}
                     <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                       <label className="block font-semibold text-gray-700 mb-2">
-                        2. Default Due Date
+                        2. Hạn Mặc Định
                       </label>
                       <p className="text-xs text-gray-500 mb-3">
-                        Applies to users who self-enroll (if Public).
+                        Áp dụng cho người dùng tự ghi danh (nếu là Công Khai).
                       </p>
 
                       <Radio.Group
@@ -742,19 +746,19 @@ export default function UpdateCourseForm({
                           value="none"
                           className="flex-1 text-center"
                         >
-                          No Limit
+                          Không Giới Hạn
                         </Radio.Button>
                         <Radio.Button
                           value="relative"
                           className="flex-1 text-center"
                         >
-                          Relative
+                          Tương Đối
                         </Radio.Button>
                         <Radio.Button
                           value="fixed"
                           className="flex-1 text-center"
                         >
-                          Fixed Date
+                          Ngày Cố Định
                         </Radio.Button>
                       </Radio.Group>
 
@@ -762,12 +766,13 @@ export default function UpdateCourseForm({
                         {(payload.global_due_type === "none" ||
                           !payload.global_due_type) && (
                           <span className="text-sm italic text-gray-500">
-                            Learners can take their time to complete course.
+                            Học viên có thể tự hoàn thành khóa học theo tốc độ
+                            của mình.
                           </span>
                         )}
                         {payload.global_due_type === "relative" && (
                           <div className="flex items-center gap-2 bg-white p-2 border rounded">
-                            <span className="text-sm">Complete within</span>
+                            <span className="text-sm">Hoàn thành trong</span>
                             <InputNumber
                               min={1}
                               value={payload.global_due_days}
@@ -775,13 +780,13 @@ export default function UpdateCourseForm({
                               className="w-16"
                             />
                             <span className="text-sm">
-                              days after enrolling.
+                              ngày sau khi ghi danh.
                             </span>
                           </div>
                         )}
                         {payload.global_due_type === "fixed" && (
                           <div className="flex items-center gap-2 bg-white p-2 border rounded">
-                            <span className="text-sm">Close course on</span>
+                            <span className="text-sm">Đóng khóa học vào</span>
                             <DatePicker
                               value={
                                 payload.global_due_date
@@ -805,10 +810,10 @@ export default function UpdateCourseForm({
                     <div className="flex justify-between items-start mb-4">
                       <div>
                         <label className="block font-semibold text-blue-900 mb-1">
-                          3. Mandatory Assignments
+                          3. Phân Công Bắt Buộc
                         </label>
                         <p className="text-xs text-blue-700">
-                          Force specific groups to take this course.
+                          Buộc các nhóm cụ thể phải tham gia khóa học này.
                         </p>
                       </div>
                       <Button
@@ -829,7 +834,7 @@ export default function UpdateCourseForm({
                           ])
                         }}
                       >
-                        Add Rule
+                        Thêm Quy Tắc
                       </Button>
                     </div>
 
@@ -839,7 +844,7 @@ export default function UpdateCourseForm({
                         <div className="h-32 flex flex-col items-center justify-center border-2 border-dashed border-blue-200 rounded-lg text-blue-400">
                           <SafetyCertificateOutlined className="text-2xl mb-2" />
                           <span className="text-sm">
-                            No mandatory rules set.
+                            Chưa có quy tắc bắt buộc nào được đặt.
                           </span>
                         </div>
                       ) : (
@@ -869,21 +874,21 @@ export default function UpdateCourseForm({
                                   options={[
                                     {
                                       value: "all_employees",
-                                      label: "All Staff",
+                                      label: "Tất Cả Nhân Viên",
                                     },
                                     {
                                       value: "department",
-                                      label: "Department",
+                                      label: "Phòng Ban",
                                     },
-                                    { value: "role", label: "Role" },
-                                    { value: "user", label: "User" },
+                                    { value: "role", label: "Vai Trò" },
+                                    { value: "user", label: "Người Dùng" },
                                   ]}
                                 />
 
                                 <div className="flex-1">
                                   {rule.target_type === "department" && (
                                     <Select
-                                      placeholder="Select Dept"
+                                      placeholder="Chọn Phòng Ban"
                                       className="w-full"
                                       value={rule.department_id}
                                       onChange={(val) => {
@@ -892,14 +897,14 @@ export default function UpdateCourseForm({
                                         update("assignment_rules", r)
                                       }}
                                       options={[
-                                        { value: 1, label: "IT Department" },
-                                        { value: 2, label: "HR Department" },
+                                        { value: 1, label: "Phòng IT" },
+                                        { value: 2, label: "Phòng Nhân Sự" },
                                       ]} // TODO: Replace with real data
                                     />
                                   )}
                                   {rule.target_type === "role" && (
                                     <Select
-                                      placeholder="Select Role"
+                                      placeholder="Chọn Vai Trò"
                                       className="w-full"
                                       value={rule.role_id}
                                       onChange={(val) => {
@@ -908,14 +913,14 @@ export default function UpdateCourseForm({
                                         update("assignment_rules", r)
                                       }}
                                       options={[
-                                        { value: 1, label: "Manager" },
-                                        { value: 2, label: "Staff" },
+                                        { value: 1, label: "Quản Lý" },
+                                        { value: 2, label: "Nhân Viên" },
                                       ]} // TODO: Replace with real data
                                     />
                                   )}
                                   {rule.target_type === "user" && (
                                     <Select
-                                      placeholder="Select User"
+                                      placeholder="Chọn Người Dùng"
                                       className="w-full"
                                       value={rule.user_id}
                                       onChange={(val) => {
@@ -924,15 +929,15 @@ export default function UpdateCourseForm({
                                         update("assignment_rules", r)
                                       }}
                                       options={[
-                                        { value: 1, label: "John Doe" },
-                                        { value: 2, label: "Jane Smith" },
+                                        { value: 1, label: "Nguyễn Văn A" },
+                                        { value: 2, label: "Trần Thị B" },
                                       ]} // TODO: Replace with real data
                                     />
                                   )}
                                   {rule.target_type === "all_employees" && (
                                     <Input
                                       disabled
-                                      value="Entire Company"
+                                      value="Toàn Công Ty"
                                       className="bg-gray-50 text-center"
                                     />
                                   )}
@@ -942,7 +947,7 @@ export default function UpdateCourseForm({
                               {/* Due Date Row */}
                               <div className="flex gap-2 items-center bg-gray-50 p-2 rounded border border-gray-200">
                                 <span className="text-xs font-semibold text-gray-500 w-16">
-                                  Deadline:
+                                  Hạn:
                                 </span>
                                 <Select
                                   size="small"
@@ -954,9 +959,9 @@ export default function UpdateCourseForm({
                                     update("assignment_rules", r)
                                   }}
                                   options={[
-                                    { value: "none", label: "None" },
-                                    { value: "relative", label: "Days" },
-                                    { value: "fixed", label: "Date" },
+                                    { value: "none", label: "Không" },
+                                    { value: "relative", label: "Ngày" },
+                                    { value: "fixed", label: "Ngày Cố Định" },
                                   ]}
                                 />
                                 <div className="flex-1 flex justify-end">
@@ -970,7 +975,7 @@ export default function UpdateCourseForm({
                                         r[index].due_days = v
                                         update("assignment_rules", r)
                                       }}
-                                      addonAfter="days"
+                                      addonAfter="ngày"
                                       className="w-full"
                                     />
                                   )}
@@ -994,7 +999,7 @@ export default function UpdateCourseForm({
                                   {(rule.due_type === "none" ||
                                     !rule.due_type) && (
                                     <span className="text-xs text-gray-400 italic">
-                                      No time limit
+                                      Không giới hạn thời gian
                                     </span>
                                   )}
                                 </div>
@@ -1027,7 +1032,7 @@ export default function UpdateCourseForm({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium mb-1 text-gray-700">
-                    Status
+                    Trạng Thái
                   </label>
                   <Select
                     value={payload.status}
@@ -1043,7 +1048,7 @@ export default function UpdateCourseForm({
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1 text-gray-700">
-                    Duration (hours)
+                    Thời Lượng (giờ)
                   </label>
                   <Input
                     type="number"
@@ -1100,7 +1105,7 @@ export default function UpdateCourseForm({
         <div>
           {current > 0 && (
             <Button size="large" onClick={() => changeStep(current - 1)}>
-              Back
+              Quay Lại
             </Button>
           )}
         </div>
@@ -1111,7 +1116,7 @@ export default function UpdateCourseForm({
               size="large"
               onClick={() => changeStep(current + 1)}
             >
-              Continue to Curriculum
+              Tiếp Tục Đến Chương Trình
             </Button>
           ) : (
             <Button
@@ -1122,7 +1127,7 @@ export default function UpdateCourseForm({
               style={{ backgroundColor: "#10b981" }}
               className="font-bold px-8 shadow-md"
             >
-              Save Changes
+              Lưu Thay Đổi
             </Button>
           )}
         </div>
@@ -1130,7 +1135,7 @@ export default function UpdateCourseForm({
 
       {/* Modal Crop */}
       <Modal
-        title="Crop Image"
+        title="Cắt Ảnh"
         open={cropModalVisible}
         onCancel={() => setCropModalVisible(false)}
         onOk={() => setCropModalVisible(false)}
@@ -1140,7 +1145,7 @@ export default function UpdateCourseForm({
           {imageUrl && (
             <img src={imageUrl} alt="Crop Preview" className="max-w-full" />
           )}
-          <p className="mt-2 text-gray-500">Crop functionality placehoder.</p>
+          <p className="mt-2 text-gray-500">Chức năng cắt ảnh placeholder.</p>
         </div>
       </Modal>
     </div>
@@ -1207,13 +1212,13 @@ function FormModal({
               onClick={onClose}
               className="px-4 py-2 bg-white text-blue-600 border border-blue-600 rounded text-sm font-medium hover:bg-blue-50 transition-colors"
             >
-              Cancel
+              Hủy
             </button>
             <button
               type="submit"
               className="px-4 py-2 bg-blue-600 text-white rounded text-sm font-medium"
             >
-              Save Changes
+              Lưu Thay Đổi
             </button>
           </div>
         </form>
@@ -1306,15 +1311,15 @@ function CurriculumContentBank({
 
   const handleDeleteSection = (sectionId: string | number) => {
     modal.confirm({
-      title: "Delete Section",
+      title: "Xóa Chương",
       content: (
         <div className="text-gray-600">
-          Are you sure you want to delete this section?
+          Bạn có chắc chắn muốn xóa chương này?
           <br />
-          <b className="text-red-500">All lessons inside will be removed.</b>
+          <b className="text-red-500">Tất cả bài học bên trong sẽ bị xóa.</b>
         </div>
       ),
-      okText: "Delete",
+      okText: "Xóa",
       okType: "danger",
       onOk: () => {
         const newSections = sections.filter(
@@ -1323,7 +1328,7 @@ function CurriculumContentBank({
         onChange(newSections)
         if (String(activeSectionId) === String(sectionId))
           setActiveSectionId(null)
-        message.success("Section removed")
+        message.success("Đã xóa chương")
       },
     })
   }
@@ -1356,9 +1361,9 @@ function CurriculumContentBank({
     itemId: string | number
   ) => {
     modal.confirm({
-      title: "Remove Item",
-      content: "Are you sure you want to remove this item?",
-      okText: "Remove",
+      title: "Xóa Mục",
+      content: "Bạn có chắc chắn muốn xóa mục này?",
+      okText: "Xóa",
       okType: "danger",
       centered: true,
       onOk: () => {
@@ -1374,13 +1379,13 @@ function CurriculumContentBank({
           return section
         })
         onChange(updatedSections)
-        message.success("Item removed")
+        message.success("Đã xóa mục")
       },
     })
   }
 
   const handleUploadPDF = async (file: File) => {
-    const hide = message.loading("Uploading PDF...", 0)
+    const hide = message.loading("Đang tải PDF lên...", 0)
     try {
       const formData = new FormData()
       formData.append("file", file)
@@ -1393,7 +1398,7 @@ function CurriculumContentBank({
 
       if (!res.ok) {
         const errorData = await res.json()
-        throw new Error(errorData.error?.message || "Upload failed")
+        throw new Error(errorData.error?.message || "Tải lên thất bại")
       }
 
       const data = await res.json()
@@ -1401,10 +1406,10 @@ function CurriculumContentBank({
 
       setPdfFile({ name: file.name, url: fileUrl })
       form.setFieldsValue({ content: fileUrl })
-      message.success("PDF uploaded successfully!")
+      message.success("Đã tải PDF lên thành công!")
     } catch (error: any) {
       console.error("PDF Upload error:", error)
-      message.error(`Failed to upload: ${error.message}`)
+      message.error(`Tải lên thất bại: ${error.message}`)
     } finally {
       hide()
     }
@@ -1421,7 +1426,8 @@ function CurriculumContentBank({
 
   // 👇 THÊM HÀM MỞ FORM EDIT:
   const handleEditItemAction = (item: any, type: "lesson" | "quiz") => {
-    if (type === "quiz") return message.info("Quiz editing coming soon")
+    if (type === "quiz")
+      return message.info("Chức năng sửa bài kiểm tra sắp ra mắt")
 
     const lesson = item as Lesson
     setEditingLessonId(lesson.id) // Lưu ID đang sửa
@@ -1452,7 +1458,7 @@ function CurriculumContentBank({
       await deleteLessonAPI(id)
       onLessonDeleted(id)
     } catch (error) {
-      message.error("Failed to delete lesson")
+      message.error("Không thể xóa bài học")
     }
   }
 
@@ -1467,7 +1473,7 @@ function CurriculumContentBank({
           content: values.content,
         })
         onLessonUpdated(updated as unknown as Lesson)
-        message.success("Lesson updated!")
+        message.success("Đã cập nhật bài học!")
         setIsCreateModalOpen(false)
         setEditingLessonId(null)
       } else {
@@ -1491,7 +1497,7 @@ function CurriculumContentBank({
       setVideoUrl("")
       setPdfFile(null)
     } catch (error) {
-      message.error(editingLessonId ? "Failed to update" : "Failed to create")
+      message.error(editingLessonId ? "Cập nhật thất bại" : "Tạo thất bại")
     } finally {
       setIsCreating(false)
     }
@@ -1519,21 +1525,21 @@ function CurriculumContentBank({
         {sections.length > 0 && (
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Select Section to Add To
+              Chọn Chương Để Thêm Vào
             </label>
             <Select
               className="w-full"
               value={activeSectionId || undefined}
               onChange={(val) => setActiveSectionId(val)}
               options={sections.map((s) => ({ value: s.id, label: s.title }))}
-              placeholder="Select a section..."
+              placeholder="Chọn một chương..."
             />
           </div>
         )}
 
         <div className="bg-gray-50 p-4 rounded border flex-1 flex flex-col overflow-hidden">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold m-0">Available Content</h3>
+            <h3 className="text-lg font-semibold m-0">Nội Dung Có Sẵn</h3>
             <Button
               type="primary"
               icon={<Plus size={16} />}
@@ -1548,14 +1554,14 @@ function CurriculumContentBank({
               className="bg-blue-600 hover:bg-blue-500 shadow-sm"
               size="small"
             >
-              New Lesson
+              Bài Học Mới
             </Button>
           </div>
 
           <div className="relative mb-2">
             <input
               type="text"
-              placeholder="Search..."
+              placeholder="Tìm kiếm..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-8 pr-4 py-2 border rounded-md text-sm"
@@ -1571,13 +1577,13 @@ function CurriculumContentBank({
               onClick={() => setActiveTab("lessons")}
               className={`px-4 py-2 text-sm font-medium ${activeTab === "lessons" ? "border-b-2 border-blue-600 text-blue-600" : "text-gray-500"}`}
             >
-              Lessons
+              Bài Học
             </button>
             <button
               onClick={() => setActiveTab("quizzes")}
               className={`px-4 py-2 text-sm font-medium ${activeTab === "quizzes" ? "border-b-2 border-blue-600 text-blue-600" : "text-gray-500"}`}
             >
-              Quizzes
+              Bài Kiểm Tra
             </button>
           </div>
 
@@ -1594,7 +1600,7 @@ function CurriculumContentBank({
                   onDelete={() => handleDeleteItemAction(l.id, "lesson")}
                   onAdd={() => {
                     if (!activeSectionId) {
-                      message.warning("Please select a section above first")
+                      message.warning("Vui lòng chọn một chương ở trên trước")
                       return
                     }
                     handleAddItemToSection(activeSectionId, l, "lesson")
@@ -1611,7 +1617,7 @@ function CurriculumContentBank({
                   meta={`${q.question_count} Qs`}
                   onAdd={() => {
                     if (!activeSectionId) {
-                      message.warning("Please select a section above first")
+                      message.warning("Vui lòng chọn một chương ở trên trước")
                       return
                     }
                     handleAddItemToSection(activeSectionId, q, "quiz")
@@ -1620,12 +1626,12 @@ function CurriculumContentBank({
               ))}
             {activeTab === "lessons" && filteredLessons.length === 0 && (
               <p className="text-center text-gray-400 mt-4 text-sm">
-                No lessons found.
+                Không tìm thấy bài học nào.
               </p>
             )}
             {activeTab === "quizzes" && filteredQuizzes.length === 0 && (
               <p className="text-center text-gray-400 mt-4 text-sm">
-                No quizzes found.
+                Không tìm thấy bài kiểm tra nào.
               </p>
             )}
           </div>
@@ -1640,7 +1646,7 @@ function CurriculumContentBank({
       >
         {/* 👇 BẮT ĐẦU SỬA: Đảm bảo cấu trúc div đóng mở đúng */}
         <div className="block text-sm font-medium mb-1 text-gray-700">
-          <h3 className="text-lg font-semibold mb-4">Course Curriculum</h3>
+          <h3 className="text-lg font-semibold mb-4">Chương Trình Khóa Học</h3>
           <div className="flex-1 overflow-y-auto space-y-4 pr-2 max-h-[600px]">
             {sections.map((section) => (
               <div
@@ -1726,7 +1732,7 @@ function CurriculumContentBank({
                   </SortableContext>
                   {section.items.length === 0 && (
                     <p className="text-sm text-gray-400 text-center py-2 italic">
-                      Empty section
+                      Chương trống
                     </p>
                   )}
                 </div>
@@ -1739,7 +1745,7 @@ function CurriculumContentBank({
               onClick={handleAddSection}
               className="w-full flex items-center justify-center gap-2 p-3 border-2 border-dashed border-gray-300 rounded text-gray-600 hover:border-blue-500 hover:text-blue-600"
             >
-              <Plus size={18} /> Add Section
+              <Plus size={18} /> Thêm Chương
             </button>
           </div>
         </div>
@@ -1749,9 +1755,9 @@ function CurriculumContentBank({
       {/* Modal Rename Section */}
       {modalState?.type === "Section" && (
         <FormModal
-          title={modalState.sectionId ? "Edit Section" : "New Section"}
-          label="Section Title"
-          placeholder="Enter section name..."
+          title={modalState.sectionId ? "Chỉnh Sửa Chương" : "Chương Mới"}
+          label="Tiêu đề Chương"
+          placeholder="Nhập tên chương..."
           initialValue={
             modalState.sectionId
               ? sections.find((s) => s.id === modalState.sectionId)?.title
@@ -1764,7 +1770,7 @@ function CurriculumContentBank({
 
       {/* Modal Create Lesson */}
       <Modal
-        title={editingLessonId ? "Edit Lesson" : "Create New Lesson"}
+        title={editingLessonId ? "Chỉnh Sửa Bài Học" : "Tạo Bài Học Mới"}
         open={isCreateModalOpen}
         onCancel={() => {
           setIsCreateModalOpen(false)
@@ -1790,20 +1796,22 @@ function CurriculumContentBank({
             name="title"
             label={
               <span className="font-semibold">
-                Lesson Title <span className="text-red-500">*</span>
+                Tiêu đề Bài Học <span className="text-red-500">*</span>
               </span>
             }
-            rules={[{ required: true, message: "Please enter lesson title" }]}
+            rules={[
+              { required: true, message: "Vui lòng nhập tiêu đề bài học" },
+            ]}
           >
             <Input
-              placeholder="e.g. Introduction to React Components"
+              placeholder="ví dụ: Giới thiệu về React Components"
               size="large"
             />
           </Form.Item>
 
           <Form.Item
             name="type"
-            label={<span className="font-semibold">Content Type</span>}
+            label={<span className="font-semibold">Loại Nội Dung</span>}
           >
             <Radio.Group
               onChange={(e) => {
@@ -1817,13 +1825,13 @@ function CurriculumContentBank({
               value={contentType}
             >
               <Radio.Button value="text_media" className="flex-1 text-center">
-                Text & Media
+                Văn bản & Media
               </Radio.Button>
               <Radio.Button value="video" className="flex-1 text-center">
-                Video Link
+                Liên kết Video
               </Radio.Button>
               <Radio.Button value="pdf" className="flex-1 text-center">
-                PDF Upload
+                Tải lên PDF
               </Radio.Button>
             </Radio.Group>
           </Form.Item>
@@ -1831,13 +1839,13 @@ function CurriculumContentBank({
           {contentType === "text_media" && (
             <Form.Item
               name="content"
-              label={<span className="font-semibold">Lesson Content</span>}
-              rules={[{ required: true, message: "Please enter content" }]}
+              label={<span className="font-semibold">Nội dung Bài Học</span>}
+              rules={[{ required: true, message: "Vui lòng nhập nội dung" }]}
             >
               <RichTextEditor
                 value={form.getFieldValue("content")}
                 onChange={(val) => form.setFieldValue("content", val)}
-                placeholder="Start typing your lesson content here..."
+                placeholder="Bắt đầu nhập nội dung bài học của bạn ở đây..."
               />
             </Form.Item>
           )}
@@ -1846,12 +1854,12 @@ function CurriculumContentBank({
             <div className="space-y-4">
               <Form.Item
                 name="content"
-                label={<span className="font-semibold">Input Video URL</span>}
+                label={<span className="font-semibold">Nhập URL Video</span>}
                 rules={[
-                  { required: true, message: "Please enter video URL" },
-                  { type: "url", message: "Please enter a valid URL" },
+                  { required: true, message: "Vui lòng nhập URL video" },
+                  { type: "url", message: "Vui lòng nhập URL hợp lệ" },
                 ]}
-                help="Supported: YouTube, Vimeo, Wistia."
+                help="Hỗ trợ: YouTube, Vimeo, Wistia."
               >
                 <Input
                   placeholder="https://www.youtube.com/watch?v=..."
@@ -1866,7 +1874,7 @@ function CurriculumContentBank({
                       width="100%"
                       height="100%"
                       src={`https://www.youtube.com/embed/${getYoutubeEmbedId(videoUrl)}`}
-                      title="Video Preview"
+                      title="Xem trước Video"
                       frameBorder="0"
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                       allowFullScreen
@@ -1879,8 +1887,8 @@ function CurriculumContentBank({
                       style={{ fontSize: "32px", marginBottom: "8px" }}
                     />
                     <span>
-                      Preview will appear here when you paste a valid YouTube
-                      link
+                      Xem trước sẽ xuất hiện ở đây khi bạn dán một liên kết
+                      YouTube hợp lệ
                     </span>
                   </div>
                 )}
@@ -1893,10 +1901,10 @@ function CurriculumContentBank({
               <Form.Item
                 name="content"
                 label={
-                  <span className="font-semibold">Lesson Content (PDF)</span>
+                  <span className="font-semibold">Nội dung Bài Học (PDF)</span>
                 }
                 rules={[
-                  { required: true, message: "Please upload a PDF file" },
+                  { required: true, message: "Vui lòng tải lên tệp PDF" },
                 ]}
                 style={{ height: 0, margin: 0, padding: 0, opacity: 0 }}
               >
@@ -1914,10 +1922,10 @@ function CurriculumContentBank({
                     <InboxOutlined style={{ color: "#3b82f6" }} />
                   </p>
                   <p className="ant-upload-text">
-                    Click or drag file to this area to upload
+                    Nhấp hoặc kéo tệp vào khu vực này để tải lên
                   </p>
                   <p className="ant-upload-hint">
-                    Only .pdf files are allowed up to 10MB
+                    Chỉ cho phép tệp .pdf lên đến 10MB
                   </p>
                 </Dragger>
               </div>
@@ -1932,7 +1940,7 @@ function CurriculumContentBank({
                         {pdfFile.name}
                       </p>
                       <p className="text-xs text-green-600 font-semibold">
-                        Upload Complete
+                        Đã Tải Lên Hoàn Tất
                       </p>
                     </div>
                   </div>
@@ -1958,7 +1966,7 @@ function CurriculumContentBank({
                 form.resetFields()
               }}
             >
-              Cancel
+              Hủy
             </Button>
             <Button
               type="primary"
@@ -1967,7 +1975,7 @@ function CurriculumContentBank({
               size="large"
               className="bg-blue-600 hover:bg-blue-500"
             >
-              {editingLessonId ? "Save Changes" : "Create Lesson"}
+              {editingLessonId ? "Lưu Thay Đổi" : "Tạo Bài Học"}
             </Button>
           </div>
         </Form>
@@ -1984,13 +1992,13 @@ function CurriculumContentBank({
         <div className="text-center py-4">
           <CheckCircleFilled className="text-green-500 text-5xl mb-4" />
           <h2 className="text-xl font-bold mb-2">
-            Lesson {editingLessonId ? "Updated" : "Created"} Successfully
+            Bài Học {editingLessonId ? "Đã Cập Nhật" : "Đã Tạo"} Thành Công
           </h2>
           <p className="text-gray-500 mb-6">
-            The lesson <strong>"{createdLessonName}"</strong> has been created.
+            Bài học <strong>"{createdLessonName}"</strong> đã được tạo.
           </p>
           <Button block onClick={() => setIsSuccessModalOpen(false)}>
-            Close
+            Đóng
           </Button>
         </div>
       </Modal>

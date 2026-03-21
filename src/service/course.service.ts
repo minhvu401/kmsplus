@@ -187,7 +187,7 @@ export async function getCourseByIdAction(id: number) {
   // 2. Lấy danh sách Assignment Rules (CẬP NHẬT MỚI)
   const rulesResult = await sql`
     SELECT 
-      id, target_type, department_id, user_id, role_id, 
+      id, target_type, department_id, user_id, 
       due_type, due_days, due_date
     FROM assignment_rules 
     WHERE course_id = ${id}
@@ -303,14 +303,13 @@ export async function createCourseAction(courseData: CreateCoursePayload) {
         for (const rule of courseData.assignment_rules) {
           await tx`
             INSERT INTO assignment_rules (
-              course_id, target_type, department_id, user_id, role_id, 
+              course_id, target_type, department_id, user_id,
               due_type, due_days, due_date
             ) VALUES (
               ${courseId}, 
               ${rule.target_type}, 
               ${rule.department_id || null}, 
               ${rule.user_id || null}, 
-              ${rule.role_id || null},
               ${rule.due_type || null}, 
               ${rule.due_days || null}, 
               ${rule.due_date || null}
