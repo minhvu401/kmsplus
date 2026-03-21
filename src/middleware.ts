@@ -11,7 +11,7 @@ const publicRoutes = [PageRoute.LOGIN]
 
 // Danh sách routes cần authentication
 const protectedRoutes = [
-  PageRoute.DASHBOARD,
+  PageRoute.DASHBOARD_METRICS,
   PageRoute.PROFILE,
   PageRoute.COURSES,
   PageRoute.ARTICLES,
@@ -57,7 +57,7 @@ export async function middleware(request: NextRequest) {
       }
       // If NextAuth token exists, just allow (NextAuth will validate it)
       console.log("Redirecting to dashboard (already logged in)")
-      return NextResponse.redirect(new URL(PageRoute.DASHBOARD, request.url))
+      return NextResponse.redirect(new URL(PageRoute.DASHBOARD_METRICS, request.url))
     } catch (error) {
       // Token invalid → xóa cookie
       console.log("Token invalid, deleting cookie")
@@ -86,7 +86,7 @@ export async function middleware(request: NextRequest) {
         if (!hasPermission(userRole, Permission.MANAGE_USERS)) {
           console.log("User does not have MANAGE_USERS permission")
           return NextResponse.redirect(
-            new URL(PageRoute.DASHBOARD, request.url)
+            new URL(PageRoute.DASHBOARD_METRICS, request.url)
           )
         }
       }

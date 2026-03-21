@@ -100,7 +100,7 @@ export default function EnrollmentOverviewPage() {
           <Breadcrumb
             className="mb-2"
             items={[
-              { title: <HomeOutlined />, href: "/dashboard" },
+              { title: <HomeOutlined />, href: "/dashboard-metrics" },
               {
                 title: (
                   /* ✅ Đã cập nhật màu text */
