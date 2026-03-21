@@ -25,7 +25,11 @@ import {
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 import { sanitizeTitle, sanitizeDescription } from "@/utils/sanitize"
-import { QuizMetadataDto, QuizCreateDto, parseAndValidateQuizFormData } from "./quizHelper"
+import {
+  QuizMetadataDto,
+  QuizCreateDto,
+  parseAndValidateQuizFormData,
+} from "./quizHelper"
 // ============================================
 // SERVER ACTIONS
 // ============================================
@@ -154,7 +158,9 @@ export async function createQuiz(formData: FormData) {
     questionIds: parsedData.questionIds,
   })
 
-  console.log("[createQuiz] Quiz created successfully, revalidating and redirecting...")
+  console.log(
+    "[createQuiz] Quiz created successfully, revalidating and redirecting..."
+  )
   revalidatePath("/quizzes")
   redirect("/quizzes")
 }
@@ -233,7 +239,10 @@ export async function getQuizQuestions(quizId: number) {
  * - Tham số: quizId (number), questionIds (number[])
  * - Yêu cầu xác thực (requireAuth)
  */
-export async function updateQuizQuestions(quizId: number, questionIds: number[]) {
+export async function updateQuizQuestions(
+  quizId: number,
+  questionIds: number[]
+) {
   await requireAuth()
   await updateQuizQuestionsAction(quizId, questionIds)
   revalidatePath(`/quizzes/${quizId}`)
@@ -250,16 +259,20 @@ export async function startQuizAttempt(curriculumItemId: number) {
     JOIN quiz_questions qq ON qq.quiz_id = ci.quiz_id
     JOIN question_bank qb ON qb.id = qq.question_id
     WHERE ci.id = ${curriculumItemId} AND qb.is_deleted = FALSE;
-  `;
+  `
 
-  const totalQuestions = result[0].count;
+  const totalQuestions = result[0].count
 
-  return startQuizAttemptAction(curriculumItemId, Number(user.id), totalQuestions);
+  return startQuizAttemptAction(
+    curriculumItemId,
+    Number(user.id),
+    totalQuestions
+  )
 }
 
 export async function submitQuizAttempt(attemptId: number) {
-  const user = await requireAuth();
-  return submitQuizAttemptAction(attemptId, Number(user.id));
+  const user = await requireAuth()
+  return submitQuizAttemptAction(attemptId, Number(user.id))
 }
 
 export async function getQuestionsForAttempt(attemptId: number) {
@@ -295,22 +308,19 @@ export async function getAttemptResult(attemptId: number) {
 const SaveAnswerSchema = z.object({
   attemptId: z.coerce.number().int(),
   questionId: z.coerce.number().int(),
-  selectedAnswer: z.union([
-    z.string(),
-    z.array(z.string()),
-  ]),
-});
+  selectedAnswer: z.union([z.string(), z.array(z.string())]),
+})
 export async function saveAttemptAnswer(input: unknown) {
   // 1️⃣ Validate payload
-  const parsed = SaveAnswerSchema.safeParse(input);
+  const parsed = SaveAnswerSchema.safeParse(input)
   if (!parsed.success) {
-    throw new Error('Invalid answer payload');
+    throw new Error("Invalid answer payload")
   }
 
-  const { attemptId, questionId, selectedAnswer } = parsed.data;
+  const { attemptId, questionId, selectedAnswer } = parsed.data
 
   // 2️⃣ Auth
-  const user = await requireAuth();
+  const user = await requireAuth()
 
   // 3️⃣ Save answer
   await saveAttemptAnswerAction(
@@ -318,8 +328,150 @@ export async function saveAttemptAnswer(input: unknown) {
     Number(user.id),
     questionId,
     selectedAnswer
-  );
+  )
 
   // 4️⃣ Minimal response
-  return { success: true };
+  return { success: true }
+}
+
+// ============================================
+// AI EXPLANATION ACTION
+// ============================================
+
+const GetExplanationSchema = z.object({
+  attemptId: z.coerce.number().int(),
+  questionId: z.coerce.number().int(),
+})
+
+/**
+ * Lấy giải thích AI sâu hơn cho một câu hỏi trong quiz
+ * - Xác minh user đã submit quiz attempt
+ * - Lấy chi tiết câu hỏi từ question_bank
+ * - Gọi Gemini API để generate giải thích chi tiết
+ *
+ * Pre-conditions: User đã hoàn thành quiz attempt
+ * Post-conditions: Trả về giải thích AI chi tiết
+ */
+export async function getQuestionExplanation(input: unknown) {
+  try {
+    // 1️⃣ Validate payload
+    const parsed = GetExplanationSchema.safeParse(input)
+    if (!parsed.success) {
+      throw new Error("Invalid request payload")
+    }
+
+    const { attemptId, questionId } = parsed.data
+
+    // 2️⃣ Auth
+    const user = await requireAuth()
+    const userId = Number(user.id)
+
+    // 3️⃣ Verify attempt ownership & is submitted
+    const attemptRows = await sql`
+      SELECT id, status
+      FROM quiz_attempts
+      WHERE id = ${attemptId} AND user_id = ${userId}
+      LIMIT 1
+    `
+
+    if (attemptRows.length === 0) {
+      throw new Error("Quiz attempt not found")
+    }
+
+    const attempt = attemptRows[0]
+    if (attempt.status !== "submitted") {
+      throw new Error("Quiz must be submitted before viewing explanations")
+    }
+
+    // 4️⃣ Get question details from question_bank
+    const questionRows = await sql`
+      SELECT 
+        id,
+        question_text,
+        explanation,
+        type,
+        options,
+        correct_answer,
+        category_id
+      FROM question_bank
+      WHERE id = ${questionId} AND is_deleted = FALSE
+      LIMIT 1
+    `
+
+    if (questionRows.length === 0) {
+      throw new Error("Question not found")
+    }
+
+    const question = questionRows[0]
+
+    // 5️⃣ Import & call generateAIExplanation from gemini service
+    const { generateAIExplanation } = await import("@/service/gemini.service")
+
+    // 6️⃣ Get category name if available
+    let categoryName = ""
+    if (question.category_id) {
+      const categoryRows = await sql`
+        SELECT name FROM categories WHERE id = ${question.category_id} LIMIT 1
+      `
+      if (categoryRows.length > 0) {
+        categoryName = categoryRows[0].name
+      }
+    }
+
+    // 7️⃣ Get user's answer from attempt_answers
+    let userAnswer = ""
+    const answerRows = await sql`
+      SELECT selected_answer
+      FROM attempt_answers
+      WHERE attempt_id = ${attemptId} AND question_id = ${questionId}
+      LIMIT 1
+    `
+    if (answerRows.length > 0) {
+      userAnswer = String(answerRows[0].selected_answer)
+    }
+
+    // 8️⃣ Parse options if it's JSON
+    let optionsArray = []
+    if (question.options && typeof question.options === "object") {
+      optionsArray = Array.isArray(question.options)
+        ? question.options
+        : Object.values(question.options)
+    }
+
+    // 9️⃣ Format correct answer for display
+    let correctAnswerDisplay = ""
+    if (question.correct_answer) {
+      if (typeof question.correct_answer === "object") {
+        correctAnswerDisplay = Array.isArray(question.correct_answer)
+          ? question.correct_answer.join(", ")
+          : JSON.stringify(question.correct_answer)
+      } else {
+        correctAnswerDisplay = String(question.correct_answer)
+      }
+    }
+
+    // 🔟 Generate AI explanation
+    const explanation = await generateAIExplanation({
+      questionText: question.question_text,
+      explanation: question.explanation || "",
+      correctAnswer: correctAnswerDisplay,
+      questionType: question.type,
+      options: optionsArray,
+      userAnswer: userAnswer,
+      category: categoryName,
+    })
+
+    return {
+      success: true,
+      explanation,
+      questionId,
+      questionText: question.question_text,
+    }
+  } catch (error: any) {
+    console.error("❌ Error getting question explanation:", error)
+    return {
+      success: false,
+      error: error?.message || "Failed to generate explanation",
+    }
+  }
 }
