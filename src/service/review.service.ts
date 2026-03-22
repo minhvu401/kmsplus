@@ -143,6 +143,22 @@ export async function getReviewByIdAction(id: number): Promise<ReviewWithUser | 
   return rows.length > 0 ? (rows[0] as ReviewWithUser) : null
 }
 
+export async function getActiveReviewsByCourseAction({
+  course_id,
+  page = 1,
+  limit = 10,
+}: {
+  course_id: number
+  page?: number
+  limit?: number
+}): Promise<{ reviews: ReviewWithUser[]; totalCount: number }> {
+  return getAllReviewsAction({
+    course_id,
+    page,
+    limit,
+  })
+}
+
 export async function getCourseReviewsForManagementAction({
   course_id,
   page = 1,

@@ -86,9 +86,9 @@ export default function EnrollmentOverviewPage() {
 
   const handleViewData = () => {
     if (selectedCourseId) {
-      router.push(`/courses/${selectedCourseId}/course-enrollment-detail`)
+      router.push(`/courses/${selectedCourseId}/enrollments`)
     } else {
-      router.push(`/courses/5/course-enrollment-detail`)
+      router.push(`/courses/5/enrollments`)
     }
   }
 
