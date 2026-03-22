@@ -11,6 +11,7 @@ import { revalidatePath } from "next/cache"
 import {
   getAllReviewsAction,
   getReviewByIdAction,
+  getActiveReviewsByCourseAction,
   createReviewAction,
   updateReviewAction,
   deleteReviewAction,
@@ -42,6 +43,15 @@ export async function getAllReviews(params: {
 export async function getReviewById(id: number) {
   await requireAuth()
   return getReviewByIdAction(id)
+}
+
+export async function getActiveReviewsByCourse(params: {
+  course_id: number
+  page?: number
+  limit?: number
+}) {
+  await requireAuth()
+  return getActiveReviewsByCourseAction(params)
 }
 
 export async function getCourseReviewsForManagement(params: {

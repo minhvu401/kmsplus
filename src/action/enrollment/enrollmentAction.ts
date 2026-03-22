@@ -6,7 +6,11 @@ import { sql } from "@/lib/database"
 import { getCurrentUser } from "@/lib/auth"
 import { revalidatePath } from "next/cache"
 import { requireAuth } from "@/lib/auth"
-import { getEnrollmentOverviewService } from "@/service/enrollment.service"
+import {
+  getEnrollmentOverviewService,
+  getCourseLearnerEnrollmentsService,
+  getCourseLearnerEnrollmentDetailService,
+} from "@/service/enrollment.service"
 
 export async function enrollCourseAction(courseId: number) {
   try {
@@ -99,6 +103,48 @@ export async function getEnrollmentOverview(courseId?: number) {
     return result
   } catch (error: any) {
     console.error("🔐 [SERVER] Error in getEnrollmentOverview:", error)
+    return {
+      success: false,
+      error: error.message || "Authentication failed",
+    }
+  }
+}
+
+export async function getCourseLearnerEnrollments(params: {
+  courseId: number
+  query?: string
+  status?: string
+  department?: string
+  sort?: string
+  page?: number
+  limit?: number
+}) {
+  try {
+    await requireAuth()
+    return await getCourseLearnerEnrollmentsService(params)
+  } catch (error: any) {
+    console.error("🔐 [SERVER] Error in getCourseLearnerEnrollments:", error)
+    return {
+      success: false,
+      learners: [],
+      totalItems: 0,
+      departments: [],
+      page: params.page || 1,
+      limit: params.limit || 10,
+      error: error.message || "Authentication failed",
+    }
+  }
+}
+
+export async function getCourseLearnerEnrollmentDetail(params: {
+  courseId: number
+  userId: number
+}) {
+  try {
+    await requireAuth()
+    return await getCourseLearnerEnrollmentDetailService(params)
+  } catch (error: any) {
+    console.error("🔐 [SERVER] Error in getCourseLearnerEnrollmentDetail:", error)
     return {
       success: false,
       error: error.message || "Authentication failed",
