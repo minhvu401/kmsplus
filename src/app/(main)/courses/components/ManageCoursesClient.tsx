@@ -4,7 +4,7 @@
 import React, { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { Input, Button, Table, Pagination, message, Modal, Tag } from "antd"
+import { Input, Button, Table, Pagination, message, Modal, Tag, Divider, Typography } from "antd"
 import {
   SearchOutlined,
   EditOutlined,
@@ -425,26 +425,55 @@ export default function ManageCoursesClient({
   return (
     <div className="space-y-6">
       {contextHolder}
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">
-            Course Management
-          </h1>
-          <p className="text-gray-600 mt-1">Manage and organize your courses</p>
+      
+      {/* Page Header */}
+      <div className="mb-8">
+        <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-blue-900 bg-clip-text text-transparent mb-4">
+          Course Management
+        </h1>
+        <div className="flex align-center justify-between gap-6" style={{ marginBottom: 16 }}>
+          <p className="text-gray-600 max-w-2xl leading-relaxed">
+            Manage and organize your courses
+          </p>
+          <Button
+            style={{
+              background: '#ffffff',
+              borderColor: '#1e40af',
+              borderWidth: '1.5px',
+              borderRadius: '0.375rem',
+              color: '#1e40af',
+              fontSize: '12px',
+              fontWeight: 500,
+              height: '36px',
+              paddingInline: '14px',
+              boxShadow: '0 2px 8px rgba(30, 64, 175, 0.12)',
+              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              whiteSpace: 'nowrap',
+              flexShrink: 0,
+            }}
+            icon={<PlusOutlined />}
+            onClick={() => setIsCreateModalOpen(true)}
+            onMouseEnter={(e) => {
+              const button = e.currentTarget as HTMLButtonElement;
+              button.style.background = '#f8fafc';
+              button.style.boxShadow = '0 8px 20px rgba(30, 64, 175, 0.2)';
+              button.style.borderColor = '#1e3a8a';
+            }}
+            onMouseLeave={(e) => {
+              const button = e.currentTarget as HTMLButtonElement;
+              button.style.background = '#ffffff';
+              button.style.boxShadow = '0 2px 8px rgba(30, 64, 175, 0.12)';
+              button.style.borderColor = '#1e40af';
+            }}
+          >
+            Create Course
+          </Button>
         </div>
-        <Button
-          type="primary"
-          icon={<PlusOutlined />}
-          size="large"
-          onClick={() => setIsCreateModalOpen(true)}
-        >
-          Create Course
-        </Button>
+        <Divider style={{ borderColor: 'rgba(37, 99, 235, 0.15)', margin: '16px 0' }} />
       </div>
 
-      {/* Search */}
-      <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+      {/* Search Card */}
+      <div className="bg-white rounded-lg shadow-sm p-5 mb-6">
         <Input.Search
           placeholder="Search courses..."
           value={searchInput}
@@ -452,37 +481,27 @@ export default function ManageCoursesClient({
           onSearch={handleSearch}
           size="large"
           allowClear
-          enterButton={<SearchOutlined />}
+          style={{ marginBottom: 0 }}
         />
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
-        <Table
-          columns={columns}
-          dataSource={courses}
-          rowKey="id"
-          pagination={false}
-          locale={{
-            emptyText: (
-              <div className="py-12 text-gray-500">No courses found</div>
-            ),
-          }}
-        />
-      </div>
-
-      {/* Pagination */}
-      {totalCount > 10 && (
-        <div className="flex justify-center pt-4">
-          <Pagination
-            current={page}
-            total={totalCount}
-            pageSize={10}
-            onChange={handlePageChange}
-            showSizeChanger={false}
+      <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+        <div className="p-6">
+          <Table
+            columns={columns}
+            dataSource={courses}
+            rowKey="id"
+            pagination={{
+              pageSize: 10,
+              total: totalCount,
+              showTotal: (total) => `Total ${total} courses`,
+            }}
+            bordered
+            size="middle"
           />
         </div>
-      )}
+      </div>
       <Modal
         title={null} // Ẩn tiêu đề mặc định của Modal vì trong Form đã có h1/h2
         open={isUpdateModalOpen}

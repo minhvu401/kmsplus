@@ -75,6 +75,61 @@ export async function getQuestionsAction(
   }
 }
 
+/**
+ * Lấy tất cả câu hỏi từ question_bank cho một category cụ thể
+ * Dùng cho việc thêm câu hỏi vào quiz
+ */
+export async function getQuestionsByCategoryAction(categoryId: number) {
+  try {
+    const data = await sql`
+      SELECT 
+        qb.id,
+        qb.question_text,
+        qb.type,
+        qb.explanation,
+        c.name as category_name,
+        qb.created_at,
+        qb.updated_at
+      FROM question_bank qb
+      JOIN categories c ON qb.category_id = c.id
+      WHERE qb.category_id = ${categoryId}
+        AND (qb.is_deleted = false OR qb.is_deleted IS NULL)
+      ORDER BY qb.updated_at DESC
+    `;
+    return data;
+  } catch (error) {
+    console.error('Error fetching questions by category:', error);
+    throw new Error('Could not fetch questions by category');
+  }
+}
+
+/**
+ * Lấy tất cả câu hỏi từ question_bank (không phân trang)
+ * Dùng cho dropdown chọn câu hỏi
+ */
+export async function getAllQuestionsAction() {
+  try {
+    const data = await sql`
+      SELECT 
+        qb.id,
+        qb.question_text,
+        qb.type,
+        qb.explanation,
+        c.name as category_name,
+        qb.created_at,
+        qb.updated_at
+      FROM question_bank qb
+      JOIN categories c ON qb.category_id = c.id
+      WHERE qb.is_deleted = false OR qb.is_deleted IS NULL
+      ORDER BY qb.updated_at DESC
+    `;
+    return data;
+  } catch (error) {
+    console.error('Error fetching all questions:', error);
+    throw new Error('Could not fetch all questions');
+  }
+}
+
 export async function getCategoriesAction() {
   try {
     const data = await sql `
