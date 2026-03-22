@@ -1,9 +1,8 @@
-// @/src/app/(main)/courses/components/CreateCourseForm.tsx
 "use client"
 
 import React, { useState, useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
-import dayjs from "dayjs" // Cần để xử lý DatePicker của AntD
+import dayjs from "dayjs"
 import {
   getCategoriesAPI,
   createCourseAPI,
@@ -76,13 +75,14 @@ const { Dragger } = Upload
 const CLOUDINARY_CLOUD_NAME = "dhclot8lh"
 const CLOUDINARY_UPLOAD_PRESET = "kms-plus"
 
-// --- TYPES CẬP NHẬT ---
+// --- TYPES ---
 export type Lesson = {
   id: number
   title: string
   duration_minutes: number | null
   type?: "text_media" | "video" | "pdf"
   content?: string
+  category_id?: number | null // ✅ Thêm category_id
 }
 export type Quiz = { id: number; title: string; question_count: number }
 export type CurriculumItem = {
@@ -101,19 +101,18 @@ export type Section = {
   items: CurriculumItem[]
 }
 
-// ✅ Type mới cho Assignment Rule
 export type AssignmentRulePayload = {
-  id: string | number // ID tạm để render list
+  id: string | number
   target_type: "all_employees" | "department" | "user" | "role"
   department_id?: number | null
   user_id?: number | null
   role_id?: number | null
-  due_type: "relative" | "fixed" | "none"
+  due_type: "relative" | "fixed" | "none" | null | undefined
   due_days?: number | null
-  due_date?: any // dayjs object
+  due_date?: any
 }
 
-// ✅ Cập nhật Create Payload
+// ✅ Dọn dẹp sạch sẽ global_due
 export type CreateCoursePayload = {
   title?: string
   description?: string
@@ -122,24 +121,8 @@ export type CreateCoursePayload = {
   status?: string
   duration_hours?: number
   visibility?: "public" | "private"
-  global_due_type?: "relative" | "fixed" | "none"
-  global_due_days?: number | null
-  global_due_date?: any
   assignment_rules?: AssignmentRulePayload[]
   curriculum: Section[]
-}
-
-export type ContentType = "text_media" | "video" | "pdf"
-
-export type ModalState = {
-  type: "Section"
-  sectionId?: string
-} | null
-
-export type UploadOptions = {
-  file: File
-  onSuccess?: (result: string) => void
-  onError?: (error: any) => void
 }
 
 const steps = ["Thông Tin Cơ Bản", "Thông Tin Nâng Cao"]
@@ -151,7 +134,6 @@ interface CreateCourseFormProps {
   onSuccess: () => void
 }
 
-// --- SORTABLE ITEM COMPONENT ---
 function SortableItem({
   id,
   children,
@@ -183,11 +165,9 @@ function SortableItem({
   )
 }
 
-// --- HELPER COMPONENTS ---
 function ContentBankItem({ icon, title, meta, onAdd, onEdit, onDelete }: any) {
   return (
     <div className="group flex items-center justify-between p-2 bg-white border rounded shadow-sm hover:shadow-md transition-shadow mb-2">
-      {/* Phần thông tin (Bên trái) */}
       <div className="flex items-center gap-2 overflow-hidden flex-1">
         <span className="text-blue-600 flex-shrink-0">{icon}</span>
         <div className="flex-1 overflow-hidden">
@@ -197,10 +177,7 @@ function ContentBankItem({ icon, title, meta, onAdd, onEdit, onDelete }: any) {
           <p className="text-xs text-gray-500 m-0">{meta}</p>
         </div>
       </div>
-
-      {/* Phần Action Buttons (Bên phải - Hiện khi hover) */}
       <div className="flex items-center gap-1 pl-2">
-        {/* Nút Edit */}
         <button
           onClick={(e) => {
             e.stopPropagation()
@@ -211,8 +188,6 @@ function ContentBankItem({ icon, title, meta, onAdd, onEdit, onDelete }: any) {
         >
           <Edit2 size={14} />
         </button>
-
-        {/* Nút Delete (Có xác nhận Popconfirm) */}
         <div className="opacity-0 group-hover:opacity-100 transition-opacity">
           <Popconfirm
             title="Delete this item?"
@@ -234,8 +209,6 @@ function ContentBankItem({ icon, title, meta, onAdd, onEdit, onDelete }: any) {
             </button>
           </Popconfirm>
         </div>
-
-        {/* Nút Add (Luôn hiện) */}
         <button
           onClick={(e) => {
             e.stopPropagation()
@@ -251,7 +224,67 @@ function ContentBankItem({ icon, title, meta, onAdd, onEdit, onDelete }: any) {
   )
 }
 
-// --- MAIN COMPONENT ---
+function FormModal({
+  title,
+  label,
+  placeholder,
+  initialValue = "",
+  onClose,
+  onSave,
+}: any) {
+  const [value, setValue] = useState(initialValue)
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    onSave(value)
+  }
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
+        <form onSubmit={handleSubmit}>
+          <div className="flex justify-between items-center p-4 border-b">
+            <h3 className="text-lg font-semibold text-gray-700">{title}</h3>
+            <button
+              type="button"
+              onClick={onClose}
+              className="text-gray-400 hover:text-gray-600"
+            >
+              <X size={20} />
+            </button>
+          </div>
+          <div className="p-4 space-y-2">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              {label}
+            </label>
+            <input
+              type="text"
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              placeholder={placeholder}
+              className="w-full border px-3 py-2 rounded border-gray-300"
+              autoFocus
+            />
+          </div>
+          <div className="flex justify-end gap-3 p-4 bg-gray-50 rounded-b-lg">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 bg-white text-blue-600 border border-blue-600 rounded text-sm font-medium hover:bg-blue-50 transition-colors"
+            >
+              Hủy
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 bg-blue-600 text-white rounded text-sm font-medium"
+            >
+              Lưu Thay Đổi
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
 export default function CreateCourseForm({
   availableLessons: initialLessons = [],
   availableQuizzes: initialQuizzes = [],
@@ -276,7 +309,6 @@ export default function CreateCourseForm({
     setAvailableQuizzes(initialQuizzes)
   }, [initialLessons, initialQuizzes])
 
-  // Fetch danh mục
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -301,16 +333,12 @@ export default function CreateCourseForm({
     fetchData()
   }, [])
 
-  const handleLessonCreated = (newLesson: Lesson) => {
+  const handleLessonCreated = (newLesson: Lesson) =>
     setAvailableLessons((prev) => [newLesson, ...prev])
-  }
-
-  const handleLessonUpdated = (updatedLesson: Lesson) => {
+  const handleLessonUpdated = (updatedLesson: Lesson) =>
     setAvailableLessons((prev) =>
       prev.map((l) => (l.id === updatedLesson.id ? updatedLesson : l))
     )
-  }
-
   const handleLessonDeleted = (deletedId: number) => {
     setAvailableLessons((prev) => prev.filter((l) => l.id !== deletedId))
     setPayload((prev) => ({
@@ -320,7 +348,6 @@ export default function CreateCourseForm({
         items: section.items.filter((item) => item.resource_id !== deletedId),
       })),
     }))
-    message.success("Lesson deleted successfully")
   }
 
   const router = useRouter()
@@ -328,16 +355,12 @@ export default function CreateCourseForm({
   const [current, setCurrent] = useState(0)
   const [loading, setLoading] = useState(false)
 
-  // ✅ KHỞI TẠO STATE MỚI
   const [payload, setPayload] = useState<CreateCoursePayload>({
     status: "pending_approval",
     duration_hours: 0,
     curriculum: [],
     category_id: null,
     visibility: "private",
-    global_due_type: "none",
-    global_due_days: 14,
-    global_due_date: null,
     assignment_rules: [],
   })
 
@@ -347,16 +370,14 @@ export default function CreateCourseForm({
   const [imageUrl, setImageUrl] = useState<string | null>(null)
   const [activeSectionId, setActiveSectionId] = useState<string | null>(null)
   const [cropModalVisible, setCropModalVisible] = useState(false)
-
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   )
 
   useEffect(() => {
-    if (payload.curriculum.length > 0 && !activeSectionId) {
+    if (payload.curriculum.length > 0 && !activeSectionId)
       setActiveSectionId(payload.curriculum[0].id)
-    }
   }, [payload.curriculum, activeSectionId])
 
   const handleUploadThumbnail = async (options: any) => {
@@ -390,11 +411,9 @@ export default function CreateCourseForm({
     const activeId = active.id as string
     const overId = over.id as string
     if (activeId === overId) return
-
     const activeSectionId = findSectionId(activeId)
     const overSectionId = findSectionId(overId)
     if (!activeSectionId || !overSectionId) return
-
     setPayload((prev) => {
       const newCurriculum = [...prev.curriculum]
       const activeSectionIndex = newCurriculum.findIndex(
@@ -403,31 +422,26 @@ export default function CreateCourseForm({
       const overSectionIndex = newCurriculum.findIndex(
         (s) => s.id === overSectionId
       )
-
       if (activeSectionIndex === -1 || overSectionIndex === -1) return prev
-
       if (activeSectionId === overSectionId) {
         const section = newCurriculum[activeSectionIndex]
         const oldIndex = section.items.findIndex((i) => i.id === activeId)
         const newIndex = section.items.findIndex((i) => i.id === overId)
-        const newItems = arrayMove(section.items, oldIndex, newIndex)
-        newCurriculum[activeSectionIndex] = { ...section, items: newItems }
+        newCurriculum[activeSectionIndex] = {
+          ...section,
+          items: arrayMove(section.items, oldIndex, newIndex),
+        }
       } else {
-        const sourceSection = newCurriculum[activeSectionIndex]
-        const destSection = newCurriculum[overSectionIndex]
-        const sourceItems = [...sourceSection.items]
-        const destItems = [...destSection.items]
+        const sourceItems = [...newCurriculum[activeSectionIndex].items]
+        const destItems = [...newCurriculum[overSectionIndex].items]
         const activeItemIndex = sourceItems.findIndex((i) => i.id === activeId)
         const [movedItem] = sourceItems.splice(activeItemIndex, 1)
         const overItemIndex = destItems.findIndex((i) => i.id === overId)
         const insertIndex =
           overItemIndex >= 0 ? overItemIndex : destItems.length + 1
         destItems.splice(insertIndex, 0, movedItem)
-        newCurriculum[activeSectionIndex] = {
-          ...sourceSection,
-          items: sourceItems,
-        }
-        newCurriculum[overSectionIndex] = { ...destSection, items: destItems }
+        newCurriculum[activeSectionIndex].items = sourceItems
+        newCurriculum[overSectionIndex].items = destItems
       }
       return { ...prev, curriculum: newCurriculum }
     })
@@ -435,10 +449,8 @@ export default function CreateCourseForm({
 
   const findSectionId = (itemId: string) => {
     if (payload.curriculum.find((s) => s.id === itemId)) return itemId
-    const section = payload.curriculum.find((s) =>
-      s.items.some((i) => i.id === itemId)
-    )
-    return section?.id
+    return payload.curriculum.find((s) => s.items.some((i) => i.id === itemId))
+      ?.id
   }
 
   function update<K extends keyof CreateCoursePayload>(
@@ -485,7 +497,6 @@ export default function CreateCourseForm({
     setStepStatus((prev) =>
       prev.map((_, i) => (allStepsValidResults[i] ? "valid" : "invalid"))
     )
-
     if (!isAllValid) {
       const firstInvalid = allStepsValidResults.findIndex((v) => !v)
       if (firstInvalid !== -1) setCurrent(firstInvalid)
@@ -495,27 +506,19 @@ export default function CreateCourseForm({
 
     setLoading(true)
     try {
-      // ✅ CHUẨN HÓA DỮ LIỆU TRƯỚC KHI GỬI XUỐNG API
       const finalPayload = {
         ...payload,
         title: payload.title || "Untitled Course",
-        global_due_type:
-          payload.global_due_type === "none" ? null : payload.global_due_type,
-        global_due_days:
-          payload.global_due_type === "relative"
-            ? payload.global_due_days
-            : null,
-        global_due_date:
-          payload.global_due_type === "fixed" && payload.global_due_date
-            ? dayjs(payload.global_due_date).toISOString()
-            : null,
+        visibility: payload.visibility || "private",
         assignment_rules: payload.assignment_rules?.map((rule) => ({
           target_type: rule.target_type,
           department_id:
             rule.target_type === "department" ? rule.department_id : null,
           role_id: rule.target_type === "role" ? rule.role_id : null,
           user_id: rule.target_type === "user" ? rule.user_id : null,
-          due_type: rule.due_type === "none" ? undefined : rule.due_type,
+          due_type: (rule.due_type === "none" || !rule.due_type
+            ? undefined
+            : rule.due_type) as "relative" | "fixed" | undefined,
           due_days: rule.due_type === "relative" ? rule.due_days : undefined,
           due_date:
             rule.due_type === "fixed" && rule.due_date
@@ -523,9 +526,7 @@ export default function CreateCourseForm({
               : undefined,
         })),
       }
-
       const res = await createCourseAPI(finalPayload)
-
       if (res.success) {
         message.success("Course created successfully! 🎉")
         if (onSuccess) onSuccess()
@@ -546,11 +547,8 @@ export default function CreateCourseForm({
   )
 
   return (
-    // ✅ ĐÃ SỬA: Dùng flex flex-col thay vì h-full chung chung
     <div className="bg-white flex flex-col h-[85vh] rounded-lg">
       {contextHolder}
-
-      {/* ✅ ĐÃ SỬA: flex-1 để chiếm toàn bộ phần trên, overflow-y-auto tạo thanh cuộn bên trong */}
       <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
         <h1 className="text-2xl font-semibold text-gray-900">
           Tạo Khóa Học Mới
@@ -578,7 +576,6 @@ export default function CreateCourseForm({
         <div className="pb-4">
           {current === 0 && (
             <section className="space-y-6">
-              {/* --- BASIC INFO BLOCK --- */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-4">
                   <div>
@@ -614,11 +611,6 @@ export default function CreateCourseForm({
                         value: String(c.id),
                         label: c.name,
                       }))}
-                      status={
-                        stepStatus[0] === "invalid" && !payload.category_id
-                          ? "error"
-                          : ""
-                      }
                       showSearch
                       optionFilterProp="label"
                       filterOption={(input, option) =>
@@ -641,7 +633,6 @@ export default function CreateCourseForm({
                     />
                   </div>
                 </div>
-
                 <div>
                   <label className="block text-sm font-medium mb-1">
                     Ảnh đại diện
@@ -698,29 +689,19 @@ export default function CreateCourseForm({
                   />
                 </div>
               </div>
-
               <Divider />
-
-              {/* --- ✅ CẤU HÌNH ENROLLMENT & ASSIGNMENTS --- */}
               <div>
                 <h2 className="text-lg font-bold text-gray-800 mb-1">
                   Cấu Hình Hiển Thị & Quy Tắc Ghi Danh
                 </h2>
-                <p className="text-sm text-gray-500 mb-6">
-                  Cấu hình ai có thể xem khóa học này và thời hạn học tập của
-                  họ.
-                </p>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  {/* CỘT TRÁI: VISIBILITY & GLOBAL DUE DATE */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-4">
                   <div className="space-y-6">
-                    {/* Visibility */}
                     <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                       <label className="block font-semibold text-gray-700 mb-2">
                         1. Hiển Thị Trong Thư Viện
                       </label>
                       <Radio.Group
-                        value={payload.visibility}
+                        value={payload.visibility || "private"}
                         onChange={(e) => update("visibility", e.target.value)}
                         className="space-y-2 w-full flex flex-col"
                       >
@@ -751,8 +732,6 @@ export default function CreateCourseForm({
                       </Radio.Group>
                     </div>
                   </div>
-
-                  {/* CỘT PHẢI: ASSIGNMENT RULES */}
                   <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 flex flex-col h-full">
                     <div className="flex justify-between items-start mb-4">
                       <div>
@@ -784,7 +763,6 @@ export default function CreateCourseForm({
                         Thêm Quy Tắc
                       </Button>
                     </div>
-
                     <div className="flex-1 overflow-y-auto space-y-3 pr-1 max-h-[300px] custom-scrollbar">
                       {!payload.assignment_rules ||
                       payload.assignment_rules.length === 0 ? (
@@ -802,14 +780,11 @@ export default function CreateCourseForm({
                             className="shadow-sm border-blue-100 relative"
                           >
                             <div className="space-y-3">
-                              {/* Target Row */}
                               <div className="flex gap-2 pr-6">
                                 <Select
                                   value={rule.target_type}
                                   onChange={(val) => {
-                                    const rules = [
-                                      ...(payload.assignment_rules || []),
-                                    ]
+                                    const rules = [...payload.assignment_rules!]
                                     rules[index] = {
                                       ...rule,
                                       target_type: val,
@@ -819,37 +794,31 @@ export default function CreateCourseForm({
                                     }
                                     update("assignment_rules", rules)
                                   }}
-                                  className="w-32"
+                                  className="w-32 flex-shrink-0"
                                   options={[
                                     {
                                       value: "all_employees",
                                       label: "Tất Cả NV",
                                     },
-                                    {
-                                      value: "department",
-                                      label: "Phòng Ban",
-                                    },
+                                    { value: "department", label: "Phòng Ban" },
                                     { value: "role", label: "Vai Trò" },
                                     { value: "user", label: "Người Dùng" },
                                   ]}
                                 />
-
                                 <div className="flex-1">
                                   {rule.target_type === "department" && (
                                     <Select
-                                      placeholder="Tìm kiếm và chọn phòng ban..."
+                                      placeholder="Chọn Phòng Ban..."
                                       className="w-full"
                                       value={rule.department_id}
                                       onChange={(val) => {
-                                        const rules = [
-                                          ...(payload.assignment_rules || []),
-                                        ]
-                                        rules[index].department_id = val
-                                        update("assignment_rules", rules)
+                                        const r = [...payload.assignment_rules!]
+                                        r[index].department_id = val
+                                        update("assignment_rules", r)
                                       }}
-                                      options={departments.map((dept) => ({
-                                        value: dept.id,
-                                        label: dept.name,
+                                      options={departments.map((d) => ({
+                                        value: d.id,
+                                        label: d.name,
                                       }))}
                                       showSearch
                                       filterOption={(input, option) =>
@@ -861,15 +830,13 @@ export default function CreateCourseForm({
                                   )}
                                   {rule.target_type === "role" && (
                                     <Select
-                                      placeholder="Chọn Vai Trò"
+                                      placeholder="Chọn Vai Trò..."
                                       className="w-full"
                                       value={rule.role_id}
                                       onChange={(val) => {
-                                        const rules = [
-                                          ...(payload.assignment_rules || []),
-                                        ]
-                                        rules[index].role_id = val
-                                        update("assignment_rules", rules)
+                                        const r = [...payload.assignment_rules!]
+                                        r[index].role_id = val
+                                        update("assignment_rules", r)
                                       }}
                                       options={[
                                         { value: 1, label: "Quản Lý" },
@@ -879,19 +846,17 @@ export default function CreateCourseForm({
                                   )}
                                   {rule.target_type === "user" && (
                                     <Select
-                                      placeholder="Tìm kiếm và chọn người dùng..."
+                                      placeholder="Tìm người dùng..."
                                       className="w-full"
                                       value={rule.user_id}
                                       onChange={(val) => {
-                                        const rules = [
-                                          ...(payload.assignment_rules || []),
-                                        ]
-                                        rules[index].user_id = val
-                                        update("assignment_rules", rules)
+                                        const r = [...payload.assignment_rules!]
+                                        r[index].user_id = val
+                                        update("assignment_rules", r)
                                       }}
-                                      options={users.map((user) => ({
-                                        value: user.id,
-                                        label: `${user.name} (${user.email})`,
+                                      options={users.map((u) => ({
+                                        value: u.id,
+                                        label: `${u.name} (${u.email})`,
                                       }))}
                                       showSearch
                                       filterOption={(input, option) =>
@@ -910,8 +875,6 @@ export default function CreateCourseForm({
                                   )}
                                 </div>
                               </div>
-
-                              {/* Due Date Row */}
                               <div className="flex gap-2 items-center bg-gray-50 p-2 rounded border border-gray-200">
                                 <span className="text-xs font-semibold text-gray-500 w-16">
                                   Hạn:
@@ -921,11 +884,9 @@ export default function CreateCourseForm({
                                   value={rule.due_type}
                                   className="w-24"
                                   onChange={(val) => {
-                                    const rules = [
-                                      ...(payload.assignment_rules || []),
-                                    ]
-                                    rules[index].due_type = val
-                                    update("assignment_rules", rules)
+                                    const r = [...payload.assignment_rules!]
+                                    r[index].due_type = val
+                                    update("assignment_rules", r)
                                   }}
                                   options={[
                                     { value: "none", label: "Không" },
@@ -940,11 +901,9 @@ export default function CreateCourseForm({
                                       min={1}
                                       value={rule.due_days}
                                       onChange={(v) => {
-                                        const rules = [
-                                          ...(payload.assignment_rules || []),
-                                        ]
-                                        rules[index].due_days = v
-                                        update("assignment_rules", rules)
+                                        const r = [...payload.assignment_rules!]
+                                        r[index].due_days = v
+                                        update("assignment_rules", r)
                                       }}
                                       addonAfter="ngày"
                                       className="w-full"
@@ -959,11 +918,9 @@ export default function CreateCourseForm({
                                           : null
                                       }
                                       onChange={(d) => {
-                                        const rules = [
-                                          ...(payload.assignment_rules || []),
-                                        ]
-                                        rules[index].due_date = d
-                                        update("assignment_rules", rules)
+                                        const r = [...payload.assignment_rules!]
+                                        r[index].due_date = d
+                                        update("assignment_rules", r)
                                       }}
                                       format="DD/MM/YYYY"
                                       className="w-full"
@@ -985,11 +942,9 @@ export default function CreateCourseForm({
                               className="absolute top-1 right-1"
                               icon={<DeleteOutlined />}
                               onClick={() => {
-                                const rules = [
-                                  ...(payload.assignment_rules || []),
-                                ]
-                                rules.splice(index, 1)
-                                update("assignment_rules", rules)
+                                const r = [...payload.assignment_rules!]
+                                r.splice(index, 1)
+                                update("assignment_rules", r)
                               }}
                             />
                           </Card>
@@ -1011,14 +966,13 @@ export default function CreateCourseForm({
                   </label>
                   <Select
                     value={payload.status}
-                    onChange={(value) => update("status", value)}
+                    onChange={(v) => update("status", v)}
                     className="w-full"
                     options={Object.entries(COURSE_STATUS_LABELS)
                       .filter(
-                        ([value]) =>
-                          value === "draft" || value === "pending_approval"
+                        ([v]) => v === "draft" || v === "pending_approval"
                       )
-                      .map(([value, label]) => ({ value, label }))}
+                      .map(([v, l]) => ({ value: v, label: l }))}
                   />
                 </div>
                 <div>
@@ -1037,18 +991,14 @@ export default function CreateCourseForm({
                   />
                 </div>
               </div>
-
               <hr className="my-6 border-gray-200" />
-
               <div>
                 <CurriculumContentBank
                   modal={modal}
                   availableLessons={availableLessons}
                   availableQuizzes={availableQuizzes}
                   value={payload.curriculum}
-                  onChange={(newCurriculum) =>
-                    update("curriculum", newCurriculum)
-                  }
+                  onChange={(nc) => update("curriculum", nc)}
                   hasError={
                     stepStatus[1] === "invalid" &&
                     (payload.curriculum.length === 0 ||
@@ -1058,10 +1008,11 @@ export default function CreateCourseForm({
                   onDragEnd={handleDragEnd}
                   activeSectionId={activeSectionId}
                   setActiveSectionId={setActiveSectionId}
-                  onOpenCreateModal={() => {}}
                   onLessonCreated={handleLessonCreated}
                   onLessonUpdated={handleLessonUpdated}
                   onLessonDeleted={handleLessonDeleted}
+                  categories={categories} // ✅ Truyền Categories
+                  courseCategoryId={payload.category_id} // ✅ Truyền ID để auto-fill
                 />
                 {stepStatus[1] === "invalid" && (
                   <p className="mt-2 text-sm text-red-600">
@@ -1075,7 +1026,6 @@ export default function CreateCourseForm({
         </div>
       </div>
 
-      {/* ✅ ĐÃ SỬA LỖI Ở ĐÂY: Thêm lớp shrink-0 để footer luôn ở dưới cùng và không bị đè */}
       <div className="bg-white border-t p-4 flex justify-between rounded-b-lg shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-10 mt-auto shrink-0">
         <div>
           {current > 0 && (
@@ -1099,7 +1049,7 @@ export default function CreateCourseForm({
               size="large"
               onClick={handleSubmit}
               loading={loading}
-              className="bg-green-600 hover:!bg-green-500 font-bold px-8 shadow-md"
+              className="bg-[#1677ff] hover:bg-blue-700 font-bold px-8 shadow-md"
             >
               Xuất Bản Khóa Học
             </Button>
@@ -1107,7 +1057,6 @@ export default function CreateCourseForm({
         </div>
       </div>
 
-      {/* Modal Crop */}
       <Modal
         title="Cắt Ảnh"
         open={cropModalVisible}
@@ -1126,98 +1075,24 @@ export default function CreateCourseForm({
   )
 }
 
-// --- Component FormModal ---
-function FormModal({
-  title,
-  label,
-  placeholder,
-  initialValue = "",
-  onClose,
-  onSave,
-}: {
-  title: string
-  label: string
-  placeholder: string
-  initialValue?: string
-  onClose: () => void
-  onSave: (value: string) => void
-}) {
-  const [value, setValue] = useState(initialValue)
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    onSave(value)
-  }
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
-        <form onSubmit={handleSubmit}>
-          <div className="flex justify-between items-center p-4 border-b">
-            <h3 className="text-lg font-semibold text-gray-700">{title}</h3>
-            <button
-              type="button"
-              onClick={onClose}
-              className="text-gray-400 hover:text-gray-600"
-            >
-              <X size={20} />
-            </button>
-          </div>
-          <div className="p-4 space-y-2">
-            <label
-              htmlFor="modal-input"
-              className="block text-sm font-medium text-gray-700 mb-1"
-            >
-              {label}
-            </label>
-            <input
-              id="modal-input"
-              type="text"
-              value={value}
-              onChange={(e) => setValue(e.target.value)}
-              placeholder={placeholder}
-              className="w-full border px-3 py-2 rounded border-gray-300"
-              autoFocus
-            />
-          </div>
-          <div className="flex justify-end gap-3 p-4 bg-gray-50 rounded-b-lg">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 bg-white text-blue-600 border border-blue-600 rounded text-sm font-medium hover:bg-blue-50 transition-colors"
-            >
-              Hủy
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 bg-blue-600 text-white rounded text-sm font-medium"
-            >
-              Lưu Thay Đổi
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  )
-}
-
-// --- CURRICULUM CONTENT BANK ---
 interface CurriculumContentBankProps {
   modal: any
   value: Section[]
-  onChange: (value: Section[]) => void
+  onChange: (v: Section[]) => void
   hasError: boolean
   availableLessons: Lesson[]
   availableQuizzes: Quiz[]
   sensors: any
-  onDragEnd: (event: DragEndEvent) => void
+  onDragEnd: (e: DragEndEvent) => void
   activeSectionId: string | null
   setActiveSectionId: (id: string | null) => void
-  onOpenCreateModal: () => void
-  onLessonCreated: (lesson: Lesson) => void // Thêm prop này để nhận callback
-  onLessonUpdated: (lesson: Lesson) => void // Thêm prop sửa lesson
-  onLessonDeleted: (id: number) => void // Thêm prop xóa lesson
+  onLessonCreated: (l: Lesson) => void
+  onLessonUpdated: (l: Lesson) => void
+  onLessonDeleted: (id: number) => void
+  categories: { id: number; name: string }[]
+  courseCategoryId?: number | null
 }
+
 function CurriculumContentBank({
   value: sections,
   onChange,
@@ -1229,27 +1104,30 @@ function CurriculumContentBank({
   modal,
   activeSectionId,
   setActiveSectionId,
-  onLessonCreated, // Nhận prop này
-  onLessonUpdated, // Nhận prop sửa lesson
-  onLessonDeleted, // Nhận prop xóa lesson
+  onLessonCreated,
+  onLessonUpdated,
+  onLessonDeleted,
+  categories,
+  courseCategoryId,
 }: CurriculumContentBankProps) {
   const router = useRouter()
   const [modalState, setModalState] = useState<{
     type: "Section"
     sectionId?: string
   } | null>(null)
-
   const [activeTab, setActiveTab] = useState<"lessons" | "quizzes">("lessons")
-  const [searchTerm, setSearchTerm] = useState("")
 
-  // --- State cho Modal Create Lesson ---
+  // ✅ STATE FILTER KÉP
+  const [searchTerm, setSearchTerm] = useState("")
+  const [selectedFilterCategory, setSelectedFilterCategory] = useState<
+    number | null
+  >(null)
+
   const [form] = Form.useForm()
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false)
   const [createdLessonName, setCreatedLessonName] = useState("")
   const [isCreating, setIsCreating] = useState(false)
-  const [editingLessonId, setEditingLessonId] = useState<number | null>(null) // State theo dõi ID đang sửa
-
   const [contentType, setContentType] = useState<
     "text_media" | "video" | "pdf"
   >("text_media")
@@ -1257,6 +1135,7 @@ function CurriculumContentBank({
   const [pdfFile, setPdfFile] = useState<{ name: string; url: string } | null>(
     null
   )
+  const [editingLessonId, setEditingLessonId] = useState<number | null>(null)
 
   const handleAddSection = () => {
     const newSection: Section = {
@@ -1268,22 +1147,18 @@ function CurriculumContentBank({
     onChange([...sections, newSection])
     setActiveSectionId(newSection.id)
   }
-
-  const handleEditSection = (sectionId: string) =>
-    setModalState({ type: "Section", sectionId })
-
+  const handleEditSection = (id: string) =>
+    setModalState({ type: "Section", sectionId: id })
   const handleSaveSection = (title: string) => {
-    if (modalState?.sectionId) {
+    if (modalState?.sectionId)
       onChange(
         sections.map((s) =>
-          String(s.id) === String(modalState.sectionId) ? { ...s, title } : s
+          s.id === modalState.sectionId ? { ...s, title } : s
         )
       )
-    }
     setModalState(null)
   }
-
-  const handleDeleteSection = (sectionId: string | number) => {
+  const handleDeleteSection = (id: string | number) => {
     modal.confirm({
       title: "Xóa Chương",
       content: (
@@ -1296,42 +1171,42 @@ function CurriculumContentBank({
       okText: "Xóa",
       okType: "danger",
       onOk: () => {
-        const newSections = sections.filter(
-          (s: any) => String(s.id) !== String(sectionId)
-        )
-        onChange(newSections)
-        if (String(activeSectionId) === String(sectionId))
-          setActiveSectionId(null)
-        message.success("Đã xóa chương")
+        onChange(sections.filter((s) => String(s.id) !== String(id)))
+        if (String(activeSectionId) === String(id)) setActiveSectionId(null)
       },
     })
   }
-  const handleAddItemToSection = (
+  const handleAddItem = (
     sectionId: string,
-    item: Lesson | Quiz,
+    item: any,
     type: "lesson" | "quiz"
   ) => {
     onChange(
-      sections.map((s) => {
-        if (s.id !== sectionId) return s
-        const newItem: CurriculumItem = {
-          id: `item-${Date.now()}`,
-          order: s.items.length + 1,
-          resource_id: item.id,
-          type: type,
-          title: item.title,
-          duration_minutes:
-            type === "lesson" ? (item as Lesson).duration_minutes : undefined,
-          question_count:
-            type === "quiz" ? (item as Quiz).question_count : undefined,
-        }
-        return { ...s, items: [...s.items, newItem] }
-      })
+      sections.map((s) =>
+        s.id === sectionId
+          ? {
+              ...s,
+              items: [
+                ...s.items,
+                {
+                  id: `item-${Date.now()}`,
+                  order: s.items.length,
+                  resource_id: item.id,
+                  type,
+                  title: item.title,
+                  duration_minutes:
+                    type === "lesson" ? item.duration_minutes : undefined,
+                  question_count:
+                    type === "quiz" ? item.question_count : undefined,
+                },
+              ],
+            }
+          : s
+      )
     )
   }
-
   const handleRemoveItem = (
-    sectionId: string | number,
+    secId: string | number,
     itemId: string | number
   ) => {
     modal.confirm({
@@ -1341,18 +1216,16 @@ function CurriculumContentBank({
       okType: "danger",
       centered: true,
       onOk: () => {
-        const updatedSections = sections.map((section) => {
-          if (String(section.id) === String(sectionId)) {
-            return {
-              ...section,
-              items: section.items.filter(
-                (item) => String(item.id) !== String(itemId)
-              ),
-            }
-          }
-          return section
-        })
-        onChange(updatedSections)
+        onChange(
+          sections.map((s) =>
+            String(s.id) === String(secId)
+              ? {
+                  ...s,
+                  items: s.items.filter((i) => String(i.id) !== String(itemId)),
+                }
+              : s
+          )
+        )
         message.success("Đã xóa mục")
       },
     })
@@ -1364,26 +1237,17 @@ function CurriculumContentBank({
       const formData = new FormData()
       formData.append("file", file)
       formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET)
-
       const res = await fetch(
         `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/auto/upload`,
         { method: "POST", body: formData }
       )
-
-      if (!res.ok) {
-        const errorData = await res.json()
-        throw new Error(errorData.error?.message || "Tải lên thất bại")
-      }
-
+      if (!res.ok) throw new Error("Upload failed")
       const data = await res.json()
-      const fileUrl = data.secure_url || data.url
-
-      setPdfFile({ name: file.name, url: fileUrl })
-      form.setFieldsValue({ content: fileUrl })
+      setPdfFile({ name: file.name, url: data.secure_url })
+      form.setFieldsValue({ content: data.secure_url })
       message.success("Đã tải PDF lên thành công!")
-    } catch (error: any) {
-      console.error("PDF Upload error:", error)
-      message.error(`Tải lên thất bại: ${error.message}`)
+    } catch (error) {
+      message.error("Tải lên thất bại")
     } finally {
       hide()
     }
@@ -1392,29 +1256,24 @@ function CurriculumContentBank({
 
   const getYoutubeEmbedId = (url: string) => {
     if (!url) return null
-    const regExp =
+    const match = url.match(
       /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/
-    const match = url.match(regExp)
+    )
     return match && match[2].length === 11 ? match[2] : null
   }
 
-  // 👇 THÊM HÀM MỞ FORM EDIT:
   const handleEditItemAction = (item: any, type: "lesson" | "quiz") => {
     if (type === "quiz")
       return message.info("Chức năng sửa bài kiểm tra sắp ra mắt")
-
     const lesson = item as Lesson
-    setEditingLessonId(lesson.id) // Lưu ID đang sửa
-    setIsCreateModalOpen(true) // Mở Modal
-
-    // Đổ dữ liệu cũ vào Form
+    setEditingLessonId(lesson.id)
+    setIsCreateModalOpen(true)
     form.setFieldsValue({
       title: lesson.title,
       type: lesson.type || "text_media",
       content: lesson.content,
+      category_id: lesson.category_id ? String(lesson.category_id) : undefined,
     })
-
-    // Setup state phụ (Video/PDF)
     const cType = lesson.type || "text_media"
     setContentType(cType)
     if (cType === "video" && lesson.content) setVideoUrl(lesson.content)
@@ -1422,7 +1281,6 @@ function CurriculumContentBank({
       setPdfFile({ name: "Existing File", url: lesson.content })
   }
 
-  // 👇 THÊM HÀM XÓA:
   const handleDeleteItemAction = async (
     id: number,
     type: "lesson" | "quiz"
@@ -1440,29 +1298,25 @@ function CurriculumContentBank({
     setIsCreating(true)
     try {
       if (editingLessonId) {
-        // --- TRƯỜG HỢP SỬA ---
         const updated = await updateLessonAPI(editingLessonId, {
           title: values.title,
           type: values.type,
           content: values.content,
+          category_id: values.category_id ? Number(values.category_id) : null,
         })
         onLessonUpdated(updated as unknown as Lesson)
         message.success("Đã cập nhật bài học!")
         setIsCreateModalOpen(false)
         setEditingLessonId(null)
       } else {
-        // --- TRƯỜG HỢP TẠO MỚI ---
         const newLessonResponse = await createNewLessonAPI({
           title: values.title,
           type: values.type,
           content: values.content,
+          category_id: values.category_id ? Number(values.category_id) : null,
         })
-
-        // ✅ Cập nhật danh sách lesson ngay lập tức
-        if (onLessonCreated) {
+        if (onLessonCreated)
           onLessonCreated(newLessonResponse as unknown as Lesson)
-        }
-
         setIsCreateModalOpen(false)
         setCreatedLessonName(newLessonResponse.title)
         setIsSuccessModalOpen(true)
@@ -1477,162 +1331,181 @@ function CurriculumContentBank({
     }
   }
 
-  // ✅ Sử dụng useMemo để lọc danh sách
+  // ✅ LOGIC LỌC KÉP
   const filteredLessons = useMemo(() => {
-    return availableLessons.filter((l) =>
-      l.title.toLowerCase().includes(searchTerm.toLowerCase())
-    )
-  }, [availableLessons, searchTerm])
+    return availableLessons.filter((l) => {
+      const matchText = l.title.toLowerCase().includes(searchTerm.toLowerCase())
+      const matchCat = selectedFilterCategory
+        ? l.category_id === selectedFilterCategory
+        : true
+      return matchText && matchCat
+    })
+  }, [availableLessons, searchTerm, selectedFilterCategory])
 
-  const filteredQuizzes = useMemo(() => {
-    return availableQuizzes.filter((q) =>
-      q.title.toLowerCase().includes(searchTerm.toLowerCase())
-    )
-  }, [availableQuizzes, searchTerm])
+  const filteredQuizzes = useMemo(
+    () =>
+      availableQuizzes.filter((q) =>
+        q.title.toLowerCase().includes(searchTerm.toLowerCase())
+      ),
+    [availableQuizzes, searchTerm]
+  )
 
   return (
     <div
       className={`grid grid-cols-1 md:grid-cols-2 gap-6 p-4 border rounded-md ${hasError ? "border-red-500" : "border-gray-200"}`}
     >
-      {/* LEFT COLUMN: SOURCE */}
-      <div className="block text-sm font-medium mb-1 text-gray-700">
+      <div className="bg-gray-50 p-4 rounded border flex-1 flex flex-col overflow-hidden">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-semibold m-0">Nội Dung Có Sẵn</h3>
+          <Button
+            type="primary"
+            size="small"
+            icon={<Plus size={16} />}
+            onClick={() => {
+              setEditingLessonId(null)
+              form.resetFields()
+              // ✅ AUTO-FILL DANH MỤC KHÓA HỌC VÀO FORM LESSON
+              form.setFieldsValue({
+                category_id: courseCategoryId
+                  ? String(courseCategoryId)
+                  : undefined,
+              })
+              setVideoUrl("")
+              setPdfFile(null)
+              setContentType("text_media")
+              setIsCreateModalOpen(true)
+            }}
+            className="bg-[#1677ff] hover:bg-blue-500 shadow-sm"
+          >
+            Bài Học Mới
+          </Button>
+        </div>
         {sections.length > 0 && (
           <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-xs font-medium text-gray-500 mb-1">
               Chọn Chương Để Thêm Vào
             </label>
             <Select
               className="w-full"
               value={activeSectionId || undefined}
-              onChange={(val) => setActiveSectionId(val)}
+              onChange={setActiveSectionId}
               options={sections.map((s) => ({ value: s.id, label: s.title }))}
-              placeholder="Chọn một chương..."
+              placeholder="Chọn chương..."
             />
           </div>
         )}
 
-        <div className="bg-gray-50 p-4 rounded border flex-1 flex flex-col overflow-hidden">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold m-0">Nội Dung Có Sẵn</h3>
-            <Button
-              type="primary"
-              icon={<Plus size={16} />}
-              onClick={() => {
-                setEditingLessonId(null) // Reset ID edit về null
-                form.resetFields()
-                setVideoUrl("")
-                setPdfFile(null)
-                setContentType("text_media")
-                setIsCreateModalOpen(true)
-              }}
-              className="bg-blue-600 hover:bg-blue-500 shadow-sm"
-              size="small"
-            >
-              Bài Học Mới
-            </Button>
-          </div>
-
-          <div className="relative mb-2">
-            <input
-              type="text"
-              placeholder="Tìm kiếm..."
+        {/* ✅ GRID 2 CỘT TÌM KIẾM & LỌC */}
+        {activeTab === "lessons" && (
+          <div className="grid grid-cols-2 gap-2 mb-2">
+            <Select
+              allowClear
+              placeholder="Lọc danh mục..."
+              className="w-full"
+              value={selectedFilterCategory}
+              onChange={setSelectedFilterCategory}
+              options={categories.map((c) => ({ value: c.id, label: c.name }))}
+              showSearch
+              optionFilterProp="label"
+              filterOption={(input, option) =>
+                (option?.label ?? "")
+                  .toLowerCase()
+                  .includes(input.toLowerCase())
+              }
+            />
+            <Input
+              placeholder="Tìm tên bài..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-8 pr-4 py-2 border rounded-md text-sm"
-            />
-            <Search
-              size={16}
-              className="absolute left-2.5 top-2.5 text-gray-400"
+              prefix={<Search size={14} className="text-gray-400" />}
             />
           </div>
-
-          <div className="flex border-b mb-2">
-            <button
-              onClick={() => setActiveTab("lessons")}
-              className={`px-4 py-2 text-sm font-medium ${activeTab === "lessons" ? "border-b-2 border-blue-600 text-blue-600" : "text-gray-500"}`}
-            >
-              Bài Học
-            </button>
-            <button
-              onClick={() => setActiveTab("quizzes")}
-              className={`px-4 py-2 text-sm font-medium ${activeTab === "quizzes" ? "border-b-2 border-blue-600 text-blue-600" : "text-gray-500"}`}
-            >
-              Bài Kiểm Tra
-            </button>
+        )}
+        {activeTab === "quizzes" && (
+          <div className="relative mb-2">
+            <Input
+              placeholder="Tìm bài kiểm tra..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              prefix={<Search size={14} className="text-gray-400" />}
+            />
           </div>
+        )}
 
-          <div className="flex-1 overflow-y-auto space-y-2 max-h-[400px]">
-            {activeTab === "lessons" &&
-              // ✅ Đã fix lỗi implicit any
-              filteredLessons.map((l: Lesson) => (
-                <ContentBankItem
-                  key={`l-${l.id}`}
-                  icon={<BookOpen size={16} />}
-                  title={l.title}
-                  meta={`${l.duration_minutes || 0} min`}
-                  onEdit={() => handleEditItemAction(l, "lesson")}
-                  onDelete={() => handleDeleteItemAction(l.id, "lesson")}
-                  onAdd={() => {
-                    if (!activeSectionId) {
-                      message.warning("Vui lòng chọn một chương ở trên trước")
-                      return
-                    }
-                    handleAddItemToSection(activeSectionId, l, "lesson")
-                  }}
-                />
-              ))}
-            {activeTab === "quizzes" &&
-              // ✅ Đã fix lỗi implicit any
-              filteredQuizzes.map((q: Quiz) => (
-                <ContentBankItem
-                  key={`q-${q.id}`}
-                  icon={<FileQuestion size={16} />}
-                  title={q.title}
-                  meta={`${q.question_count} Qs`}
-                  onAdd={() => {
-                    if (!activeSectionId) {
-                      message.warning("Vui lòng chọn một chương ở trên trước")
-                      return
-                    }
-                    handleAddItemToSection(activeSectionId, q, "quiz")
-                  }}
-                />
-              ))}
-            {activeTab === "lessons" && filteredLessons.length === 0 && (
-              <p className="text-center text-gray-400 mt-4 text-sm">
-                Không tìm thấy bài học nào.
-              </p>
-            )}
-            {activeTab === "quizzes" && filteredQuizzes.length === 0 && (
-              <p className="text-center text-gray-400 mt-4 text-sm">
-                Không tìm thấy bài kiểm tra nào.
-              </p>
-            )}
-          </div>
+        <div className="flex border-b mb-2 mt-2">
+          <button
+            className={`px-4 py-2 text-sm font-medium ${activeTab === "lessons" ? "border-b-2 border-blue-600 text-blue-600" : "text-gray-500"}`}
+            onClick={() => setActiveTab("lessons")}
+          >
+            Bài Học
+          </button>
+          <button
+            className={`px-4 py-2 text-sm font-medium ${activeTab === "quizzes" ? "border-b-2 border-blue-600 text-blue-600" : "text-gray-500"}`}
+            onClick={() => setActiveTab("quizzes")}
+          >
+            Bài Kiểm Tra
+          </button>
+        </div>
+        <div className="overflow-y-auto flex-1 max-h-[400px] pr-1">
+          {activeTab === "lessons" &&
+            filteredLessons.map((l) => (
+              <ContentBankItem
+                key={l.id}
+                icon={<BookOpen size={16} />}
+                title={l.title}
+                meta={`${l.duration_minutes || 0} min`}
+                onEdit={() => handleEditItemAction(l, "lesson")}
+                onDelete={() => handleDeleteItemAction(l.id, "lesson")}
+                onAdd={() =>
+                  activeSectionId
+                    ? handleAddItem(activeSectionId, l, "lesson")
+                    : message.warning("Vui lòng chọn một chương trước")
+                }
+              />
+            ))}
+          {activeTab === "quizzes" &&
+            filteredQuizzes.map((q) => (
+              <ContentBankItem
+                key={q.id}
+                icon={<FileQuestion size={16} />}
+                title={q.title}
+                meta={`${q.question_count} Qs`}
+                onEdit={() => handleEditItemAction(q, "quiz")}
+                onDelete={() => handleDeleteItemAction(q.id, "quiz")}
+                onAdd={() =>
+                  activeSectionId
+                    ? handleAddItem(activeSectionId, q, "quiz")
+                    : message.warning("Vui lòng chọn một chương trước")
+                }
+              />
+            ))}
+          {activeTab === "lessons" && filteredLessons.length === 0 && (
+            <p className="text-center text-gray-400 py-4 text-sm">
+              Không có bài học nào khớp với bộ lọc.
+            </p>
+          )}
         </div>
       </div>
 
-      {/* RIGHT COLUMN: TARGET */}
       <DndContext
         sensors={sensors}
         collisionDetection={closestCorners}
         onDragEnd={onDragEnd}
       >
-        {/* 👇 BẮT ĐẦU SỬA: Đảm bảo cấu trúc div đóng mở đúng */}
-        <div className="block text-sm font-medium mb-1 text-gray-700">
+        <div className="flex flex-col h-[500px]">
           <h3 className="text-lg font-semibold mb-4">Chương Trình Khóa Học</h3>
-          <div className="flex-1 overflow-y-auto space-y-4 pr-2 max-h-[600px]">
+          <div className="flex-1 overflow-y-auto space-y-4 pr-1">
             {sections.map((section) => (
               <div
                 key={section.id}
                 className={`bg-white border rounded transition-colors ${activeSectionId === section.id ? "border-blue-500 ring-1 ring-blue-500" : ""}`}
                 onClick={() => setActiveSectionId(section.id)}
               >
-                <div className="flex items-center justify-between p-3 border-b bg-gray-50">
-                  <div className="flex items-center gap-2">
-                    <GripVertical size={18} className="text-gray-400" />
-                    <span className="font-medium">{section.title}</span>
-                  </div>
+                <div className="flex justify-between items-center p-3 bg-gray-50 border-b">
+                  <span className="font-medium flex items-center gap-2">
+                    <GripVertical size={16} className="text-gray-400" />{" "}
+                    {section.title}
+                  </span>
                   <div className="flex items-center gap-3">
                     <button
                       onClick={(e) => {
@@ -1662,50 +1535,45 @@ function CurriculumContentBank({
                   >
                     {section.items.map((item) => (
                       <SortableItem key={item.id} id={item.id}>
-                        {(listeners) => (
-                          <div className="flex items-center justify-between p-2 border rounded hover:bg-gray-50 bg-white">
-                            <div className="flex items-center gap-2">
+                        {(listeners: any) => (
+                          <div className="flex justify-between items-center p-2 border rounded bg-white hover:bg-gray-50">
+                            <div className="flex items-center gap-2 overflow-hidden">
                               <div
                                 {...listeners}
                                 className="cursor-grab p-1 text-gray-400"
                               >
-                                <GripVertical size={16} />
+                                <GripVertical size={14} />
                               </div>
                               {item.type === "lesson" ? (
-                                <BookOpen size={16} className="text-gray-500" />
+                                <BookOpen
+                                  size={14}
+                                  className="text-gray-500 flex-shrink-0"
+                                />
                               ) : (
                                 <FileQuestion
-                                  size={16}
-                                  className="text-gray-500"
+                                  size={14}
+                                  className="text-gray-500 flex-shrink-0"
                                 />
                               )}
-                              <span className="text-sm font-medium">
+                              <span className="text-sm truncate">
                                 {item.title}
                               </span>
                             </div>
-                            <div className="flex items-center gap-3">
-                              <span className="text-xs text-gray-400">
-                                {item.type === "lesson"
-                                  ? `${item.duration_minutes || 0} min`
-                                  : `${item.question_count || 0} Qs`}
-                              </span>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  handleRemoveItem(section.id, item.id)
-                                }}
-                                className="text-gray-400 hover:text-red-600"
-                              >
-                                <X size={15} />
-                              </button>
-                            </div>
+                            <X
+                              size={14}
+                              className="cursor-pointer text-gray-400 hover:text-red-500 flex-shrink-0 ml-2"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleRemoveItem(section.id, item.id)
+                              }}
+                            />
                           </div>
                         )}
                       </SortableItem>
                     ))}
                   </SortableContext>
                   {section.items.length === 0 && (
-                    <p className="text-sm text-gray-400 text-center py-2 italic">
+                    <p className="text-center text-sm text-gray-400 py-2 italic">
                       Chương trống
                     </p>
                   )}
@@ -1713,38 +1581,35 @@ function CurriculumContentBank({
               </div>
             ))}
           </div>
-          <div className="mt-4">
-            <button
-              type="button"
-              onClick={handleAddSection}
-              className="w-full flex items-center justify-center gap-2 p-3 border-2 border-dashed border-gray-300 rounded text-gray-600 hover:border-blue-500 hover:text-blue-600 transition-colors"
-            >
-              <Plus size={18} /> Thêm Chương
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={handleAddSection}
+            className="w-full mt-4 flex items-center justify-center gap-2 p-3 border-2 border-dashed border-gray-300 rounded text-gray-600 hover:border-blue-500 hover:text-blue-600 transition-colors"
+          >
+            <Plus size={18} /> Thêm Chương
+          </button>
         </div>
-        {/* 👆 KẾT THÚC SỬA: Đã đóng thẻ div "block text-sm" đúng chỗ */}
       </DndContext>
 
-      {/* Modal Rename Section */}
       {modalState?.type === "Section" && (
         <FormModal
-          title={modalState.sectionId ? "Chỉnh Sửa Chương" : "Chương Mới"}
-          label="Tiêu đề Chương"
-          placeholder="Nhập tên chương..."
+          title="Sửa tên chương"
+          label="Tiêu đề"
           initialValue={
-            modalState.sectionId
-              ? sections.find((s) => s.id === modalState.sectionId)?.title
-              : ""
+            sections.find((s) => s.id === modalState.sectionId)?.title
           }
           onClose={() => setModalState(null)}
           onSave={handleSaveSection}
         />
       )}
 
-      {/* Modal Create Lesson */}
+      {/* ✅ MODAL TẠO BÀI HỌC MỚI */}
       <Modal
-        title={editingLessonId ? "Chỉnh Sửa Bài Học" : "Tạo Bài Học Mới"}
+        title={
+          <span className="text-lg font-bold">
+            {editingLessonId ? "Sửa Bài Học" : "Tạo Bài Học Mới"}
+          </span>
+        }
         open={isCreateModalOpen}
         onCancel={() => {
           setIsCreateModalOpen(false)
@@ -1752,10 +1617,10 @@ function CurriculumContentBank({
           setVideoUrl("")
           setPdfFile(null)
           setContentType("text_media")
-          setEditingLessonId(null) // Reset khi đóng
+          setEditingLessonId(null)
         }}
         footer={null}
-        width={700}
+        width={750}
         centered
       >
         <Form
@@ -1765,23 +1630,41 @@ function CurriculumContentBank({
           initialValues={{ type: "text_media" }}
           className="mt-4"
         >
-          {/* Form Content */}
-          <Form.Item
-            name="title"
-            label={
-              <span className="font-semibold">
-                Tiêu đề Bài Học <span className="text-red-500">*</span>
-              </span>
-            }
-            rules={[
-              { required: true, message: "Vui lòng nhập tiêu đề bài học" },
-            ]}
-          >
-            <Input
-              placeholder="ví dụ: Giới thiệu về React Components"
-              size="large"
-            />
-          </Form.Item>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Form.Item
+              name="title"
+              label={
+                <span className="font-semibold">
+                  Tiêu đề bài học <span className="text-red-500">*</span>
+                </span>
+              }
+              rules={[{ required: true, message: "Vui lòng nhập tiêu đề" }]}
+            >
+              <Input placeholder="ví dụ: Giới thiệu chung" size="large" />
+            </Form.Item>
+            {/* ✅ TRƯỜNG CATEGORY */}
+            <Form.Item
+              name="category_id"
+              label={<span className="font-semibold">Danh mục bài học</span>}
+            >
+              <Select
+                placeholder="Chọn danh mục phân loại"
+                size="large"
+                allowClear
+                showSearch
+                options={categories.map((c) => ({
+                  value: String(c.id),
+                  label: c.name,
+                }))}
+                optionFilterProp="label"
+                filterOption={(input, option) =>
+                  (option?.label ?? "")
+                    .toLowerCase()
+                    .includes(input.toLowerCase())
+                }
+              />
+            </Form.Item>
+          </div>
 
           <Form.Item
             name="type"
@@ -1802,7 +1685,7 @@ function CurriculumContentBank({
                 Văn bản & Media
               </Radio.Button>
               <Radio.Button value="video" className="flex-1 text-center">
-                Liên kết Video
+                Video Link
               </Radio.Button>
               <Radio.Button value="pdf" className="flex-1 text-center">
                 Tải lên PDF
@@ -1818,12 +1701,15 @@ function CurriculumContentBank({
             >
               <RichTextEditor
                 value={form.getFieldValue("content")}
-                onChange={(val) => form.setFieldValue("content", val)}
-                placeholder="Bắt đầu nhập nội dung bài học của bạn ở đây..."
+                onChange={(val: any) => {
+                  const content = typeof val === "string" ? val : ""
+                  if (content !== form.getFieldValue("content"))
+                    form.setFieldValue("content", content)
+                }}
+                placeholder="Bắt đầu nhập..."
               />
             </Form.Item>
           )}
-
           {contentType === "video" && (
             <div className="space-y-4">
               <Form.Item
@@ -1848,9 +1734,8 @@ function CurriculumContentBank({
                       width="100%"
                       height="100%"
                       src={`https://www.youtube.com/embed/${getYoutubeEmbedId(videoUrl)}`}
-                      title="Xem trước Video"
+                      title="Video Preview"
                       frameBorder="0"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                       allowFullScreen
                       className="rounded shadow-sm"
                     ></iframe>
@@ -1860,27 +1745,19 @@ function CurriculumContentBank({
                     <PlayCircleOutlined
                       style={{ fontSize: "32px", marginBottom: "8px" }}
                     />
-                    <span>
-                      Xem trước sẽ xuất hiện ở đây khi bạn dán một liên kết
-                      YouTube hợp lệ
-                    </span>
+                    <span>Preview video sẽ hiển thị ở đây</span>
                   </div>
                 )}
               </div>
             </div>
           )}
-
           {contentType === "pdf" && (
             <div>
               <Form.Item
                 name="content"
-                label={
-                  <span className="font-semibold">Nội dung Bài Học (PDF)</span>
-                }
-                rules={[
-                  { required: true, message: "Vui lòng tải lên tệp PDF" },
-                ]}
-                style={{ height: 0, margin: 0, padding: 0, opacity: 0 }}
+                label={<span className="font-semibold">Tệp PDF</span>}
+                rules={[{ required: true, message: "Vui lòng tải lên PDF" }]}
+                style={{ display: "none" }}
               >
                 <Input />
               </Form.Item>
@@ -1889,32 +1766,24 @@ function CurriculumContentBank({
                   accept=".pdf"
                   showUploadList={false}
                   beforeUpload={handleUploadPDF}
-                  height={180}
-                  className="bg-gray-50 border-dashed border-2 border-gray-300 rounded-lg hover:border-blue-50 transition-colors"
+                  height={160}
+                  className="bg-gray-50 border-dashed border-2 border-gray-300 rounded-lg hover:border-blue-500 transition-colors"
                 >
                   <p className="ant-upload-drag-icon">
                     <InboxOutlined style={{ color: "#3b82f6" }} />
                   </p>
                   <p className="ant-upload-text">
-                    Nhấp hoặc kéo tệp vào khu vực này để tải lên
-                  </p>
-                  <p className="ant-upload-hint">
-                    Chỉ cho phép tệp .pdf lên đến 10MB
+                    Kéo thả hoặc nhấp để tải PDF lên
                   </p>
                 </Dragger>
               </div>
               {pdfFile && (
-                <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg">
+                <div className="flex items-center justify-between p-3 bg-blue-50 border border-blue-200 rounded-lg">
                   <div className="flex items-center gap-3">
-                    <div className="bg-white p-2 rounded border border-gray-200">
-                      <FilePdfOutlined className="text-red-500 text-xl" />
-                    </div>
+                    <FilePdfOutlined className="text-red-500 text-xl" />
                     <div>
-                      <p className="font-medium text-gray-800 text-sm">
+                      <p className="font-medium text-gray-800 text-sm m-0">
                         {pdfFile.name}
-                      </p>
-                      <p className="text-xs text-green-600 font-semibold">
-                        Đã Tải Lên Hoàn Tất
                       </p>
                     </div>
                   </div>
@@ -1931,7 +1800,6 @@ function CurriculumContentBank({
               )}
             </div>
           )}
-
           <div className="flex justify-end gap-3 mt-8 pt-4 border-t">
             <Button
               size="large"
@@ -1947,7 +1815,7 @@ function CurriculumContentBank({
               htmlType="submit"
               loading={isCreating}
               size="large"
-              className="bg-blue-600 hover:bg-blue-500"
+              className="bg-[#1677ff] hover:bg-blue-700 font-semibold px-8 shadow-md"
             >
               {editingLessonId ? "Lưu Thay Đổi" : "Tạo Bài Học"}
             </Button>
@@ -1955,7 +1823,6 @@ function CurriculumContentBank({
         </Form>
       </Modal>
 
-      {/* --- MODAL SUCCESS --- */}
       <Modal
         open={isSuccessModalOpen}
         onCancel={() => setIsSuccessModalOpen(false)}
@@ -1965,13 +1832,16 @@ function CurriculumContentBank({
       >
         <div className="text-center py-4">
           <CheckCircleFilled className="text-green-500 text-5xl mb-4" />
-          <h2 className="text-xl font-bold mb-2">
-            Bài Học {editingLessonId ? "Đã Cập Nhật" : "Đã Tạo"} Thành Công
-          </h2>
+          <h2 className="text-xl font-bold mb-2">Thành Công!</h2>
           <p className="text-gray-500 mb-6">
-            Bài học <strong>"{createdLessonName}"</strong> đã được tạo.
+            Bài học <strong>"{createdLessonName}"</strong> đã được lưu.
           </p>
-          <Button block onClick={() => setIsSuccessModalOpen(false)}>
+          <Button
+            block
+            type="primary"
+            size="large"
+            onClick={() => setIsSuccessModalOpen(false)}
+          >
             Đóng
           </Button>
         </div>
