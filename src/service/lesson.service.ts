@@ -1,36 +1,39 @@
-// @/service/lesson.service.ts
+// @/src/service/lesson.service.ts
 // Lesson Service - Chứa logic xử lý lesson
 "use server"
 
 import { sql } from "../lib/database"
 import { revalidatePath } from "next/cache"
-import { redirect } from "next/navigation"
+
+// ============================================================================
+// 1. TYPE DEFINITIONS
+// ============================================================================
 
 export type Lesson = {
   id: number
-  course_id: number
-  // section_id: number | null  XOA dong nay
+  course_id: number | null
+  category_id?: number | null
   title: string
   content: string | null
   video_url: string | null
   display_order: number
   duration_minutes: number | null
   file_path: string | null
-  type: string // 'video', 'text', 'quiz'
+  type: string // 'video', 'text_media', 'pdf'
   deleted_at: Date | null
   created_at: Date
   updated_at: Date
 }
+
 export type CreateLessonPayload = {
   title: string
   content: string
   type?: string
   course_id?: number | null
+  category_id?: number | null
   duration_minutes?: number
 }
-/**
- * Type cho tham số lấy danh sách lesson
- */
+
 type GetAllLessonsParams = {
   course_id?: number
   query?: string
@@ -39,6 +42,10 @@ type GetAllLessonsParams = {
   sort?: "newest" | "oldest" | "title"
   include_deleted?: boolean
 }
+
+// ============================================================================
+// 2. QUERY ACTIONS
+// ============================================================================
 
 /**
  * Lấy tất cả lessons
@@ -85,12 +92,14 @@ export async function getAllLessonsAction({
       SELECT 
         id,
         course_id,
+        category_id,
         title,
         content,
         video_url,
         display_order,
         duration_minutes,
         file_path,
+        type,
         created_at,
         updated_at
       FROM lessons
@@ -103,7 +112,7 @@ export async function getAllLessonsAction({
     `
 
     return {
-      data: lessons,
+      data: lessons as Lesson[],
       pagination: {
         total: Number(countResult.total),
         page,
@@ -121,9 +130,7 @@ export async function getAllLessonsAction({
  * Lấy lesson theo ID
  */
 export async function getLessonByIdAction(id: number, include_deleted = false) {
-  // 1. Kiểm tra ID đầu vào
   if (!id || isNaN(id)) {
-    console.warn("⚠️ getLessonByIdAction received invalid ID:", id)
     return undefined
   }
 
@@ -132,75 +139,74 @@ export async function getLessonByIdAction(id: number, include_deleted = false) {
       SELECT 
         id, 
         course_id, 
-        title, 
+        category_id,
         content, 
         video_url, 
         duration_minutes, 
-        type
+        type,
+        file_path
       FROM lessons
       WHERE id = ${id}
       ${!include_deleted ? sql`AND deleted_at IS NULL` : sql``}
     `
 
-    // Nếu không tìm thấy lesson, trả về undefined thay vì lỗi
     if (!lesson) {
-      console.warn(`⚠️ Lesson with ID ${id} not found in DB`)
       return undefined
     }
 
     return lesson as Lesson
   } catch (error) {
-    // 2. Log lỗi chi tiết ra Terminal của Server để debug
     console.error(`❌ DB Error in getLessonByIdAction(${id}):`, error)
-
-    // 3. Trả về undefined để Client không bị crash
     return undefined
   }
 }
+
+// ============================================================================
+// 3. MUTATION ACTIONS
+// ============================================================================
+
 /**
  * Tạo mới lesson
  */
 export async function createLessonAction(payload: CreateLessonPayload) {
-  // 1. Chuẩn bị biến để lưu vào DB
   let dbContent: string | null = null
   let dbVideoUrl: string | null = null
   let dbFilePath: string | null = null
 
-  // 2. Phân loại dữ liệu dựa trên 'type'
-  // Dữ liệu từ Frontend gửi lên luôn nằm trong payload.content, ta cần chia nó ra.
   switch (payload.type) {
     case "video":
-      dbVideoUrl = payload.content // Nếu là video, lưu vào cột video_url
+      dbVideoUrl = payload.content
       break
     case "pdf":
-      dbFilePath = payload.content // Nếu là pdf, lưu link vào cột file_path
+      dbFilePath = payload.content
       break
-    case "text":
+    case "text_media":
     default:
-      dbContent = payload.content // Mặc định hoặc text, lưu vào cột content
+      dbContent = payload.content
       break
   }
 
-  // 3. Thực hiện câu lệnh SQL INSERT chuẩn xác
   const result = await sql`
     INSERT INTO lessons (
       title, 
       course_id, 
+      category_id,     
       duration_minutes,
-      type,       -- Cột loại bài học
-      content,    -- Cột nội dung text
-      video_url,  -- Cột link video
-      file_path   -- Cột link file PDF
+      type,             
+      content,          
+      video_url,        
+      file_path         
     ) VALUES (
       ${payload.title}, 
-      ${payload.course_id}, 
-      ${payload.duration_minutes},
-      ${payload.type}, -- Lưu: 'text', 'video', hoặc 'pdf'
-      ${dbContent},    -- Chỉ có dữ liệu nếu type là text
-      ${dbVideoUrl},   -- Chỉ có dữ liệu nếu type là video
-      ${dbFilePath}    -- Chỉ có dữ liệu nếu type là pdf
+      ${payload.course_id || null}, 
+      ${payload.category_id || null}, 
+      ${payload.duration_minutes || 0},
+      ${payload.type || "text_media"}, 
+      ${dbContent},     
+      ${dbVideoUrl},    
+      ${dbFilePath}     
     )
-    RETURNING id, title, duration_minutes, type
+    RETURNING id, title, duration_minutes, type, category_id, content, video_url, file_path
   `
 
   return result[0]
@@ -221,7 +227,7 @@ export async function updateLessonAction(
   try {
     await sql`BEGIN`
 
-    // Nếu cập nhật display_order, cần điều chỉnh các bài học khác
+    // Xử lý thứ tự hiển thị (nếu có)
     if (data.display_order !== undefined) {
       const [currentLesson] = await sql`
         SELECT course_id, display_order 
@@ -229,8 +235,7 @@ export async function updateLessonAction(
         WHERE id = ${id}
       `
 
-      if (currentLesson) {
-        // Nếu giảm display_order
+      if (currentLesson && currentLesson.course_id) {
         if (data.display_order < currentLesson.display_order) {
           await sql`
             UPDATE lessons
@@ -240,9 +245,7 @@ export async function updateLessonAction(
               AND display_order < ${currentLesson.display_order}
               AND id != ${id}
           `
-        }
-        // Nếu tăng display_order
-        else if (data.display_order > currentLesson.display_order) {
+        } else if (data.display_order > currentLesson.display_order) {
           await sql`
             UPDATE lessons
             SET display_order = display_order - 1
@@ -258,13 +261,14 @@ export async function updateLessonAction(
     const [updatedLesson] = await sql`
       UPDATE lessons
       SET 
-        
         title = COALESCE(${data.title}, title),
+        category_id = ${data.category_id !== undefined ? data.category_id : sql`category_id`}, 
         content = COALESCE(${data.content}, content),
         video_url = COALESCE(${data.video_url}, video_url),
         display_order = COALESCE(${data.display_order}, display_order),
-        duration_minutes = ${data.duration_minutes !== undefined ? data.duration_minutes : null},
+        duration_minutes = ${data.duration_minutes !== undefined ? data.duration_minutes : sql`duration_minutes`},
         file_path = COALESCE(${data.file_path}, file_path),
+        type = COALESCE(${data.type}, type),
         updated_at = NOW()
       WHERE id = ${id} AND deleted_at IS NULL
       RETURNING *
@@ -276,8 +280,9 @@ export async function updateLessonAction(
 
     await sql`COMMIT`
 
-    // Revalidate paths
-    revalidatePath(`/courses/${updatedLesson.course_id}/lessons`)
+    if (updatedLesson.course_id) {
+      revalidatePath(`/courses/${updatedLesson.course_id}/lessons`)
+    }
     revalidatePath(`/lessons/${id}`)
 
     return updatedLesson as Lesson
@@ -295,7 +300,6 @@ export async function deleteLessonAction(id: number) {
   try {
     await sql`BEGIN`
 
-    // Lấy thông tin lesson để revalidate path sau khi xóa
     const [lesson] = await sql`
       SELECT course_id 
       FROM lessons 
@@ -306,7 +310,7 @@ export async function deleteLessonAction(id: number) {
       throw new Error("Lesson not found or already deleted")
     }
 
-    const [deletedLesson] = await sql`
+    await sql`
       UPDATE lessons
       SET 
         deleted_at = NOW(),
@@ -317,8 +321,9 @@ export async function deleteLessonAction(id: number) {
 
     await sql`COMMIT`
 
-    // Revalidate paths
-    revalidatePath(`/courses/${lesson.course_id}/lessons`)
+    if (lesson.course_id) {
+      revalidatePath(`/courses/${lesson.course_id}/lessons`)
+    }
     revalidatePath(`/lessons/${id}`)
 
     return { success: true }
@@ -328,6 +333,10 @@ export async function deleteLessonAction(id: number) {
     throw new Error("Failed to delete lesson")
   }
 }
+
+// ============================================================================
+// 4. SMART / BULK ACTIONS
+// ============================================================================
 
 /**
  * Lấy các lesson theo danh sách ID
@@ -358,7 +367,6 @@ export async function updateLessonsOrderAction(
   try {
     await sql`BEGIN`
 
-    // Tạo một bảng tạm để cập nhật hàng loạt
     const values = lessons.map((l) => `(${l.id}, ${l.display_order})`).join(",")
 
     await sql.unsafe(`
@@ -372,12 +380,11 @@ export async function updateLessonsOrderAction(
 
     await sql`COMMIT`
 
-    // Revalidate paths
     if (lessons.length > 0) {
       const [course] = await sql`
         SELECT course_id FROM lessons WHERE id = ${lessons[0].id}
       `
-      if (course) {
+      if (course && course.course_id) {
         revalidatePath(`/courses/${course.course_id}/lessons`)
       }
     }
@@ -391,13 +398,10 @@ export async function updateLessonsOrderAction(
 }
 
 /**
- * 1. CHECK DEPENDENCY: Kiểm tra lesson đang được dùng ở đâu
+ * CHECK DEPENDENCY: Kiểm tra lesson đang được dùng ở đâu
  */
 export async function checkLessonUsageService(lessonId: number) {
   try {
-    // Logic: Đếm số lượng khóa học đang liên kết với bài học này
-    // Giả sử bài học liên kết với khóa học qua cột course_id (1-N)
-    // Nếu bạn có bảng trung gian (curriculum_items), hãy sửa query JOIN tương ứng
     const usage = await sql`
       SELECT 
         c.status,
@@ -425,7 +429,7 @@ export async function checkLessonUsageService(lessonId: number) {
 }
 
 /**
- * 2. SOFT DELETE (Lưu trữ)
+ * SOFT DELETE (Lưu trữ)
  */
 export async function softDeleteLessonService(id: number) {
   await sql`
@@ -437,7 +441,7 @@ export async function softDeleteLessonService(id: number) {
 }
 
 /**
- * 3. HARD DELETE (Xóa vĩnh viễn)
+ * HARD DELETE (Xóa vĩnh viễn)
  */
 export async function hardDeleteLessonService(id: number) {
   await sql`DELETE FROM lessons WHERE id = ${id}`
@@ -445,14 +449,12 @@ export async function hardDeleteLessonService(id: number) {
 }
 
 /**
- * 4. CLONE LESSON (Lưu thành bài mới)
+ * CLONE LESSON (Lưu thành bài mới)
  */
 export async function cloneLessonService(originalId: number, newData: any) {
-  // Lấy data cũ
   const [original] = await sql`SELECT * FROM lessons WHERE id = ${originalId}`
   if (!original) throw new Error("Original lesson not found")
 
-  // Data mới ưu tiên, nếu không có thì lấy cũ
   const title = newData.title || `${original.title} (Copy)`
   const content =
     newData.content !== undefined ? newData.content : original.content
@@ -461,17 +463,20 @@ export async function cloneLessonService(originalId: number, newData: any) {
     newData.video_url !== undefined ? newData.video_url : original.video_url
   const file_path =
     newData.file_path !== undefined ? newData.file_path : original.file_path
+  const category_id =
+    newData.category_id !== undefined
+      ? newData.category_id
+      : original.category_id // Lấy category_id
 
-  // Insert bài mới
   const [newLesson] = await sql`
     INSERT INTO lessons (
-      title, content, type, video_url, file_path, duration_minutes, course_id
+      title, content, type, video_url, file_path, duration_minutes, course_id, category_id 
     ) VALUES (
       ${title}, ${content}, ${type}, ${video_url}, ${file_path}, 
-      ${original.duration_minutes}, ${null} 
+      ${original.duration_minutes}, ${null}, ${category_id || null} 
     )
-    RETURNING id, title, duration_minutes, type, content, video_url, file_path
+    RETURNING id, title, duration_minutes, type, content, video_url, file_path, category_id
   `
-  // Note: course_id set null để nó thành bài trong Content Bank (Orphan)
+
   return newLesson
 }

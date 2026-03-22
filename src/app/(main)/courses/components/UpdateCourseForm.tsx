@@ -1,3 +1,4 @@
+// @/src/app/(main)/courses/components/UpdateCourseForm.tsx
 "use client"
 
 import React, { useState, useEffect, useMemo } from "react"
