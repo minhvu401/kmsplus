@@ -10,17 +10,19 @@ import {
   Empty,
   Input,
   Popconfirm,
+  Divider,
+  Select,
+  Typography,
 } from "antd"
 import {
   PlusOutlined,
   EditOutlined,
   DeleteOutlined,
-  EyeOutlined,
 } from "@ant-design/icons"
 import Link from "next/link"
 import { getAllQuizzes, deleteQuiz } from "@/action/quiz/quizActions"
+import { getCategoriesAPI } from "@/action/courses/courseAction"
 import CreateQuizModal from "./components/CreateQuizModal"
-import EditQuizModal from "./components/EditQuizModal"
 
 interface Quiz {
   id: number
@@ -39,13 +41,38 @@ export default function QuizzesPage() {
   const [loading, setLoading] = useState(true)
   const [searchText, setSearchText] = useState("")
   const [filteredQuizzes, setFilteredQuizzes] = useState<Quiz[]>([])
+  const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest')
+  const [categories, setCategories] = useState<{ id: number; name: string }[]>([])
+  const [selectedCategory, setSelectedCategory] = useState<number | 'All'>('All')
+  const [loadingCategories, setLoadingCategories] = useState(false)
   const [isCreateModalVisible, setIsCreateModalVisible] = useState(false)
-  const [isEditModalVisible, setIsEditModalVisible] = useState(false)
-  const [editingQuizId, setEditingQuizId] = useState<number | null>(null)
 
   useEffect(() => {
     loadQuizzes()
+    loadCategories()
   }, [])
+
+  useEffect(() => {
+    if (quizzes.length > 0) {
+      const filtered = quizzes.filter((quiz) =>
+        quiz.title.toLowerCase().includes(searchText.toLowerCase())
+      )
+      applySorting(filtered)
+    }
+  }, [sortOrder])
+
+  const loadCategories = async () => {
+    setLoadingCategories(true)
+    try {
+      const res = await getCategoriesAPI()
+      setCategories(res || [])
+    } catch (error) {
+      console.error("Failed to load categories:", error)
+      setCategories([])
+    } finally {
+      setLoadingCategories(false)
+    }
+  }
 
   const loadQuizzes = async () => {
     setLoading(true)
@@ -56,7 +83,7 @@ export default function QuizzesPage() {
         limit: 100,
       })
       setQuizzes(data.data || [])
-      setFilteredQuizzes(data.data || [])
+      applySorting(data.data || [])
     } catch (error) {
       console.error("Failed to load quizzes:", error)
       message.error("Không thể tải danh sách bài thi")
@@ -70,12 +97,16 @@ export default function QuizzesPage() {
     const filtered = quizzes.filter((quiz) =>
       quiz.title.toLowerCase().includes(value.toLowerCase())
     )
-    setFilteredQuizzes(filtered)
+    applySorting(filtered)
   }
 
-  const handleEdit = (id: number) => {
-    setEditingQuizId(id)
-    setIsEditModalVisible(true)
+  const applySorting = (itemsToSort: Quiz[]) => {
+    const sorted = [...itemsToSort].sort((a, b) => {
+      const dateA = new Date(a.created_at).getTime()
+      const dateB = new Date(b.created_at).getTime()
+      return sortOrder === 'newest' ? dateB - dateA : dateA - dateB
+    })
+    setFilteredQuizzes(sorted)
   }
 
   const handleDelete = async (id: number) => {
@@ -125,16 +156,11 @@ export default function QuizzesPage() {
       render: (_: any, record: Quiz) => (
         <Space size="middle">
           <Link href={`/quizzes/${record.id}`}>
-            <EyeOutlined
+            <EditOutlined
               style={{ cursor: "pointer", color: "#1890ff" }}
-              title="Xem chi tiết"
+              title="Chỉnh sửa"
             />
           </Link>
-          <EditOutlined
-            style={{ cursor: "pointer", color: "#1890ff" }}
-            onClick={() => handleEdit(record.id)}
-            title="Chỉnh sửa"
-          />
           <Popconfirm
             title="Xóa bài thi"
             description="Bạn có chắc chắn muốn xóa bài thi này? Hành động này không thể hoàn tác."
@@ -154,67 +180,139 @@ export default function QuizzesPage() {
   ]
 
   return (
-    <div className="p-6">
-      <div className="mb-6">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-3xl font-bold">Quản Lý Bài Thi</h1>
-            <p className="text-gray-600 mt-2">
-              Danh sách tất cả các bài thi trong hệ thống
-            </p>
-          </div>
+    <div className="p-8 bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50 min-h-screen">
+      {/* Page Header */}
+      <div className="mb-8">
+        <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-blue-900 bg-clip-text text-transparent mb-4">
+          Quiz Management
+        </h1>
+        <div className="flex align-center justify-between gap-6" style={{ marginBottom: 16 }}>
+          <p className="text-gray-600 max-w-2xl leading-relaxed">
+            Manage and organize your quizzes
+          </p>
           <Button
-            type="primary"
-            size="large"
-            icon={<PlusOutlined />}
+            style={{
+              background: '#ffffff',
+              borderColor: '#1e40af',
+              borderWidth: '1.5px',
+              borderRadius: '0.375rem',
+              color: '#1e40af',
+              fontSize: '12px',
+              fontWeight: 500,
+              height: '36px',
+              paddingInline: '14px',
+              boxShadow: '0 2px 8px rgba(30, 64, 175, 0.12)',
+              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              whiteSpace: 'nowrap',
+              flexShrink: 0,
+            }}
+            icon={<EditOutlined />}
             onClick={() => setIsCreateModalVisible(true)}
+            onMouseEnter={(e) => {
+              const button = e.currentTarget as HTMLButtonElement;
+              button.style.background = '#f8fafc';
+              button.style.boxShadow = '0 8px 20px rgba(30, 64, 175, 0.2)';
+              button.style.borderColor = '#1e3a8a';
+            }}
+            onMouseLeave={(e) => {
+              const button = e.currentTarget as HTMLButtonElement;
+              button.style.background = '#ffffff';
+              button.style.boxShadow = '0 2px 8px rgba(30, 64, 175, 0.12)';
+              button.style.borderColor = '#1e40af';
+            }}
           >
-            Tạo Bài Thi Mới
+            Create Quiz
           </Button>
         </div>
-
-        <Input.Search
-          placeholder="Tìm kiếm bài thi..."
-          value={searchText}
-          onChange={(e) => handleSearch(e.target.value)}
-          size="large"
-          className="mb-6"
-          allowClear
-        />
+        <Divider style={{ borderColor: 'rgba(37, 99, 235, 0.15)', margin: '16px 0' }} />
       </div>
 
-      <Spin spinning={loading}>
-        {filteredQuizzes.length > 0 ? (
-          <Table
-            columns={columns}
-            dataSource={filteredQuizzes.map((quiz) => ({
-              ...quiz,
-              key: quiz.id,
-            }))}
-            pagination={{
-              pageSize: 10,
-              total: filteredQuizzes.length,
-              showTotal: (total) => `Tổng ${total} bài thi`,
-            }}
-            bordered
-            size="middle"
+      {/* Controls Widget - White Card (Compact) */}
+      <div className="bg-white rounded-lg shadow-sm p-5 mb-6">
+        <div className="space-y-3">
+          {/* Search Bar - Full Width */}
+          <Input.Search
+            placeholder="Search quizzes..."
+            value={searchText}
+            onChange={(e) => handleSearch(e.target.value)}
+            size="large"
+            allowClear
+            style={{ marginBottom: 12 }}
           />
-        ) : (
-          <Empty
-            description="Không có bài thi nào"
-            style={{ marginTop: "60px" }}
-          >
-            <Button
-              type="primary"
-              size="large"
-              icon={<PlusOutlined />}
-              onClick={() => setIsCreateModalVisible(true)}
-            >
-              Tạo Bài Thi Đầu Tiên
-            </Button>
-          </Empty>
-        )}
-      </Spin>
+
+          {/* Filters Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="flex flex-col">
+              <Typography.Text type="secondary" className="text-xs font-medium mb-2">                Category
+              </Typography.Text>
+              <Select
+                value={selectedCategory}
+                onChange={setSelectedCategory}
+                options={[
+                  { label: 'All Categories', value: 'All' },
+                  ...categories.map((cat) => ({ label: cat.name, value: cat.id })),
+                ]}
+                loading={loadingCategories}
+                size="middle"
+                className="w-full"
+              />
+            </div>
+
+            <div className="flex flex-col">
+              <Typography.Text type="secondary" className="text-xs font-medium mb-2">                Sort By
+              </Typography.Text>
+              <Select
+                value={sortOrder}
+                onChange={setSortOrder}
+                options={[
+                  { label: 'Newest First', value: 'newest' },
+                  { label: 'Oldest First', value: 'oldest' },
+                ]}
+                size="middle"
+                className="w-full"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content Section */}
+      <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+        <div className="p-6">
+          <Spin spinning={loading}>
+            {filteredQuizzes.length > 0 ? (
+              <Table
+                columns={columns}
+                dataSource={filteredQuizzes.map((quiz) => ({
+                  ...quiz,
+                  key: quiz.id,
+                }))}
+                pagination={{
+                  pageSize: 10,
+                  total: filteredQuizzes.length,
+                  showTotal: (total) => `Tổng ${total} bài thi`,
+                }}
+                bordered
+                size="middle"
+              />
+            ) : (
+              <Empty
+                description="Không có bài thi nào"
+                style={{ marginTop: "60px" }}
+              >
+                <Button
+                  type="primary"
+                  size="large"
+                  icon={<PlusOutlined />}
+                  onClick={() => setIsCreateModalVisible(true)}
+                >
+                  Tạo Bài Thi Đầu Tiên
+                </Button>
+              </Empty>
+            )}
+          </Spin>
+        </div>
+      </div>
 
       {/* Create Quiz Modal */}
       <CreateQuizModal
@@ -222,21 +320,6 @@ export default function QuizzesPage() {
         onClose={() => setIsCreateModalVisible(false)}
         onSuccess={() => {
           setIsCreateModalVisible(false)
-          loadQuizzes()
-        }}
-      />
-
-      {/* Edit Quiz Modal */}
-      <EditQuizModal
-        visible={isEditModalVisible}
-        quizId={editingQuizId}
-        onClose={() => {
-          setIsEditModalVisible(false)
-          setEditingQuizId(null)
-        }}
-        onSuccess={() => {
-          setIsEditModalVisible(false)
-          setEditingQuizId(null)
           loadQuizzes()
         }}
       />

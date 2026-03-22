@@ -534,138 +534,188 @@ export default function ArticleManagement() {
   };
 
   return (
-    <Flex vertical className="flex-1 bg-gray-50">
-      <main className="flex-1 overflow-auto px-8 py-6">
-        <Card>
-          <Flex justify="space-between" align="center" className="!mb-4">
-            <Title level={3} className="!mb-0">
-              Article Management
-            </Title>
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              size="large"
-              onClick={() => {
-                createForm.resetFields();
-                setTitleContent('');
-                setContentValue('');
-                setSelectedTagsForCreate([]);
-                setSubmitStatus('published');
-                setIsModalOpen(true);
-              }}
-            >
-              Create Article
-            </Button>
-          </Flex>
+    <div className="p-8 bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50 min-h-screen">
+      {/* Page Header */}
+      <div className="mb-8">
+        <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-blue-900 bg-clip-text text-transparent mb-4">
+          Article Management
+        </h1>
+        <div className="flex align-center justify-between gap-6" style={{ marginBottom: 16 }}>
+          <p className="text-gray-600 max-w-2xl leading-relaxed">
+            Manage and organize your articles
+          </p>
+          <Button
+            style={{
+              background: '#ffffff',
+              borderColor: '#1e40af',
+              borderWidth: '1.5px',
+              borderRadius: '0.375rem',
+              color: '#1e40af',
+              fontSize: '12px',
+              fontWeight: 500,
+              height: '36px',
+              paddingInline: '14px',
+              boxShadow: '0 2px 8px rgba(30, 64, 175, 0.12)',
+              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              whiteSpace: 'nowrap',
+              flexShrink: 0,
+            }}
+            icon={<EditOutlined />}
+            onClick={() => {
+              createForm.resetFields();
+              setTitleContent('');
+              setContentValue('');
+              setSelectedTagsForCreate([]);
+              setSubmitStatus('published');
+              setImageUrl('');
+              setThumbnailUrl('');
+              setIsModalOpen(true);
+            }}
+            onMouseEnter={(e) => {
+              const button = e.currentTarget as HTMLButtonElement;
+              button.style.background = '#f8fafc';
+              button.style.boxShadow = '0 8px 20px rgba(30, 64, 175, 0.2)';
+              button.style.borderColor = '#1e3a8a';
+            }}
+            onMouseLeave={(e) => {
+              const button = e.currentTarget as HTMLButtonElement;
+              button.style.background = '#ffffff';
+              button.style.boxShadow = '0 2px 8px rgba(30, 64, 175, 0.12)';
+              button.style.borderColor = '#1e40af';
+            }}
+          >
+            Create Article
+          </Button>
+        </div>
+        <Divider style={{ borderColor: 'rgba(37, 99, 235, 0.15)', margin: '16px 0' }} />
+      </div>
 
-          <Space direction="vertical" size="middle" className="w-full mb-6">
-            {/* Search Bar - Full Width */}
-            <Flex gap="middle">
-              <Space direction="vertical" className="w-full">
-                <Text type="secondary">Search:</Text>
-                <Input
-                  placeholder="Search any..."
-                  prefix={<SearchOutlined />}
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  size="large"
-                  allowClear
-                />
-              </Space>
-            </Flex>
+      {/* Error Alert */}
+      {articlesError && (
+        <Alert
+          message="Error"
+          description={articlesError}
+          type="error"
+          showIcon
+          closable
+          className="mb-4"
+        />
+      )}
 
-            {/* Filters Row */}
-            <Flex gap="middle" align="end" wrap>
-              <Space direction="vertical" style={{ minWidth: 160, flex: 1 }}>
-                <Text type="secondary">Tags:</Text>
-                <Select
-                  value={selectedTag}
-                  onChange={setSelectedTag}
-                  options={tagOptions}
-                  loading={loadingTags}
-                  size="large"
-                  className="w-full"
-                />
-              </Space>
+      {/* Controls Widget - White Card (Compact) */}
+      <div className="bg-white rounded-lg shadow-sm p-5 mb-6">
+        <div className="space-y-3">
+          {/* Search Bar - Full Width */}
+          <Input.Search
+            placeholder="Search articles..."
+            prefix={<SearchOutlined />}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            size="middle"
+            allowClear
+            enterButton={<SearchOutlined />}
+            style={{ marginBottom: 12 }}
+          />
 
-              <Space direction="vertical" style={{ minWidth: 160, flex: 1 }}>
-                <Text type="secondary">Category:</Text>
-                <Select
-                  value={selectedCategory}
-                  onChange={setSelectedCategory}
-                  options={categoryOptions}
-                  loading={loadingCategories}
-                  size="large"
-                  className="w-full"
-                />
-              </Space>
+          {/* Filters Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+            <div className="flex flex-col">
+              <Text type="secondary" className="text-sm font-medium mb-2">
+                Tags
+              </Text>
+              <Select
+                value={selectedTag}
+                onChange={setSelectedTag}
+                options={tagOptions}
+                loading={loadingTags}
+                size="middle"
+                className="w-full"
+              />
+            </div>
 
-              <Space direction="vertical" style={{ minWidth: 140, flex: 1 }}>
-                <Text type="secondary">Status:</Text>
-                <Select
-                  value={selectedStatus}
-                  onChange={setSelectedStatus}
-                  options={statusOptions}
-                  size="large"
-                  className="w-full"
-                />
-              </Space>
+            <div className="flex flex-col">
+              <Text type="secondary" className="text-sm font-medium mb-2">
+                Category
+              </Text>
+              <Select
+                value={selectedCategory}
+                onChange={setSelectedCategory}
+                options={categoryOptions}
+                loading={loadingCategories}
+                size="middle"
+                className="w-full"
+              />
+            </div>
 
-              <Space direction="vertical" style={{ minWidth: 140, flex: 1 }}>
-                <Text type="secondary">Sort by:</Text>
-                <Select
-                  value={sortOrder}
-                  onChange={setSortOrder}
-                  options={[
-                    { label: 'Newest First', value: 'newest' },
-                    { label: 'Oldest First', value: 'oldest' },
-                  ]}
-                  size="large"
-                  className="w-full"
-                />
-              </Space>
-            </Flex>
-          </Space>
+            <div className="flex flex-col">
+              <Text type="secondary" className="text-sm font-medium mb-2">
+                Status
+              </Text>
+              <Select
+                value={selectedStatus}
+                onChange={setSelectedStatus}
+                options={statusOptions}
+                size="middle"
+                className="w-full"
+              />
+            </div>
 
-          {articlesError && (
-            <Alert
-              message="Error"
-              description={articlesError}
-              type="error"
-              showIcon
-              closable
-              className="mb-4"
-            />
-          )}
+            <div className="flex flex-col">
+              <Text type="secondary" className="text-sm font-medium mb-2">
+                Sort By
+              </Text>
+              <Select
+                value={sortOrder}
+                onChange={setSortOrder}
+                options={[
+                  { label: 'Newest First', value: 'newest' },
+                  { label: 'Oldest First', value: 'oldest' },
+                ]}
+                size="middle"
+                className="w-full"
+              />
+            </div>
 
-          {/* View Mode Segmented - Above List */}
-          <Flex justify="flex-end" className="mb-4">
-            <Segmented
-              size="large"
-              value={viewMode}
-              onChange={(value) => setViewMode(value as 'list' | 'grid')}
-              options={[
-                { label: 'List', value: 'list' },
-                { label: 'Grid', value: 'grid' },
-              ]}
-            />
-          </Flex>
+            <div className="flex flex-col justify-end">
+              <Text type="secondary" className="text-sm font-medium mb-2">
+                View Mode
+              </Text>
+              <Segmented
+                size="middle"
+                value={viewMode}
+                onChange={(value) => setViewMode(value as 'list' | 'grid')}
+                options={[
+                  { label: 'List', value: 'list' },
+                  { label: 'Grid', value: 'grid' },
+                ]}
+                block
+              />
+            </div>
+          </div>
+        </div>
+      </div>
 
-          {viewMode === 'list' ? (
-            <Table
-              columns={columns}
-              dataSource={articles}
-              loading={loadingArticles}
-              rowKey="id"
-              pagination={{
-                current: currentPage,
-                pageSize: 10,
-                total: articles.length,
-                onChange: setCurrentPage,
-                showSizeChanger: false,
-              }}
-            />
-          ) : (
+      {/* Main Content + Sidebar Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Content Widget - White Card (Full Width) */}
+        <div className="lg:col-span-3">
+          <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+        {viewMode === 'list' ? (
+          <Table
+            columns={columns}
+            dataSource={articles}
+            loading={loadingArticles}
+            rowKey="id"
+            pagination={{
+              current: currentPage,
+              pageSize: 10,
+              total: articles.length,
+              onChange: setCurrentPage,
+              showSizeChanger: false,
+            }}
+          />
+        ) : (
+          <div className="p-6">
             <Spin spinning={loadingArticles}>
               <Row gutter={[16, 16]}>
                 {articles.map((article) => {
@@ -734,10 +784,13 @@ export default function ArticleManagement() {
                 )}
               </Row>
             </Spin>
-          )}
-        </Card>
-      </main>
+          </div>
+        )}
+          </div>
+        </div>
+      </div>
 
+      {/* Create/Edit Article Modals */}
       <Modal
         title={<Title level={3} className="!mb-0">Create An Article</Title>}
         open={isModalOpen}
@@ -1235,19 +1288,6 @@ export default function ArticleManagement() {
           </Form>
         </Spin>
       </Modal>
-
-      <footer className="bg-white border-t px-8 py-4">
-        <Flex justify="space-between" align="center">
-          <Text type="secondary" className="text-sm">
-            © 2025 - KMSPlus. Designed by <Text strong>KMS Team</Text>. All rights reserved
-          </Text>
-          <Space size="large">
-            <a href="#" className="text-sm text-gray-600 hover:text-gray-900">FAQs</a>
-            <a href="#" className="text-sm text-gray-600 hover:text-gray-900">Privacy Policy</a>
-            <a href="#" className="text-sm text-gray-600 hover:text-gray-900">Terms & Condition</a>
-          </Space>
-        </Flex>
-      </footer>
-    </Flex>
+    </div>
   );
 }

@@ -33,15 +33,9 @@ export default async function ManagerCoursesPage({ searchParams }: Props) {
     ? quizzesRes
     : (quizzesRes as any)?.data || (quizzesRes as any)?.quizzes || []
 
-  // 👇 Debug Log: Xem Server lấy được gì (Kiểm tra terminal của VS Code)
-  console.log("🔥 Raw lessonsRes:", lessonsRes)
-  console.log("🔥 Raw quizzesRes:", quizzesRes)
-  console.log("🔥 Lessons Count:", safeLessons.length)
-  console.log("🔥 Quizzes Count:", safeQuizzes.length)
-
   return (
-    <main className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-7xl mx-auto px-4">
+    <main className="p-8 bg-gradient-to-r from-gray-50 via-blue-50 to-indigo-50 min-h-screen">
+      <div className="max-w-7xl mx-auto">
         <ManageCoursesClient
           courses={courses}
           totalCount={totalCount}
