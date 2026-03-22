@@ -8,6 +8,8 @@ import {
   getCategoriesAPI,
   createCourseAPI,
 } from "@/action/courses/courseAction"
+import { getAllDepartments } from "@/action/department/departmentActions"
+import { getAllUsers } from "@/action/user/userActions"
 import {
   createNewLessonAPI,
   updateLessonAPI,
@@ -23,9 +25,6 @@ import {
   useSensor,
   useSensors,
   DragEndEvent,
-  SensorDescriptor,
-  SensorContext,
-  DragStartEvent,
 } from "@dnd-kit/core"
 import {
   arrayMove,
@@ -265,6 +264,12 @@ export default function CreateCourseForm({
   const [categories, setCategories] = useState<{ id: number; name: string }[]>(
     []
   )
+  const [departments, setDepartments] = useState<
+    { id: number; name: string }[]
+  >([])
+  const [users, setUsers] = useState<
+    { id: number; name: string; email: string }[]
+  >([])
 
   useEffect(() => {
     setAvailableLessons(initialLessons)
@@ -273,15 +278,27 @@ export default function CreateCourseForm({
 
   // Fetch danh mục
   useEffect(() => {
-    const fetchCategories = async () => {
+    const fetchData = async () => {
       try {
-        const data = await getCategoriesAPI()
-        setCategories(data)
+        const [categoriesData, departmentsData, usersData] = await Promise.all([
+          getCategoriesAPI(),
+          getAllDepartments(),
+          getAllUsers(),
+        ])
+        setCategories(categoriesData)
+        setDepartments(departmentsData || [])
+        setUsers(
+          usersData?.map((user: any) => ({
+            id: user.id,
+            name: user.name || user.email,
+            email: user.email,
+          })) || []
+        )
       } catch (error) {
-        console.error("Failed to load categories")
+        console.error("Failed to load data:", error)
       }
     }
-    fetchCategories()
+    fetchData()
   }, [])
 
   const handleLessonCreated = (newLesson: Lesson) => {
@@ -498,12 +515,12 @@ export default function CreateCourseForm({
             rule.target_type === "department" ? rule.department_id : null,
           role_id: rule.target_type === "role" ? rule.role_id : null,
           user_id: rule.target_type === "user" ? rule.user_id : null,
-          due_type: rule.due_type === "none" ? null : rule.due_type,
-          due_days: rule.due_type === "relative" ? rule.due_days : null,
+          due_type: rule.due_type === "none" ? undefined : rule.due_type,
+          due_days: rule.due_type === "relative" ? rule.due_days : undefined,
           due_date:
             rule.due_type === "fixed" && rule.due_date
               ? dayjs(rule.due_date).toISOString()
-              : null,
+              : undefined,
         })),
       }
 
@@ -733,84 +750,6 @@ export default function CreateCourseForm({
                         </Radio>
                       </Radio.Group>
                     </div>
-
-                    {/* Global Due Date */}
-                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                      <label className="block font-semibold text-gray-700 mb-2">
-                        2. Hạn Mặc Định
-                      </label>
-                      <p className="text-xs text-gray-500 mb-3">
-                        Áp dụng cho người dùng tự ghi danh (nếu là Công Khai).
-                      </p>
-
-                      <Radio.Group
-                        value={payload.global_due_type}
-                        onChange={(e) =>
-                          update("global_due_type", e.target.value)
-                        }
-                        className="flex gap-2 w-full mb-4"
-                      >
-                        <Radio.Button
-                          value="none"
-                          className="flex-1 text-center"
-                        >
-                          Không Giới Hạn
-                        </Radio.Button>
-                        <Radio.Button
-                          value="relative"
-                          className="flex-1 text-center"
-                        >
-                          Tương Đối
-                        </Radio.Button>
-                        <Radio.Button
-                          value="fixed"
-                          className="flex-1 text-center"
-                        >
-                          Ngày Cố Định
-                        </Radio.Button>
-                      </Radio.Group>
-
-                      <div className="min-h-[40px]">
-                        {(payload.global_due_type === "none" ||
-                          !payload.global_due_type) && (
-                          <span className="text-sm italic text-gray-500">
-                            Học viên có thể tự hoàn thành khóa học theo tốc độ
-                            của mình.
-                          </span>
-                        )}
-                        {payload.global_due_type === "relative" && (
-                          <div className="flex items-center gap-2 bg-white p-2 border rounded">
-                            <span className="text-sm">Hoàn thành trong</span>
-                            <InputNumber
-                              min={1}
-                              value={payload.global_due_days}
-                              onChange={(v) => update("global_due_days", v)}
-                              className="w-16"
-                            />
-                            <span className="text-sm">
-                              ngày sau khi ghi danh.
-                            </span>
-                          </div>
-                        )}
-                        {payload.global_due_type === "fixed" && (
-                          <div className="flex items-center gap-2 bg-white p-2 border rounded">
-                            <span className="text-sm">Đóng khóa học vào</span>
-                            <DatePicker
-                              value={
-                                payload.global_due_date
-                                  ? dayjs(payload.global_due_date)
-                                  : null
-                              }
-                              onChange={(date) =>
-                                update("global_due_date", date)
-                              }
-                              className="w-full"
-                              format="DD/MM/YYYY"
-                            />
-                          </div>
-                        )}
-                      </div>
-                    </div>
                   </div>
 
                   {/* CỘT PHẢI: ASSIGNMENT RULES */}
@@ -818,7 +757,7 @@ export default function CreateCourseForm({
                     <div className="flex justify-between items-start mb-4">
                       <div>
                         <label className="block font-semibold text-blue-900 mb-1">
-                          3. Phân Công Bắt Buộc
+                          2. Phân Công Bắt Buộc
                         </label>
                         <p className="text-xs text-blue-700">
                           Buộc các nhóm cụ thể phải tham gia khóa học này.
@@ -898,7 +837,7 @@ export default function CreateCourseForm({
                                 <div className="flex-1">
                                   {rule.target_type === "department" && (
                                     <Select
-                                      placeholder="Chọn Phòng Ban"
+                                      placeholder="Tìm kiếm và chọn phòng ban..."
                                       className="w-full"
                                       value={rule.department_id}
                                       onChange={(val) => {
@@ -908,10 +847,16 @@ export default function CreateCourseForm({
                                         rules[index].department_id = val
                                         update("assignment_rules", rules)
                                       }}
-                                      options={[
-                                        { value: 1, label: "Phòng IT" },
-                                        { value: 2, label: "Phòng Nhân Sự" },
-                                      ]}
+                                      options={departments.map((dept) => ({
+                                        value: dept.id,
+                                        label: dept.name,
+                                      }))}
+                                      showSearch
+                                      filterOption={(input, option) =>
+                                        (option?.label ?? "")
+                                          .toLowerCase()
+                                          .includes(input.toLowerCase())
+                                      }
                                     />
                                   )}
                                   {rule.target_type === "role" && (
@@ -934,7 +879,7 @@ export default function CreateCourseForm({
                                   )}
                                   {rule.target_type === "user" && (
                                     <Select
-                                      placeholder="Chọn Người Dùng"
+                                      placeholder="Tìm kiếm và chọn người dùng..."
                                       className="w-full"
                                       value={rule.user_id}
                                       onChange={(val) => {
@@ -944,10 +889,16 @@ export default function CreateCourseForm({
                                         rules[index].user_id = val
                                         update("assignment_rules", rules)
                                       }}
-                                      options={[
-                                        { value: 1, label: "Nguyễn Văn A" },
-                                        { value: 2, label: "Trần Thị B" },
-                                      ]}
+                                      options={users.map((user) => ({
+                                        value: user.id,
+                                        label: `${user.name} (${user.email})`,
+                                      }))}
+                                      showSearch
+                                      filterOption={(input, option) =>
+                                        (option?.label ?? "")
+                                          .toLowerCase()
+                                          .includes(input.toLowerCase())
+                                      }
                                     />
                                   )}
                                   {rule.target_type === "all_employees" && (
