@@ -248,6 +248,7 @@ export const rolePermissionsMap: Record<Role, Permission[]> = {
     Permission.MODERATE_CONTENT,
     Permission.AI_EXPLANATION,
     Permission.AI_RECOMMENDATION,
+    Permission.MANAGE_SYSTEM,
   ],
 }
 

@@ -179,13 +179,13 @@ export async function getAllUsersForManagementAction(): Promise<UserManagementSt
         u.full_name,
         u.avatar_url,
         u.created_at,
-        u.is_active,
+        u.status,
         r.name as role_name,
         ur.role_id
       FROM users u
       LEFT JOIN user_roles ur ON u.id = ur.user_id
       LEFT JOIN roles r ON ur.role_id = r.id
-      WHERE u.is_deleted = false OR u.is_deleted IS NULL
+      WHERE u.status = 'active'
       ORDER BY u.created_at DESC
     `
 
@@ -414,7 +414,7 @@ export async function banUserAction(
   try {
     // Check if user exists
     const users = await sql`
-      SELECT id, is_active FROM users WHERE id = ${userId}
+      SELECT id, status FROM users WHERE id = ${userId}
     `
 
     if (users.length === 0) {
@@ -429,7 +429,7 @@ export async function banUserAction(
 
     await sql`
       UPDATE users 
-      SET is_active = ${newStatus}
+      SET status = ${newStatus}
       WHERE id = ${userId}
     `
 
