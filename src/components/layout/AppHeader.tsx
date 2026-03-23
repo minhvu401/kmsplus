@@ -49,6 +49,9 @@ type NotificationItem = {
   redirect_url: string
   is_read: boolean
   created_at: string
+  article_id: number | null
+  course_id: number | null
+  comment_id: number | null
 }
 
 export default function AppHeader({ collapsed }: HeaderProps) {
@@ -57,6 +60,7 @@ export default function AppHeader({ collapsed }: HeaderProps) {
   } = theme.useToken()
   const { user, clearUser, fetchUser } = useUserStore()
   const [notifications, setNotifications] = useState<NotificationItem[]>([])
+  const [unreadCount, setUnreadCount] = useState(0)
   const [loadingNotifications, setLoadingNotifications] = useState(false)
   const [notificationOpen, setNotificationOpen] = useState(false)
 
@@ -124,7 +128,7 @@ export default function AppHeader({ collapsed }: HeaderProps) {
   const loadNotifications = async () => {
     setLoadingNotifications(true)
     try {
-      const response = await fetch("/api/notifications", {
+      const response = await fetch("/api/notifications?limit=10", {
         method: "GET",
         credentials: "include",
         cache: "no-store",
@@ -134,6 +138,7 @@ export default function AppHeader({ collapsed }: HeaderProps) {
 
       if (response.ok && result?.success) {
         setNotifications(result.data || [])
+        setUnreadCount(Number(result.unreadCount || 0))
       } else {
         console.error("Failed to load notifications:", {
           status: response.status,
@@ -172,6 +177,7 @@ export default function AppHeader({ collapsed }: HeaderProps) {
             item.id === notification.id ? { ...item, is_read: true } : item
           )
         )
+        setUnreadCount((prev) => Math.max(0, prev - 1))
       }
 
       if (notification.redirect_url) {
@@ -185,8 +191,6 @@ export default function AppHeader({ collapsed }: HeaderProps) {
     }
   }
 
-  const unreadCount = notifications.filter((item) => !item.is_read).length
-
   useEffect(() => {
     if (!user) {
       fetchUser()
@@ -197,6 +201,50 @@ export default function AppHeader({ collapsed }: HeaderProps) {
     loadNotifications()
     const interval = setInterval(loadNotifications, 30000)
     return () => clearInterval(interval)
+  }, [])
+
+  useEffect(() => {
+    let eventSource: EventSource | null = null
+
+    const connect = () => {
+      eventSource = new EventSource("/api/notifications/stream", {
+        withCredentials: true,
+      })
+
+      eventSource.addEventListener("notification", () => {
+        loadNotifications()
+      })
+
+      eventSource.onerror = () => {
+        if (eventSource) {
+          eventSource.close()
+          eventSource = null
+        }
+
+        setTimeout(() => {
+          connect()
+        }, 3000)
+      }
+    }
+
+    connect()
+
+    return () => {
+      if (eventSource) {
+        eventSource.close()
+      }
+    }
+  }, [])
+
+  useEffect(() => {
+    const handleNotificationsRefresh = () => {
+      loadNotifications()
+    }
+
+    window.addEventListener("notifications:refresh", handleNotificationsRefresh)
+    return () => {
+      window.removeEventListener("notifications:refresh", handleNotificationsRefresh)
+    }
   }, [])
 
   useEffect(() => {
@@ -252,7 +300,10 @@ export default function AppHeader({ collapsed }: HeaderProps) {
                   {notification.content}
                 </div>
                 <div className="text-[11px] text-gray-400 mt-1">
-                  {new Date(notification.created_at).toLocaleString("vi-VN")}
+                  {new Date(notification.created_at).toLocaleString("vi-VN", {
+                    timeZone: "Asia/Ho_Chi_Minh",
+                    hour12: false,
+                  })}
                 </div>
               </div>
             </div>

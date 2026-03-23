@@ -3,7 +3,8 @@
 import { requireAuth } from "@/lib/auth"
 import {
 	getLatestNotificationsAction,
-	markNotificationAsReadByIdAction,
+	getUnreadNotificationsCountByUserAction,
+	markNotificationAsReadAction,
 } from "@/service/notification.service"
 
 export type NotificationView = {
@@ -16,6 +17,9 @@ export type NotificationView = {
 	redirect_url: string
 	is_read: boolean
 	created_at: string
+	article_id: number | null
+	course_id: number | null
+	comment_id: number | null
 }
 
 export async function getNotifications(limit: number = 20): Promise<{
@@ -25,8 +29,10 @@ export async function getNotifications(limit: number = 20): Promise<{
 	message?: string
 }> {
 	try {
-		await requireAuth()
-		const notifications = await getLatestNotificationsAction(limit)
+		const currentUser = await requireAuth()
+		const userId = Number(currentUser.id)
+		const notifications = await getLatestNotificationsAction(userId, limit)
+		const unreadCount = await getUnreadNotificationsCountByUserAction(userId)
 
 		const safeNotifications: NotificationView[] = notifications.map((item) => ({
 			id: String(item.id),
@@ -37,6 +43,9 @@ export async function getNotifications(limit: number = 20): Promise<{
 			type: item.type,
 			redirect_url: item.redirect_url,
 			is_read: Boolean(item.is_read),
+			article_id: item.article_id === null || item.article_id === undefined ? null : Number(item.article_id),
+			course_id: item.course_id === null || item.course_id === undefined ? null : Number(item.course_id),
+			comment_id: item.comment_id === null || item.comment_id === undefined ? null : Number(item.comment_id),
 			created_at:
 				item.created_at instanceof Date
 					? item.created_at.toISOString()
@@ -46,7 +55,7 @@ export async function getNotifications(limit: number = 20): Promise<{
 		return {
 			success: true,
 			data: safeNotifications,
-			unreadCount: safeNotifications.filter((item) => !item.is_read).length,
+			unreadCount,
 		}
 	} catch (error: any) {
 		console.error("Get notifications action error:", error)
@@ -64,8 +73,8 @@ export async function markNotificationAsRead(notificationId: string): Promise<{
 	message: string
 }> {
 	try {
-		await requireAuth()
-		return await markNotificationAsReadByIdAction(notificationId)
+		const currentUser = await requireAuth()
+		return await markNotificationAsReadAction(Number(currentUser.id), notificationId)
 	} catch (error: any) {
 		console.error("Mark notification as read action error:", error)
 		return {
