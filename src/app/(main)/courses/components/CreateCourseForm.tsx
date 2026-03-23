@@ -1,3 +1,4 @@
+// @/src/app/(main)/courses/components/CreateCourseForm.tsx
 "use client"
 
 import React, { useState, useEffect, useMemo } from "react"
@@ -77,7 +78,7 @@ const CLOUDINARY_UPLOAD_PRESET = "kms-plus"
 
 // --- TYPES ---
 export type Lesson = {
-  id: number
+  id: bigint
   title: string
   duration_minutes: number | null
   type?: "text_media" | "video" | "pdf"
@@ -337,10 +338,14 @@ export default function CreateCourseForm({
     setAvailableLessons((prev) => [newLesson, ...prev])
   const handleLessonUpdated = (updatedLesson: Lesson) =>
     setAvailableLessons((prev) =>
-      prev.map((l) => (l.id === updatedLesson.id ? updatedLesson : l))
+      prev.map((l) =>
+        Number(l.id) === Number(updatedLesson.id) ? updatedLesson : l
+      )
     )
   const handleLessonDeleted = (deletedId: number) => {
-    setAvailableLessons((prev) => prev.filter((l) => l.id !== deletedId))
+    setAvailableLessons((prev) =>
+      prev.filter((l) => Number(l.id) !== deletedId)
+    )
     setPayload((prev) => ({
       ...prev,
       curriculum: prev.curriculum.map((section) => ({
@@ -1266,7 +1271,7 @@ function CurriculumContentBank({
     if (type === "quiz")
       return message.info("Chức năng sửa bài kiểm tra sắp ra mắt")
     const lesson = item as Lesson
-    setEditingLessonId(lesson.id)
+    setEditingLessonId(Number(lesson.id))
     setIsCreateModalOpen(true)
     form.setFieldsValue({
       title: lesson.title,
@@ -1336,7 +1341,8 @@ function CurriculumContentBank({
     return availableLessons.filter((l) => {
       const matchText = l.title.toLowerCase().includes(searchTerm.toLowerCase())
       const matchCat = selectedFilterCategory
-        ? l.category_id === selectedFilterCategory
+        ? l.category_id != null &&
+          String(l.category_id) === String(selectedFilterCategory)
         : true
       return matchText && matchCat
     })
@@ -1450,12 +1456,12 @@ function CurriculumContentBank({
           {activeTab === "lessons" &&
             filteredLessons.map((l) => (
               <ContentBankItem
-                key={l.id}
+                key={String(l.id)}
                 icon={<BookOpen size={16} />}
                 title={l.title}
                 meta={`${l.duration_minutes || 0} min`}
                 onEdit={() => handleEditItemAction(l, "lesson")}
-                onDelete={() => handleDeleteItemAction(l.id, "lesson")}
+                onDelete={() => handleDeleteItemAction(Number(l.id), "lesson")}
                 onAdd={() =>
                   activeSectionId
                     ? handleAddItem(activeSectionId, l, "lesson")

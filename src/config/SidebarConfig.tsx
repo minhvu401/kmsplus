@@ -90,8 +90,8 @@ const createEmployeeSidebarItems = (
       icon: <HistoryOutlined />,
       label: "Learning History",
       title: "Learning History - Track your progress",
-      disabled: true, // UI chưa làm
-      onClick: () => console.log("Learning History - ref #"),
+      route: "/history",
+      onClick: () => navigate("/history"),
     },
     {
       type: "divider",
@@ -178,7 +178,13 @@ const createTrainingManagerSidebarItems = (
       key: "dashboard-header",
       label: "DASHBOARD",
       disabled: true,
-      style: { textAlign: "left", fontSize: "11px", color: "#999", marginTop: "8px", marginBottom: "8px" },
+      style: {
+        textAlign: "left",
+        fontSize: "11px",
+        color: "#999",
+        marginTop: "8px",
+        marginBottom: "8px",
+      },
     } as MenuItem,
     // Dashboard Metrics
     {
@@ -197,7 +203,13 @@ const createTrainingManagerSidebarItems = (
       key: "knowledge-header",
       label: "KNOWLEDGE",
       disabled: true,
-      style: { textAlign: "left", fontSize: "11px", color: "#999", marginTop: "8px", marginBottom: "8px" },
+      style: {
+        textAlign: "left",
+        fontSize: "11px",
+        color: "#999",
+        marginTop: "8px",
+        marginBottom: "8px",
+      },
     } as MenuItem,
     // Q&A
     {
@@ -235,7 +247,13 @@ const createTrainingManagerSidebarItems = (
       key: "management-header",
       label: "MANAGEMENT",
       disabled: true,
-      style: { textAlign: "left", fontSize: "11px", color: "#999", marginTop: "8px", marginBottom: "8px" },
+      style: {
+        textAlign: "left",
+        fontSize: "11px",
+        color: "#999",
+        marginTop: "8px",
+        marginBottom: "8px",
+      },
     } as MenuItem,
     // Quiz Management
     {
@@ -301,7 +319,13 @@ const createSystemAdminSidebarItems = (
       key: "dashboard-header",
       label: "DASHBOARD",
       disabled: true,
-      style: { textAlign: "left", fontSize: "11px", color: "#999", marginTop: "8px", marginBottom: "8px" },
+      style: {
+        textAlign: "left",
+        fontSize: "11px",
+        color: "#999",
+        marginTop: "8px",
+        marginBottom: "8px",
+      },
     } as MenuItem,
     // Dashboard Metrics
     {
@@ -320,7 +344,13 @@ const createSystemAdminSidebarItems = (
       key: "knowledge-header",
       label: "KNOWLEDGE",
       disabled: true,
-      style: { textAlign: "left", fontSize: "11px", color: "#999", marginTop: "8px", marginBottom: "8px" },
+      style: {
+        textAlign: "left",
+        fontSize: "11px",
+        color: "#999",
+        marginTop: "8px",
+        marginBottom: "8px",
+      },
     } as MenuItem,
     // Q&A
     {
@@ -358,7 +388,13 @@ const createSystemAdminSidebarItems = (
       key: "management-header",
       label: "MANAGEMENT",
       disabled: true,
-      style: { textAlign: "left", fontSize: "11px", color: "#999", marginTop: "8px", marginBottom: "8px" },
+      style: {
+        textAlign: "left",
+        fontSize: "11px",
+        color: "#999",
+        marginTop: "8px",
+        marginBottom: "8px",
+      },
     } as MenuItem,
     // Quiz Management
     {
@@ -404,7 +440,13 @@ const createSystemAdminSidebarItems = (
       key: "settings-header",
       label: "SETTINGS",
       disabled: true,
-      style: { textAlign: "left", fontSize: "11px", color: "#999", marginTop: "8px", marginBottom: "8px" },
+      style: {
+        textAlign: "left",
+        fontSize: "11px",
+        color: "#999",
+        marginTop: "8px",
+        marginBottom: "8px",
+      },
     } as MenuItem,
     // User Management
     {
@@ -461,7 +503,13 @@ const createDirectorSidebarItems = (
       key: "dashboard-header",
       label: "DASHBOARD",
       disabled: true,
-      style: { textAlign: "left", fontSize: "11px", color: "#999", marginTop: "8px", marginBottom: "8px" },
+      style: {
+        textAlign: "left",
+        fontSize: "11px",
+        color: "#999",
+        marginTop: "8px",
+        marginBottom: "8px",
+      },
     } as MenuItem,
     // Dashboard Metrics
     {
@@ -480,7 +528,13 @@ const createDirectorSidebarItems = (
       key: "knowledge-header",
       label: "KNOWLEDGE",
       disabled: true,
-      style: { textAlign: "left", fontSize: "11px", color: "#999", marginTop: "8px", marginBottom: "8px" },
+      style: {
+        textAlign: "left",
+        fontSize: "11px",
+        color: "#999",
+        marginTop: "8px",
+        marginBottom: "8px",
+      },
     } as MenuItem,
     // Q&A Section - View only
     {

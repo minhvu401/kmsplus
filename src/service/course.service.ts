@@ -362,78 +362,87 @@ export async function updateFullCourseAction(id: number, data: any) {
     })
 
     return await sqlTransaction.begin(async (tx: any) => {
-      // 1. Cập nhật bảng 'courses' (✅ ĐÃ XÓA 3 CỘT GLOBAL_DUE)
-      await tx`
-        UPDATE courses
-        SET
-          title = ${data.title},
-          description = ${data.description || null},
-          thumbnail_url = ${data.thumbnail_url || null},
-          status = ${data.status || "draft"},
-          duration_hours = ${data.duration_hours || 0},
-          category_id = ${data.category_id || null},
-          visibility = ${data.visibility || "private"},
-          updated_at = ${currentTimestamp}
-        WHERE id = ${id}
-      `
+      // 1. KIỂM TRA TRẠNG THÁI HIỆN TẠI CỦA KHÓA HỌC
+      const [existingCourse] =
+        await tx`SELECT status FROM courses WHERE id = ${id}`
+      const isPublished = existingCourse?.status === "published"
 
-      // 2. Cập nhật Assignment Rules
-      await tx`DELETE FROM assignment_rules WHERE course_id = ${id}`
-
-      if (data.assignment_rules && data.assignment_rules.length > 0) {
+      if (isPublished) {
+        // 🔥 KỊCH BẢN A: KHÓA HỌC ĐÃ XUẤT BẢN -> CHỈ CẬP NHẬT VISIBILITY & RULES
         console.log(
-          `📦 [Update] Đang lưu lại ${data.assignment_rules.length} Assignment Rules...`
+          "🔒 [Update] Khóa học đã Xuất bản. Chỉ cập nhật Quy tắc & Hiển thị."
         )
-        for (const rule of data.assignment_rules) {
-          await tx`
-            INSERT INTO assignment_rules (
-              course_id, target_type, department_id, user_id, role_id, 
-              due_type, due_days, due_date
-            ) VALUES (
-              ${id}, 
-              ${rule.target_type}, 
-              ${rule.department_id || null}, 
-              ${rule.user_id || null}, 
-              ${rule.role_id || null},
-              ${rule.due_type || null}, 
-              ${rule.due_days || null}, 
-              ${rule.due_date || null}
-            )
-          `
+
+        await tx`
+          UPDATE courses
+          SET 
+            visibility = ${data.visibility || "private"},
+            updated_at = ${currentTimestamp}
+          WHERE id = ${id}
+        `
+
+        // Cập nhật Assignment Rules (Xóa cũ, Thêm mới)
+        await tx`DELETE FROM assignment_rules WHERE course_id = ${id}`
+        if (data.assignment_rules && data.assignment_rules.length > 0) {
+          for (const rule of data.assignment_rules) {
+            await tx`
+              INSERT INTO assignment_rules (course_id, target_type, department_id, user_id, role_id, due_type, due_days, due_date) 
+              VALUES (${id}, ${rule.target_type}, ${rule.department_id || null}, ${rule.user_id || null}, ${rule.role_id || null}, ${rule.due_type || null}, ${rule.due_days || null}, ${rule.due_date || null})
+            `
+          }
         }
-      }
+        return {
+          success: true,
+          message: "Đã cập nhật quy tắc ghi danh thành công",
+        }
+      } else {
+        // 🟢 KỊCH BẢN B: KHÓA HỌC ĐANG LÀ NHÁP (DRAFT/PENDING) -> UPDATE TOÀN BỘ NHƯ CŨ
+        console.log("🟢 [Update] Khóa học là Nháp. Cập nhật toàn bộ dữ liệu.")
 
-      // 3. Xóa sạch Curriculum cũ
-      await tx`
-        DELETE FROM curriculum_items 
-        WHERE section_id IN (SELECT id FROM sections WHERE course_id = ${id})
-      `
-      await tx`DELETE FROM sections WHERE course_id = ${id}`
+        await tx`
+          UPDATE courses
+          SET
+            title = ${data.title},
+            description = ${data.description || null},
+            thumbnail_url = ${data.thumbnail_url || null},
+            status = ${data.status || "draft"},
+            duration_hours = ${data.duration_hours || 0},
+            category_id = ${data.category_id || null},
+            visibility = ${data.visibility || "private"},
+            updated_at = ${currentTimestamp}
+          WHERE id = ${id}
+        `
 
-      // 4. Chèn lại Curriculum mới
-      if (data.curriculum && data.curriculum.length > 0) {
-        for (const [sIndex, section] of data.curriculum.entries()) {
-          const [newSection] = await tx`
-            INSERT INTO sections (course_id, title, "order")
-            VALUES (${id}, ${section.title}, ${sIndex})
-            RETURNING id
-          `
+        await tx`DELETE FROM assignment_rules WHERE course_id = ${id}`
+        if (data.assignment_rules && data.assignment_rules.length > 0) {
+          for (const rule of data.assignment_rules) {
+            await tx`
+              INSERT INTO assignment_rules (course_id, target_type, department_id, user_id, role_id, due_type, due_days, due_date) 
+              VALUES (${id}, ${rule.target_type}, ${rule.department_id || null}, ${rule.user_id || null}, ${rule.role_id || null}, ${rule.due_type || null}, ${rule.due_days || null}, ${rule.due_date || null})
+            `
+          }
+        }
 
-          if (section.items && section.items.length > 0) {
-            for (const [iIndex, item] of section.items.entries()) {
-              const lessonId = item.type === "lesson" ? item.resource_id : null
-              const quizId = item.type === "quiz" ? item.resource_id : null
+        // Xóa sạch Curriculum cũ & Insert mới
+        await tx`DELETE FROM curriculum_items WHERE section_id IN (SELECT id FROM sections WHERE course_id = ${id})`
+        await tx`DELETE FROM sections WHERE course_id = ${id}`
 
-              await tx`
-                INSERT INTO curriculum_items (section_id, type, "order", lesson_id, quiz_id)
-                VALUES (${newSection.id}, ${item.type}, ${iIndex}, ${lessonId}, ${quizId})
-              `
+        if (data.curriculum && data.curriculum.length > 0) {
+          for (const [sIndex, section] of data.curriculum.entries()) {
+            const [newSection] =
+              await tx`INSERT INTO sections (course_id, title, "order") VALUES (${id}, ${section.title}, ${sIndex}) RETURNING id`
+            if (section.items && section.items.length > 0) {
+              for (const [iIndex, item] of section.items.entries()) {
+                const lessonId =
+                  item.type === "lesson" ? item.resource_id : null
+                const quizId = item.type === "quiz" ? item.resource_id : null
+                await tx`INSERT INTO curriculum_items (section_id, type, "order", lesson_id, quiz_id) VALUES (${newSection.id}, ${item.type}, ${iIndex}, ${lessonId}, ${quizId})`
+              }
             }
           }
         }
+        return { success: true }
       }
-
-      return { success: true }
     })
   } catch (error) {
     console.error("❌ [Service Error - Update Course]:", error)
@@ -529,7 +538,6 @@ export async function rejectCourseService(courseId: number, reason: string) {
   }
 }
 
-// 👇 HÀM MỚI: Chỉ lấy khóa học đã Published (Dành cho trang /courses)
 export async function getPublishedCoursesService({
   query = "",
   page = 1,
@@ -537,66 +545,105 @@ export async function getPublishedCoursesService({
   sort = "trending",
   category = "all",
   rating = "all",
-}: GetAllCoursesParams) {
-  const offset = (page - 1) * limit
+  userId = 0,
+}: GetAllCoursesParams & { userId?: number }) {
+  try {
+    console.log(`\n=============================================`)
+    console.log(`📡 [Catalog API] TÌM KIẾM KHÓA HỌC CHO USER: ${userId}`)
+    const offset = (page - 1) * limit
+    let orderBy = "c.created_at DESC"
 
-  // Xử lý Sort
-  let orderBy = ""
-  switch (sort) {
-    case "popular":
-      orderBy = "enrollment_count DESC, created_at DESC"
-      break
-    case "newest":
-      orderBy = "created_at DESC, enrollment_count DESC"
-      break
-    case "top-rated":
-      // TODO: Add rating column to courses table when available
-      // For now, order by enrollment_count as proxy for quality
-      orderBy = "enrollment_count DESC, created_at DESC"
-      break
-    case "trending":
-    default:
-      orderBy = "created_at DESC"
-      break
-  }
+    switch (sort) {
+      case "popular":
+        orderBy = "c.enrollment_count DESC, c.created_at DESC"
+        break
+      case "newest":
+        orderBy = "c.created_at DESC, c.enrollment_count DESC"
+        break
+      case "trending":
+      default:
+        orderBy = "c.created_at DESC"
+        break
+    }
 
-  // ✅ Xử lý Filter Category
-  const categoryCondition =
-    category && category !== "all" && category !== ""
-      ? sql`AND category_id = ${category}`
-      : sql``
+    const categoryCondition =
+      category && category !== "all"
+        ? sql`AND c.category_id = ${category}`
+        : sql``
 
-  // ✅ Xử lý Filter Rating
-  // TODO: Add rating filter logic when rating column is available in database
-  // const ratingCondition = rating && rating !== "all" ? sql`AND rating >= ${getRatingValue(rating)}` : sql``
+    // ✅ DEBUG 1: In ra toàn bộ khóa học Published (Bỏ qua Visibility)
+    const rawCourses = await sql`
+      SELECT id, title, status, visibility 
+      FROM courses 
+      WHERE deleted_at IS NULL AND status = 'published'
+    `
+    console.log("🔍 TOÀN BỘ KHÓA HỌC PUBLISHED TRONG DB:", rawCourses)
 
-  // Query Courses - CHỈ LẤY PUBLISHED
-  const rows = await sql`
-    SELECT *
-    FROM courses
-    WHERE deleted_at IS NULL
-      AND status = 'published'  -- 👈 QUAN TRỌNG NHẤT: Chỉ lấy published
-      AND title ILIKE ${"%" + query + "%"}
-      ${categoryCondition} 
-    ORDER BY ${sql.unsafe(orderBy)}
-    LIMIT ${limit}
-    OFFSET ${offset}
-  `
+    // ✅ LOGIC CỐT LÕI: Tách nhỏ ra để dễ debug
+    const rows = await sql`
+      SELECT c.*
+      FROM courses c
+      WHERE c.deleted_at IS NULL
+        AND c.status = 'published'
+        AND c.title ILIKE ${"%" + query + "%"}
+        ${categoryCondition}
+        AND (
+          -- Điều kiện 1: Khóa học Public hoặc chưa set (NULL)
+          c.visibility = 'public' 
+          OR c.visibility IS NULL
+          
+          -- Điều kiện 2: Khóa học Private nhưng được Assign
+          OR (
+            c.visibility = 'private' AND ${userId} != 0 AND EXISTS (
+              SELECT 1 FROM assignment_rules ar
+              WHERE ar.course_id = c.id
+              AND (
+                ar.target_type = 'all_employees'
+                OR (ar.target_type = 'department' AND ar.department_id = (SELECT department_id FROM users WHERE id = ${userId}))
+                OR (ar.target_type = 'role' AND ar.role_id IN (SELECT role_id FROM user_roles WHERE user_id = ${userId}))
+                OR (ar.target_type = 'user' AND ar.user_id = ${userId})
+              )
+            )
+          )
+        )
+      ORDER BY ${sql.unsafe(orderBy)}
+      LIMIT ${limit} OFFSET ${offset}
+    `
 
-  // Count Total - CHỈ ĐẾM PUBLISHED
-  const totalResult = await sql`
-    SELECT COUNT(*) 
-    FROM courses 
-    WHERE deleted_at IS NULL
-      AND status = 'published'  -- 👈 QUAN TRỌNG NHẤT: Chỉ đếm published
-      AND title ILIKE ${"%" + query + "%"}
-      ${categoryCondition}
-  `
+    const totalResult = await sql`
+      SELECT COUNT(c.id) 
+      FROM courses c
+      WHERE c.deleted_at IS NULL
+        AND c.status = 'published'
+        AND c.title ILIKE ${"%" + query + "%"}
+        ${categoryCondition}
+        AND (
+          c.visibility = 'public' 
+          OR c.visibility IS NULL
+          OR (
+            c.visibility = 'private' AND ${userId} != 0 AND EXISTS (
+              SELECT 1 FROM assignment_rules ar
+              WHERE ar.course_id = c.id
+              AND (
+                ar.target_type = 'all_employees'
+                OR (ar.target_type = 'department' AND ar.department_id = (SELECT department_id FROM users WHERE id = ${userId}))
+                OR (ar.target_type = 'role' AND ar.role_id IN (SELECT role_id FROM user_roles WHERE user_id = ${userId}))
+                OR (ar.target_type = 'user' AND ar.user_id = ${userId})
+              )
+            )
+          )
+        )
+    `
 
-  const totalCount = parseInt(totalResult[0].count as string, 10)
+    console.log(`✅ [Catalog API] ĐÃ TÌM THẤY: ${rows.length} khóa học.`)
+    console.log(`=============================================\n`)
 
-  return {
-    courses: rows as Course[],
-    totalCount,
+    return {
+      courses: rows as Course[],
+      totalCount: parseInt(totalResult[0].count as string, 10),
+    }
+  } catch (error) {
+    console.error("❌ [Catalog API] LỖI CÂU LỆNH SQL:", error)
+    return { courses: [], totalCount: 0 }
   }
 }
