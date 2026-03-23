@@ -45,7 +45,7 @@ export async function fetchActiveUsersMetrics(): Promise<ActiveUsersData[]> {
         TO_CHAR(DATE_TRUNC('month', u.created_at), 'MMM YY') as month,
         COUNT(DISTINCT u.id) as activeUsers
       FROM users u
-      WHERE u.is_active = true
+      WHERE u.status = 'active'
         AND u.created_at >= DATE_TRUNC('month', CURRENT_DATE - INTERVAL '1 year')
       GROUP BY DATE_TRUNC('month', u.created_at)
       ORDER BY DATE_TRUNC('month', u.created_at) ASC
@@ -75,7 +75,7 @@ export async function fetchAdoptionRateMetrics(): Promise<AdoptionRateData> {
   try {
     // Get total users count
     const totalResult = await sql`
-      SELECT COUNT(*) as total FROM users WHERE is_active = true
+      SELECT COUNT(*) as total FROM users WHERE status = 'active'
     `
     const totalUsers = parseInt(totalResult[0]?.total) || 0
 
@@ -84,15 +84,14 @@ export async function fetchAdoptionRateMetrics(): Promise<AdoptionRateData> {
       SELECT COUNT(DISTINCT u.id) as active
       FROM users u
       LEFT JOIN enrollments e ON u.id = e.user_id
-      WHERE u.is_active = true
+      WHERE u.status = 'active'
         AND (e.enrolled_at >= CURRENT_DATE - INTERVAL '30 days' 
              OR u.created_at >= CURRENT_DATE - INTERVAL '30 days')
     `
     const activeUsers = parseInt(activeResult[0]?.active) || 0
 
-    const adoptionRate = totalUsers > 0 
-      ? Math.round((activeUsers / totalUsers) * 100) 
-      : 0
+    const adoptionRate =
+      totalUsers > 0 ? Math.round((activeUsers / totalUsers) * 100) : 0
 
     return {
       adoptionRate,
@@ -194,7 +193,9 @@ export async function fetchTopCategoriesMetrics(): Promise<TopCategoryData[]> {
  * Fetch average content rating
  * Based on comments/reviews for the last 12 months
  */
-export async function fetchContentRatingMetrics(): Promise<ContentRatingData[]> {
+export async function fetchContentRatingMetrics(): Promise<
+  ContentRatingData[]
+> {
   try {
     const result = await sql`
       SELECT 

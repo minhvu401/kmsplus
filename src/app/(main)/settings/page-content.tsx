@@ -3,6 +3,7 @@
 import { Card, Select, Space, Typography, Divider } from "antd"
 import useLanguageStore, { Language } from "@/store/useLanguageStore"
 import { t } from "@/lib/i18n"
+import AIPromptsSettings from "@/components/AIPromptsSettings"
 
 const { Title, Text } = Typography
 
@@ -19,7 +20,9 @@ export default function SettingsPageContent() {
       <div className="mb-6">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-3xl font-bold">{t("settings.title", language)}</h1>
+            <h1 className="text-3xl font-bold">
+              {t("settings.title", language)}
+            </h1>
             <p className="text-gray-600 mt-2">
               {t("settings.subtitle", language)}
             </p>
@@ -27,7 +30,7 @@ export default function SettingsPageContent() {
         </div>
       </div>
 
-      {/* Settings Content */}
+      {/* Language Settings */}
       <Card className="mt-6">
         <Space direction="vertical" style={{ width: "100%" }} size="large">
           {/* Language Settings */}
@@ -60,17 +63,11 @@ export default function SettingsPageContent() {
           </div>
 
           <Divider />
-
-          {/* More settings can be added here */}
-          <div>
-            <Text type="secondary">
-              {language === "vi"
-                ? "Thêm các cài đặt khác sẽ được thêm vào đây..."
-                : "More settings will be added here..."}
-            </Text>
-          </div>
         </Space>
       </Card>
+
+      {/* AI Prompts Settings */}
+      <AIPromptsSettings />
     </div>
   )
 }
