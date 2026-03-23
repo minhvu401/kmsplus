@@ -136,7 +136,7 @@ export default function ManageCoursesClient({
     const params = new URLSearchParams()
     if (value) params.set("query", value)
     params.set("page", "1")
-    router.push(`/courses/manage?${params.toString()}`)
+    router.push(`/courses/management?${params.toString()}`)
   }
 
   // --- Approve ---
@@ -269,7 +269,7 @@ export default function ManageCoursesClient({
     const params = new URLSearchParams()
     if (query) params.set("query", query)
     params.set("page", String(newPage))
-    router.push(`/courses/manage?${params.toString()}`)
+    router.push(`/courses/management?${params.toString()}`)
   }
 
   // --- Columns ---

@@ -10,7 +10,7 @@ import { revalidatePath } from "next/cache"
 // ============================================================================
 
 export type Lesson = {
-  id: number
+  id: bigint
   course_id: number | null
   category_id?: number | null
   title: string

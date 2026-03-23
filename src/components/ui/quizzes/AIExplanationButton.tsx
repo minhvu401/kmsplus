@@ -144,7 +144,7 @@ export default function AIExplanationButton({
                       {...props}
                     />
                   ),
-                  code: ({ node, inline, ...props }) =>
+                  code: ({ node, inline, ...props }: any) =>
                     inline ? (
                       <code
                         style={{

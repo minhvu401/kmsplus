@@ -229,7 +229,7 @@ export default function CourseEnrollmentsPage() {
         className="text-gray-500"
         items={[
           { title: <HomeOutlined />, href: "/dashboard-metrics" },
-          { title: "Courses", href: "/courses/manage" },
+          { title: "Courses", href: "/courses/management" },
           {
             title: "Introduction to Python",
             href: `/courses/${courseId}/enrollments`,
