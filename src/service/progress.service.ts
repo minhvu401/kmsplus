@@ -8,13 +8,13 @@ export async function getCompletedItemIds(enrollmentId: number) {
     console.log(`🔍 [GET] Đang lấy progress cho Enrollment ID: ${enrollmentId}`)
 
     const result = await sql`
-      SELECT completed_lesson_ids 
+      SELECT completed_item_ids 
       FROM enrollments 
       WHERE id = ${enrollmentId}
     `
 
     if (result.length > 0) {
-      const data = result[0].completed_lesson_ids
+      const data = result[0].completed_item_ids
       console.log(`✅ [GET] Kết quả từ DB:`, data)
 
       // Đảm bảo luôn trả về mảng số (nếu DB trả về null thì trả về [])
@@ -53,7 +53,7 @@ export async function updateProgressService(
   try {
     // A. Lấy dữ liệu cũ + thông tin course để tính progress
     const existing = await sql`
-      SELECT e.id, e.completed_lesson_ids, e.progress_percentage,
+      SELECT e.id, e.completed_item_ids, e.progress_percentage,
              (SELECT COUNT(*) FROM curriculum_items ci 
               JOIN sections s ON ci.section_id = s.id 
               WHERE s.course_id = ${courseId}) as total_items
@@ -70,18 +70,36 @@ export async function updateProgressService(
     let completedIds: number[] = []
 
     // Xử lý dữ liệu cũ từ DB (có thể là null, array, hoặc string json)
-    if (Array.isArray(enrollment.completed_lesson_ids)) {
-      completedIds = enrollment.completed_lesson_ids.map((id) => Number(id))
-    } else if (typeof enrollment.completed_lesson_ids === "string") {
-      const parsed = JSON.parse(enrollment.completed_lesson_ids)
+    if (Array.isArray(enrollment.completed_item_ids)) {
+      completedIds = enrollment.completed_item_ids.map((id) => Number(id))
+    } else if (typeof enrollment.completed_item_ids === "string") {
+      const parsed = JSON.parse(enrollment.completed_item_ids)
       completedIds = Array.isArray(parsed) ? parsed.map((id) => Number(id)) : []
     }
 
     console.log("📝 [UPDATE] Danh sách cũ:", completedIds)
 
+    // Chuẩn hóa về curriculum_items.id để theo dõi tiến độ thống nhất cho lesson/quiz.
+    const resolvedItemRows = await sql`
+      SELECT ci.id
+      FROM curriculum_items ci
+      JOIN sections s ON s.id = ci.section_id
+      WHERE s.course_id = ${courseId}
+        AND ${
+          itemType === "lesson"
+            ? sql`(ci.id = ${itemId} OR ci.lesson_id = ${itemId})`
+            : sql`(ci.id = ${itemId} OR ci.quiz_id = ${itemId})`
+        }
+      ORDER BY CASE WHEN ci.id = ${itemId} THEN 0 ELSE 1 END
+      LIMIT 1
+    `
+
+    const normalizedItemId =
+      resolvedItemRows.length > 0 ? Number(resolvedItemRows[0].id) : Number(itemId)
+
     // B. Thêm bài mới vào mảng
-    if (!completedIds.includes(itemId)) {
-      completedIds.push(itemId)
+    if (!completedIds.includes(normalizedItemId)) {
+      completedIds.push(normalizedItemId)
     } else {
       console.log("⚠️ [UPDATE] Bài học này đã có trong danh sách rồi.")
     }
@@ -105,7 +123,7 @@ export async function updateProgressService(
     await sql`
       UPDATE enrollments 
       SET 
-        completed_lesson_ids = ${JSON.stringify(completedIds)}::jsonb,
+        completed_item_ids = ${JSON.stringify(completedIds)}::jsonb,
         progress_percentage = ${newProgressPercentage},
         status = ${newStatus},
         completed_at = ${newStatus === "completed" ? new Date() : null}

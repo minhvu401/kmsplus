@@ -66,10 +66,10 @@ export default function LearningClient({
   const [activeItem, setActiveItem] = useState(() => {
     if (flatItems.length === 0) return null
 
-    // A. Kiểm tra URL có lessonId không?
-    const lessonIdFromUrl = searchParams.get("lessonId")
-    if (lessonIdFromUrl) {
-      const found = flatItems.find((i: any) => String(i.id) === lessonIdFromUrl)
+    // A. Ưu tiên itemId; fallback lessonId để tương thích URL cũ
+    const itemIdFromUrl = searchParams.get("itemId") ?? searchParams.get("lessonId")
+    if (itemIdFromUrl) {
+      const found = flatItems.find((i: any) => String(i.id) === itemIdFromUrl)
       if (found) return found
     }
 
@@ -86,7 +86,8 @@ export default function LearningClient({
   useEffect(() => {
     if (activeItem) {
       const params = new URLSearchParams(searchParams.toString())
-      params.set("lessonId", String(activeItem.id))
+      params.set("itemId", String(activeItem.id))
+      params.delete("lessonId")
       router.replace(`${pathname}?${params.toString()}`, { scroll: false })
     }
   }, [activeItem?.id])
@@ -139,8 +140,8 @@ export default function LearningClient({
   const handleLessonCompleted = () => {
     if (!activeItem) return
 
-    // 🛠️ SỬA: Ép kiểu Number để đảm bảo lưu số vào mảng
-    const itemId = Number(activeItem?.resource_id || activeItem?.id)
+    // Dùng curriculum item id để đồng bộ với completed_item_ids.
+    const itemId = Number(activeItem?.id)
 
     if (!completedIds.includes(itemId)) {
       setCompletedIds((prev) => [...prev, itemId])
@@ -467,12 +468,9 @@ export default function LearningClient({
                   <div className="flex-1 flex justify-center w-full md:w-auto">
                     <CompleteButton
                       courseId={course.id}
-                      itemId={activeItem?.resource_id || activeItem?.id}
+                      itemId={activeItem?.id}
                       itemType={activeItem?.type}
-                      // 🛠️ SỬA: Ép kiểu Number khi kiểm tra includes
-                      initialCompleted={completedIds.includes(
-                        Number(activeItem?.resource_id || activeItem?.id)
-                      )}
+                      initialCompleted={completedIds.includes(Number(activeItem?.id))}
                       onCompleted={handleLessonCompleted}
                     />
                   </div>
@@ -529,9 +527,7 @@ export default function LearningClient({
                       const isActive =
                         String(activeItem?.id) === String(item.id)
 
-                      // 🛠️ SỬA: Ép kiểu Number khi kiểm tra completed
-                      // Kiểm tra cả resource_id (ưu tiên) và id
-                      const itemId = Number(item.resource_id || item.id)
+                      const itemId = Number(item.id)
                       const isCompleted = completedIds.includes(itemId)
                       return (
                         <div

@@ -318,7 +318,7 @@ export async function getCourseLearnerEnrollmentDetailService({
           ELSE 'Not Started'
         END AS course_status,
         e.completed_at AS completed_at,
-        e.completed_lesson_ids AS completed_lesson_ids,
+        e.completed_item_ids AS completed_item_ids,
         (
           SELECT COUNT(*)::int
           FROM curriculum_items ci
@@ -341,7 +341,7 @@ export async function getCourseLearnerEnrollmentDetailService({
     }
 
     const row = rows[0] as any
-    const rawCompletedIds = row.completed_lesson_ids
+  const rawCompletedIds = row.completed_item_ids
     let completedItems = 0
     let completedItemIds: number[] = []
 
@@ -434,8 +434,6 @@ export async function getCourseLearnerEnrollmentDetailService({
       }
 
       const itemId = Number(row.item_id)
-      const lessonId = row.lesson_id ? Number(row.lesson_id) : null
-      const quizId = row.quiz_id ? Number(row.quiz_id) : null
       const resolvedType: "video" | "text" | "quiz" =
         row.item_kind === "quiz"
           ? "quiz"
@@ -452,10 +450,7 @@ export async function getCourseLearnerEnrollmentDetailService({
       const passingScore =
         resolvedType === "quiz" ? Number(row.quiz_passing_score ?? 70) : 70
 
-      const isCompleted =
-        resolvedType === "quiz"
-          ? quizId != null && completedItemSet.has(quizId)
-          : lessonId != null && completedItemSet.has(lessonId)
+      const isCompleted = completedItemSet.has(itemId)
 
       let itemStatus: "Not Started" | "Completed" | "Failed" =
         isCompleted ? "Completed" : "Not Started"
