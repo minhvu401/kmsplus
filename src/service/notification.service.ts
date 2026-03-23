@@ -12,93 +12,73 @@ export type NotificationItem = {
   redirect_url: string
   is_read: boolean
   created_at: Date
+  article_id: number | null
+  course_id: number | null
+  comment_id: number | null
 }
 
 export async function getNotificationsByUserAction(
   userId: number,
   limit: number = 20
 ): Promise<NotificationItem[]> {
-  try {
-    const notifications = await sql`
-      SELECT
-        id,
-        user_id,
-        title,
-        content,
-        thumbnail_url,
-        type,
-        redirect_url,
-        is_read,
-        created_at
-      FROM notifications
-      WHERE user_id = ${userId}
-      ORDER BY created_at DESC
-      LIMIT ${limit}
-    `
+  const notifications = await sql`
+    SELECT
+      id,
+      user_id,
+      title,
+      content,
+      thumbnail_url,
+      type,
+      redirect_url,
+      is_read,
+      created_at,
+      article_id,
+      course_id,
+      comment_id
+    FROM notifications
+    WHERE user_id = ${userId}
+    ORDER BY created_at DESC
+    LIMIT ${limit}
+  `
 
-    return notifications as NotificationItem[]
-  } catch (error: any) {
-    const notifications = await sql`
-      SELECT
-        id,
-        user_id,
-        title,
-        content,
-        thumbnai1_url as thumbnail_url,
-        type,
-        redirect_url,
-        is_read,
-        created_at
-      FROM notifications
-      WHERE user_id = ${userId}
-      ORDER BY created_at DESC
-      LIMIT ${limit}
-    `
-
-    return notifications as NotificationItem[]
-  }
+  return notifications as NotificationItem[]
 }
 
 export async function getLatestNotificationsAction(
+  userId: number,
   limit: number = 20
 ): Promise<NotificationItem[]> {
-  try {
-    const notifications = await sql`
-      SELECT
-        id,
-        user_id,
-        title,
-        content,
-        thumbnail_url,
-        type,
-        redirect_url,
-        is_read,
-        created_at
-      FROM notifications
-      ORDER BY created_at DESC
-      LIMIT ${limit}
-    `
+  const notifications = await sql`
+    SELECT
+      id,
+      user_id,
+      title,
+      content,
+      thumbnail_url,
+      type,
+      redirect_url,
+      is_read,
+      created_at,
+      article_id,
+      course_id,
+      comment_id
+    FROM notifications
+    WHERE user_id = ${userId}
+    ORDER BY created_at DESC
+    LIMIT ${limit}
+  `
 
-    return notifications as NotificationItem[]
-  } catch (error: any) {
-    const notifications = await sql`
-      SELECT
-        id,
-        user_id,
-        title,
-        content,
-        thumbnai1_url as thumbnail_url,
-        type,
-        redirect_url,
-        is_read,
-        created_at
-      FROM notifications
-      ORDER BY created_at DESC
-      LIMIT ${limit}
-    `
+  return notifications as NotificationItem[]
+}
 
-    return notifications as NotificationItem[]
-  }
+export async function getUnreadNotificationsCountByUserAction(userId: number): Promise<number> {
+  const result = await sql`
+    SELECT COUNT(*)::INT AS total
+    FROM notifications
+    WHERE user_id = ${userId} AND is_read = FALSE
+  `
+
+  return result[0]?.total || 0
 }
 
 export async function markNotificationAsReadAction(
