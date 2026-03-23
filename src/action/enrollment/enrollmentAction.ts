@@ -65,7 +65,7 @@ export async function checkEnrollmentStatus(courseId: number, userId: number) {
         id,
         status,
         progress_percentage,
-        completed_lesson_ids,
+        completed_item_ids,
         EXISTS(
           SELECT 1
           FROM feedback f
