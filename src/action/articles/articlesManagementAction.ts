@@ -1,7 +1,7 @@
 "use server"
 
 import { requireAuth } from "@/lib/auth"
-import { getAllArticlesAction, filterByTagAction, getAllTagsAction, createArticleAction, deleteArticleAction, getAllCategoriesAction, getArticleByIdAction, updateArticleAction, restoreArticleAction, approveArticleAction, rejectArticleAction, resubmitArticleAction, updateArticlesStatusConstraint, getTopAuthorsAction } from "@/service/articles.service"
+import { getAllArticlesAction, filterByTagAction, getAllTagsAction, createArticleAction, deleteArticleAction, getAllCategoriesAction, getArticleByIdAction, updateArticleAction, restoreArticleAction, approveArticleAction, rejectArticleAction, resubmitArticleAction, updateArticlesStatusConstraint, getTopAuthorsAction, getPublishedArticlesAction } from "@/service/articles.service"
 
 export async function setupArticlesConstraint() {
   await requireAuth()
@@ -28,10 +28,13 @@ export async function filterByTagAndCategory(
   tagFilter?: string,
   categoryId?: number,
   statusFilter?: string,
-  isDeletedFilter?: boolean | 'all'
+  isDeletedFilter?: boolean | 'all',
+  sortOrder: 'newest' | 'oldest' = 'newest',
+  page: number = 1,
+  pageSize: number = 12,
 ) {
   await requireAuth()
-  return filterByTagAction(searchQuery, tagFilter, categoryId, statusFilter, isDeletedFilter)
+  return filterByTagAction(searchQuery, tagFilter, categoryId, statusFilter, isDeletedFilter, sortOrder, page, pageSize)
 }
 
 export async function deleteArticle(id: number) {
@@ -45,13 +48,13 @@ export async function restoreArticle(id: number) {
 }
 
 export async function approveArticle(id: number) {
-  await requireAuth()
-  return approveArticleAction(id)
+  const currentUser = await requireAuth()
+  return approveArticleAction(id, Number(currentUser.id))
 }
 
 export async function rejectArticle(id: number) {
-  await requireAuth()
-  return rejectArticleAction(id)
+  const currentUser = await requireAuth()
+  return rejectArticleAction(id, '', Number(currentUser.id))
 }
 
 export async function resubmitArticle(
@@ -210,4 +213,16 @@ export async function getTopAuthors(limit: number = 5) {
     console.error('Error fetching top authors:', error)
     return []
   }
+}
+
+export async function getPublishedArticles(params: {
+  searchQuery?: string
+  selectedTags?: string[]
+  categoryId?: number | null
+  sortOrder?: 'newest' | 'oldest'
+  page?: number
+  pageSize?: number
+}) {
+  await requireAuth()
+  return getPublishedArticlesAction(params)
 }
