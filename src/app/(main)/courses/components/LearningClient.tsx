@@ -17,7 +17,13 @@ import Link from "next/link"
 import { useRouter, useSearchParams, usePathname } from "next/navigation" // Import thêm hook điều hướng
 import CompleteButton from "./CompleteButton"
 import { getLessonByIdAction } from "@/service/lesson.service"
+import {
+  getAttemptHistoryForCurriculumItem,
+  getQuizByCurriculumItemId,
+} from "@/action/quiz/quizActions"
 import FeedbackBanner from "@/components/ui/reviews/feedback-banner"
+import QuizDetails from "@/components/ui/quizzes/quiz-details"
+import AttemptHistory from "@/components/ui/quizzes/attempt-history"
 
 const { Header, Sider, Content } = Layout
 
@@ -81,6 +87,8 @@ export default function LearningClient({
   })
 
   const [lessonContent, setLessonContent] = useState<any>(null)
+  const [quizContent, setQuizContent] = useState<any>(null)
+  const [attemptHistory, setAttemptHistory] = useState<any>(null)
 
   // Đồng bộ URL khi activeItem thay đổi
   useEffect(() => {
@@ -98,6 +106,8 @@ export default function LearningClient({
       if (!activeItem) return
       setLoadingContent(true)
       setLessonContent(null)
+      setQuizContent(null)
+      setAttemptHistory(null)
 
       try {
         if (activeItem.type === "lesson") {
@@ -125,10 +135,21 @@ export default function LearningClient({
 
             setLessonContent(data)
           }
+        } else if (activeItem.type === "quiz") {
+          const [quiz, history] = await Promise.all([
+            getQuizByCurriculumItemId(Number(activeItem.id)),
+            getAttemptHistoryForCurriculumItem(Number(activeItem.id)),
+          ])
+          if (!quiz) {
+            message.error("Failed to load quiz")
+          } else {
+            setQuizContent(quiz)
+            setAttemptHistory(history)
+          }
         }
       } catch (error) {
         console.error(error)
-        message.error("Failed to load lesson")
+        message.error("Failed to load content")
       } finally {
         setLoadingContent(false)
       }
@@ -362,7 +383,59 @@ export default function LearningClient({
               <div className="h-96 flex flex-col items-center justify-center gap-4">
                 <Spin size="large" />
                 <div className="text-gray-500 font-medium">
-                  Loading lesson...
+                  Loading content...
+                </div>
+              </div>
+            ) : activeItem.type === "quiz" ? (
+              <div className="space-y-6 animate-fadeIn">
+                <div className="space-y-6">
+                  <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
+                    {quizContent ? (
+                      <QuizDetails
+                        quiz={quizContent}
+                        curriculumItemId={Number(activeItem.id)}
+                        courseId={course.id}
+                      />
+                    ) : (
+                      <div className="text-center text-gray-500 py-10">
+                        Quiz details are not available.
+                      </div>
+                    )}
+                  </div>
+
+                  <AttemptHistory
+                    courseId={course.id}
+                    attempts={attemptHistory?.attempts || []}
+                    attemptsLeft={attemptHistory?.attempts_left ?? null}
+                    maxAttempts={attemptHistory?.max_attempts ?? null}
+                  />
+                </div>
+
+                <div className="flex flex-col md:flex-row items-center justify-between gap-6 py-8 border-t border-gray-200 mt-8">
+                  <Button
+                    type="text"
+                    icon={<LeftOutlined />}
+                    size="large"
+                    className="text-gray-500 hover:text-gray-900 font-medium flex items-center"
+                    onClick={handlePrevLesson}
+                    disabled={isFirstLesson}
+                    style={{ visibility: isFirstLesson ? "hidden" : "visible" }}
+                  >
+                    Previous Lesson
+                  </Button>
+
+                  <div className="flex-1" />
+
+                  <Button
+                    type="link"
+                    size="large"
+                    className="text-blue-600 hover:text-blue-800 font-bold flex items-center gap-1"
+                    onClick={handleNextLesson}
+                    disabled={isLastLesson}
+                    style={{ visibility: isLastLesson ? "hidden" : "visible" }}
+                  >
+                    Next Lesson <RightOutlined />
+                  </Button>
                 </div>
               </div>
             ) : (

@@ -69,6 +69,10 @@ const isQuestionCorrect = (q: QuestionResult) => {
 export default function QuizResult({ result }: { result: AttemptResult }) {
   const [showDetails, setShowDetails] = useState(false)
 
+  const displayScore = Number.isInteger(result.score)
+    ? String(result.score)
+    : result.score.toFixed(1)
+
   // Calculate stats
   const totalQuestions = result.questions.length
   const correctCount = result.questions.filter(isQuestionCorrect).length
@@ -108,7 +112,7 @@ export default function QuizResult({ result }: { result: AttemptResult }) {
               <Tag color={isPassed ? "success" : "error"}>
                 {isPassed ? "Passed" : "Failed"}
               </Tag>
-              <Text type="secondary">Score: {result.score}%</Text>
+              <Text type="secondary">Score: {displayScore}/100</Text>
             </Space>
           </Space>
           <Button
@@ -222,9 +226,60 @@ export default function QuizResult({ result }: { result: AttemptResult }) {
 
       {/* Stats Cards */}
       <Row gutter={[24, 24]}>
-        <Col xs={24} md={8}>
+        <Col xs={24} md={6}>
           <Card
-            bordered={false}
+            variant="borderless"
+            style={{
+              height: "100%",
+              borderRadius: 12,
+              boxShadow: "0 4px 12px rgba(0,0,0,0.03)",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                textAlign: "center",
+                height: "100%",
+                justifyContent: "center",
+              }}
+            >
+              {isPassed ? (
+                <CheckCircleFilled
+                  style={{ fontSize: 36, color: "#52c41a", marginBottom: 16 }}
+                />
+              ) : (
+                <CloseCircleFilled
+                  style={{ fontSize: 36, color: "#ff4d4f", marginBottom: 16 }}
+                />
+              )}
+              <Text
+                type="secondary"
+                style={{
+                  textTransform: "uppercase",
+                  fontSize: 12,
+                  letterSpacing: "1px",
+                }}
+              >
+                Status
+              </Text>
+              <Title
+                level={3}
+                style={{
+                  margin: "4px 0 0",
+                  color: isPassed ? "#52c41a" : "#ff4d4f",
+                }}
+              >
+                {isPassed ? "PASSED" : "FAILED"}
+              </Title>
+            </div>
+          </Card>
+        </Col>
+
+        <Col xs={24} md={6}>
+          <Card
+            variant="borderless"
             style={{
               height: "100%",
               borderRadius: 12,
@@ -256,16 +311,19 @@ export default function QuizResult({ result }: { result: AttemptResult }) {
               >
                 Total Score
               </Text>
-              <Title level={3} style={{ margin: "4px 0 0" }}>
-                {result.score}
-              </Title>
+              <Space align="baseline" style={{ marginTop: 4 }}>
+                <Title level={3} style={{ margin: 0, color: "#1677ff" }}>
+                  {displayScore}
+                </Title>
+                <Text type="secondary">/ 100</Text>
+              </Space>
             </div>
           </Card>
         </Col>
 
-        <Col xs={24} md={8}>
+        <Col xs={24} md={6}>
           <Card
-            bordered={false}
+            variant="borderless"
             style={{
               height: "100%",
               borderRadius: 12,
@@ -308,9 +366,9 @@ export default function QuizResult({ result }: { result: AttemptResult }) {
           </Card>
         </Col>
 
-        <Col xs={24} md={8}>
+        <Col xs={24} md={6}>
           <Card
-            bordered={false}
+            variant="borderless"
             style={{
               height: "100%",
               borderRadius: 12,
@@ -369,7 +427,7 @@ function QuestionCard({
 
   return (
     <Card
-      bordered={false}
+      variant="borderless"
       style={{
         borderRadius: 12,
         boxShadow: "0 4px 12px rgba(0,0,0,0.03)",
