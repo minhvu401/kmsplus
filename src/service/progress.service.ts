@@ -156,19 +156,58 @@ export async function checkItemCompletionService(
 export async function getPersonalHistoryService(userId: number) {
   try {
     const history = await sql`
+      WITH user_info AS (
+        SELECT u.id, u.department_id, ur.role_id
+        FROM users u
+        LEFT JOIN user_roles ur ON u.id = ur.user_id
+        WHERE u.id = ${userId}
+        LIMIT 1
+      )
+      -- 🟢 TẬP 1: ĐÃ GHI DANH
       SELECT
         e.id as enrollment_id,
         e.enrolled_at,
         e.progress_percentage,
         e.status,
         e.completed_at,
+        e.deadline, -- Cột mới thêm
         c.id as course_id,
         c.title as course_name,
-        c.thumbnail_url
+        c.thumbnail_url,
+        'enrolled' as source
       FROM enrollments e
       JOIN courses c ON e.course_id = c.id
-      WHERE e.user_id = ${userId}
-      ORDER BY e.enrolled_at DESC
+      WHERE e.user_id = ${userId} AND c.deleted_at IS NULL
+
+      UNION ALL
+
+      -- 🔴 TẬP 2: BỊ ÉP HỌC (NHƯNG CHƯA ENROLL)
+      SELECT
+        0 as enrollment_id, -- Mặc định là 0 vì chưa enroll
+        NULL as enrolled_at,
+        0 as progress_percentage,
+        'assigned' as status, -- ✅ Trạng thái giả lập để UI nhận diện
+        NULL as completed_at,
+        ar.due_date as deadline,
+        c.id as course_id,
+        c.title as course_name,
+        c.thumbnail_url,
+        'assigned' as source
+      FROM assignment_rules ar
+      JOIN courses c ON ar.course_id = c.id
+      CROSS JOIN user_info ui
+      WHERE c.status = 'published' AND c.deleted_at IS NULL
+        AND (
+          ar.target_type = 'all_employees'
+          OR (ar.target_type = 'department' AND ar.department_id = ui.department_id)
+          OR (ar.target_type = 'role' AND ar.role_id = ui.role_id)
+          OR (ar.target_type = 'user' AND ar.user_id = ui.id)
+        )
+        AND NOT EXISTS (
+          SELECT 1 FROM enrollments e2
+          WHERE e2.course_id = c.id AND e2.user_id = ${userId}
+        )
+      ORDER BY enrolled_at DESC NULLS LAST
     `
     return { success: true, data: history }
   } catch (error) {
