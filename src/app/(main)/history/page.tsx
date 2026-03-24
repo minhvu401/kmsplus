@@ -62,7 +62,7 @@ export default function PersonalHistoryPage() {
         }
       } catch (error) {
         console.error("Failed to fetch history", error)
-        message.error("Failed to load learning history")
+        message.error("Không thể tải dữ liệu học tập")
       } finally {
         setLoading(false)
       }
@@ -85,25 +85,25 @@ export default function PersonalHistoryPage() {
 
     return [
       {
-        title: "Total Enrolled",
+        title: "Tổng số khóa học",
         value: totalEnrolled,
-        sub: "Lifetime access",
+        sub: "Truy cập trọn đời",
         icon: <BookOpen className="text-blue-600" size={24} />,
         bg: "bg-blue-50",
         text: "text-blue-600",
       },
       {
-        title: "Courses Completed",
+        title: "Đã hoàn thành",
         value: completedCourses,
-        sub: `${totalEnrolled > 0 ? Math.round((completedCourses / totalEnrolled) * 100) : 0}% completion rate`,
+        sub: `${totalEnrolled > 0 ? Math.round((completedCourses / totalEnrolled) * 100) : 0}% tỷ lệ hoàn thành`,
         icon: <CheckCircle className="text-blue-600" size={24} />,
         bg: "bg-blue-50",
         text: "text-blue-600",
       },
       {
-        title: "Avg. Progress",
+        title: "Tiến độ trung bình",
         value: `${avgScore}%`,
-        sub: "Keep learning!",
+        sub: "Tiếp tục học nhé!",
         icon: <TrendingUp className="text-purple-600" size={24} />,
         bg: "bg-purple-50",
         text: "text-purple-600",
@@ -124,7 +124,7 @@ export default function PersonalHistoryPage() {
   // --- 4. CẤU HÌNH CỘT (MAPPING DB FIELDS) ---
   const columns: ColumnsType<HistoryItem> = [
     {
-      title: "COURSE NAME",
+      title: "TÊN KHÓA HỌC",
       dataIndex: "course_name", // Khớp với SQL: c.title as course_name
       key: "course_name",
       width: 350,
@@ -150,21 +150,22 @@ export default function PersonalHistoryPage() {
             </Link>
             {/* Giả lập category vì SQL chưa join bảng categories, bạn có thể update SQL sau */}
             <span className="text-xs text-gray-400 font-medium bg-gray-100 px-2 py-0.5 rounded-full">
-              General Course
+              Khóa học tổng quan
             </span>
           </div>
         </div>
       ),
     },
     {
-      title: "ENROLLED ON",
+      title: "NGÀY THAM GIA",
       dataIndex: "enrolled_at", // Khớp với SQL
       key: "enrolled_at",
       className: "text-gray-500 font-medium",
-      render: (date) => new Date(date).toLocaleDateString("vi-VN"), // Format ngày
+      render: (date) =>
+        date ? new Date(date).toLocaleDateString("vi-VN") : "--", // Format ngày, xử lý TH null
     },
     {
-      title: "PROGRESS",
+      title: "TIẾN ĐỘ",
       dataIndex: "progress_percentage", // Khớp với SQL
       key: "progress_percentage",
       width: 200,
@@ -185,10 +186,19 @@ export default function PersonalHistoryPage() {
       ),
     },
     {
-      title: "STATUS",
+      title: "TRẠNG THÁI",
       dataIndex: "status",
-      key: "status",
       render: (status) => {
+        if (status === "assigned") {
+          return (
+            <Tag
+              color="error"
+              className="bg-red-50 text-red-600 rounded-full border-0 font-semibold px-3 py-1"
+            >
+              🚨 Bắt buộc học
+            </Tag>
+          )
+        }
         const isCompleted = status === "completed"
         return (
           <Tag
@@ -204,24 +214,38 @@ export default function PersonalHistoryPage() {
                 isCompleted ? "bg-blue-600" : "bg-yellow-600"
               }`}
             ></span>
-            {isCompleted ? "Completed" : "In Progress"}
+            {isCompleted ? "Hoàn thành" : "Đang học"}
           </Tag>
         )
       },
     },
     {
-      title: "ACTION",
+      title: "THAO TÁC",
       key: "action",
       align: "right",
       render: (_, record) => {
+        // Nếu là khóa học Bắt buộc, đổi chữ nút bấm
+        if (record.status === "assigned") {
+          return (
+            <Link href={`/courses/${record.course_id}`}>
+              <Button
+                type="primary"
+                danger
+                className="bg-red-500 flex items-center gap-2 border-none shadow-md"
+              >
+                Bắt Đầu Ngay <PlayCircle size={16} />
+              </Button>
+            </Link>
+          )
+        }
         if (record.status === "completed") {
           return (
             <Button
               icon={<Award size={16} />}
               className="text-gray-600 border-gray-300 hover:!text-blue-600 hover:!border-blue-600 flex items-center gap-2"
-              onClick={() => message.info("Certificate feature coming soon!")}
+              onClick={() => message.info("Tính năng chứng chỉ sắp ra mắt!")}
             >
-              Certificate
+              Chứng chỉ
             </Button>
           )
         }
@@ -231,7 +255,7 @@ export default function PersonalHistoryPage() {
               type="primary"
               className="bg-blue-600 hover:!bg-blue-700 border-none shadow-md flex items-center gap-2"
             >
-              Continue <PlayCircle size={16} />
+              Tiếp tục <PlayCircle size={16} />
             </Button>
           </Link>
         )
@@ -246,11 +270,11 @@ export default function PersonalHistoryPage() {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
             <h1 className="text-2xl font-bold text-gray-900 mb-1">
-              Personal Learning History
+              Learning History
             </h1>
             <p className="text-gray-500">
-              Track your progress, view enrollments, and access completion
-              certificates.
+              Theo dõi tiến độ, xem các khóa học đã tham gia và truy cập chứng
+              chỉ khi hoàn thành.
             </p>
           </div>
           <Button
@@ -259,7 +283,7 @@ export default function PersonalHistoryPage() {
             // ✅ Đổi màu nền và hover cho nút Export Report
             className="bg-blue-600 hover:!bg-blue-700 h-10 px-5 border-none shadow-sm font-medium"
           >
-            Export Report
+            Xuất báo cáo
           </Button>
         </div>
 
@@ -319,9 +343,10 @@ export default function PersonalHistoryPage() {
               className="w-32"
               onChange={setStatusFilter}
               options={[
-                { value: "all", label: "Status: All" },
-                { value: "completed", label: "Completed" },
-                { value: "in_progress", label: "In Progress" },
+                { value: "all", label: "Tất cả" },
+                { value: "completed", label: "Hoàn thành" },
+                { value: "in_progress", label: "Đang học" },
+                { value: "assigned", label: "Bắt buộc" },
               ]}
             />
             {/* Các filter khác có thể thêm sau nếu API hỗ trợ */}
@@ -330,7 +355,7 @@ export default function PersonalHistoryPage() {
           <div className="flex items-center gap-3 w-full md:w-auto">
             <div className="relative">
               <Input
-                placeholder="Search courses..."
+                placeholder="Tìm kiếm khóa học..."
                 value={searchText}
                 onChange={(e) => setSearchText(e.target.value)}
                 prefix={<Search size={16} className="text-gray-400" />}
@@ -345,14 +370,15 @@ export default function PersonalHistoryPage() {
           <Table
             columns={columns}
             dataSource={filteredData}
-            rowKey="enrollment_id" // Dùng enrollment_id làm key duy nhất
+            // ✅ ĐÃ SỬA LỖI KEY BỊ TRÙNG Ở ĐÂY
+            rowKey={(record) => `${record.enrollment_id}_${record.course_id}`}
             loading={loading}
             pagination={{
               pageSize: 5,
               showSizeChanger: false,
               total: filteredData.length,
               showTotal: (total, range) =>
-                `Showing ${range[0]}-${range[1]} of ${total} courses`,
+                `Hiển thị ${range[0]}-${range[1]} trong tổng ${total} khóa học`,
             }}
             locale={{
               emptyText: <Empty description="Bạn chưa tham gia khóa học nào" />,
