@@ -8,6 +8,7 @@ import { Input, Button, Table, Pagination, message, Modal, Tag, Rate, Typography
 import {
   SearchOutlined,
   ReadOutlined,
+  StarOutlined,
   EditOutlined,
   DeleteOutlined,
   PlusOutlined,
@@ -424,7 +425,7 @@ export default function ManageCoursesClient({
       title: "Actions",
       key: "actions",
       render: (_: any, record: Course) => (
-        <div className="flex gap-2">
+        <div className="grid grid-cols-2 gap-1 w-fit">
           {/* Nút Edit mới dùng để mở Modal */}
           <Button
             type="text"
@@ -467,11 +468,44 @@ export default function ManageCoursesClient({
             type="text"
             icon={<ReadOutlined />}
             size="small"
-            className="text-green-600 hover:!text-green-700 hover:bg-green-50"
+            disabled={record.status !== "published"}
+            className={
+              record.status !== "published"
+                ? "!text-gray-400 cursor-not-allowed"
+                : "text-green-600 hover:!text-green-700 hover:bg-green-50"
+            }
             onClick={(e) => {
               e.stopPropagation()
               e.preventDefault()
-              router.push(`/courses/manage/${record.id}`)
+              if (record.status !== "published") return
+              router.push(`/courses/management/${record.id}/enrollments`)
+            }}
+          />
+
+          <Button
+            type="text"
+            icon={<StarOutlined />}
+            size="small"
+            disabled={record.status !== "published"}
+            style={record.status === "published" ? { color: "#ca8a04" } : undefined}
+            className={
+              record.status !== "published"
+                ? "!text-gray-400 cursor-not-allowed"
+                : "hover:bg-yellow-50"
+            }
+            onMouseEnter={(e) => {
+              if (record.status !== "published") return
+              e.currentTarget.style.color = "#b45309"
+            }}
+            onMouseLeave={(e) => {
+              if (record.status !== "published") return
+              e.currentTarget.style.color = "#ca8a04"
+            }}
+            onClick={(e) => {
+              e.stopPropagation()
+              e.preventDefault()
+              if (record.status !== "published") return
+              router.push(`/courses/management/${record.id}/feedback`)
             }}
           />
         </div>

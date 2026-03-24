@@ -33,7 +33,7 @@ export default function EnrollmentHeader({
         className="mb-4"
         items={[
           { title: <HomeOutlined />, href: "/dashboard-metrics" },
-          { title: "Courses", href: "/courses/manage" },
+          { title: "Courses", href: "/courses/management" },
           {
             title: (
               <span className="font-semibold text-blue-700">Enrollments</span>

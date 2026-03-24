@@ -106,7 +106,7 @@ export default function LearnerProgressDetail({
         <Breadcrumb
           items={[
             { title: <HomeOutlined />, href: "/dashboard-metrics" },
-            { title: "Enrollments", href: `/courses/${courseId}/enrollments` },
+            { title: "Enrollments", href: `/courses/management/${courseId}/enrollments` },
             { title: detail.name },
           ]}
         />

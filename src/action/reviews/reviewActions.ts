@@ -225,7 +225,7 @@ export async function deactivateReviewByManager(payload: {
 
     if (result.success) {
       revalidatePath(`/courses/${payload.course_id}`)
-      revalidatePath(`/courses/manage/${payload.course_id}`)
+      revalidatePath(`/courses/management/${payload.course_id}/feedback`)
     }
 
     return result

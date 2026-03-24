@@ -124,7 +124,7 @@ export default function LearnersList({ learners, courseId }: LearnersListProps) 
             event.currentTarget.style.color = ""
           }}
           onClick={() => {
-            router.push(`/courses/${courseId}/enrollments/${record.id}`)
+            router.push(`/courses/management/${courseId}/enrollments/${record.id}`)
           }}
         />
       ),

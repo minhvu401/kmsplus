@@ -1,5 +1,7 @@
 "use client"
 
+// @/src/app/(main)/courses/management/[id]/enrollments/[userId]/page.tsx
+
 import React, { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
 import { Alert, Spin } from "antd"
