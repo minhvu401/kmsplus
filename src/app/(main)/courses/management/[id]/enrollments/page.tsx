@@ -1,4 +1,4 @@
-// @/src/app/(main)/courses/[id]/enrollments/page.tsx
+// @/src/app/(main)/courses/management/[id]/enrollments/page.tsx
 // Course Enrollments Page (TRANG CHI TIẾT HIỆU SUẤT HỌC CỦA KHOÁ HỌC)
 
 "use client"
