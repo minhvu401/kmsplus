@@ -1,9 +1,45 @@
 import { GoogleGenerativeAI } from "@google/generative-ai"
 import { env } from "../lib/config"
+import { getAIPromptByKey } from "./aiPrompt.service"
 
 const genAI = new GoogleGenerativeAI(env.GEMINI_API_KEY)
 
-const SYSTEM_PROMPT = `You are an expert learning coach and teacher for KMS Plus educational platform. Your goal is to help students learn effectively by teaching them the real knowledge and skills contained in the platform's courses.
+// Cache for prompts to avoid repeated database queries
+let promptCache: Record<string, string> = {}
+let cacheTime = 0
+const CACHE_DURATION = 3600000 // 1 hour in milliseconds
+
+/**
+ * Get system prompt from database or cache
+ */
+async function getSystemPrompt(promptKey: string): Promise<string> {
+  // Check if cache is still valid
+  const now = Date.now()
+  if (cacheTime > 0 && now - cacheTime < CACHE_DURATION && promptCache[promptKey]) {
+    return promptCache[promptKey]
+  }
+
+  try {
+    const prompt = await getAIPromptByKey(promptKey)
+    if (prompt) {
+      promptCache[promptKey] = prompt.content
+      cacheTime = now
+      return prompt.content
+    }
+  } catch (error) {
+    console.error(`Error fetching prompt "${promptKey}" from database:`, error)
+  }
+
+  // Return fallback prompt if database fetch fails
+  return getFallbackPrompt(promptKey)
+}
+
+/**
+ * Get fallback prompts if database is unavailable
+ */
+function getFallbackPrompt(promptKey: string): string {
+  if (promptKey === "chat_assistant") {
+    return `You are an expert learning coach and teacher for KMS Plus educational platform. Your goal is to help students learn effectively by teaching them the real knowledge and skills contained in the platform's courses.
 
 ## Your Teaching Approach
 - You are a **passionate educator**, not a database assistant
@@ -41,12 +77,43 @@ The database contains courses, lessons, articles, and quizzes that cover various
 ✅ GOOD: "The quizzes in this course test your understanding through multiple choice questions. Here are some study tips..."
 
 Always respond as an encouraging, knowledgeable teacher - not as a technical system explaining database architecture.`
+  } else if (promptKey === "answer_explanation") {
+    return `You are an expert tutor for KMS Plus educational platform. When a student asks for a deeper explanation of a quiz answer, your job is to:
+
+## Your Explanation Approach
+1. **Explain the Concept**: First, explain the underlying concept or principle being tested
+2. **Connect to the Answer**: Show how this concept applies to the correct answer
+3. **Address Misconceptions**: Gently explain common mistakes that lead to wrong answers
+4. **Real-World Examples**: Provide practical examples to illustrate the concept
+5. **Study Tips**: Give helpful tips for remembering this concept for future quizzes
+
+## How to Structure Your Response
+- Start with a brief overview of the concept
+- Explain step-by-step why the answer is correct
+- If relevant, explain why other options might seem tempting but are wrong
+- Provide an example or analogy
+- Summarize the key takeaway
+- Suggest how to practice or remember this concept
+
+## Tone and Style
+- Be encouraging and supportive
+- Use simple language - remember this is for learning
+- Break complex ideas into digestible parts
+- Use formatting (bold, bullet points) to organize information
+- Be concise but thorough - aim for 200-400 words`
+  }
+
+  return ""
+}
 
 export async function generateAIResponse(
   prompt: string,
   dbContext: string = ""
 ): Promise<string> {
   try {
+    // Get system prompt from database or cache
+    const SYSTEM_PROMPT = await getSystemPrompt("chat_assistant")
+
     // Use gemini-2.5-flash (faster, more efficient model)
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" })
 
@@ -80,30 +147,6 @@ export async function generateAIResponse(
 // AI EXPLANATION FUNCTION
 // ============================================
 
-const EXPLANATION_SYSTEM_PROMPT = `You are an expert tutor for KMS Plus educational platform. When a student asks for a deeper explanation of a quiz answer, your job is to:
-
-## Your Explanation Approach
-1. **Explain the Concept**: First, explain the underlying concept or principle being tested
-2. **Connect to the Answer**: Show how this concept applies to the correct answer
-3. **Address Misconceptions**: Gently explain common mistakes that lead to wrong answers
-4. **Real-World Examples**: Provide practical examples to illustrate the concept
-5. **Study Tips**: Give helpful tips for remembering this concept for future quizzes
-
-## How to Structure Your Response
-- Start with a brief overview of the concept
-- Explain step-by-step why the answer is correct
-- If relevant, explain why other options might seem tempting but are wrong
-- Provide an example or analogy
-- Summarize the key takeaway
-- Suggest how to practice or remember this concept
-
-## Tone and Style
-- Be encouraging and supportive
-- Use simple language - remember this is for learning
-- Break complex ideas into digestible parts
-- Use formatting (bold, bullet points) to organize information
-- Be concise but thorough - aim for 200-400 words`
-
 interface ExplanationInput {
   questionText: string
   explanation: string
@@ -118,6 +161,9 @@ export async function generateAIExplanation(
   input: ExplanationInput
 ): Promise<string> {
   try {
+    // Get system prompt from database or cache
+    const EXPLANATION_SYSTEM_PROMPT = await getSystemPrompt("answer_explanation")
+
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" })
 
     // Build the explanation prompt
@@ -167,4 +213,3 @@ ${input.correctAnswer}`
 
     throw new Error("Failed to generate AI explanation")
   }
-}
