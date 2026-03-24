@@ -63,7 +63,10 @@ export async function uploadImageToCloudinary(
       ...result.data,
     };
   } catch (error) {
-    console.error('Cloudinary upload error:', error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    if (!/file size too large/i.test(errorMessage)) {
+      console.error('Cloudinary upload error:', error);
+    }
     throw error;
   }
 }
