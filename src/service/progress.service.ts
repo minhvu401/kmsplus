@@ -53,7 +53,7 @@ export async function updateProgressService(
   try {
     // A. Lấy dữ liệu cũ + thông tin course để tính progress
     const existing = await sql`
-      SELECT e.id, e.completed_item_ids, e.progress_percentage,
+      SELECT e.id, e.completed_item_ids, e.progress_percentage, e.completed_at,
              (SELECT COUNT(*) FROM curriculum_items ci 
               JOIN sections s ON ci.section_id = s.id 
               WHERE s.course_id = ${courseId}) as total_items
@@ -117,6 +117,10 @@ export async function updateProgressService(
 
     // D. Xác định status mới
     const newStatus = newProgressPercentage >= 100 ? "completed" : "in_progress"
+    const completedAtValue =
+      newStatus === "completed"
+        ? enrollment.completed_at ?? new Date()
+        : null
 
     // E. Cập nhật xuống DB
     // Lưu ý: Ép kiểu ::jsonb để Postgres hiểu đây là JSON
@@ -126,7 +130,7 @@ export async function updateProgressService(
         completed_item_ids = ${JSON.stringify(completedIds)}::jsonb,
         progress_percentage = ${newProgressPercentage},
         status = ${newStatus},
-        completed_at = ${newStatus === "completed" ? new Date() : null}
+        completed_at = ${completedAtValue}
       WHERE id = ${enrollment.id}
     `
 

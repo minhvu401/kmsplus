@@ -34,12 +34,14 @@ const formatCountdown = (timeLeftSeconds: number) => {
 
 export default function QuizForm({
     attemptId,
+    courseId,
     attemptNumber,
     questions,
     durationSeconds,
     initialAnswers,
 }: {
     attemptId: number;
+    courseId: number;
     attemptNumber: number;
     questions: Question[];
     durationSeconds: number | null;
@@ -94,7 +96,7 @@ export default function QuizForm({
 
         try {
             await submitQuizAttempt(attemptId);
-            window.location.href = `/courses/quiz/attempt/${attemptId}/result`;
+            window.location.href = `/courses/${courseId}/learning/attempt/${attemptId}/result`;
         } catch {
             submittedRef.current = false;
             message.error('Failed to submit quiz');
