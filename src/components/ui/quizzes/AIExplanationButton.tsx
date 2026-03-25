@@ -144,8 +144,8 @@ export default function AIExplanationButton({
                       {...props}
                     />
                   ),
-                  code: ({ node, inline, ...props }: any) =>
-                    inline ? (
+                  code: ({ node, ...props }) =>
+                    (props as any).inline ? (
                       <code
                         style={{
                           background: "#f5f5f5",
@@ -165,7 +165,6 @@ export default function AIExplanationButton({
                           overflowX: "auto",
                           marginBottom: 12,
                         }}
-                        {...props}
                       >
                         <code {...props} />
                       </pre>
