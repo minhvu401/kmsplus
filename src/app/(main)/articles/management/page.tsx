@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, type KeyboardEvent, type ClipboardEvent } from 'react';
-import { Table, Input, Select, Button, Space, Flex, Typography, Tag as AntTag, Card, Alert, Segmented, Row, Col, Spin, Modal, Form, Divider, message, Tooltip, Upload } from 'antd';
+import { Table, Input, Select, Button, Space, Flex, Typography, Tag as AntTag, Card, Alert, Segmented, Row, Col, Spin, Modal, Form, Divider, message, Tooltip, Upload, Pagination } from 'antd';
 import { SearchOutlined, PlusOutlined, EditOutlined, DeleteOutlined, SendOutlined, CloseOutlined, SaveOutlined, RollbackOutlined, UploadOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import type { FormInstance } from 'antd/es/form';
@@ -88,6 +88,9 @@ const applyQuote = (
 }
 
 export default function ArticleManagement() {
+  const PAGE_SIZE = 10;
+  const THUMBNAIL_MAX_SIZE_MB = 10;
+  const THUMBNAIL_MAX_SIZE_BYTES = THUMBNAIL_MAX_SIZE_MB * 1024 * 1024;
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
   const [selectedTag, setSelectedTag] = useState('All Tags');
@@ -103,6 +106,7 @@ export default function ArticleManagement() {
   const [contentValue, setContentValue] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [thumbnailUrl, setThumbnailUrl] = useState(''); // New: Cloudinary thumbnail
+  const [thumbnailUploadError, setThumbnailUploadError] = useState('');
   const [selectedTagsForCreate, setSelectedTagsForCreate] = useState<string[]>([]);
   const [submitStatus, setSubmitStatus] = useState<'draft' | 'published' | 'pending'>('published');
   const [creatingArticle, setCreatingArticle] = useState(false);
@@ -110,6 +114,7 @@ export default function ArticleManagement() {
   const titleEditorRef = useRef<HTMLDivElement>(null);
 
   const [articles, setArticles] = useState<Article[]>([]);
+  const [totalArticles, setTotalArticles] = useState(0);
   const [loadingArticles, setLoadingArticles] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [articlesError, setArticlesError] = useState<string | null>(null);
@@ -142,6 +147,16 @@ export default function ArticleManagement() {
     archived: 'red',
   };
 
+  const formatVietnamDateTime = (date: Date | string | null | undefined) => {
+    if (!date) return '-';
+    const parsedDate = new Date(date);
+    if (Number.isNaN(parsedDate.getTime())) return '-';
+    return parsedDate.toLocaleString('vi-VN', {
+      timeZone: 'Asia/Ho_Chi_Minh',
+      hour12: false,
+    });
+  };
+
   const refreshCurrentArticles = async (showLoader: boolean = true) => {
     setArticlesError(null);
     if (showLoader) setLoadingArticles(true);
@@ -156,25 +171,23 @@ export default function ArticleManagement() {
         statusFilter = undefined;
       }
       
-      const res = await filterByTagAndCategory(debouncedSearchQuery, selectedTag, catId, statusFilter, isDeletedFilter);
-      
-      // Sort articles based on sortOrder
-      const sortedArticles = (res || []).sort((a, b) => {
-        const getSortTime = (item: any) => {
-          const raw = item.approved_at ?? item.created_at;
-          const time = new Date(raw).getTime();
-          return Number.isFinite(time) ? time : 0;
-        };
+      const res = await filterByTagAndCategory(
+        debouncedSearchQuery,
+        selectedTag,
+        catId,
+        statusFilter,
+        isDeletedFilter,
+        sortOrder,
+        currentPage,
+        PAGE_SIZE,
+      );
 
-        const dateA = getSortTime(a as any);
-        const dateB = getSortTime(b as any);
-        return sortOrder === 'newest' ? dateB - dateA : dateA - dateB;
-      });
-      
-      setArticles(sortedArticles);
+      setArticles(res?.data || []);
+      setTotalArticles(res?.total || 0);
     } catch (err: any) {
       setArticlesError(err?.message || String(err));
       setArticles([]);
+      setTotalArticles(0);
     } finally {
       if (showLoader) setLoadingArticles(false);
     }
@@ -205,10 +218,19 @@ export default function ArticleManagement() {
       const result = await uploadImageToCloudinary(file, 'article-thumbnails');
       console.log('Upload successful:', result);
       setThumbnailUrl(result.secure_url);
+      setThumbnailUploadError('');
       message.success('Thumbnail uploaded successfully');
     } catch (error: any) {
       console.error('Upload error:', error);
-      message.error(error?.message || 'Failed to upload thumbnail');
+      const rawError = error?.message || 'Failed to upload thumbnail';
+      if (/file size too large/i.test(rawError)) {
+        const tooLargeError = `Ảnh thumbnail vượt quá ${THUMBNAIL_MAX_SIZE_MB}MB. Vui lòng chọn ảnh nhỏ hơn.`;
+        setThumbnailUploadError(tooLargeError);
+        message.error(tooLargeError);
+      } else {
+        setThumbnailUploadError(rawError);
+        message.error(rawError);
+      }
     } finally {
       setUploadingThumbnail(false);
     }
@@ -231,9 +253,26 @@ export default function ArticleManagement() {
     }
   };
 
+  const filterKeyRef = useRef('');
   useEffect(() => {
+    const nextFilterKey = [
+      debouncedSearchQuery,
+      selectedTag,
+      String(selectedCategory),
+      selectedStatus,
+      sortOrder,
+    ].join('|');
+
+    const hasFilterChanged = filterKeyRef.current !== nextFilterKey;
+    filterKeyRef.current = nextFilterKey;
+
+    if (hasFilterChanged && currentPage !== 1) {
+      setCurrentPage(1);
+      return;
+    }
+
     refreshCurrentArticles();
-  }, [debouncedSearchQuery, selectedTag, selectedCategory, selectedStatus, sortOrder]);
+  }, [debouncedSearchQuery, selectedTag, selectedCategory, selectedStatus, sortOrder, currentPage]);
 
   useEffect(() => {
     (async () => {
@@ -287,13 +326,14 @@ export default function ArticleManagement() {
       title: 'Article Title',
       dataIndex: 'title',
       key: 'title',
+      width: 280,
       ellipsis: true,
       render: (title: string, record: Article) => (
         <a 
           href={`/articles/${record.id}`}
           className="text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
         >
-          {title}
+          {title?.trim() || '(No title)'}
         </a>
       ),
     },
@@ -369,12 +409,48 @@ export default function ArticleManagement() {
       },
     },
     {
+      title: 'Approved At',
+      dataIndex: 'approved_at',
+      key: 'approved_at',
+      width: 170,
+      render: (date: Date | null) => (
+        <Text>{formatVietnamDateTime(date)}</Text>
+      ),
+    },
+    {
+      title: 'Approved By',
+      dataIndex: 'approver_name',
+      key: 'approver_name',
+      width: 170,
+      render: (approverName: string | null, record: Article) => (
+        <Text>{approverName || (record.approved_by ? `User #${record.approved_by}` : '-')}</Text>
+      ),
+    },
+    {
+      title: 'Created At',
+      dataIndex: 'created_at',
+      key: 'created_at',
+      width: 170,
+      render: (date: Date) => (
+        <Text>{formatVietnamDateTime(date)}</Text>
+      ),
+    },
+    {
+      title: 'Deleted At',
+      dataIndex: 'deleted_at',
+      key: 'deleted_at',
+      width: 170,
+      render: (date: Date | null) => (
+        <Text>{formatVietnamDateTime(date)}</Text>
+      ),
+    },
+    {
       title: 'Last Updated',
       dataIndex: 'updated_at',
       key: 'updated_at',
       width: 150,
       render: (date: Date) => (
-        <Text type="warning">{new Date(date).toLocaleDateString()}</Text>
+        <Text type="warning">{formatVietnamDateTime(date)}</Text>
       ),
     },
     {
@@ -657,10 +733,11 @@ export default function ArticleManagement() {
               dataSource={articles}
               loading={loadingArticles}
               rowKey="id"
+              scroll={{ x: 2200 }}
               pagination={{
                 current: currentPage,
-                pageSize: 10,
-                total: articles.length,
+                pageSize: PAGE_SIZE,
+                total: totalArticles,
                 onChange: setCurrentPage,
                 showSizeChanger: false,
               }}
@@ -694,7 +771,19 @@ export default function ArticleManagement() {
                       >
                         <Space direction="vertical" size="small" className="w-full">
                           <Text type="secondary">
-                            Updated: {new Date(article.updated_at).toLocaleDateString()}
+                            Updated: {formatVietnamDateTime(article.updated_at)}
+                          </Text>
+                          <Text type="secondary">
+                            Created: {formatVietnamDateTime(article.created_at)}
+                          </Text>
+                          <Text type="secondary">
+                            Approved At: {formatVietnamDateTime(article.approved_at)}
+                          </Text>
+                          <Text type="secondary">
+                            Approved By: {article.approver_name || (article.approved_by ? `User #${article.approved_by}` : '-')}
+                          </Text>
+                          <Text type="secondary">
+                            Deleted At: {formatVietnamDateTime(article.deleted_at)}
                           </Text>
                           <div>
                             <Text type="secondary" strong>Category: </Text>
@@ -733,6 +822,17 @@ export default function ArticleManagement() {
                   </Col>
                 )}
               </Row>
+              {totalArticles > 0 && (
+                <Flex justify="end" className="mt-4">
+                  <Pagination
+                    current={currentPage}
+                    pageSize={PAGE_SIZE}
+                    total={totalArticles}
+                    onChange={setCurrentPage}
+                    showSizeChanger={false}
+                  />
+                </Flex>
+              )}
             </Spin>
           )}
         </Card>
@@ -746,6 +846,7 @@ export default function ArticleManagement() {
           createForm.resetFields();
           setTitleContent('');
           setContentValue('');
+          setThumbnailUploadError('');
           setSelectedTagsForCreate([]);
           setSubmitStatus('published');
         }}
@@ -781,6 +882,7 @@ export default function ArticleManagement() {
                 setContentValue('');
                 setImageUrl('');
                 setThumbnailUrl(''); // Reset thumbnail
+                setThumbnailUploadError('');
                 setSelectedTagsForCreate([]);
                 setSubmitStatus('published');
                 await refreshCurrentArticles(false);
@@ -861,6 +963,15 @@ export default function ArticleManagement() {
                 accept="image/*"
                 showUploadList={false}
                 beforeUpload={(file) => {
+                  const isTooLarge = file.size > THUMBNAIL_MAX_SIZE_BYTES;
+                  if (isTooLarge) {
+                    const tooLargeError = `Ảnh thumbnail vượt quá ${THUMBNAIL_MAX_SIZE_MB}MB. Vui lòng chọn ảnh nhỏ hơn.`;
+                    setThumbnailUploadError(tooLargeError);
+                    message.error(tooLargeError);
+                    return Upload.LIST_IGNORE;
+                  }
+
+                  setThumbnailUploadError('');
                   handleThumbnailUpload(file);
                   return false;
                 }}
@@ -873,6 +984,11 @@ export default function ArticleManagement() {
                   {uploadingThumbnail ? 'Uploading...' : 'Click to Upload Thumbnail'}
                 </Button>
               </Upload>
+              {thumbnailUploadError && (
+                <Text type="danger" className="text-sm">
+                  {thumbnailUploadError}
+                </Text>
+              )}
             </Flex>
           </Form.Item>
 

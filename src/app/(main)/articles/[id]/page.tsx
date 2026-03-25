@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { Card, Typography, Divider, Avatar, Input, Button, Space, Spin, message, Empty, Modal, Dropdown, Form, Select, Upload, Flex } from 'antd';
-import { UserOutlined, SendOutlined, CheckCircleOutlined, CloseCircleOutlined, MoreOutlined, EditOutlined, DeleteOutlined, UploadOutlined } from '@ant-design/icons';
+import { UserOutlined, SendOutlined, CheckCircleOutlined, CloseCircleOutlined, MoreOutlined, EditOutlined, DeleteOutlined, UploadOutlined, ArrowLeftOutlined } from '@ant-design/icons';
 import { getArticleById } from '@/action/articles/articlesManagementAction';
 import { getAllCategories, resubmitArticle } from '@/action/articles/articlesManagementAction';
 import { getComments, createComment, updateComment, deleteComment } from '@/action/comments/commentsAction';
@@ -28,11 +28,13 @@ const mdParser = new MarkdownIt({
 mdParser.use(markdownItUnderline);
 
 export default function ArticleDetailPage() {
+  const router = useRouter();
   const params = useParams();
   const articleId = params.id as string;
 
   const [article, setArticle] = useState<any>(null);
   const [comments, setComments] = useState<Comment[]>([]);
+  const [loadingComments, setLoadingComments] = useState(false);
   const [loading, setLoading] = useState(true);
   const [commentText, setCommentText] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -94,10 +96,12 @@ export default function ArticleDetailPage() {
   }, [comments]);
 
   useEffect(() => {
-    loadArticleAndComments();
+    loadArticle();
   }, [articleId]);
 
   useEffect(() => {
+    if (!showResubmitModal || categories.length > 0) return;
+
     (async () => {
       setLoadingCategories(true);
       try {
@@ -110,7 +114,7 @@ export default function ArticleDetailPage() {
         setLoadingCategories(false);
       }
     })();
-  }, []);
+  }, [showResubmitModal, categories.length]);
 
   useEffect(() => {
     if (showResubmitModal && titleEditorRef.current) {
@@ -125,21 +129,40 @@ export default function ArticleDetailPage() {
     }
   }, [showResubmitModal, resubmitContent, resubmitForm]);
 
-  const loadArticleAndComments = async () => {
+  const loadComments = async (id: number) => {
+    setLoadingComments(true);
+    try {
+      const commentsRes = await getComments(id);
+      setComments(commentsRes || []);
+    } catch (err) {
+      console.error('Error loading comments:', err);
+      setComments([]);
+    } finally {
+      setLoadingComments(false);
+    }
+  };
+
+  const loadArticle = async () => {
     setLoading(true);
     try {
-      const [articleRes, commentsRes] = await Promise.all([
-        getArticleById(parseInt(articleId)),
-        getComments(parseInt(articleId)),
-      ]);
+      const parsedId = parseInt(articleId);
+      const articleRes = await getArticleById(parsedId);
 
       if ((articleRes as any).success && (articleRes as any).data) {
         setArticle((articleRes as any).data);
+        setComments([]);
+        setLoading(false);
+        void loadComments(parsedId);
+        return;
       }
-      setComments(commentsRes || []);
+
+      setArticle(null);
+      setComments([]);
     } catch (err: any) {
       console.error('Error loading article:', err);
       message.error('Failed to load article');
+      setArticle(null);
+      setComments([]);
     } finally {
       setLoading(false);
     }
@@ -161,7 +184,7 @@ export default function ArticleDetailPage() {
       if (result.success) {
         message.success('Comment posted successfully');
         setCommentText('');
-        await loadArticleAndComments();
+        await loadComments(parseInt(articleId));
       } else {
         message.error(result.message || 'Failed to post comment');
       }
@@ -201,7 +224,7 @@ export default function ArticleDetailPage() {
         message.success('Reply posted successfully');
         setReplyToId(null);
         setReplyText('');
-        await loadArticleAndComments();
+        await loadComments(parseInt(articleId));
       } else {
         message.error(result.message || 'Failed to post reply');
       }
@@ -239,7 +262,7 @@ export default function ArticleDetailPage() {
         message.success('Comment updated successfully');
         setEditingCommentId(null);
         setEditingCommentText('');
-        await loadArticleAndComments();
+        await loadComments(parseInt(articleId));
       } else {
         message.error(result.message || 'Failed to update comment');
       }
@@ -264,7 +287,7 @@ export default function ArticleDetailPage() {
         message.success('Comment deleted successfully');
         setShowDeleteCommentModal(false);
         setDeleteCommentId(null);
-        await loadArticleAndComments();
+        await loadComments(parseInt(articleId));
       } else {
         message.error(result.message || 'Failed to delete comment');
       }
@@ -299,7 +322,8 @@ export default function ArticleDetailPage() {
       if (response.ok && result.success) {
         message.success(result.message || 'Article approved successfully');
         setShowApproveModal(false);
-        await loadArticleAndComments();
+        window.dispatchEvent(new Event('notifications:refresh'));
+        await loadArticle();
       } else {
         console.error('❌ Approve failed:', result);
         message.error(result.message || 'Failed to approve article');
@@ -348,7 +372,8 @@ export default function ArticleDetailPage() {
         message.success(result.message || 'Article rejected successfully');
         setShowRejectReasonModal(false);
         setRejectReason('');
-        await loadArticleAndComments();
+        window.dispatchEvent(new Event('notifications:refresh'));
+        await loadArticle();
       } else {
         console.error('❌ Reject failed:', result);
         message.error(result.message || 'Failed to reject article');
@@ -439,7 +464,7 @@ export default function ArticleDetailPage() {
         setResubmitThumbnail('');
         setResubmitCategory(null);
         resubmitForm.resetFields();
-        await loadArticleAndComments();
+        await loadArticle();
       } else {
         message.error(result.message || 'Failed to resubmit article');
       }
@@ -520,10 +545,9 @@ export default function ArticleDetailPage() {
               </div>
               <div className="mt-1 flex items-center justify-between">
                 <Text type="secondary" className="text-xs">
-                  {new Date(comment.created_at).toLocaleDateString('vi-VN')} at{' '}
-                  {new Date(comment.created_at).toLocaleTimeString('vi-VN', {
-                    hour: '2-digit',
-                    minute: '2-digit',
+                  {new Date(comment.created_at).toLocaleString('vi-VN', {
+                    timeZone: 'Asia/Ho_Chi_Minh',
+                    hour12: false,
                   })}
                 </Text>
                 <Button
@@ -598,10 +622,29 @@ export default function ArticleDetailPage() {
           <div className="space-y-6">
             {/* Article Content */}
             <Card className="border border-gray-100 shadow-sm">
+              {(article.status === 'published' || article.status === 'draft' || article.status === 'pending' || article.status === 'rejected') && (
+                <div className="mb-4">
+                  <Button
+                    icon={<ArrowLeftOutlined />}
+                    onClick={() =>
+                      router.push(
+                        article.status === 'published'
+                          ? '/articles'
+                          : '/articles/management'
+                      )
+                    }
+                  >
+                    {article.status === 'published'
+                      ? 'Back to Articles'
+                      : 'Back to Articles Management'}
+                  </Button>
+                </div>
+              )}
+
               {/* Date */}
               <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-gray-500 mb-3">
                 <span className="inline-flex h-2 w-2 rounded-full bg-gray-400" />
-                <span>{new Date(article.created_at).toLocaleDateString('vi-VN')}</span>
+                <span>{new Date(article.created_at).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', hour12: false })}</span>
               </div>
 
               {/* Title */}
@@ -716,11 +759,17 @@ export default function ArticleDetailPage() {
                 )}
 
                 {/* Comments List */}
-                <Space direction="vertical" size="large" className="w-full">
-                  {threadedComments.roots.map((comment) => renderCommentItem(comment))}
-                </Space>
+                {loadingComments ? (
+                  <div className="py-4">
+                    <Spin size="small" />
+                  </div>
+                ) : (
+                  <Space direction="vertical" size="large" className="w-full">
+                    {threadedComments.roots.map((comment) => renderCommentItem(comment))}
+                  </Space>
+                )}
 
-                {comments.length === 0 && (
+                {!loadingComments && comments.length === 0 && (
                   <Empty description="No comments yet. Be the first to comment!" />
                 )}
               </Card>
