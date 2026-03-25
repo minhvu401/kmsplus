@@ -10,8 +10,9 @@ import {
 import AnswerSection from "@/components/ui/questions/answer-section"
 import PageWrapper from "@/components/ui/questions/page-wrapper"
 import QuestionDetails from "@/components/ui/questions/question-details"
-import QuestionsNotification from "@/components/ui/questions/questions-notification"
+import QuestionsMessage from "@/components/ui/questions/questions-message"
 import { requireAuth } from "@/lib/auth"
+import Link from "next/link"
 import { notFound } from "next/navigation"
 
 export default async function Page({
@@ -22,6 +23,7 @@ export default async function Page({
   searchParams?: Promise<{
     page?: string
     limit?: string
+    returnTo?: string
     opened?: string
     closed?: string
     updated?: string
@@ -33,6 +35,11 @@ export default async function Page({
   const resolvedSearchParams = await searchParams
   const currentPage = Number(resolvedSearchParams?.page) || 1
   const pageSize = Number(resolvedSearchParams?.limit) || 5
+  const backTargetRaw = resolvedSearchParams?.returnTo
+  const backTarget =
+    typeof backTargetRaw === "string" && backTargetRaw.startsWith("/questions")
+      ? backTargetRaw
+      : "/questions"
   const user = await requireAuth()
 
   // Fetch question details
@@ -52,7 +59,30 @@ export default async function Page({
 
   return (
     <PageWrapper>
-      <QuestionsNotification scroll={false} />
+      <div className="mb-4">
+        <Link
+          href={backTarget}
+          className="inline-flex items-center gap-2 text-sm font-medium text-gray-600 transition-colors hover:text-gray-900"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            className="h-4 w-4"
+            aria-hidden="true"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M15.75 19.5 8.25 12l7.5-7.5"
+            />
+          </svg>
+          Back to Q&A Forum
+        </Link>
+      </div>
+      <QuestionsMessage scroll={false} />
       <QuestionDetails userId={Number(user.id)} question={question} categories={categories} />
       <AnswerSection
         questionId={Number(id)}

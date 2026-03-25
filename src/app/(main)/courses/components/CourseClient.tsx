@@ -11,7 +11,10 @@ import { CategoryPopularSection } from "@/components/ui/courses/category-popular
 import { RelevantCoursesSection } from "@/components/ui/courses/relevant-courses-section"
 import { CTAPromo } from "@/components/ui/courses/cta-promo"
 import { FadeInOnScroll } from "@/components/ui/courses/fade-in-on-scroll"
-import { CourseCompactFilters, type FilterValues } from "@/components/ui/courses/course-compact-filters"
+import {
+  CourseCompactFilters,
+  type FilterValues,
+} from "@/components/ui/courses/course-compact-filters"
 
 interface SearchParams {
   query?: string
@@ -39,7 +42,7 @@ export default function CourseClient({
   currentSearchParams = {},
 }: CourseClientProps) {
   const router = useRouter()
-  
+
   // State for each course section
   const [resumeCourses, setResumeCourses] = useState<Course[]>([])
   const [trendingCourses, setTrendingCourses] = useState<Course[]>([])
@@ -66,11 +69,11 @@ export default function CourseClient({
         // const response = await fetch('/api/enrollments/in-progress?userId=currentUserId')
         // const data = await response.json()
         // setResumeCourses(data.data)
-        
+
         // For now, show first 4 courses as resume courses
         setResumeCourses(initialCourses.slice(0, 4))
       } catch (error) {
-        console.error('Error fetching resume courses:', error)
+        console.error("Error fetching resume courses:", error)
         setResumeCourses([])
       }
     }
@@ -87,11 +90,11 @@ export default function CourseClient({
         // const response = await fetch('/api/courses/trending?limit=12')
         // const data = await response.json()
         // setTrendingCourses(data.data)
-        
+
         // Simulating API with generalPublishedCourses (trending section)
         setTrendingCourses(initialCourses.slice(0, 12))
       } catch (error) {
-        console.error('Error fetching trending courses:', error)
+        console.error("Error fetching trending courses:", error)
         setTrendingCourses([])
       } finally {
         setLoadingTrending(false)
@@ -110,10 +113,10 @@ export default function CourseClient({
         // const response = await fetch('/api/courses/popular-by-category?limit=3')
         // const data = await response.json()
         // setPopularByCategory(data.data)
-        
+
         setPopularByCategory(initialCourses.slice(0, 12))
       } catch (error) {
-        console.error('Error fetching popular courses:', error)
+        console.error("Error fetching popular courses:", error)
         setPopularByCategory([])
       } finally {
         setLoadingPopular(false)
@@ -132,10 +135,10 @@ export default function CourseClient({
         // const response = await fetch('/api/courses/relevant?userId=currentUserId&departmentId=currentDeptId&limit=8')
         // const data = await response.json()
         // setRelevantCourses(data.data)
-        
+
         setRelevantCourses(initialCourses.slice(0, 8))
       } catch (error) {
-        console.error('Error fetching relevant courses:', error)
+        console.error("Error fetching relevant courses:", error)
         setRelevantCourses([])
       } finally {
         setLoadingRelevant(false)
@@ -154,10 +157,10 @@ export default function CourseClient({
         // const response = await fetch('/api/courses/newest?limit=12&sort=newest')
         // const data = await response.json()
         // setNewCourses(data.data)
-        
+
         setNewCourses(initialCourses.slice(0, 12))
       } catch (error) {
-        console.error('Error fetching new courses:', error)
+        console.error("Error fetching new courses:", error)
         setNewCourses([])
       } finally {
         setLoadingNew(false)
@@ -188,15 +191,19 @@ export default function CourseClient({
       <CourseSearchHero onSearch={handleSearch} />
 
       {/* Main Content */}
-      <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '60px 60px' }}>
+      <div
+        style={{ maxWidth: "1100px", margin: "0 auto", padding: "60px 60px" }}
+      >
         {/* Filter Widget - White Card (Compact) */}
-        <div style={{
-          backgroundColor: 'white',
-          borderRadius: '0.5rem',
-          boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
-          padding: '16px',
-          marginBottom: '30px',
-        }}>
+        <div
+          style={{
+            backgroundColor: "white",
+            borderRadius: "0.5rem",
+            boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
+            padding: "16px",
+            marginBottom: "30px",
+          }}
+        >
           <CourseCompactFilters categories={categories} />
         </div>
 
@@ -268,7 +275,19 @@ export default function CourseClient({
           )}
         </FadeInOnScroll>
 
-        {/* All Courses Section (if search results) */}
+        {/* All Courses Section (Main catalog) */}
+        <FadeInOnScroll threshold={0.2} triggerOnce={true}>
+          {!currentSearchParams?.query && initialCourses.length > 0 && (
+            <CourseSection
+              title="Tất cả khóa học"
+              subtitle="Khám phá các khóa học có sẵn"
+              courses={initialCourses}
+              columns={4}
+            />
+          )}
+        </FadeInOnScroll>
+
+        {/* Search Results Section */}
         <FadeInOnScroll threshold={0.2} triggerOnce={true}>
           {currentSearchParams?.query && initialCourses.length > 0 && (
             <CourseSection
@@ -280,26 +299,43 @@ export default function CourseClient({
         </FadeInOnScroll>
 
         {/* Empty State */}
-        {currentSearchParams?.query && initialCourses.length === 0 && !fetchError && (
-          <div style={{ textAlign: 'center', padding: '80px 20px' }}>
-            <h3 style={{ fontSize: '24px', fontWeight: 600, marginBottom: '12px', color: '#111827' }}>
-              Không tìm thấy khóa học
-            </h3>
-            <p style={{ fontSize: '16px', color: '#6b7280', marginBottom: '24px' }}>
-              Hãy thử tìm kiếm với các từ khóa khác
-            </p>
-          </div>
-        )}
+        {currentSearchParams?.query &&
+          initialCourses.length === 0 &&
+          !fetchError && (
+            <div style={{ textAlign: "center", padding: "80px 20px" }}>
+              <h3
+                style={{
+                  fontSize: "24px",
+                  fontWeight: 600,
+                  marginBottom: "12px",
+                  color: "#111827",
+                }}
+              >
+                Không tìm thấy khóa học
+              </h3>
+              <p
+                style={{
+                  fontSize: "16px",
+                  color: "#6b7280",
+                  marginBottom: "24px",
+                }}
+              >
+                Hãy thử tìm kiếm với các từ khóa khác
+              </p>
+            </div>
+          )}
 
         {/* Error State */}
         {fetchError && (
-          <div style={{ 
-            backgroundColor: '#fee2e2', 
-            border: '1px solid #fca5a5', 
-            borderRadius: '8px', 
-            padding: '20px',
-            color: '#991b1b'
-          }}>
+          <div
+            style={{
+              backgroundColor: "#fee2e2",
+              border: "1px solid #fca5a5",
+              borderRadius: "8px",
+              padding: "20px",
+              color: "#991b1b",
+            }}
+          >
             <strong>Lỗi:</strong> {fetchError}
           </div>
         )}

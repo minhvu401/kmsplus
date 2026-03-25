@@ -1012,7 +1012,7 @@ function CurriculumContentBank({
                     handleAddItemToSection(
                       activeSectionId,
                       "lesson",
-                      lesson.id,
+                      Number(lesson.id),
                       lesson.title,
                       lesson.duration_minutes
                     )

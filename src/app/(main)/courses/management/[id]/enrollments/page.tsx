@@ -1,0 +1,244 @@
+// @/src/app/(main)/courses/management/[id]/enrollments/page.tsx
+// Course Enrollments Page (TRANG CHI TIẾT HIỆU SUẤT HỌC CỦA KHOÁ HỌC)
+
+"use client"
+
+import React, { useEffect, useState } from "react"
+import { useParams, useSearchParams } from "next/navigation"
+import {
+  Card,
+  Spin,
+} from "antd"
+import EnrollmentHeader from "@/components/ui/enrollments/enrollment-header"
+import {
+  getEnrollmentOverview,
+  getCourseLearnerEnrollments,
+} from "@/action/enrollment/enrollmentAction"
+import { getCourseById } from "@/action/courses/courseAction"
+import { getActiveReviewsByCourse } from "@/action/reviews/reviewActions"
+import { getAllDepartments } from "@/action/department/departmentActions"
+import EnrollmentsSearchBar from "@/components/ui/enrollments/enrollments-search-bar"
+import EnrollmentsFilterButton from "@/components/ui/enrollments/enrollments-filter-button"
+import EnrollmentsSortButton from "@/components/ui/enrollments/enrollments-sort-button"
+import EnrollmentsPageSizeSelector from "@/components/ui/enrollments/enrollments-page-size-selector"
+import EnrollmentsPagination from "@/components/ui/enrollments/enrollments-pagination"
+import LearnersList from "@/components/ui/enrollments/learners-list"
+import type { LearnerEnrollment } from "@/components/ui/enrollments/enrollment-types"
+
+export default function CourseEnrollmentsPage() {
+  const params = useParams()
+  const searchParams = useSearchParams()
+  const courseId = params?.id as string
+  const query = (searchParams.get("query") || "").trim().toLowerCase()
+  const statusFilter = searchParams.get("status") || "any"
+  const departmentFilter = searchParams.get("department") || "any"
+  const sort = searchParams.get("sort") || "name-asc"
+  const page = Number(searchParams.get("page") || "1")
+  const limit = Number(searchParams.get("limit") || "10")
+  const safeLimit = Number.isFinite(limit) && limit > 0 ? limit : 10
+  const safePage = Number.isFinite(page) && page > 0 ? page : 1
+
+  const [isLoadingStats, setIsLoadingStats] = useState(true)
+  const [liveStats, setLiveStats] = useState<{
+    courseName: string
+    totalEnrolled: number
+    avgCompletion: number
+    courseRating: number
+    reviewCount: number
+  } | null>(null)
+  const [isLoadingLearners, setIsLoadingLearners] = useState(true)
+  const [learners, setLearners] = useState<LearnerEnrollment[]>([])
+  const [departments, setDepartments] = useState<string[]>([])
+  const [totalItems, setTotalItems] = useState(0)
+
+  useEffect(() => {
+    const loadDepartments = async () => {
+      try {
+        const departmentRows = await getAllDepartments()
+        const names = departmentRows
+          .map((department) => department.name)
+          .filter((name): name is string => Boolean(name && name.trim()))
+
+        setDepartments(Array.from(new Set(names)))
+      } catch (error) {
+        console.error("Failed to load departments:", error)
+        setDepartments([])
+      }
+    }
+
+    loadDepartments()
+  }, [])
+
+  useEffect(() => {
+    const loadLiveStats = async () => {
+      const numericCourseId = Number(courseId)
+      if (!Number.isFinite(numericCourseId)) {
+        setIsLoadingStats(false)
+        return
+      }
+
+      try {
+        setIsLoadingStats(true)
+
+        const [overview, course, reviewResult] = await Promise.all([
+          getEnrollmentOverview(numericCourseId),
+          getCourseById(numericCourseId),
+          getActiveReviewsByCourse({
+            course_id: numericCourseId,
+            page: 1,
+            limit: 1,
+          }).catch(() => null),
+        ])
+
+        const stats =
+          overview && "stats" in overview && overview.success
+            ? overview.stats
+            : null
+
+        const safeCourseEnrollmentCount =
+          typeof course?.enrollment_count === "number" &&
+          course.enrollment_count > 0
+            ? course.enrollment_count
+            : 0
+
+        const resolvedTotalEnrolled =
+          stats?.totalEnrollments ??
+          safeCourseEnrollmentCount
+        const enrolledSource =
+          stats?.totalEnrollments != null
+            ? "overview.stats.totalEnrollments"
+            : safeCourseEnrollmentCount > 0
+              ? "course.enrollment_count"
+              : "default-0"
+
+        console.info("[Enrollments] totalEnrolled resolved", {
+          courseId,
+          source: enrolledSource,
+          value: resolvedTotalEnrolled,
+        })
+
+        setLiveStats({
+          courseName: course?.title || stats?.name || `Course #${courseId}`,
+          totalEnrolled: resolvedTotalEnrolled,
+          avgCompletion: stats?.avgProgress ?? 0,
+          courseRating: Number(course?.average_rating) || 0,
+          reviewCount: reviewResult?.totalCount ?? 0,
+        })
+      } catch (error) {
+        console.error("Failed to load live enrollment stats:", error)
+      } finally {
+        setIsLoadingStats(false)
+      }
+    }
+
+    loadLiveStats()
+  }, [courseId])
+
+  useEffect(() => {
+    const loadLearners = async () => {
+      const numericCourseId = Number(courseId)
+      if (!Number.isFinite(numericCourseId)) {
+        setIsLoadingLearners(false)
+        return
+      }
+
+      try {
+        setIsLoadingLearners(true)
+        const result = await getCourseLearnerEnrollments({
+          courseId: numericCourseId,
+          query,
+          status: statusFilter,
+          department: departmentFilter,
+          sort,
+          page: safePage,
+          limit: safeLimit,
+        })
+
+        if (result.success) {
+          setLearners(result.learners)
+          setTotalItems(result.totalItems)
+          return
+        }
+
+        setLearners([])
+        setTotalItems(0)
+      } catch (error) {
+        console.error("Failed to load learner enrollments:", error)
+        setLearners([])
+        setTotalItems(0)
+      } finally {
+        setIsLoadingLearners(false)
+      }
+    }
+
+    loadLearners()
+  }, [
+    courseId,
+    query,
+    statusFilter,
+    departmentFilter,
+    sort,
+    safePage,
+    safeLimit,
+  ])
+
+  const startIndex = (safePage - 1) * safeLimit
+
+  return (
+    <div className="p-6 bg-gray-50 min-h-screen space-y-6 font-sans">
+      {isLoadingStats ? (
+        <div className="flex items-center justify-center min-h-[220px]">
+          <Spin size="large" />
+        </div>
+      ) : (
+        liveStats && (
+          <EnrollmentHeader
+            courseId={courseId}
+            courseName={liveStats.courseName}
+            totalEnrolled={liveStats.totalEnrolled}
+            avgCompletion={liveStats.avgCompletion}
+            courseRating={liveStats.courseRating}
+            reviewCount={liveStats.reviewCount}
+          />
+        )
+      )}
+
+      {/* 4. Filter & Table Section */}
+      <Card variant="borderless" className="shadow-sm rounded-xl overflow-hidden">
+        {/* Toolbar */}
+        <div className="flex flex-col md:flex-row justify-between gap-4 mb-6">
+          <EnrollmentsSearchBar />
+          <div className="flex gap-3">
+            <EnrollmentsFilterButton departments={departments} />
+            <EnrollmentsSortButton />
+          </div>
+        </div>
+
+        {/* Table */}
+        {isLoadingLearners ? (
+          <div className="flex items-center justify-center py-12">
+            <Spin size="large" />
+          </div>
+        ) : (
+          <LearnersList learners={learners} courseId={courseId} />
+        )}
+
+        <div className="mt-6 flex flex-col gap-4 border-t border-gray-100 px-2 pt-4 md:flex-row md:items-center md:justify-between">
+          <div className="text-sm text-gray-600">
+            Showing {totalItems > 0 ? startIndex + 1 : 0}-
+            {Math.min(startIndex + learners.length, totalItems)} of {totalItems} learners
+          </div>
+
+          <div className="flex flex-col gap-4 md:flex-row md:items-center">
+            <EnrollmentsPageSizeSelector currentPageSize={safeLimit} />
+            <EnrollmentsPagination
+              totalItems={totalItems}
+              currentPage={safePage}
+              pageSize={safeLimit}
+            />
+          </div>
+        </div>
+      </Card>
+    </div>
+  )
+}

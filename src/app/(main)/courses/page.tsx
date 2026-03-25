@@ -5,7 +5,11 @@ import React from "react"
 import type { Metadata } from "next"
 import type { Course } from "@/service/course.service"
 
-import { getPublishedCoursesService, getAllCategoriesAction } from "@/service/course.service"
+import {
+  getPublishedCoursesService,
+  getAllCategoriesAction,
+} from "@/service/course.service"
+import { getCurrentUser } from "@/lib/auth"
 import CourseClient from "./components/CourseClient"
 
 export const dynamic = "force-dynamic"
@@ -18,7 +22,12 @@ export const metadata: Metadata = {
 
 // Định nghĩa kiểu cho các giá trị sort hợp lệ
 type SortOption = "trending" | "popular" | "newest" | "top-rated"
-const ALLOWED_SORT_OPTIONS: SortOption[] = ["trending", "popular", "newest", "top-rated"]
+const ALLOWED_SORT_OPTIONS: SortOption[] = [
+  "trending",
+  "popular",
+  "newest",
+  "top-rated",
+]
 
 // Định nghĩa kiểu cho searchParams
 export type SearchParams = {
@@ -62,6 +71,10 @@ export default async function CoursesPage({
   let fetchError: string | null = null
   let categories: Array<{ id: number; name: string }> = []
 
+  // ✅ Lấy userId cho private course filtering
+  const currentUser = await getCurrentUser()
+  const userId = currentUser ? Number(currentUser.id) : 0
+
   try {
     // Fetch categories và courses in parallel
     const [result, categoriesData] = await Promise.all([
@@ -72,6 +85,7 @@ export default async function CoursesPage({
         limit: DEFAULT_LIMIT,
         category: category,
         rating: rating,
+        userId, // ✅ Truyền userId vào đây
       }),
       getAllCategoriesAction(),
     ])
