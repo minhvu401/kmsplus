@@ -138,6 +138,15 @@ const createContributorSidebarItems = (
       route: PageRoute.ARTICLES,
       onClick: () => navigate(PageRoute.ARTICLES),
     },
+    // Article Management
+    {
+      key: PageRoute.ARTICLE_MANAGEMENT,
+      icon: <FileTextOutlined />,
+      label: t("sidebar.article_management", language),
+      title: "Articles - Manage Articles",
+      route: PageRoute.ARTICLE_MANAGEMENT,
+      onClick: () => navigate(PageRoute.ARTICLE_MANAGEMENT),
+    },
     {
       type: "divider",
     },
@@ -211,6 +220,15 @@ const createTrainingManagerSidebarItems = (
         marginBottom: "8px",
       },
     } as MenuItem,
+    // Articles
+    {
+      key: PageRoute.ARTICLES,
+      icon: <FileTextOutlined />,
+      label: t("sidebar.articles", language),
+      title: "Articles - View Articles",
+      route: PageRoute.ARTICLES,
+      onClick: () => navigate(PageRoute.ARTICLES),
+    },
     // Q&A
     {
       key: PageRoute.QUESTIONS,
@@ -220,15 +238,6 @@ const createTrainingManagerSidebarItems = (
         "Q&A - Create/Update/Delete Questions & Answers, Share Published Questions",
       route: PageRoute.QUESTIONS,
       onClick: () => navigate(PageRoute.QUESTIONS),
-    },
-    // Articles
-    {
-      key: PageRoute.ARTICLES,
-      icon: <FileTextOutlined />,
-      label: t("sidebar.articles", language),
-      title: "Articles - View Articles",
-      route: PageRoute.ARTICLES,
-      onClick: () => navigate(PageRoute.ARTICLES),
     },
     // Courses
     {
@@ -255,6 +264,15 @@ const createTrainingManagerSidebarItems = (
         marginBottom: "8px",
       },
     } as MenuItem,
+    // Article Management
+    {
+      key: PageRoute.ARTICLE_MANAGEMENT,
+      icon: <FormOutlined />,
+      label: "Article Management",
+      title: "Article Management - Create/Update/Delete Articles",
+      route: PageRoute.ARTICLE_MANAGEMENT,
+      onClick: () => navigate(PageRoute.ARTICLE_MANAGEMENT),
+    },
     // Quiz Management
     {
       key: PageRoute.QUIZ_MANAGEMENT,
@@ -396,6 +414,15 @@ const createSystemAdminSidebarItems = (
         marginBottom: "8px",
       },
     } as MenuItem,
+    // Article Management
+    {
+      key: PageRoute.ARTICLE_MANAGEMENT,
+      icon: <FormOutlined />,
+      label: "Article Management",
+      title: "Article Management - Create/Update/Delete Articles",
+      route: PageRoute.ARTICLE_MANAGEMENT,
+      onClick: () => navigate(PageRoute.ARTICLE_MANAGEMENT),
+    },
     // Quiz Management
     {
       key: PageRoute.QUIZ_MANAGEMENT,
