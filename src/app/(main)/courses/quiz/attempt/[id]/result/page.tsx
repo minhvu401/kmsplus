@@ -1,6 +1,5 @@
-import PageWrapper from "@/components/ui/questions/page-wrapper";
-import { getAttemptResult } from "@/action/quiz/quizActions";
-import QuizResult from "@/components/ui/quizzes/quiz-result";
+import { getAttemptRouteInfo } from "@/action/quiz/quizActions";
+import { redirect } from "next/navigation";
 
 export default async function Page({
     params
@@ -9,11 +8,7 @@ export default async function Page({
 }) {
 
     const attemptId = Number((await params).id);
-    const result = await getAttemptResult(attemptId);
+    const attemptRoute = await getAttemptRouteInfo(attemptId)
 
-    return (
-        <PageWrapper>
-            <QuizResult result={result} />
-        </PageWrapper>
-    );
+    redirect(`/courses/${attemptRoute.course_id}/learning/attempt/${attemptId}/result`)
 }

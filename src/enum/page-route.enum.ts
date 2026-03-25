@@ -13,6 +13,6 @@ export enum PageRoute {
   SYSTEM_SETTINGS = "/settings",
   QUIZ_MANAGEMENT = "/quizzes",
   CATEGORY_MANAGEMENT = "/categories/management",
-  COURSE_MANAGEMENT = "/courses/manage",
+  COURSE_MANAGEMENT = "/courses/management",
   QUESTION_BANK_MANAGEMENT = "/question-bank",
 }

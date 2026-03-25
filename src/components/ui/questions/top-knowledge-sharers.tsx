@@ -1,7 +1,7 @@
 'use client';
 
 import { Flex, Typography, Avatar } from 'antd';
-import { TrophyOutlined } from '@ant-design/icons';
+import { TrophyOutlined, UserOutlined } from '@ant-design/icons';
 
 const { Text, Title } = Typography;
 
@@ -9,6 +9,7 @@ interface TopSharer {
     id: number;
     name: string;
     score: number;
+    avatar_url?: string | null;
 }
 
 interface TopKnowledgeSharersProps {
@@ -92,6 +93,12 @@ export default function TopKnowledgeSharers({ topSharers = [] }: TopKnowledgeSha
                             >
                                 {getMedalEmoji(index)}
                             </div>
+
+                            <Avatar
+                                size={32}
+                                src={sharer.avatar_url || undefined}
+                                icon={!sharer.avatar_url ? <UserOutlined /> : undefined}
+                            />
 
                             {/* User Info */}
                             <Flex vertical gap={0} style={{ flex: 1, minWidth: 0 }}>

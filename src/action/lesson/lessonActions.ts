@@ -13,11 +13,12 @@ import {
 
 // 1. Định nghĩa Type chuẩn cho Frontend
 export type Lesson = {
-  id: number
+  id: bigint
   title: string
   duration_minutes: number | null
   type?: "text_media" | "video" | "pdf"
   content?: string
+  category_id?: number | null
 }
 
 /**
@@ -35,6 +36,7 @@ const mapLessonResponse = (lesson: any): Lesson => {
     duration_minutes: lesson.duration_minutes,
     type: (lesson.type as "text_media" | "video" | "pdf") || "text_media",
     content: contentVal,
+    category_id: lesson.category_id,
   }
 }
 
@@ -45,7 +47,13 @@ const mapLessonResponse = (lesson: any): Lesson => {
 // ✅ UPDATE CƠ BẢN (Ghi đè trực tiếp)
 export async function updateLessonAPI(
   id: number,
-  data: { title: string; type: string; content: string }
+  data: {
+    title: string
+    type: string
+    content: string
+    category_id?: number | null
+    duration_minutes?: number | null
+  }
 ) {
   console.log("🔥 [Server Action] Updating Lesson (Overwrite):", id)
 
@@ -53,6 +61,8 @@ export async function updateLessonAPI(
   const updatePayload: any = {
     title: data.title,
     type: data.type,
+    category_id: data.category_id,
+    duration_minutes: data.duration_minutes || 0,
     content: null,
     video_url: null,
     file_path: null, // Reset các trường khác
@@ -88,6 +98,8 @@ export async function createNewLessonAPI(data: {
   title: string
   content: string
   type: string
+  category_id?: number | null
+  duration_minutes?: number | null
 }): Promise<Lesson> {
   console.log("🔥 [Server Action] Creating Lesson:", data)
 
@@ -96,8 +108,9 @@ export async function createNewLessonAPI(data: {
       title: data.title,
       content: data.content,
       type: data.type,
+      category_id: data.category_id,
       course_id: null,
-      duration_minutes: 0,
+      duration_minutes: data.duration_minutes || 0, // ✅ Thay vì fix 0
     })
 
     return mapLessonResponse(newLesson)
@@ -135,7 +148,13 @@ export async function smartDeleteLessonAPI(id: number) {
 // ✅ 3. Sửa thông minh (Xử lý Clone hoặc Overwrite)
 export async function smartUpdateLessonAPI(
   id: number,
-  data: any,
+  data: {
+    title: string
+    type: string
+    content: string
+    category_id?: number | null
+    duration_minutes?: number | null
+  },
   mode: "overwrite" | "save_as_new"
 ) {
   console.log(`🧠 [Smart Action] Update mode: ${mode}`, id)
@@ -144,6 +163,8 @@ export async function smartUpdateLessonAPI(
   const payload: any = {
     title: data.title,
     type: data.type,
+    category_id: data.category_id,
+    duration_minutes: data.duration_minutes || 0,
     content: null,
     video_url: null,
     file_path: null,

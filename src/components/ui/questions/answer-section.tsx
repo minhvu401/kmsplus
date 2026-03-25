@@ -2,17 +2,18 @@
 
 import { useMemo, useState, useActionState, startTransition } from 'react';
 import { Flex, Typography, Divider, Avatar, Dropdown, Button, Modal, Spin } from "antd";
-import { 
-  EditOutlined, 
-  DeleteOutlined, 
-  EllipsisOutlined, 
-  LockOutlined, 
-  MessageOutlined, 
-  CommentOutlined, 
-  ArrowUpOutlined, 
-  ArrowDownOutlined,
-  PlusSquareOutlined,
-  MinusSquareOutlined
+import {
+    EditOutlined,
+    DeleteOutlined,
+    EllipsisOutlined,
+    LockOutlined,
+    MessageOutlined,
+    CommentOutlined,
+    ArrowUpOutlined,
+    ArrowDownOutlined,
+    PlusSquareOutlined,
+    MinusSquareOutlined,
+    UserOutlined
 } from '@ant-design/icons';
 import { updateAnswer, deleteAnswer, createReply, fetchFullDiscussionThread, State } from '@/action/question/questionActions';
 import CreateAnswerForm from "@/components/forms/create-answer-form";
@@ -115,7 +116,7 @@ export default function AnswerSection({
         formData.append('user_id', userId.toString());
         formData.append('question_id', questionId.toString());
         formData.append('parent_id', parentId.toString());
-        
+
         startTransition(async () => {
             await createReply(formData);
             if (discussionModalOpen && discussionRootId) {
@@ -184,7 +185,7 @@ export default function AnswerSection({
 
     return (
         <div className="w-full max-w-5xl mx-auto p-4" style={{ color: '#374151' }}>
-             {/* Header Section */}
+            {/* Header Section */}
             <Flex vertical align="left" gap={12} style={{ marginBottom: 24 }}>
                 <Title level={4} style={{ color: "#111827", margin: 0 }}>
                     {answer_count} Answers
@@ -205,7 +206,7 @@ export default function AnswerSection({
             {/* Comments Feed */}
             <div className="flex flex-col gap-4">
                 {paginatedAnswers.length === 0 && (
-                     <div className="py-10 text-center text-gray-500">
+                    <div className="py-10 text-center text-gray-500">
                         No answers yet. Be the first to share your thoughts!
                     </div>
                 )}
@@ -223,8 +224,8 @@ export default function AnswerSection({
             {/* Pagination */}
             {paginatedAnswers.length > 0 && (
                 <div className="flex flex-col items-center gap-4 mt-8 pb-8">
-                     <PageSizeSelector currentPageSize={pageSize} />
-                     <Pagination totalPages={totalPages} />
+                    <PageSizeSelector currentPageSize={pageSize} />
+                    <Pagination totalPages={totalPages} />
                 </div>
             )}
 
@@ -239,9 +240,9 @@ export default function AnswerSection({
                 styles={{ body: { maxHeight: '70vh', overflowY: 'auto', padding: '16px 0' } }}
             >
                 {discussionLoading ? (
-                    <Flex justify="center" align="center" style={{ padding: 40 }}>
+                    <div className="flex items-center justify-center min-h-[240px] animate-fadeIn">
                         <Spin size="large" />
-                    </Flex>
+                    </div>
                 ) : discussionThread ? (
                     <div className="px-4">
                         <RedditComment
@@ -288,10 +289,10 @@ interface RedditCommentProps {
 }
 
 function RedditComment(props: RedditCommentProps) {
-    const { 
-        node, depth, userId, is_closed, 
-        editingAnswerId, replyingToId, 
-        onBeginReply, onViewDiscussion 
+    const {
+        node, depth, userId, is_closed,
+        editingAnswerId, replyingToId,
+        onBeginReply, onViewDiscussion
     } = props;
 
     const [collapsed, setCollapsed] = useState(false);
@@ -300,10 +301,10 @@ function RedditComment(props: RedditCommentProps) {
     const isReplying = replyingToId === node.id;
     const isOwner = Number(node.user_id) === userId;
     const hasChildren = node.replies && node.replies.length > 0;
-    
+
     // Reddit indent logic: First level has no line, children have lines
     // We strictly manage indentation via padding-left on the container
-    
+
     const handleCollapse = () => setCollapsed(!collapsed);
 
     if (collapsed) {
@@ -331,15 +332,15 @@ function RedditComment(props: RedditCommentProps) {
             <div className="flex flex-row">
                 {/* Left Column: Avatar + Thread Line */}
                 <div className="flex flex-col items-center mr-2 md:mr-3 flex-shrink-0">
-                    <Avatar 
-                        size={28} 
+                    <Avatar
+                        size={28}
+                        src={node.user_avatar || undefined}
+                        icon={!node.user_avatar ? <UserOutlined /> : undefined}
                         className="mb-2 cursor-pointer hover:opacity-80 transition-opacity bg-slate-300"
-                    >
-                        {node.user_name?.charAt(0)?.toUpperCase()}
-                    </Avatar>
-                    
+                    />
+
                     {/* The Thread Line: Clickable to collapse */}
-                    <div 
+                    <div
                         className="group w-4 h-full flex justify-center cursor-pointer"
                         onClick={handleCollapse}
                     >
@@ -365,10 +366,10 @@ function RedditComment(props: RedditCommentProps) {
                                 <EditBox {...props} node={node} />
                             </div>
                         ) : (
-                            <div 
+                            <div
                                 className="prose prose-sm max-w-none text-gray-700 prose-p:my-1 prose-a:text-blue-600"
                                 style={{ fontSize: 16, lineHeight: 1.6 }}
-                                dangerouslySetInnerHTML={{ __html: node.content }} 
+                                dangerouslySetInnerHTML={{ __html: node.content }}
                             />
                         )}
                     </div>
@@ -384,28 +385,28 @@ function RedditComment(props: RedditCommentProps) {
                             </div> */}
 
                             {!is_closed && (
-                                <ActionButton 
-                                    icon={<MessageOutlined />} 
-                                    text="Reply" 
-                                    onClick={() => onBeginReply(node.id)} 
+                                <ActionButton
+                                    icon={<MessageOutlined />}
+                                    text="Reply"
+                                    onClick={() => onBeginReply(node.id)}
                                 />
                             )}
 
                             {/* Logic for "View Full Discussion" vs "Show Replies" */}
                             {node.has_deep_replies && !props.isModalContext && (
-                                <ActionButton 
-                                    icon={<CommentOutlined />} 
-                                    text="Continue Thread" 
+                                <ActionButton
+                                    icon={<CommentOutlined />}
+                                    text="Continue Thread"
                                     onClick={() => onViewDiscussion(node.id)}
                                     className="text-blue-600 hover:bg-blue-50"
                                 />
                             )}
 
                             {isOwner && (
-                                <AnswerMenu 
-                                    answer={node} 
-                                    onEdit={() => props.onBeginEdit(node)} 
-                                    isEditing={isEditing} 
+                                <AnswerMenu
+                                    answer={node}
+                                    onEdit={() => props.onBeginEdit(node)}
+                                    isEditing={isEditing}
                                 />
                             )}
                         </div>
@@ -414,7 +415,7 @@ function RedditComment(props: RedditCommentProps) {
                     {/* Reply Input Box */}
                     {isReplying && (
                         <div className="mt-4 mb-2 ml-1 border-l-2 border-gray-300 pl-4">
-                             <ReplyBox {...props} node={node} />
+                            <ReplyBox {...props} node={node} />
                         </div>
                     )}
 
@@ -422,11 +423,11 @@ function RedditComment(props: RedditCommentProps) {
                     {hasChildren && (
                         <div className="flex flex-col">
                             {node.replies!.map((child) => (
-                                <RedditComment 
-                                    key={child.id} 
-                                    {...props} 
-                                    node={child} 
-                                    depth={depth + 1} 
+                                <RedditComment
+                                    key={child.id}
+                                    {...props}
+                                    node={child}
+                                    depth={depth + 1}
                                 />
                             ))}
                         </div>
@@ -443,7 +444,7 @@ function RedditComment(props: RedditCommentProps) {
 
 function ActionButton({ icon, text, onClick, className = "" }: { icon: React.ReactNode, text: string, onClick?: () => void, className?: string }) {
     return (
-        <button 
+        <button
             onClick={onClick}
             className={`flex items-center gap-1.5 px-2 py-1.5 rounded hover:bg-gray-100 text-gray-600 transition-colors text-sm font-medium ${className}`}
         >
@@ -463,14 +464,14 @@ function EditBox(props: RedditCommentProps) {
                 placeholder="Edit your comment..."
             />
             <div className="flex justify-between items-center bg-gray-50 p-2 rounded-b border-t border-gray-200">
-                  <Text type={contentError ? 'danger' : 'secondary'} className="text-sm">
+                <Text type={contentError ? 'danger' : 'secondary'} className="text-sm">
                     {contentError ? contentError : `${editingCount}/600`}
                 </Text>
                 <div className="flex gap-2">
                     <Button size="small" onClick={onCancelEdit}>Cancel</Button>
-                    <Button 
-                        size="small" 
-                        type="primary" 
+                    <Button
+                        size="small"
+                        type="primary"
                         onClick={() => onSaveEdit(node.id)}
                         disabled={editingCount < 1}
                         className="bg-blue-600"
@@ -496,9 +497,9 @@ function ReplyBox(props: RedditCommentProps) {
                 <Text type="secondary" className="text-sm">{replyCount}/600</Text>
                 <div className="flex gap-2">
                     <Button size="small" onClick={onCancelReply}>Cancel</Button>
-                    <Button 
-                        size="small" 
-                        type="primary" 
+                    <Button
+                        size="small"
+                        type="primary"
                         onClick={() => onSubmitReply(node.id)}
                         disabled={replyCount < 1}
                         className="bg-blue-600 rounded-full px-4"
