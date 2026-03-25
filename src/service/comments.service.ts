@@ -1,6 +1,9 @@
 "use server"
 
 import { sql } from "@/lib/database"
+import { emitUserNotification } from "@/lib/notification-realtime"
+
+const VIETNAM_NOW = sql`TIMEZONE('Asia/Ho_Chi_Minh', NOW())`
 
 export type Comment = {
   id: string
@@ -50,8 +53,8 @@ export async function createCommentAction(input: {
     const { article_id, user_id, content, parent_id } = input
 
     const result = await sql`
-      INSERT INTO comments (article_id, user_id, content, parent_id)
-      VALUES (${article_id}, ${user_id}, ${content}, ${parent_id || null})
+      INSERT INTO comments (article_id, user_id, content, parent_id, created_at, updated_at)
+      VALUES (${article_id}, ${user_id}, ${content}, ${parent_id || null}, ${VIETNAM_NOW}, ${VIETNAM_NOW})
       RETURNING id
     `
 
@@ -59,10 +62,92 @@ export async function createCommentAction(input: {
       return { success: false, message: 'Failed to create comment' }
     }
 
+    const commentId = String(result[0].id)
+
+    try {
+      const articleResult = await sql`
+        SELECT id, title, author_id, thumbnail_url
+        FROM articles
+        WHERE id = ${article_id}
+        LIMIT 1
+      `
+
+      if (articleResult.length > 0) {
+        const article = articleResult[0]
+        const articleAuthorId = Number(article.author_id)
+
+        if (articleAuthorId && articleAuthorId !== user_id) {
+          const commenterResult = await sql`
+            SELECT full_name
+            FROM users
+            WHERE id = ${user_id}
+            LIMIT 1
+          `
+
+          const commenterName = commenterResult[0]?.full_name || 'Có người'
+
+          const unreadCountResult = await sql`
+            SELECT COUNT(*)::INT AS total
+            FROM notifications
+            WHERE user_id = ${articleAuthorId}
+              AND type = 'article_comment'
+              AND article_id = ${article_id}
+              AND is_read = FALSE
+          `
+
+          const unreadCommentsForArticle = (unreadCountResult[0]?.total || 0) + 1
+          const normalizedComment = content.replace(/\s+/g, ' ').trim()
+          const commentPreview = normalizedComment.length > 120
+            ? `${normalizedComment.slice(0, 120)}...`
+            : normalizedComment
+
+          await sql`
+            INSERT INTO notifications (
+              user_id,
+              title,
+              content,
+              thumbnail_url,
+              type,
+              redirect_url,
+              is_read,
+              created_at,
+              article_id,
+              comment_id,
+              course_id
+            )
+            VALUES (
+              ${articleAuthorId},
+              ${`Bài viết "${article.title}" có bình luận mới`},
+              ${`${commenterName} vừa bình luận: "${commentPreview}". Hiện có ${unreadCommentsForArticle} bình luận mới chưa đọc cho bài viết này.`},
+              ${article.thumbnail_url ?? null},
+              ${'article_comment'},
+              ${`/articles/${article_id}#comment-${commentId}`},
+              FALSE,
+              ${VIETNAM_NOW},
+              ${article_id},
+              ${commentId},
+              ${null}
+            )
+          `
+
+          emitUserNotification({
+            type: "notification_created",
+            userId: articleAuthorId,
+            notificationType: "article_comment",
+            articleId: article_id,
+            commentId,
+            createdAt: new Date().toISOString(),
+          })
+        }
+      }
+    } catch (notificationError: any) {
+      console.error('Error creating comment notification:', notificationError)
+    }
+
     return {
       success: true,
       message: 'Comment created successfully',
-      commentId: result[0].id,
+      commentId,
     }
   } catch (error: any) {
     console.error('Error creating comment:', error)
@@ -79,7 +164,7 @@ export async function updateCommentAction(input: {
 
     const result = await sql`
       UPDATE comments
-      SET content = ${content}, updated_at = NOW()
+      SET content = ${content}, updated_at = ${VIETNAM_NOW}
       WHERE id = ${id} AND deleted_at IS NULL
       RETURNING id
     `

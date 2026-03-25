@@ -29,6 +29,7 @@ export type Course = {
   description: string | null
   thumbnail_url: string | null
   status: CourseStatus
+  average_rating: number | null
   duration_hours: number | null
   enrollment_count: number
   approved_by: number | null
@@ -526,7 +527,7 @@ export async function rejectCourseService(courseId: number, reason: string) {
       SET 
         status = 'rejected',
         rejection_reason = ${reason},
-        updated_at = NOW()
+        updated_at = (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Ho_Chi_Minh')
       WHERE id = ${courseId}
         AND deleted_at IS NULL
       RETURNING id, title
