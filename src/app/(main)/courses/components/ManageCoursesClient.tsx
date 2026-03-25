@@ -4,7 +4,26 @@
 import React, { useState, useEffect } from "react"
 import { useRouter, usePathname, useSearchParams } from "next/navigation"
 import Link from "next/link"
-import { Input, Button, Table, Pagination, message, Modal, Tag, Divider, Typography, Tooltip, Flex, Select, Card, Row, Col, Spin, Segmented } from "antd"
+import {
+  Input,
+  Button,
+  Table,
+  Pagination,
+  message,
+  Modal,
+  Tag,
+  Divider,
+  Typography,
+  Tooltip,
+  Flex,
+  Select,
+  Card,
+  Row,
+  Col,
+  Spin,
+  Rate,
+  Segmented,
+} from "antd"
 import {
   SearchOutlined,
   ReadOutlined,
@@ -41,8 +60,6 @@ interface ManageCoursesClientProps {
   availableQuizzes: any[]
 }
 
-const { Text } = Typography
-
 function normalizeRating(value: number | string | null | undefined) {
   const parsed = typeof value === "number" ? value : Number(value)
   const safeValue = Number.isFinite(parsed) ? parsed : 0
@@ -70,7 +87,8 @@ export default function ManageCoursesClient({
   const [messageApi, contextHolder] = message.useMessage()
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [searchInput, setSearchInput] = useState(query)
-  const [selectedCategoryList, setSelectedCategoryList] = useState<string[]>(selectedCategories)
+  const [selectedCategoryList, setSelectedCategoryList] =
+    useState<string[]>(selectedCategories)
   const [hasActiveFilters, setHasActiveFilters] = useState(false)
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false)
   const [selectedCourse, setSelectedCourse] = useState<
@@ -82,14 +100,14 @@ export default function ManageCoursesClient({
   const [courseToApprove, setCourseToApprove] = useState<Course | null>(null)
 
   // New: Additional filters and view modes
-  const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest')
-  const [selectedStatus, setSelectedStatus] = useState('All')
-  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list')
+  const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest")
+  const [selectedStatus, setSelectedStatus] = useState("All")
+  const [viewMode, setViewMode] = useState<"list" | "grid">("list")
   const [filteredCourses, setFilteredCourses] = useState<Course[]>(courses)
 
   // Check if any filter is active
   useEffect(() => {
-    const active = selectedCategoryList.length > 0 || query !== ''
+    const active = selectedCategoryList.length > 0 || query !== ""
     setHasActiveFilters(active)
   }, [selectedCategoryList, query])
 
@@ -98,15 +116,15 @@ export default function ManageCoursesClient({
     let filtered = [...courses]
 
     // Filter by status
-    if (selectedStatus !== 'All') {
-      filtered = filtered.filter(course => course.status === selectedStatus)
+    if (selectedStatus !== "All") {
+      filtered = filtered.filter((course) => course.status === selectedStatus)
     }
 
     // Sort courses
     filtered.sort((a, b) => {
       const dateA = new Date(a.created_at).getTime()
       const dateB = new Date(b.created_at).getTime()
-      return sortOrder === 'newest' ? dateB - dateA : dateA - dateB
+      return sortOrder === "newest" ? dateB - dateA : dateA - dateB
     })
 
     setFilteredCourses(filtered)
@@ -114,16 +132,16 @@ export default function ManageCoursesClient({
 
   const handleCategoryChange = (values: string[]) => {
     const params = new URLSearchParams(searchParams)
-    params.set('page', '1')
-    
+    params.set("page", "1")
+
     if (values.length === 0) {
-      params.delete('category')
+      params.delete("category")
     } else {
       // Remove old category params and add new ones
-      params.delete('category')
-      values.forEach(cat => params.append('category', cat))
+      params.delete("category")
+      values.forEach((cat) => params.append("category", cat))
     }
-    
+
     setSelectedCategoryList(values)
     router.push(`${pathname}?${params.toString()}`)
   }
@@ -131,7 +149,7 @@ export default function ManageCoursesClient({
   const handleClearFilters = () => {
     const params = new URLSearchParams()
     setSelectedCategoryList([])
-    setSearchInput('')
+    setSearchInput("")
     router.push(`${pathname}?${params.toString()}`)
   }
 
@@ -210,7 +228,7 @@ export default function ManageCoursesClient({
     const params = new URLSearchParams()
     if (value) params.set("query", value)
     if (selectedCategoryList.length > 0) {
-      selectedCategoryList.forEach(cat => params.append('category', cat))
+      selectedCategoryList.forEach((cat) => params.append("category", cat))
     }
     params.set("page", "1")
     router.push(`/courses/management?${params.toString()}`)
@@ -351,19 +369,19 @@ export default function ManageCoursesClient({
 
   // Status color mapping
   const statusColors: Record<string, string> = {
-    published: 'green',
-    draft: 'blue',
-    pending_approval: 'gold',
-    rejected: 'red',
+    published: "green",
+    draft: "blue",
+    pending_approval: "gold",
+    rejected: "red",
   }
 
   // Status options for filter
   const statusOptions = [
-    { label: 'All Status', value: 'All' },
-    { label: 'Draft', value: 'draft' },
-    { label: 'Pending Approval', value: 'pending_approval' },
-    { label: 'Published', value: 'published' },
-    { label: 'Rejected', value: 'rejected' },
+    { label: "All Status", value: "All" },
+    { label: "Draft", value: "draft" },
+    { label: "Pending Approval", value: "pending_approval" },
+    { label: "Published", value: "published" },
+    { label: "Rejected", value: "rejected" },
   ]
 
   // --- Columns ---
@@ -426,12 +444,7 @@ export default function ManageCoursesClient({
 
         return (
           <div className="flex items-center gap-2 whitespace-nowrap text-gray-600">
-            <Rate
-              allowHalf
-              disabled
-              value={1}
-              count={1}
-            />
+            <Rate allowHalf disabled value={1} count={1} />
             <Text className="!font-normal text-gray-600">
               {formatRating(normalizedRating)}
             </Text>
@@ -532,10 +545,14 @@ export default function ManageCoursesClient({
             danger={record.status !== "published"}
             icon={<DeleteOutlined />}
             size="small"
-            disabled={record.status === "published" || record.status === "pending_approval"}
+            disabled={
+              record.status === "published" ||
+              record.status === "pending_approval"
+            }
             // ✅ Thêm nền đỏ nhạt khi hover
             className={
-              record.status === "published" || record.status === "pending_approval"
+              record.status === "published" ||
+              record.status === "pending_approval"
                 ? "!text-gray-400 cursor-not-allowed"
                 : "hover:bg-red-50"
             }
@@ -574,7 +591,9 @@ export default function ManageCoursesClient({
             icon={<StarOutlined />}
             size="small"
             disabled={record.status !== "published"}
-            style={record.status === "published" ? { color: "#ca8a04" } : undefined}
+            style={
+              record.status === "published" ? { color: "#ca8a04" } : undefined
+            }
             className={
               record.status !== "published"
                 ? "!text-gray-400 cursor-not-allowed"
@@ -603,51 +622,56 @@ export default function ManageCoursesClient({
   return (
     <div className="space-y-6">
       {contextHolder}
-      
+
       {/* Page Header */}
       <div className="mb-8">
         <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-blue-900 bg-clip-text text-transparent mb-4">
           Course Management
         </h1>
-        <div className="flex align-center justify-between gap-6" style={{ marginBottom: 16 }}>
+        <div
+          className="flex align-center justify-between gap-6"
+          style={{ marginBottom: 16 }}
+        >
           <p className="text-gray-600 max-w-2xl leading-relaxed">
             Manage and organize your courses
           </p>
           <Button
             style={{
-              background: '#ffffff',
-              borderColor: '#1e40af',
-              borderWidth: '1.5px',
-              borderRadius: '0.375rem',
-              color: '#1e40af',
-              fontSize: '12px',
+              background: "#ffffff",
+              borderColor: "#1e40af",
+              borderWidth: "1.5px",
+              borderRadius: "0.375rem",
+              color: "#1e40af",
+              fontSize: "12px",
               fontWeight: 500,
-              height: '36px',
-              paddingInline: '14px',
-              boxShadow: '0 2px 8px rgba(30, 64, 175, 0.12)',
-              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-              whiteSpace: 'nowrap',
+              height: "36px",
+              paddingInline: "14px",
+              boxShadow: "0 2px 8px rgba(30, 64, 175, 0.12)",
+              transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+              whiteSpace: "nowrap",
               flexShrink: 0,
             }}
             icon={<PlusOutlined />}
             onClick={() => setIsCreateModalOpen(true)}
             onMouseEnter={(e) => {
-              const button = e.currentTarget as HTMLButtonElement;
-              button.style.background = '#f8fafc';
-              button.style.boxShadow = '0 8px 20px rgba(30, 64, 175, 0.2)';
-              button.style.borderColor = '#1e3a8a';
+              const button = e.currentTarget as HTMLButtonElement
+              button.style.background = "#f8fafc"
+              button.style.boxShadow = "0 8px 20px rgba(30, 64, 175, 0.2)"
+              button.style.borderColor = "#1e3a8a"
             }}
             onMouseLeave={(e) => {
-              const button = e.currentTarget as HTMLButtonElement;
-              button.style.background = '#ffffff';
-              button.style.boxShadow = '0 2px 8px rgba(30, 64, 175, 0.12)';
-              button.style.borderColor = '#1e40af';
+              const button = e.currentTarget as HTMLButtonElement
+              button.style.background = "#ffffff"
+              button.style.boxShadow = "0 2px 8px rgba(30, 64, 175, 0.12)"
+              button.style.borderColor = "#1e40af"
             }}
           >
             Create Course
           </Button>
         </div>
-        <Divider style={{ borderColor: 'rgba(37, 99, 235, 0.15)', margin: '16px 0' }} />
+        <Divider
+          style={{ borderColor: "rgba(37, 99, 235, 0.15)", margin: "16px 0" }}
+        />
       </div>
 
       {/* Filter Card */}
@@ -708,8 +732,8 @@ export default function ManageCoursesClient({
                 value={sortOrder}
                 onChange={setSortOrder}
                 options={[
-                  { label: 'Newest First', value: 'newest' },
-                  { label: 'Oldest First', value: 'oldest' },
+                  { label: "Newest First", value: "newest" },
+                  { label: "Oldest First", value: "oldest" },
                 ]}
                 size="middle"
                 className="w-full"
@@ -723,10 +747,10 @@ export default function ManageCoursesClient({
               <Segmented
                 size="middle"
                 value={viewMode}
-                onChange={(value) => setViewMode(value as 'list' | 'grid')}
+                onChange={(value) => setViewMode(value as "list" | "grid")}
                 options={[
-                  { label: 'List', value: 'list' },
-                  { label: 'Grid', value: 'grid' },
+                  { label: "List", value: "list" },
+                  { label: "Grid", value: "grid" },
                 ]}
                 block
               />
@@ -754,7 +778,7 @@ export default function ManageCoursesClient({
 
       {/* Table/Grid View */}
       <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-        {viewMode === 'list' ? (
+        {viewMode === "list" ? (
           <div className="p-6">
             <Table
               columns={columns}
@@ -788,8 +812,8 @@ export default function ManageCoursesClient({
                             alt={course.title}
                             className="h-40 w-full object-cover"
                             onError={(e) => {
-                              (e.target as HTMLImageElement).src =
-                                'https://via.placeholder.com/240x160?text=No+Image'
+                              ;(e.target as HTMLImageElement).src =
+                                "https://via.placeholder.com/240x160?text=No+Image"
                             }}
                           />
                         ) : (
@@ -800,7 +824,7 @@ export default function ManageCoursesClient({
                       }
                       extra={
                         <Tag
-                          color={statusColors[course.status] || 'default'}
+                          color={statusColors[course.status] || "default"}
                           className="text-xs"
                         >
                           {COURSE_STATUS_LABELS[
@@ -829,17 +853,21 @@ export default function ManageCoursesClient({
                         <div className="flex justify-between">
                           <Text type="secondary">Duration:</Text>
                           <Text strong>
-                            {course.duration_hours ? `${course.duration_hours}h` : '--'}
+                            {course.duration_hours
+                              ? `${course.duration_hours}h`
+                              : "--"}
                           </Text>
                         </div>
                         <div className="flex justify-between">
                           <Text type="secondary">Category:</Text>
-                          <Text strong>{course.category_name || '--'}</Text>
+                          <Text strong>{course.category_name || "--"}</Text>
                         </div>
                         <div className="flex justify-between">
                           <Text type="secondary">Created:</Text>
                           <Text strong>
-                            {new Date(course.created_at).toLocaleDateString('vi-VN')}
+                            {new Date(course.created_at).toLocaleDateString(
+                              "vi-VN"
+                            )}
                           </Text>
                         </div>
                       </div>
