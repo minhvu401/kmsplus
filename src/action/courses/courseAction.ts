@@ -24,7 +24,7 @@ type GetAllCoursesParams = {
   page?: number
   limit?: number
   sort?: "trending" | "popular" | "newest"
-  category?: string // ✅ Added filter param
+  categories?: string[] // ✅ Changed to array for multi-select
 }
 
 // Định nghĩa kiểu trả về chuẩn cho API

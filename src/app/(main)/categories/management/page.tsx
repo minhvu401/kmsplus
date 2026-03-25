@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Table, Input, Button, Space, Typography, Card, Modal, Form, message, Select, Spin } from 'antd';
-import { SearchOutlined, PlusOutlined, EditOutlined, DeleteOutlined, RollbackOutlined, InboxOutlined } from '@ant-design/icons';
+import { Table, Input, Button, Space, Typography, Card, Modal, Form, message, Select, Spin, Tag, Divider, Row, Col, Segmented, Tooltip } from 'antd';
+import { SearchOutlined, PlusOutlined, EditOutlined, DeleteOutlined, RollbackOutlined, InboxOutlined, ClearOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { getAllCategories, createCategory, updateCategory, deleteCategory, restoreCategory, getCategoryById } from '@/action/categories/categoriesAction';
 import type { Category } from '@/service/categories.service';
@@ -30,10 +30,13 @@ export default function CategoriesManagement() {
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
   const [filterStatus, setFilterStatus] = useState<'all' | 'published' | 'archived'>('all');
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
   
   const [categories, setCategories] = useState<Category[]>([]);
+  const [filteredCategories, setFilteredCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [hasActiveFilters, setHasActiveFilters] = useState(false);
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -47,6 +50,11 @@ export default function CategoriesManagement() {
   useEffect(() => {
     loadCategories();
   }, [debouncedSearchQuery, filterStatus, sortOrder]);
+
+  useEffect(() => {
+    const active = debouncedSearchQuery !== '' || filterStatus !== 'all';
+    setHasActiveFilters(active);
+  }, [debouncedSearchQuery, filterStatus]);
 
   const loadCategories = async () => {
     setLoading(true);
@@ -72,13 +80,19 @@ export default function CategoriesManagement() {
         return sortOrder === 'newest' ? dateB - dateA : dateA - dateB;
       });
 
-      setCategories(filtered);
+      setCategories(allCategories);
+      setFilteredCategories(filtered);
     } catch (error) {
       console.error('Error loading categories:', error);
       message.error('Failed to load categories');
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleClearFilters = () => {
+    setSearchQuery('');
+    setFilterStatus('all');
   };
 
   const handleCreateSubmit = async (values: any) => {
@@ -202,6 +216,9 @@ export default function CategoriesManagement() {
       title: 'Name',
       dataIndex: 'name',
       key: 'name',
+      render: (name: string) => (
+        <span className="font-medium text-gray-900">{name}</span>
+      ),
     },
     {
       title: 'Parent Category',
@@ -217,11 +234,11 @@ export default function CategoriesManagement() {
       title: 'Status',
       dataIndex: 'is_deleted',
       key: 'is_deleted',
-      width: 120,
+      width: 130,
       render: (is_deleted: boolean) => (
-        <Text type={is_deleted ? 'warning' : 'success'}>
+        <Tag color={is_deleted ? 'red' : 'green'} className="uppercase text-xs font-semibold">
           {is_deleted ? 'Archived' : 'Published'}
-        </Text>
+        </Tag>
       ),
     },
     {
@@ -229,12 +246,12 @@ export default function CategoriesManagement() {
       dataIndex: 'created_at',
       key: 'created_at',
       width: 180,
-      render: (date: Date) => new Date(date).toLocaleDateString('vi-VN'),
+      render: (date: Date) => <span className="text-gray-600">{new Date(date).toLocaleDateString('vi-VN')}</span>,
     },
     {
       title: 'Action',
       key: 'action',
-      width: 120,
+      width: 140,
       render: (_, record) => (
         <Space size="small">
           <Button
@@ -242,6 +259,7 @@ export default function CategoriesManagement() {
             icon={<EditOutlined />}
             size="small"
             disabled={record.is_deleted}
+            className="text-blue-600 hover:!text-blue-700 hover:bg-blue-50"
             onClick={() => openEditModal(Number(record.id))}
           />
           <Button
@@ -251,6 +269,7 @@ export default function CategoriesManagement() {
             loading={deletingId === Number(record.id)}
             onClick={() => handleDeleteClick(Number(record.id), record.is_deleted)}
             danger={!record.is_deleted}
+            className={record.is_deleted ? "hover:bg-blue-50" : "hover:bg-red-50"}
           />
         </Space>
       ),
@@ -268,170 +287,353 @@ export default function CategoriesManagement() {
   };
 
   return (
-    <div className="p-6">
-      <Card>
-        <div className="mb-6">
-          <Title level={2}>Categories Management</Title>
+    <div className="p-8 bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50 min-h-screen">
+      {/* Page Header */}
+      <div className="mb-8">
+        <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-blue-900 bg-clip-text text-transparent mb-4">
+          Category Management
+        </h1>
+        <div className="flex align-center justify-between gap-6" style={{ marginBottom: 16 }}>
+          <p className="text-gray-600 max-w-2xl leading-relaxed">
+            Manage and organize your categories
+          </p>
+          <Button
+            style={{
+              background: '#ffffff',
+              borderColor: '#1e40af',
+              borderWidth: '1.5px',
+              borderRadius: '0.375rem',
+              color: '#1e40af',
+              fontSize: '12px',
+              fontWeight: 500,
+              height: '36px',
+              paddingInline: '14px',
+              boxShadow: '0 2px 8px rgba(30, 64, 175, 0.12)',
+              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              whiteSpace: 'nowrap',
+              flexShrink: 0,
+            }}
+            icon={<PlusOutlined />}
+            onClick={() => {
+              createForm.resetFields();
+              setIsCreateModalOpen(true);
+            }}
+            onMouseEnter={(e) => {
+              const button = e.currentTarget as HTMLButtonElement;
+              button.style.background = '#f8fafc';
+              button.style.boxShadow = '0 8px 20px rgba(30, 64, 175, 0.2)';
+              button.style.borderColor = '#1e3a8a';
+            }}
+            onMouseLeave={(e) => {
+              const button = e.currentTarget as HTMLButtonElement;
+              button.style.background = '#ffffff';
+              button.style.boxShadow = '0 2px 8px rgba(30, 64, 175, 0.12)';
+              button.style.borderColor = '#1e40af';
+            }}
+          >
+            Create Category
+          </Button>
         </div>
+        <Divider style={{ borderColor: 'rgba(37, 99, 235, 0.15)', margin: '16px 0' }} />
+      </div>
 
-        {/* Filters */}
-        <Space size="middle" className="mb-4" wrap>
-          <Input
+      {/* Filter Card */}
+      <div className="bg-white rounded-lg shadow-sm p-5 mb-6">
+        <div className="space-y-3">
+          {/* Search Bar - Full Width */}
+          <Input.Search
             placeholder="Search categories..."
             prefix={<SearchOutlined />}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            style={{ width: 300 }}
-          />
-          
-          <Select
-            value={filterStatus}
-            onChange={setFilterStatus}
-            style={{ width: 150 }}
-            options={[
-              { label: 'All', value: 'all' },
-              { label: 'Published', value: 'published' },
-              { label: 'Archived', value: 'archived' },
-            ]}
+            size="middle"
+            allowClear
+            enterButton={<SearchOutlined />}
+            style={{ marginBottom: 12 }}
           />
 
-          <Select
-            value={sortOrder}
-            onChange={setSortOrder}
-            style={{ width: 150 }}
-            options={[
-              { label: 'Newest First', value: 'newest' },
-              { label: 'Oldest First', value: 'oldest' },
-            ]}
-          />
-
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={() => setIsCreateModalOpen(true)}
-          >
-            Create Category
-          </Button>
-        </Space>
-
-        {/* Table */}
-        <Table
-          columns={columns}
-          dataSource={categories}
-          rowKey="id"
-          loading={loading}
-          pagination={{
-            pageSize: 10,
-            showSizeChanger: true,
-            showTotal: (total) => `Total ${total} categories`,
-          }}
-        />
-
-        {/* Create Modal */}
-        <Modal
-          title="Create Category"
-          open={isCreateModalOpen}
-          onOk={() => createForm.submit()}
-          onCancel={() => {
-            setIsCreateModalOpen(false);
-            createForm.resetFields();
-          }}
-          confirmLoading={submitting}
-        >
-          <Form
-            form={createForm}
-            layout="vertical"
-            onFinish={handleCreateSubmit}
-          >
-            <Form.Item
-              label="Category Name"
-              name="name"
-              rules={[
-                { required: true, message: 'Please enter category name' },
-                { max: 255, message: 'Name must be less than 255 characters' },
-              ]}
-            >
-              <Input placeholder="Enter category name" />
-            </Form.Item>
-
-            <Form.Item
-              label="Parent Category (Optional)"
-              name="parent_id"
-            >
+          {/* Filters Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="flex flex-col">
+              <Text type="secondary" className="text-sm font-medium mb-2">
+                Status
+              </Text>
               <Select
-                placeholder="Select parent category"
-                allowClear
-                showSearch
-                optionFilterProp="label"
-                options={getParentOptions()}
+                value={filterStatus}
+                onChange={setFilterStatus}
+                options={[
+                  { label: 'All Status', value: 'all' },
+                  { label: 'Published', value: 'published' },
+                  { label: 'Archived', value: 'archived' },
+                ]}
+                size="middle"
+                className="w-full"
               />
-            </Form.Item>
-          </Form>
-        </Modal>
+            </div>
 
-        {/* Edit Modal */}
-        <Modal
-          title="Edit Category"
-          open={isEditModalOpen}
-          onOk={() => editForm.submit()}
-          onCancel={() => {
-            setIsEditModalOpen(false);
-            editForm.resetFields();
-            setEditingCategoryId(null);
-          }}
-          confirmLoading={submitting}
-        >
-          <Form
-            form={editForm}
-            layout="vertical"
-            onFinish={handleEditSubmit}
-          >
-            <Form.Item
-              label="Category Name"
-              name="name"
-              rules={[
-                { required: true, message: 'Please enter category name' },
-                { max: 255, message: 'Name must be less than 255 characters' },
-              ]}
-            >
-              <Input placeholder="Enter category name" />
-            </Form.Item>
-
-            <Form.Item
-              label="Parent Category (Optional)"
-              name="parent_id"
-            >
+            <div className="flex flex-col">
+              <Text type="secondary" className="text-sm font-medium mb-2">
+                Sort By
+              </Text>
               <Select
-                placeholder="Select parent category"
-                allowClear
-                showSearch
-                optionFilterProp="label"
-                options={getParentOptions()}
+                value={sortOrder}
+                onChange={setSortOrder}
+                options={[
+                  { label: 'Newest First', value: 'newest' },
+                  { label: 'Oldest First', value: 'oldest' },
+                ]}
+                size="middle"
+                className="w-full"
               />
-            </Form.Item>
-          </Form>
-        </Modal>
+            </div>
 
-        {/* Archive/Restore Modal */}
-        <Modal
-          title={deleteModalData?.isDeleted ? 'Restore Category' : 'Archive Category'}
-          open={isDeleteModalOpen}
-          onOk={confirmDeleteCategory}
-          okText={deleteModalData?.isDeleted ? 'Restore' : 'Archive'}
-          okType={deleteModalData?.isDeleted ? 'primary' : 'danger'}
-          onCancel={() => {
-            setIsDeleteModalOpen(false);
-            setDeleteModalData(null);
-          }}
-          confirmLoading={deletingId !== null}
+            <div className="flex flex-col">
+              <Text type="secondary" className="text-sm font-medium mb-2">
+                View Mode
+              </Text>
+              <Segmented
+                size="middle"
+                value={viewMode}
+                onChange={(value) => setViewMode(value as 'list' | 'grid')}
+                options={[
+                  { label: 'List', value: 'list' },
+                  { label: 'Grid', value: 'grid' },
+                ]}
+                block
+              />
+            </div>
+
+            {hasActiveFilters && (
+              <div className="flex flex-col justify-end">
+                <Tooltip title="Clear all filters">
+                  <Button
+                    type="dashed"
+                    danger
+                    size="small"
+                    icon={<ClearOutlined />}
+                    onClick={handleClearFilters}
+                    className="w-full"
+                  >
+                    Clear Filters
+                  </Button>
+                </Tooltip>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Table/Grid View */}
+      <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+        {viewMode === 'list' ? (
+          <div className="p-6">
+            <Table
+              columns={columns}
+              dataSource={filteredCategories}
+              rowKey="id"
+              loading={loading}
+              pagination={{
+                pageSize: 10,
+                total: filteredCategories.length,
+                showSizeChanger: false,
+                showTotal: (total) => `Total ${total} categories`,
+              }}
+              bordered
+              size="middle"
+            />
+          </div>
+        ) : (
+          <div className="p-6">
+            {filteredCategories.length === 0 ? (
+              <div className="text-center py-12">
+                <Spin spinning={loading} />
+                <p className="text-gray-500 mt-4">No categories found</p>
+              </div>
+            ) : (
+              <Row gutter={[16, 16]}>
+                {filteredCategories.map((category) => {
+                  const statusColor = category.is_deleted ? 'red' : 'green';
+                  const statusLabel = category.is_deleted ? 'Archived' : 'Published';
+                  return (
+                    <Col xs={24} sm={12} lg={8} xl={6} key={category.id}>
+                      <Card
+                        hoverable
+                        className="h-full cursor-pointer hover:shadow-lg transition-shadow"
+                        extra={
+                          <Tag color={statusColor} className="text-xs">
+                            {statusLabel}
+                          </Tag>
+                        }
+                      >
+                        <Card.Meta
+                          title={
+                            <div className="text-blue-600 hover:text-blue-800 truncate font-medium">
+                              {category.name}
+                            </div>
+                          }
+                        />
+                        <div className="mt-4 space-y-2 text-sm">
+                          <div className="flex justify-between">
+                            <Text type="secondary">ID:</Text>
+                            <Text strong>{category.id}</Text>
+                          </div>
+                          <div className="flex justify-between">
+                            <Text type="secondary">Parent:</Text>
+                            <Text strong>
+                              {category.parent_id 
+                                ? categories.find(c => c.id === category.parent_id)?.name || 'Unknown'
+                                : '-'}
+                            </Text>
+                          </div>
+                          <div className="flex justify-between">
+                            <Text type="secondary">Created:</Text>
+                            <Text strong>
+                              {new Date(category.created_at).toLocaleDateString('vi-VN')}
+                            </Text>
+                          </div>
+                        </div>
+                        <div className="mt-4 flex gap-2">
+                          <Button
+                            type="text"
+                            size="small"
+                            icon={<EditOutlined />}
+                            className="flex-1 text-blue-600 hover:!text-blue-700"
+                            disabled={category.is_deleted}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openEditModal(Number(category.id));
+                            }}
+                          >
+                            Edit
+                          </Button>
+                          <Button
+                            type="text"
+                            danger={!category.is_deleted}
+                            size="small"
+                            icon={category.is_deleted ? <RollbackOutlined /> : <InboxOutlined />}
+                            className="flex-1"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteClick(Number(category.id), category.is_deleted);
+                            }}
+                          >
+                            {category.is_deleted ? 'Restore' : 'Delete'}
+                          </Button>
+                        </div>
+                      </Card>
+                    </Col>
+                  );
+                })}
+              </Row>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Create Modal */}
+      <Modal
+        title="Create Category"
+        open={isCreateModalOpen}
+        onOk={() => createForm.submit()}
+        onCancel={() => {
+          setIsCreateModalOpen(false);
+          createForm.resetFields();
+        }}
+        confirmLoading={submitting}
+      >
+        <Form
+          form={createForm}
+          layout="vertical"
+          onFinish={handleCreateSubmit}
         >
-          <p>
-            {deleteModalData?.isDeleted
-              ? 'Restore this category?'
-              : 'Archive this category?'}
-          </p>
-        </Modal>
-      </Card>
+          <Form.Item
+            label="Category Name"
+            name="name"
+            rules={[
+              { required: true, message: 'Please enter category name' },
+              { max: 255, message: 'Name must be less than 255 characters' },
+            ]}
+          >
+            <Input placeholder="Enter category name" />
+          </Form.Item>
+
+          <Form.Item
+            label="Parent Category (Optional)"
+            name="parent_id"
+          >
+            <Select
+              placeholder="Select parent category"
+              allowClear
+              showSearch
+              optionFilterProp="label"
+              options={getParentOptions()}
+            />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      {/* Edit Modal */}
+      <Modal
+        title="Edit Category"
+        open={isEditModalOpen}
+        onOk={() => editForm.submit()}
+        onCancel={() => {
+          setIsEditModalOpen(false);
+          editForm.resetFields();
+          setEditingCategoryId(null);
+        }}
+        confirmLoading={submitting}
+      >
+        <Form
+          form={editForm}
+          layout="vertical"
+          onFinish={handleEditSubmit}
+        >
+          <Form.Item
+            label="Category Name"
+            name="name"
+            rules={[
+              { required: true, message: 'Please enter category name' },
+              { max: 255, message: 'Name must be less than 255 characters' },
+            ]}
+          >
+            <Input placeholder="Enter category name" />
+          </Form.Item>
+
+          <Form.Item
+            label="Parent Category (Optional)"
+            name="parent_id"
+          >
+            <Select
+              placeholder="Select parent category"
+              allowClear
+              showSearch
+              optionFilterProp="label"
+              options={getParentOptions()}
+            />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      {/* Archive/Restore Modal */}
+      <Modal
+        title={deleteModalData?.isDeleted ? 'Restore Category' : 'Archive Category'}
+        open={isDeleteModalOpen}
+        onOk={confirmDeleteCategory}
+        okText={deleteModalData?.isDeleted ? 'Restore' : 'Archive'}
+        okType={deleteModalData?.isDeleted ? 'primary' : 'danger'}
+        onCancel={() => {
+          setIsDeleteModalOpen(false);
+          setDeleteModalData(null);
+        }}
+        confirmLoading={deletingId !== null}
+      >
+        <p>
+          {deleteModalData?.isDeleted
+            ? 'Restore this category?'
+            : 'Archive this category?'}
+        </p>
+      </Modal>
     </div>
   );
 }

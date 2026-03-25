@@ -2,9 +2,9 @@
 "use client"
 
 import React, { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, usePathname, useSearchParams } from "next/navigation"
 import Link from "next/link"
-import { Input, Button, Table, Pagination, message, Modal, Tag, Divider, Typography } from "antd"
+import { Input, Button, Table, Pagination, message, Modal, Tag, Divider, Typography, Tooltip, Flex, Select, Card, Row, Col, Spin, Segmented } from "antd"
 import {
   SearchOutlined,
   EditOutlined,
@@ -12,8 +12,10 @@ import {
   PlusOutlined,
   CheckOutlined,
   CloseOutlined,
+  ClearOutlined,
 } from "@ant-design/icons"
 import type { Course } from "@/service/course.service"
+import type { Category } from "@/service/question.service"
 import {
   getCourseById,
   deleteCourseAPI,
@@ -24,11 +26,15 @@ import { COURSE_STATUS_LABELS } from "@/enum/course-status.enum"
 import UpdateCourseForm, { CoursePayload } from "./UpdateCourseForm"
 import CreateCourseForm from "./CreateCourseForm"
 
+const { Text } = Typography
+
 interface ManageCoursesClientProps {
   courses: Course[]
   totalCount: number
   query: string
   page: number
+  selectedCategories: string[]
+  categories: Category[]
   availableLessons: any[]
   availableQuizzes: any[]
 }
@@ -38,20 +44,19 @@ export default function ManageCoursesClient({
   totalCount,
   query,
   page,
+  selectedCategories,
+  categories,
   availableLessons,
   availableQuizzes,
 }: ManageCoursesClientProps) {
-  console.log("🔥 ManageCoursesClient - Received props:", {
-    coursesCount: courses.length,
-    availableLessonsCount: availableLessons?.length || 0,
-    availableQuizzesCount: availableQuizzes?.length || 0,
-    firstLesson: availableLessons?.[0],
-    firstQuiz: availableQuizzes?.[0],
-  })
   const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
   const [messageApi, contextHolder] = message.useMessage()
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [searchInput, setSearchInput] = useState(query)
+  const [selectedCategoryList, setSelectedCategoryList] = useState<string[]>(selectedCategories)
+  const [hasActiveFilters, setHasActiveFilters] = useState(false)
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false)
   const [selectedCourse, setSelectedCourse] = useState<
     Course | CoursePayload | null
@@ -60,6 +65,60 @@ export default function ManageCoursesClient({
   const [courseToDelete, setCourseToDelete] = useState<Course | null>(null)
   const [isApproveModalOpen, setIsApproveModalOpen] = useState(false)
   const [courseToApprove, setCourseToApprove] = useState<Course | null>(null)
+
+  // New: Additional filters and view modes
+  const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest')
+  const [selectedStatus, setSelectedStatus] = useState('All')
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list')
+  const [filteredCourses, setFilteredCourses] = useState<Course[]>(courses)
+
+  // Check if any filter is active
+  useEffect(() => {
+    const active = selectedCategoryList.length > 0 || query !== ''
+    setHasActiveFilters(active)
+  }, [selectedCategoryList, query])
+
+  // Apply filters and sorting
+  useEffect(() => {
+    let filtered = [...courses]
+
+    // Filter by status
+    if (selectedStatus !== 'All') {
+      filtered = filtered.filter(course => course.status === selectedStatus)
+    }
+
+    // Sort courses
+    filtered.sort((a, b) => {
+      const dateA = new Date(a.created_at).getTime()
+      const dateB = new Date(b.created_at).getTime()
+      return sortOrder === 'newest' ? dateB - dateA : dateA - dateB
+    })
+
+    setFilteredCourses(filtered)
+  }, [courses, selectedStatus, sortOrder])
+
+  const handleCategoryChange = (values: string[]) => {
+    const params = new URLSearchParams(searchParams)
+    params.set('page', '1')
+    
+    if (values.length === 0) {
+      params.delete('category')
+    } else {
+      // Remove old category params and add new ones
+      params.delete('category')
+      values.forEach(cat => params.append('category', cat))
+    }
+    
+    setSelectedCategoryList(values)
+    router.push(`${pathname}?${params.toString()}`)
+  }
+
+  const handleClearFilters = () => {
+    const params = new URLSearchParams()
+    setSelectedCategoryList([])
+    setSearchInput('')
+    router.push(`${pathname}?${params.toString()}`)
+  }
 
   const handleOpenUpdate = async (course: Course) => {
     const hide = messageApi.loading("Loading course details...", 0)
@@ -135,6 +194,9 @@ export default function ManageCoursesClient({
   const handleSearch = (value: string) => {
     const params = new URLSearchParams()
     if (value) params.set("query", value)
+    if (selectedCategoryList.length > 0) {
+      selectedCategoryList.forEach(cat => params.append('category', cat))
+    }
     params.set("page", "1")
     router.push(`/courses/manage?${params.toString()}`)
   }
@@ -272,6 +334,23 @@ export default function ManageCoursesClient({
     router.push(`/courses/manage?${params.toString()}`)
   }
 
+  // Status color mapping
+  const statusColors: Record<string, string> = {
+    published: 'green',
+    draft: 'blue',
+    pending_approval: 'gold',
+    rejected: 'red',
+  }
+
+  // Status options for filter
+  const statusOptions = [
+    { label: 'All Status', value: 'All' },
+    { label: 'Draft', value: 'draft' },
+    { label: 'Pending Approval', value: 'pending_approval' },
+    { label: 'Published', value: 'published' },
+    { label: 'Rejected', value: 'rejected' },
+  ]
+
   // --- Columns ---
   const columns = [
     {
@@ -333,6 +412,14 @@ export default function ManageCoursesClient({
       key: "duration_hours",
       render: (hours: number | null) => (
         <span className="text-gray-600">{hours ? `${hours}h` : "--"}</span>
+      ),
+    },
+    {
+      title: "Category",
+      dataIndex: "category_name",
+      key: "category_name",
+      render: (categoryName: string | null) => (
+        <span className="text-gray-600">{categoryName || "--"}</span>
       ),
     },
     {
@@ -472,36 +559,236 @@ export default function ManageCoursesClient({
         <Divider style={{ borderColor: 'rgba(37, 99, 235, 0.15)', margin: '16px 0' }} />
       </div>
 
-      {/* Search Card */}
+      {/* Filter Card */}
       <div className="bg-white rounded-lg shadow-sm p-5 mb-6">
-        <Input.Search
-          placeholder="Search courses..."
-          value={searchInput}
-          onChange={(e) => setSearchInput(e.target.value)}
-          onSearch={handleSearch}
-          size="large"
-          allowClear
-          style={{ marginBottom: 0 }}
-        />
-      </div>
-
-      {/* Table */}
-      <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-        <div className="p-6">
-          <Table
-            columns={columns}
-            dataSource={courses}
-            rowKey="id"
-            pagination={{
-              pageSize: 10,
-              total: totalCount,
-              showTotal: (total) => `Total ${total} courses`,
-            }}
-            bordered
+        <div className="space-y-3">
+          {/* Search Bar - Full Width */}
+          <Input.Search
+            placeholder="Search courses..."
+            prefix={<SearchOutlined />}
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            onSearch={handleSearch}
             size="middle"
+            allowClear
+            enterButton={<SearchOutlined />}
+            style={{ marginBottom: 12 }}
           />
+
+          {/* Filters Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+            <div className="flex flex-col">
+              <Text type="secondary" className="text-sm font-medium mb-2">
+                Category
+              </Text>
+              <Select
+                mode="multiple"
+                placeholder="Select categories..."
+                value={selectedCategoryList}
+                onChange={handleCategoryChange}
+                options={categories.map((cat: any) => ({
+                  label: cat.name,
+                  value: String(cat.id),
+                }))}
+                maxTagCount="responsive"
+                size="middle"
+                className="w-full"
+              />
+            </div>
+
+            <div className="flex flex-col">
+              <Text type="secondary" className="text-sm font-medium mb-2">
+                Status
+              </Text>
+              <Select
+                value={selectedStatus}
+                onChange={setSelectedStatus}
+                options={statusOptions}
+                size="middle"
+                className="w-full"
+              />
+            </div>
+
+            <div className="flex flex-col">
+              <Text type="secondary" className="text-sm font-medium mb-2">
+                Sort By
+              </Text>
+              <Select
+                value={sortOrder}
+                onChange={setSortOrder}
+                options={[
+                  { label: 'Newest First', value: 'newest' },
+                  { label: 'Oldest First', value: 'oldest' },
+                ]}
+                size="middle"
+                className="w-full"
+              />
+            </div>
+
+            <div className="flex flex-col justify-end">
+              <Text type="secondary" className="text-sm font-medium mb-2">
+                View Mode
+              </Text>
+              <Segmented
+                size="middle"
+                value={viewMode}
+                onChange={(value) => setViewMode(value as 'list' | 'grid')}
+                options={[
+                  { label: 'List', value: 'list' },
+                  { label: 'Grid', value: 'grid' },
+                ]}
+                block
+              />
+            </div>
+
+            {hasActiveFilters && (
+              <div className="flex flex-col justify-end">
+                <Tooltip title="Clear all filters">
+                  <Button
+                    type="dashed"
+                    danger
+                    size="small"
+                    icon={<ClearOutlined />}
+                    onClick={handleClearFilters}
+                    className="w-full"
+                  >
+                    Clear Filters
+                  </Button>
+                </Tooltip>
+              </div>
+            )}
+          </div>
         </div>
       </div>
+
+      {/* Table/Grid View */}
+      <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+        {viewMode === 'list' ? (
+          <div className="p-6">
+            <Table
+              columns={columns}
+              dataSource={filteredCourses}
+              rowKey="id"
+              pagination={{
+                pageSize: 10,
+                total: filteredCourses.length,
+                showTotal: (total) => `Total ${total} courses`,
+              }}
+              bordered
+              size="middle"
+            />
+          </div>
+        ) : (
+          <div className="p-6">
+            {filteredCourses.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-gray-500">No courses found</p>
+              </div>
+            ) : (
+              <Row gutter={[16, 16]}>
+                {filteredCourses.map((course) => (
+                  <Col xs={24} sm={12} lg={8} xl={6} key={course.id}>
+                    <Card
+                      hoverable
+                      cover={
+                        course.thumbnail_url ? (
+                          <img
+                            src={course.thumbnail_url}
+                            alt={course.title}
+                            className="h-40 w-full object-cover"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src =
+                                'https://via.placeholder.com/240x160?text=No+Image'
+                            }}
+                          />
+                        ) : (
+                          <div className="h-40 w-full bg-gray-200 flex items-center justify-center">
+                            <span className="text-gray-400">No Image</span>
+                          </div>
+                        )
+                      }
+                      extra={
+                        <Tag
+                          color={statusColors[course.status] || 'default'}
+                          className="text-xs"
+                        >
+                          {COURSE_STATUS_LABELS[
+                            course.status as keyof typeof COURSE_STATUS_LABELS
+                          ] || course.status}
+                        </Tag>
+                      }
+                      className="cursor-pointer hover:shadow-lg transition-shadow"
+                      onClick={() => handleOpenUpdate(course)}
+                    >
+                      <Card.Meta
+                        title={
+                          <Link
+                            href={`/courses/${course.id}`}
+                            className="text-blue-600 hover:text-blue-800 hover:underline"
+                          >
+                            {course.title}
+                          </Link>
+                        }
+                      />
+                      <div className="mt-3 space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <Text type="secondary">Enrollments:</Text>
+                          <Text strong>{course.enrollment_count}</Text>
+                        </div>
+                        <div className="flex justify-between">
+                          <Text type="secondary">Duration:</Text>
+                          <Text strong>
+                            {course.duration_hours ? `${course.duration_hours}h` : '--'}
+                          </Text>
+                        </div>
+                        <div className="flex justify-between">
+                          <Text type="secondary">Category:</Text>
+                          <Text strong>{course.category_name || '--'}</Text>
+                        </div>
+                        <div className="flex justify-between">
+                          <Text type="secondary">Created:</Text>
+                          <Text strong>
+                            {new Date(course.created_at).toLocaleDateString('vi-VN')}
+                          </Text>
+                        </div>
+                      </div>
+                      <div className="mt-4 flex gap-2">
+                        <Button
+                          type="text"
+                          size="small"
+                          icon={<EditOutlined />}
+                          className="flex-1 text-blue-600 hover:!text-blue-700"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleOpenUpdate(course)
+                          }}
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          type="text"
+                          danger
+                          size="small"
+                          icon={<DeleteOutlined />}
+                          className="flex-1"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleDelete(course)
+                          }}
+                        >
+                          Delete
+                        </Button>
+                      </div>
+                    </Card>
+                  </Col>
+                ))}
+              </Row>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Modals */}
       <Modal
         title={null} // Ẩn tiêu đề mặc định của Modal vì trong Form đã có h1/h2
         open={isUpdateModalOpen}

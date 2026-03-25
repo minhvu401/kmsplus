@@ -13,11 +13,19 @@ import {
   Divider,
   Select,
   Typography,
+  Card,
+  Row,
+  Col,
+  Segmented,
+  Tag,
+  Tooltip,
 } from "antd"
 import {
   PlusOutlined,
   EditOutlined,
   DeleteOutlined,
+  SearchOutlined,
+  ClearOutlined,
 } from "@ant-design/icons"
 import Link from "next/link"
 import { getAllQuizzes, deleteQuiz } from "@/action/quiz/quizActions"
@@ -46,6 +54,8 @@ export default function QuizzesPage() {
   const [selectedCategory, setSelectedCategory] = useState<number | 'All'>('All')
   const [loadingCategories, setLoadingCategories] = useState(false)
   const [isCreateModalVisible, setIsCreateModalVisible] = useState(false)
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list')
+  const [hasActiveFilters, setHasActiveFilters] = useState(false)
 
   useEffect(() => {
     loadQuizzes()
@@ -60,6 +70,11 @@ export default function QuizzesPage() {
       applySorting(filtered)
     }
   }, [sortOrder])
+
+  useEffect(() => {
+    const active = searchText !== '' || selectedCategory !== 'All'
+    setHasActiveFilters(active)
+  }, [searchText, selectedCategory])
 
   const loadCategories = async () => {
     setLoadingCategories(true)
@@ -118,6 +133,11 @@ export default function QuizzesPage() {
       console.error("Failed to delete quiz:", error)
       message.error("Không thể xóa bài thi")
     }
+  }
+
+  const handleClearFilters = () => {
+    setSearchText('')
+    setSelectedCategory('All')
   }
 
   const columns = [
@@ -233,17 +253,20 @@ export default function QuizzesPage() {
           {/* Search Bar - Full Width */}
           <Input.Search
             placeholder="Search quizzes..."
+            prefix={<SearchOutlined />}
             value={searchText}
             onChange={(e) => handleSearch(e.target.value)}
-            size="large"
+            size="middle"
             allowClear
+            enterButton={<SearchOutlined />}
             style={{ marginBottom: 12 }}
           />
 
           {/* Filters Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
             <div className="flex flex-col">
-              <Typography.Text type="secondary" className="text-xs font-medium mb-2">                Category
+              <Typography.Text type="secondary" className="text-sm font-medium mb-2">
+                Category
               </Typography.Text>
               <Select
                 value={selectedCategory}
@@ -259,7 +282,8 @@ export default function QuizzesPage() {
             </div>
 
             <div className="flex flex-col">
-              <Typography.Text type="secondary" className="text-xs font-medium mb-2">                Sort By
+              <Typography.Text type="secondary" className="text-sm font-medium mb-2">
+                Sort By
               </Typography.Text>
               <Select
                 value={sortOrder}
@@ -272,6 +296,39 @@ export default function QuizzesPage() {
                 className="w-full"
               />
             </div>
+
+            <div className="flex flex-col">
+              <Typography.Text type="secondary" className="text-sm font-medium mb-2">
+                View Mode
+              </Typography.Text>
+              <Segmented
+                size="middle"
+                value={viewMode}
+                onChange={(value) => setViewMode(value as 'list' | 'grid')}
+                options={[
+                  { label: 'List', value: 'list' },
+                  { label: 'Grid', value: 'grid' },
+                ]}
+                block
+              />
+            </div>
+
+            {hasActiveFilters && (
+              <div className="flex flex-col justify-end">
+                <Tooltip title="Clear all filters">
+                  <Button
+                    type="dashed"
+                    danger
+                    size="small"
+                    icon={<ClearOutlined />}
+                    onClick={handleClearFilters}
+                    className="w-full"
+                  >
+                    Clear Filters
+                  </Button>
+                </Tooltip>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -281,20 +338,100 @@ export default function QuizzesPage() {
         <div className="p-6">
           <Spin spinning={loading}>
             {filteredQuizzes.length > 0 ? (
-              <Table
-                columns={columns}
-                dataSource={filteredQuizzes.map((quiz) => ({
-                  ...quiz,
-                  key: quiz.id,
-                }))}
-                pagination={{
-                  pageSize: 10,
-                  total: filteredQuizzes.length,
-                  showTotal: (total) => `Tổng ${total} bài thi`,
-                }}
-                bordered
-                size="middle"
-              />
+              viewMode === 'list' ? (
+                <Table
+                  columns={columns}
+                  dataSource={filteredQuizzes.map((quiz) => ({
+                    ...quiz,
+                    key: quiz.id,
+                  }))}
+                  pagination={{
+                    pageSize: 10,
+                    total: filteredQuizzes.length,
+                    showTotal: (total) => `Tổng ${total} bài thi`,
+                  }}
+                  bordered
+                  size="middle"
+                />
+              ) : (
+                <Row gutter={[16, 16]}>
+                  {filteredQuizzes.map((quiz) => (
+                    <Col xs={24} sm={12} lg={8} xl={6} key={quiz.id}>
+                      <Card
+                        hoverable
+                        className="h-full cursor-pointer hover:shadow-lg transition-shadow"
+                      >
+                        <Card.Meta
+                          title={
+                            <div className="text-gray-900 hover:text-blue-600 truncate font-medium">
+                              {quiz.title}
+                            </div>
+                          }
+                          description={
+                            <span className="text-gray-600 line-clamp-2">
+                              {quiz.description || 'Không có mô tả'}
+                            </span>
+                          }
+                        />
+                        <div className="mt-4 space-y-2 text-sm">
+                          <div className="flex justify-between">
+                            <Typography.Text type="secondary">Time Limit:</Typography.Text>
+                            <Typography.Text strong>
+                              {quiz.time_limit_minutes ? `${quiz.time_limit_minutes} min` : 'Unlimited'}
+                            </Typography.Text>
+                          </div>
+                          <div className="flex justify-between">
+                            <Typography.Text type="secondary">Passing Score:</Typography.Text>
+                            <Typography.Text strong>
+                              <Tag color="blue">{quiz.passing_score}%</Tag>
+                            </Typography.Text>
+                          </div>
+                          <div className="flex justify-between">
+                            <Typography.Text type="secondary">Max Attempts:</Typography.Text>
+                            <Typography.Text strong>{quiz.max_attempts}</Typography.Text>
+                          </div>
+                          <div className="flex justify-between">
+                            <Typography.Text type="secondary">Created:</Typography.Text>
+                            <Typography.Text strong>
+                              {new Date(quiz.created_at).toLocaleDateString('vi-VN')}
+                            </Typography.Text>
+                          </div>
+                        </div>
+                        <div className="mt-4 flex gap-2">
+                          <Link href={`/quizzes/${quiz.id}`} className="flex-1">
+                            <Button
+                              type="text"
+                              size="small"
+                              icon={<EditOutlined />}
+                              className="w-full text-blue-600 hover:!text-blue-700"
+                            >
+                              Edit
+                            </Button>
+                          </Link>
+                          <Popconfirm
+                            title="Xóa bài thi"
+                            description="Bạn có chắc chắn muốn xóa bài thi này? Hành động này không thể hoàn tác."
+                            onConfirm={() => handleDelete(quiz.id)}
+                            okText="Có"
+                            cancelText="Không"
+                            okButtonProps={{ danger: true }}
+                          >
+                            <Button
+                              type="text"
+                              danger
+                              size="small"
+                              icon={<DeleteOutlined />}
+                              className="flex-1"
+                            >
+                              Delete
+                            </Button>
+                          </Popconfirm>
+                        </div>
+                      </Card>
+                    </Col>
+                  ))}
+                </Row>
+              )
             ) : (
               <Empty
                 description="Không có bài thi nào"

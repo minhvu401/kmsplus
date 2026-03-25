@@ -35,7 +35,7 @@ import {
   FileTextOutlined,
 } from '@ant-design/icons'
 import { getQuizById, getQuizQuestions, updateQuizQuestions, updateQuizMetadata } from '@/action/quiz/quizActions'
-import { getQuestionsByCategory, getAllQuestions } from '@/action/question-bank/questionBankActions'
+import { getQuestionsByCategory } from '@/action/question-bank/questionBankActions'
 import { getCourseById } from '@/action/courses/courseAction'
 import type { Quiz } from '@/service/quiz.service'
 
@@ -53,6 +53,8 @@ interface QuizQuestion {
 interface QuestionOption {
   id: number
   title: string
+  category_name?: string
+  type?: 'single_choice' | 'multiple_choice'
 }
 
 export default function QuizDetailPage() {
@@ -111,7 +113,7 @@ export default function QuizDetailPage() {
 
       // Load course info to get category_id
       const courseData = await getCourseById(quizData.course_id)
-      let availableQuestions: Array<{ id: number; title: string }> = []
+      let availableQuestions: QuestionOption[] = []
       
       if (courseData && courseData.category_id) {
         // Load questions filtered by course's category
@@ -119,6 +121,8 @@ export default function QuizDetailPage() {
         availableQuestions = categoryQuestions.map((q: any) => ({
           id: q.id,
           title: q.question_text,
+          category_name: q.category_name,
+          type: q.type as 'single_choice' | 'multiple_choice',
         }))
       }
 
@@ -285,17 +289,14 @@ export default function QuizDetailPage() {
       key: 'action',
       width: 100,
       render: (_: any, record: QuizQuestion) => (
-        <Space>
-          <Tooltip title="Remove from quiz">
-            <Button
-              type="text"
-              danger
-              size="small"
-              icon={<DeleteOutlined />}
-              onClick={() => handleRemoveQuestion(record.quiz_question_id, record.question_id)}
-            />
-          </Tooltip>
-        </Space>
+        <Button
+          type="text"
+          danger
+          size="small"
+          icon={<DeleteOutlined />}
+          onClick={() => handleRemoveQuestion(record.quiz_question_id, record.question_id)}
+          style={{ pointerEvents: 'auto' }}
+        />
       ),
     },
   ]
