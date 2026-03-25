@@ -154,7 +154,7 @@ export default function ClientCreateCourse() {
       if (!res.ok) throw new Error("Server error")
       const data = await res.json()
       // redirect to manage page or new course
-      router.push("/courses/manage")
+      router.push("/courses/management")
     } catch (err) {
       console.error(err)
       alert("Failed to create course. See console for details.")

@@ -33,13 +33,12 @@ import {
   ClearOutlined,
 } from '@ant-design/icons'
 import {
-  getAllArticles,
+  getPublishedArticles,
   getAllTags,
   getAllCategories,
   createArticle,
   getTopAuthors,
 } from '@/action/articles/articlesManagementAction'
-import { getComments } from '@/action/comments/commentsAction'
 import { uploadImageToCloudinary } from '@/lib/cloudinary'
 import QuillEditor from '@/components/QuillEditor'
 import { ArticleCard } from '@/components/ui/articles/article-card'
@@ -56,6 +55,8 @@ const { Text, Title, Paragraph } = Typography
 const { useBreakpoint } = Grid
 
 export default function ViewArticlePage() {
+  const THUMBNAIL_MAX_SIZE_MB = 10
+  const THUMBNAIL_MAX_SIZE_BYTES = THUMBNAIL_MAX_SIZE_MB * 1024 * 1024
   const router = useRouter()
   const screens = useBreakpoint()
   const [articles, setArticles] = useState<Article[]>([])
@@ -65,10 +66,10 @@ export default function ViewArticlePage() {
   const [searchQuery, setSearchQuery] = useState<string>('')
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest')
   const [currentPage, setCurrentPage] = useState(1)
+  const [totalArticles, setTotalArticles] = useState(0)
   const [loading, setLoading] = useState(true)
   const [loadingAuthors, setLoadingAuthors] = useState(true)
   const [loadingCategories, setLoadingCategories] = useState(false)
-  const [commentCounts, setCommentCounts] = useState<Record<string, number>>({})
   const [categories, setCategories] = useState<{ id: number; name: string }[]>([])
   const [topAuthors, setTopAuthors] = useState<TopAuthor[]>([])
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -77,64 +78,63 @@ export default function ViewArticlePage() {
   const [contentValue, setContentValue] = useState('')
   const [imageUrl, setImageUrl] = useState('')
   const [thumbnailUrl, setThumbnailUrl] = useState('')
+  const [thumbnailUploadError, setThumbnailUploadError] = useState('')
   const [uploadingThumbnail, setUploadingThumbnail] = useState(false)
   const [selectedTagsForCreate, setSelectedTagsForCreate] = useState<string[]>([])
   const [selectedCategoryForCreate, setSelectedCategoryForCreate] = useState<number | undefined>()
   const [submitStatus, setSubmitStatus] = useState<'draft' | 'published' | 'pending'>('published')
   const [creatingArticle, setCreatingArticle] = useState(false)
   const titleEditorRef = useRef<HTMLDivElement>(null)
-  const pageSize = 12
+  const pageSize = 10
 
-  // Load articles and tags
-  useEffect(() => {
-    loadArticlesAndCategories()
-    loadTopAuthors()
-  }, [sortOrder])
-
-  const loadArticlesAndCategories = async () => {
+  const loadArticles = async () => {
     setLoading(true)
     try {
-      const [articlesRes, tagsRes, categoriesRes] = await Promise.all([
-        getAllArticles(),
-        getAllTags(),
-        getAllCategories(),
-      ])
-
-      const filteredArticles = (articlesRes || []).filter(
-        (a: any) => !a.is_deleted && a.status === 'published'
-      )
-
-      const sortedArticles = filteredArticles.sort((a, b) => {
-        const dateA = new Date(a.created_at).getTime()
-        const dateB = new Date(b.created_at).getTime()
-        return sortOrder === 'newest' ? dateB - dateA : dateA - dateB
+      const result = await getPublishedArticles({
+        searchQuery,
+        selectedTags,
+        categoryId: selectedCategory,
+        sortOrder,
+        page: currentPage,
+        pageSize,
       })
 
-      setArticles(sortedArticles)
-      const tagNames = (tagsRes || []).map((t: any) => t.name)
-      setTags(tagNames)
-      setCategories(categoriesRes || [])
-
-      // Load comment counts
-      const counts: Record<string, number> = {}
-      await Promise.all(
-        sortedArticles.map(async (article: Article) => {
-          try {
-            const comments = await getComments(parseInt(article.id))
-            counts[article.id] = comments?.length || 0
-          } catch {
-            counts[article.id] = 0
-          }
-        })
-      )
-      setCommentCounts(counts)
+      setArticles(result?.data || [])
+      setTotalArticles(result?.total || 0)
     } catch (err: any) {
       message.error('Lỗi tải bài viết')
       console.error(err)
+      setArticles([])
+      setTotalArticles(0)
     } finally {
       setLoading(false)
     }
   }
+
+  const loadFilterData = async () => {
+    setLoadingCategories(true)
+    try {
+      const [tagsRes, categoriesRes] = await Promise.all([getAllTags(), getAllCategories()])
+      const tagNames = (tagsRes || []).map((t: any) => t.name)
+      setTags(tagNames)
+      setCategories(categoriesRes || [])
+    } catch (err) {
+      console.error('Lỗi tải bộ lọc bài viết', err)
+      setTags([])
+      setCategories([])
+    } finally {
+      setLoadingCategories(false)
+    }
+  }
+
+  useEffect(() => {
+    loadFilterData()
+    loadTopAuthors()
+  }, [])
+
+  useEffect(() => {
+    loadArticles()
+  }, [searchQuery, selectedTags, selectedCategory, sortOrder, currentPage])
 
   const loadTopAuthors = async () => {
     setLoadingAuthors(true)
@@ -154,6 +154,7 @@ export default function ViewArticlePage() {
     setContentValue('')
     setImageUrl('')
     setThumbnailUrl('')
+    setThumbnailUploadError('')
     setSelectedTagsForCreate([])
     setSelectedCategoryForCreate(undefined)
     setSubmitStatus('published')
@@ -167,9 +168,18 @@ export default function ViewArticlePage() {
     try {
       const result = await uploadImageToCloudinary(file, 'article-thumbnails')
       setThumbnailUrl(result.secure_url)
+      setThumbnailUploadError('')
       message.success('Ảnh bìa đã được tải lên')
     } catch (error: any) {
-      message.error(error?.message || 'Lỗi tải ảnh bìa')
+      const rawError = error?.message || 'Lỗi tải ảnh bìa'
+      if (/file size too large/i.test(rawError)) {
+        const tooLargeError = `Ảnh bìa vượt quá ${THUMBNAIL_MAX_SIZE_MB}MB. Vui lòng chọn ảnh nhỏ hơn.`
+        setThumbnailUploadError(tooLargeError)
+        message.error(tooLargeError)
+      } else {
+        setThumbnailUploadError(rawError)
+        message.error(rawError)
+      }
     } finally {
       setUploadingThumbnail(false)
     }
@@ -214,7 +224,8 @@ export default function ViewArticlePage() {
         message.success('Bài viết đã được tạo thành công!')
         setIsModalOpen(false)
         resetCreateForm()
-        await loadArticlesAndCategories()
+        setCurrentPage(1)
+        await loadArticles()
       } else {
         message.error(result.message || 'Lỗi tạo bài viết')
       }
@@ -224,43 +235,6 @@ export default function ViewArticlePage() {
       setCreatingArticle(false)
     }
   }
-
-  // Filter articles based on search, tags, and category
-  const allFilteredArticles = articles.filter((a) => {
-    // Search query
-    const query = searchQuery.trim().toLowerCase()
-    if (query) {
-      const haystack = `${a.title} ${stripHtml((a as any).content || '')}`.toLowerCase()
-      if (!haystack.includes(query)) {
-        return false
-      }
-    }
-
-    // Selected tags (article must have ALL selected tags)
-    if (selectedTags.length > 0) {
-      const articleTags = (a.article_tags || '')
-        .split(',')
-        .map((t) => t.trim().toLowerCase())
-        .filter(Boolean)
-      const selectedLower = selectedTags.map((t) => t.toLowerCase())
-      const matchesAll = selectedLower.every((tag) => articleTags.includes(tag))
-      if (!matchesAll) return false
-    }
-
-    // Selected category
-    if (selectedCategory) {
-      if (a.category_name && parseInt(a.category_name) !== selectedCategory) {
-        return false
-      }
-    }
-
-    return true
-  })
-
-  const paginatedArticles = allFilteredArticles.slice(
-    (currentPage - 1) * pageSize,
-    currentPage * pageSize
-  )
 
   if (loading) {
     return (
@@ -386,7 +360,10 @@ export default function ViewArticlePage() {
               {/* Sort */}
               <select
                 value={sortOrder}
-                onChange={(e) => setSortOrder(e.target.value as 'newest' | 'oldest')}
+                onChange={(e) => {
+                  setSortOrder(e.target.value as 'newest' | 'oldest')
+                  setCurrentPage(1)
+                }}
                 style={{
                   height: '36px',
                   padding: '0 10px',
@@ -441,12 +418,12 @@ export default function ViewArticlePage() {
 
           {/* Articles Grid - White Card */}
           <div className="bg-white rounded-lg shadow-sm p-6">
-            {paginatedArticles.length === 0 ? (
+            {articles.length === 0 ? (
               <Empty description="Không tìm thấy bài viết nào" style={{ padding: '48px 0' }} />
             ) : (
               <>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                  {paginatedArticles.map((article) => {
+                  {articles.map((article) => {
                     const snippet = stripHtml((article as any).content || '').slice(0, 150)
                     const tagList = (article.article_tags || '')
                       .split(',')
@@ -468,7 +445,7 @@ export default function ViewArticlePage() {
                         publishedAt={article.created_at}
                         viewCount={Math.floor(Math.random() * 500) + 50}
                         readingTime={readingTime}
-                        commentCount={commentCounts[article.id] || 0}
+                        commentCount={Number(article.comment_count || 0)}
                         tags={tagList}
                         category={article.category_name || undefined}
                       />
@@ -477,17 +454,17 @@ export default function ViewArticlePage() {
                 </div>
 
                 {/* Pagination */}
-                {allFilteredArticles.length > pageSize && (
+                {totalArticles > pageSize && (
                   <>
                     <Divider style={{ margin: '24px 0', borderColor: '#f3f4f6' }} />
                     <Flex justify="space-between" align="center" style={{ marginTop: 20 }}>
                       <div style={{ fontSize: '13px', color: '#6b7280' }}>
-                        Hiển thị <span style={{ fontWeight: '500' }}>{paginatedArticles.length > 0 ? (currentPage - 1) * pageSize + 1 : 0}-
-                        {Math.min(currentPage * pageSize, allFilteredArticles.length)}</span> trên <span style={{ fontWeight: '500' }}>{allFilteredArticles.length}</span> bài viết
+                        Hiển thị <span style={{ fontWeight: '500' }}>{articles.length > 0 ? (currentPage - 1) * pageSize + 1 : 0}-
+                        {Math.min(currentPage * pageSize, totalArticles)}</span> trên <span style={{ fontWeight: '500' }}>{totalArticles}</span> bài viết
                       </div>
                       <Pagination
                         current={currentPage}
-                        total={allFilteredArticles.length}
+                        total={totalArticles}
                         pageSize={pageSize}
                         onChange={setCurrentPage}
                         showSizeChanger={false}
@@ -569,6 +546,15 @@ export default function ViewArticlePage() {
                 accept="image/*"
                 showUploadList={false}
                 beforeUpload={(file) => {
+                  const isTooLarge = file.size > THUMBNAIL_MAX_SIZE_BYTES
+                  if (isTooLarge) {
+                    const tooLargeError = `Ảnh bìa vượt quá ${THUMBNAIL_MAX_SIZE_MB}MB. Vui lòng chọn ảnh nhỏ hơn.`
+                    setThumbnailUploadError(tooLargeError)
+                    message.error(tooLargeError)
+                    return Upload.LIST_IGNORE
+                  }
+
+                  setThumbnailUploadError('')
                   handleThumbnailUpload(file)
                   return false
                 }}
@@ -577,6 +563,11 @@ export default function ViewArticlePage() {
                   {uploadingThumbnail ? 'Đang tải lên...' : 'Tải lên ảnh bìa'}
                 </Button>
               </Upload>
+              {thumbnailUploadError && (
+                <Text type="danger" style={{ fontSize: '12px' }}>
+                  {thumbnailUploadError}
+                </Text>
+              )}
             </Flex>
           </Form.Item>
 

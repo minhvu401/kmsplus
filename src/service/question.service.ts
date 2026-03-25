@@ -28,6 +28,7 @@ export type Question = {
   updated_at: Date
   user_name: string
   category_name: string
+  user_avatar?: string | null
 };
 
 //TYPE FOR 'ANSWER' RESPONSE
@@ -40,6 +41,7 @@ export type Answer = {
   created_at: Date
   updated_at: Date
   user_name: string
+  user_avatar?: string | null
 };
 
 // TYPE FOR 'TOP SHARER' RESPONSE
@@ -47,6 +49,7 @@ export type TopSharer = {
   id: number
   name: string
   score: number
+  avatar_url?: string | null
 };
 
 // GET ALL QUESTIONS
@@ -56,7 +59,8 @@ export async function getAllQuestionsAction(): Promise<Question[]> {
       questions.id, questions.user_id, questions.category_id, questions.title,
       questions.content, questions.answer_count, questions.is_closed,
       questions.deleted_at, questions.created_at, questions.updated_at,
-      users.name AS user_name, categories.name AS category_name
+      users.name AS user_name, categories.name AS category_name,
+      users.avatar_url AS user_avatar
     FROM questions
     JOIN users ON questions.user_id = users.id
     JOIN categories ON questions.category_id = categories.id
@@ -74,7 +78,8 @@ export async function getQuestionDetailsAction(id: string): Promise<Question> {
       questions.id, questions.user_id, questions.category_id, questions.title,
       questions.content, questions.answer_count, questions.is_closed,
       questions.deleted_at, questions.created_at, questions.updated_at,
-      users.full_name AS user_name, categories.name AS category_name
+      users.full_name AS user_name, categories.name AS category_name,
+      users.avatar_url AS user_avatar
     FROM questions
     JOIN users ON questions.user_id = users.id
     JOIN categories ON questions.category_id = categories.id
@@ -359,7 +364,8 @@ export async function fetchFilteredQuestionsAction(
 
     // Final query
     const result = (await sql`
-      SELECT questions.*, users.full_name AS user_name, categories.name AS category_name
+      SELECT questions.*, users.full_name AS user_name, categories.name AS category_name,
+        users.avatar_url AS user_avatar
       FROM questions
       JOIN users ON questions.user_id = users.id
       JOIN categories ON questions.category_id = categories.id
@@ -384,7 +390,8 @@ export async function getAnswersForQuestionAction(id: number): Promise<Answer[]>
     SELECT 
       answers.id, answers.question_id, answers.user_id, answers.parent_id,
       answers.content, answers.created_at, answers.updated_at,
-      users.full_name AS user_name
+      users.full_name AS user_name,
+      users.avatar_url AS user_avatar
     FROM answers
     JOIN users ON answers.user_id = users.id
     WHERE answers.question_id = ${id}
@@ -399,7 +406,8 @@ export async function getAnswerDetailsAction(id: number): Promise<Answer> {
     SELECT 
       answers.id, answers.question_id, answers.user_id, answers.parent_id,
       answers.content, answers.created_at, answers.updated_at,
-      users.full_name AS user_name
+      users.full_name AS user_name,
+      users.avatar_url AS user_avatar
     FROM answers
     JOIN users ON answers.user_id = users.id
     WHERE answers.id = ${id}
@@ -552,7 +560,8 @@ export async function fetchFilteredAnswersAction(
         a.content,
         a.created_at,
         a.updated_at,
-        u.full_name AS user_name
+        u.full_name AS user_name,
+        u.avatar_url AS user_avatar
       FROM answers a
       JOIN users u ON a.user_id = u.id
       WHERE a.question_id = ${questionId} AND a.parent_id IS NULL
@@ -572,6 +581,7 @@ export async function fetchFilteredAnswersAction(
         SELECT 
           a.id, a.question_id, a.user_id, a.parent_id, a.content,
           a.created_at, a.updated_at, u.full_name AS user_name,
+          u.avatar_url AS user_avatar,
           1 as depth
         FROM answers a
         JOIN users u ON a.user_id = u.id
@@ -582,6 +592,7 @@ export async function fetchFilteredAnswersAction(
         SELECT 
           a.id, a.question_id, a.user_id, a.parent_id, a.content,
           a.created_at, a.updated_at, u.full_name AS user_name,
+          u.avatar_url AS user_avatar,
           rt.depth + 1
         FROM answers a
         JOIN users u ON a.user_id = u.id
@@ -704,7 +715,8 @@ export async function fetchFullDiscussionThreadAction(answerId: number): Promise
         a.content,
         a.created_at,
         a.updated_at,
-        u.full_name AS user_name
+        u.full_name AS user_name,
+        u.avatar_url AS user_avatar
       FROM answers a
       JOIN users u ON a.user_id = u.id
       WHERE a.id = ${topLevelId}
@@ -720,6 +732,7 @@ export async function fetchFullDiscussionThreadAction(answerId: number): Promise
         SELECT 
           a.id, a.question_id, a.user_id, a.parent_id, a.content,
           a.created_at, a.updated_at, u.full_name AS user_name,
+          u.avatar_url AS user_avatar,
           1 as depth
         FROM answers a
         JOIN users u ON a.user_id = u.id
@@ -730,6 +743,7 @@ export async function fetchFullDiscussionThreadAction(answerId: number): Promise
         SELECT 
           a.id, a.question_id, a.user_id, a.parent_id, a.content,
           a.created_at, a.updated_at, u.full_name AS user_name,
+          u.avatar_url AS user_avatar,
           rt.depth + 1
         FROM answers a
         JOIN users u ON a.user_id = u.id
@@ -771,10 +785,11 @@ export async function getTopKnowledgeSharers(limit: number = 5): Promise<TopShar
       SELECT 
         users.id, 
         users.full_name AS name, 
+        users.avatar_url AS avatar_url,
         COUNT(answers.id) AS score
       FROM users
       LEFT JOIN answers ON users.id = answers.user_id
-      GROUP BY users.id, users.full_name
+      GROUP BY users.id, users.full_name, users.avatar_url
       ORDER BY score DESC
       LIMIT ${limit}
     `

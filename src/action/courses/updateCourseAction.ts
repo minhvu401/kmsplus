@@ -97,7 +97,7 @@ export async function updateCourseAction(
     // 5. Revalidate cache
     revalidatePath("/courses")
     revalidatePath(`/courses/${id}`)
-    revalidatePath("/courses/manage")
+    revalidatePath("/courses/management")
 
     return {
       success: true,

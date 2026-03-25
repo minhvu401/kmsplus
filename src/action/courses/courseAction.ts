@@ -77,7 +77,7 @@ export async function deleteCourseAPI(courseId: number) {
     const result = await deleteCourseAction(courseId)
 
     if (result.success) {
-      revalidatePath("/courses/manage")
+      revalidatePath("/courses/management")
       revalidatePath("/courses")
       return { success: true }
     } else {
@@ -116,7 +116,7 @@ export async function createCourseAPI(
 
     if (result.success && "courseId" in result) {
       revalidatePath("/courses")
-      revalidatePath("/courses/manage")
+      revalidatePath("/courses/management")
       return { success: true, courseId: result.courseId }
     }
 
@@ -151,7 +151,7 @@ export async function updateCourseAPI(
 
     if (result.success) {
       revalidatePath(`/courses/${courseId}`)
-      revalidatePath("/courses/manage")
+      revalidatePath("/courses/management")
       revalidatePath("/courses") // Refresh trang danh sách để thấy category mới
       return { success: true }
     }
@@ -179,7 +179,7 @@ export async function approveCourse(id: number) {
     const result = await approveCourseAction(id, adminId)
 
     if (result) {
-      revalidatePath("/courses/manage")
+      revalidatePath("/courses/management")
       revalidatePath("/courses")
       return { success: true }
     }
@@ -211,7 +211,7 @@ export async function rejectCourseAction(courseId: number, reason: string) {
 
     // 4. Revalidate để UI cập nhật ngay
     if (result.success) {
-      revalidatePath("/courses/manage")
+      revalidatePath("/courses/management")
       revalidatePath("/courses")
     }
 

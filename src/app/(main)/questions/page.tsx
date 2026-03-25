@@ -7,7 +7,7 @@ import {
 } from "@/action/question/questionActions"
 import Pagination from "@/components/ui/questions/pagination"
 import QuestionsList from "@/components/ui/questions/questions-list"
-import QuestionsNotification from "@/components/ui/questions/questions-notification"
+import QuestionsMessage from "@/components/ui/questions/questions-message"
 import PageSizeSelector from "@/components/ui/questions/page-size-selector"
 import TopKnowledgeSharers from "@/components/ui/questions/top-knowledge-sharers"
 import CompactFilters from "@/components/ui/questions/compact-filters"
@@ -55,7 +55,7 @@ export default async function Page(props: {
 
   return (
     <div className="p-8 bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50 min-h-screen">
-      <QuestionsNotification />
+      <QuestionsMessage />
 
       {/* Page Header */}
       <div className="mb-8">
