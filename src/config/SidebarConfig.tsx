@@ -644,12 +644,12 @@ const createMenuItems = (
       onClick: () => navigate(PageRoute.COURSES),
     },
     {
-      key: PageRoute.QUIZZES,
+      key: PageRoute.QUIZ_MANAGEMENT,
       icon: <FormOutlined />,
       label: t("sidebar.quizzes", language),
       title: t("sidebar.quizzes", language),
-      route: PageRoute.QUIZZES,
-      onClick: () => navigate(PageRoute.QUIZZES),
+      route: PageRoute.QUIZ_MANAGEMENT,
+      onClick: () => navigate(PageRoute.QUIZ_MANAGEMENT),
     },
     {
       type: "divider",
