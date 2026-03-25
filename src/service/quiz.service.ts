@@ -2,6 +2,7 @@
 "use server"
 
 import { sql } from "@/lib/database"
+import { updateProgressService } from "@/service/progress.service"
 
 // Quiz Question Type
 export type Question = {
@@ -35,6 +36,9 @@ type AttemptRow = {
   status: "in_progress" | "submitted"
   started_at: Date
   total_questions: number | null
+  curriculum_item_id: number
+  course_id: number
+  passing_score: number
 }
 
 type AttemptStats = {
@@ -66,6 +70,20 @@ export type AttemptResult = {
   score: number
   passing_score: number
   questions: QuestionResult[]
+}
+
+export type AttemptHistoryItem = {
+  id: number
+  attempt_number: number
+  status: "passed" | "failed" | "in_progress"
+  score: number | null
+}
+
+export type AttemptHistorySummary = {
+  max_attempts: number | null
+  attempts_used: number
+  attempts_left: number | null
+  attempts: AttemptHistoryItem[]
 }
 
 // 1. Định nghĩa Type đầy đủ
@@ -387,10 +405,20 @@ export async function submitQuizAttemptAction(
 
     // 2️⃣ Lock attempt
     const attemptResult = (await sql`
-        SELECT id, status, started_at, total_questions
-        FROM quiz_attempts
-        WHERE id = ${attemptId}
-          AND user_id = ${userId}
+        SELECT
+          qa.id,
+          qa.status,
+          qa.started_at,
+          qa.total_questions,
+          qa.curriculum_item_id,
+          s.course_id,
+          q.passing_score
+        FROM quiz_attempts qa
+        JOIN curriculum_items ci ON ci.id = qa.curriculum_item_id
+        JOIN sections s ON s.id = ci.section_id
+        JOIN quizzes q ON q.id = ci.quiz_id
+        WHERE qa.id = ${attemptId}
+          AND qa.user_id = ${userId}
         FOR UPDATE;
       `) as AttemptRow[]
 
@@ -429,6 +457,11 @@ export async function submitQuizAttemptAction(
         ? Math.round((correct_answers * 100) / totalQuestions)
         : 0
 
+    const courseId = Number(attemptResult[0].course_id)
+    const curriculumItemId = Number(attemptResult[0].curriculum_item_id)
+    const passingScore = Number(attemptResult[0].passing_score ?? 0)
+    const isPassed = score >= passingScore
+
     // 4️⃣ Finalize attempt
     const updated = await sql`
             UPDATE quiz_attempts
@@ -447,9 +480,25 @@ export async function submitQuizAttemptAction(
     // 5️⃣ Commit
     await sql`COMMIT`
 
+    // 6️⃣ Auto-complete quiz item on pass and refresh enrollment progress.
+    if (isPassed) {
+      const progressResult = await updateProgressService(
+        userId,
+        courseId,
+        curriculumItemId,
+        "quiz"
+      )
+
+      if (!progressResult.success) {
+        console.warn(
+          `[submitQuizAttemptAction] Attempt ${attemptId} submitted but failed to update enrollment progress for user ${userId} and course ${courseId}.`
+        )
+      }
+    }
+
     return updated[0]
   } catch (error) {
-    // 6️⃣ Rollback on failure
+    // 7️⃣ Rollback on failure
     await sql`ROLLBACK`
     console.error("submitQuizAttemptAction error:", error)
     throw error
@@ -573,6 +622,7 @@ export async function getQuestionsForAttemptAction(attemptId: number) {
       JOIN quiz_questions qq ON qq.quiz_id = ci.quiz_id
       JOIN question_bank qb ON qb.id = qq.question_id
       WHERE qa.id = ${attemptId} AND qb.is_deleted = FALSE
+      ORDER BY qq.question_order, qb.id
     `
     return rows as Question[]
   } catch (error) {
@@ -797,6 +847,77 @@ export async function getQuizByCurriculumItemIdAction(
   } catch (error) {
     console.error("getQuizByCurriculumItemIdAction error:", error)
     return null
+  }
+}
+
+export async function getAttemptHistoryForCurriculumItemAction(
+  curriculumItemId: number,
+  userId: number
+): Promise<AttemptHistorySummary> {
+  try {
+    const quizRows = await sql`
+      SELECT q.max_attempts, q.passing_score
+      FROM curriculum_items ci
+      JOIN quizzes q ON q.id = ci.quiz_id
+      WHERE ci.id = ${curriculumItemId} AND q.is_deleted = FALSE
+      LIMIT 1
+    `
+
+    if (quizRows.length === 0) {
+      return {
+        max_attempts: null,
+        attempts_used: 0,
+        attempts_left: null,
+        attempts: [],
+      }
+    }
+
+    const maxAttempts =
+      quizRows[0].max_attempts == null ? null : Number(quizRows[0].max_attempts)
+    const passingScore = Number(quizRows[0].passing_score ?? 0)
+
+    const attemptRows = await sql`
+      SELECT
+        id,
+        attempt_number,
+        status,
+        score
+      FROM quiz_attempts
+      WHERE curriculum_item_id = ${curriculumItemId}
+        AND user_id = ${userId}
+      ORDER BY attempt_number DESC, started_at DESC
+    `
+
+    const attempts: AttemptHistoryItem[] = attemptRows.map((row) => {
+      const rawScore = row.score == null ? null : Number(row.score)
+      const mappedStatus: AttemptHistoryItem["status"] =
+        row.status === "in_progress"
+          ? "in_progress"
+          : (rawScore ?? 0) >= passingScore
+            ? "passed"
+            : "failed"
+
+      return {
+        id: Number(row.id),
+        attempt_number: Number(row.attempt_number),
+        status: mappedStatus,
+        score: rawScore,
+      }
+    })
+
+    const attemptsUsed = attempts.length
+    const attemptsLeft =
+      maxAttempts == null ? null : Math.max(0, maxAttempts - attemptsUsed)
+
+    return {
+      max_attempts: maxAttempts,
+      attempts_used: attemptsUsed,
+      attempts_left: attemptsLeft,
+      attempts,
+    }
+  } catch (error) {
+    console.error("getAttemptHistoryForCurriculumItemAction error:", error)
+    throw new Error("Failed to fetch attempt history")
   }
 }
 
