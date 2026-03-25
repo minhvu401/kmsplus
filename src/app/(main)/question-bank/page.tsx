@@ -1,9 +1,6 @@
 import { QuestionType, PaginatedQuestionsResponse } from '@/service/questionbank.service';
 import * as actions from '@/action/question-bank/questionBankActions';
-import CreateQuestionModalWrapper from './create/create-question-modal-wrapper';
-import Pagination from '@/components/ui/questions/pagination';
-import { QuestionBankTable } from './question-bank-table';
-import PageSizeSelector from './page-size-selector';
+import QuestionBankClient from './QuestionBankClient';
 
 export default async function QuestionBankPage(props: {
     searchParams?: Promise<{
@@ -31,34 +28,16 @@ export default async function QuestionBankPage(props: {
         console.error('Error loading data:', error);
     }
 
-    const totalPages = Math.ceil(totalItems / pageSize);
-
     return (
-        <div className="p-4">
-            {/* Header */}
-            <div className="flex justify-between items-center mb-6">
-                <h2 className="text-lg font-semibold m-0">
-                    Question Bank
-                </h2>
-                <CreateQuestionModalWrapper />
-            </div>
-
-            {/* Table */}
-            <QuestionBankTable questions={questions} currentPage={currentPage} categories={categories} />
-
-            {/* Page Size Selector */}
-            <div className="flex justify-end my-6">
-                <PageSizeSelector currentPageSize={pageSize} />
-            </div>
-
-            {/* Pagination */}
-            <div className="flex justify-center mt-8">
-                <Pagination totalPages={totalPages} />
-            </div>
-
-            {/* Info */}
-            <div className="text-center text-gray-600 mt-4 text-sm">
-                Showing {questions.length > 0 ? (currentPage - 1) * pageSize + 1 : 0}-{Math.min(currentPage * pageSize, totalItems)} of {totalItems} questions
+        <div className="p-8 bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50 min-h-screen">
+            <div className="max-w-7xl mx-auto">
+                <QuestionBankClient
+                    questions={questions}
+                    totalItems={totalItems}
+                    currentPage={currentPage}
+                    pageSize={pageSize}
+                    categories={categories}
+                />
             </div>
         </div>
     );

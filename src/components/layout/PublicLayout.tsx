@@ -11,8 +11,10 @@ export default function PublicLayout({
   children: React.ReactNode
 }) {
   return (
-    <Layout className="w-full h-full">
-      <Content style={{ padding: "0 0px" }}>{children}</Content>
-    </Layout>
+    <div suppressHydrationWarning>
+      <Layout className="w-full h-full">
+        <Content style={{ padding: "0 0px" }}>{children}</Content>
+      </Layout>
+    </div>
   )
 }
