@@ -63,11 +63,20 @@ const AppSidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
   // Determine active menu key based on current pathname
   const getSelectedKeys = (): string[] => {
     const path = pathname || ""
-    // Find exact match or parent path
+    // Find exact match or parent path, then prefer the most specific route.
     const keys = Object.values(PageRoute).filter(
       (route) => path === route || path.startsWith(route + "/")
     )
-    return keys.length > 0 ? [keys[0]] : [PageRoute.DASHBOARD_METRICS]
+
+    if (keys.length === 0) {
+      return [PageRoute.DASHBOARD_METRICS]
+    }
+
+    const bestMatch = keys.reduce((longest, current) =>
+      current.length > longest.length ? current : longest
+    )
+
+    return [bestMatch]
   }
 
   return (
