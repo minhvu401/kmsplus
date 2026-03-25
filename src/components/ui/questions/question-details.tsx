@@ -37,6 +37,7 @@ import {
     ShareAltOutlined,
     LockOutlined,
     UnlockOutlined,
+    UserOutlined,
 } from '@ant-design/icons';
 import { Question } from "@/service/question.service";
 import { Category } from "@/service/question.service";
@@ -74,9 +75,11 @@ export default function QuestionDetails({ userId, question, categories }: { user
             <Flex align="center" justify="flex-start" gap={12} style={{ color: "#374151", width: "100%", marginBottom: 12 }}>
                 <Flex align="center" gap={4}>
                     <Text>by</Text>
-                    <Avatar size="small">
-                        {(question.user_name?.trim()?.[0] ?? "?").toUpperCase()}
-                    </Avatar>
+                    <Avatar
+                        size="small"
+                        src={question.user_avatar || undefined}
+                        icon={!question.user_avatar ? <UserOutlined /> : undefined}
+                    />
                     <Text strong>{question.user_name}</Text>
                 </Flex>
                 <Tag color="blue">{question.category_name}</Tag>

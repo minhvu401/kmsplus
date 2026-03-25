@@ -1,7 +1,7 @@
 'use client'
 
-import React, { useState } from 'react';
-import { startQuizAttempt } from "@/action/quiz/quizActions";
+import React, { useEffect, useState } from 'react';
+import { getInProgressAttemptForCurriculumItem, startQuizAttempt } from "@/action/quiz/quizActions";
 import type { Quiz } from "@/service/quiz.service";
 import { Card, Row, Col, Typography, Space, message, Button, Modal } from 'antd'
 import { ClockCircleOutlined, TrophyOutlined, NumberOutlined, CalendarOutlined, PlayCircleOutlined } from '@ant-design/icons';
@@ -9,7 +9,7 @@ import { format } from 'date-fns'
 
 const { Title, Text, Paragraph } = Typography;
 
-export default function QuizDetails({ quiz, curriculumItemId }: { quiz: Quiz; curriculumItemId: number }) {
+export default function QuizDetails({ quiz, curriculumItemId, courseId }: { quiz: Quiz; curriculumItemId: number; courseId: number }) {
     const hasFrom = !!quiz.available_from
     const hasTo = !!quiz.available_until
 
@@ -89,7 +89,10 @@ export default function QuizDetails({ quiz, curriculumItemId }: { quiz: Quiz; cu
 
                 {/* CTA Section */}
                 <div style={{ paddingTop: 8 }}>
-                    <StartQuizButton curriculumItemId={curriculumItemId} />
+                    <StartQuizButton
+                        curriculumItemId={curriculumItemId}
+                        courseId={courseId}
+                    />
                 </div>
             </Space>
         </div>
@@ -99,7 +102,7 @@ export default function QuizDetails({ quiz, curriculumItemId }: { quiz: Quiz; cu
 function StatCard({ icon, label, value }: { icon: React.ReactNode, label: string, value: string }) {
     return (
         <Card 
-            bordered={false} 
+            variant="borderless" 
             style={{ 
                 height: '100%', 
                 background: '#f8fafd', 
@@ -123,19 +126,53 @@ function StatCard({ icon, label, value }: { icon: React.ReactNode, label: string
 
 export function StartQuizButton({
     curriculumItemId,
+    courseId,
 }: {
     curriculumItemId: number;
+    courseId: number;
 }) {
 
     const [messageApi, contextHolder] = message.useMessage();
     const [open, setOpen] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [existingAttemptId, setExistingAttemptId] = useState<number | null>(null);
+    const [checkingAttempt, setCheckingAttempt] = useState(true);
+
+    useEffect(() => {
+        let isMounted = true;
+
+        const loadInProgressAttempt = async () => {
+            try {
+                const result = await getInProgressAttemptForCurriculumItem(curriculumItemId);
+                if (isMounted) {
+                    setExistingAttemptId(result.attemptId);
+                }
+            } catch {
+                // Ignore lookup errors and keep default start behavior.
+            } finally {
+                if (isMounted) {
+                    setCheckingAttempt(false);
+                }
+            }
+        };
+
+        loadInProgressAttempt();
+
+        return () => {
+            isMounted = false;
+        };
+    }, [curriculumItemId]);
 
     async function handleConfirmStart() {
         try {
             setLoading(true);
-            const attemptId = await startQuizAttempt(curriculumItemId);
-            window.location.href = `/courses/quiz/attempt/${attemptId.id}`;
+            if (existingAttemptId) {
+                window.location.href = `/courses/${courseId}/learning/attempt/${existingAttemptId}`;
+                return;
+            }
+
+            const attempt = await startQuizAttempt(curriculumItemId);
+            window.location.href = `/courses/${courseId}/learning/attempt/${attempt.id}`;
         } catch (err: any) {
             messageApi.error(
                 err instanceof Error ? err.message : 'Failed to start quiz'
@@ -145,6 +182,17 @@ export function StartQuizButton({
         }
     }
 
+    const hasInProgressAttempt = !!existingAttemptId;
+    const buttonLabel = hasInProgressAttempt ? 'Continue' : 'Start Quiz';
+
+    const handleMainButtonClick = async () => {
+        if (hasInProgressAttempt) {
+            await handleConfirmStart();
+            return;
+        }
+        setOpen(true);
+    };
+
     return (
         <>
             {contextHolder}
@@ -153,6 +201,7 @@ export function StartQuizButton({
                 type="primary"
                 size="large"
                 icon={<PlayCircleOutlined />}
+                loading={checkingAttempt || loading}
                 style={{ 
                     height: 50, 
                     paddingLeft: 40, 
@@ -161,15 +210,15 @@ export function StartQuizButton({
                     borderRadius: 25,
                     boxShadow: '0 4px 14px 0 rgba(22, 119, 255, 0.39)'
                 }}
-                onClick={() => setOpen(true)}
+                onClick={handleMainButtonClick}
             >
-                Start Quiz
+                {buttonLabel}
             </Button>
 
             <Modal
                 open={open}
-                title="Ready to start?"
-                okText="Start Quiz"
+                title={hasInProgressAttempt ? "Continue quiz?" : "Ready to start?"}
+                okText={hasInProgressAttempt ? "Continue" : "Start Quiz"}
                 cancelText="Cancel"
                 confirmLoading={loading}
                 onOk={handleConfirmStart}
@@ -177,8 +226,9 @@ export function StartQuizButton({
                 centered
             >
                 <Paragraph>
-                    Once you start the quiz, the timer will begin immediately. 
-                    Please ensure you have a stable internet connection.
+                    {hasInProgressAttempt
+                        ? 'You already have an in-progress attempt. Continue where you left off.'
+                        : 'Once you start the quiz, the timer will begin immediately. Please ensure you have a stable internet connection.'}
                 </Paragraph>
             </Modal>
         </>

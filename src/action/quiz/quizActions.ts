@@ -21,6 +21,7 @@ import {
   getAttemptMetaAction,
   getTimeLimitForAttemptAction,
   getAttemptResultAction,
+  getAttemptHistoryForCurriculumItemAction,
 } from "@/service/quiz.service"
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
@@ -78,6 +79,16 @@ export async function getQuizById(id: number) {
 export async function getQuizByCurriculumItemId(curriculumItemId: number) {
   await requireAuth()
   return getQuizByCurriculumItemIdAction(curriculumItemId)
+}
+
+export async function getAttemptHistoryForCurriculumItem(
+  curriculumItemId: number
+) {
+  const user = await requireAuth()
+  return getAttemptHistoryForCurriculumItemAction(
+    curriculumItemId,
+    Number(user.id)
+  )
 }
 
 /**
@@ -315,9 +326,37 @@ export async function startQuizAttempt(curriculumItemId: number) {
   )
 }
 
+export async function getInProgressAttemptForCurriculumItem(
+  curriculumItemId: number
+) {
+  const user = await requireAuth()
+
+  const rows = await sql`
+    SELECT id
+    FROM quiz_attempts
+    WHERE curriculum_item_id = ${curriculumItemId}
+      AND user_id = ${Number(user.id)}
+      AND status = 'in_progress'
+    ORDER BY started_at DESC
+    LIMIT 1;
+  `
+
+  return {
+    attemptId: rows.length > 0 ? Number(rows[0].id) : null,
+  }
+}
+
 export async function submitQuizAttempt(attemptId: number) {
   const user = await requireAuth()
-  return submitQuizAttemptAction(attemptId, Number(user.id))
+  const result = await submitQuizAttemptAction(attemptId, Number(user.id))
+
+  // Keep learning/history pages in sync with auto progress updates on passed attempts.
+  const routeInfo = await getAttemptRouteInfo(attemptId)
+  revalidatePath("/history")
+  revalidatePath(`/courses/${routeInfo.course_id}`)
+  revalidatePath(`/courses/${routeInfo.course_id}/learning`)
+
+  return result
 }
 
 export async function getQuestionsForAttempt(attemptId: number) {
@@ -336,6 +375,31 @@ export async function getAttemptMeta(attemptId: number) {
   const user = await requireAuth()
   await requireAttemptOwner(attemptId, Number(user.id))
   return getAttemptMetaAction(attemptId, Number(user.id))
+}
+
+export async function getAttemptRouteInfo(attemptId: number) {
+  const user = await requireAuth()
+  await requireAttemptOwner(attemptId, Number(user.id))
+
+  const rows = await sql`
+    SELECT
+      s.course_id,
+      qa.curriculum_item_id
+    FROM quiz_attempts qa
+    JOIN curriculum_items ci ON ci.id = qa.curriculum_item_id
+    JOIN sections s ON s.id = ci.section_id
+    WHERE qa.id = ${attemptId}
+    LIMIT 1;
+  `
+
+  if (rows.length === 0) {
+    throw new Error("Attempt not found")
+  }
+
+  return {
+    course_id: Number(rows[0].course_id),
+    curriculum_item_id: Number(rows[0].curriculum_item_id),
+  }
 }
 
 export async function getTimeLimitForAttempt(attemptId: number) {

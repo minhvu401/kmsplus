@@ -7,6 +7,8 @@ import Link from "next/link"
 import { Input, Button, Table, Pagination, message, Modal, Tag, Divider, Typography, Tooltip, Flex, Select, Card, Row, Col, Spin, Segmented } from "antd"
 import {
   SearchOutlined,
+  ReadOutlined,
+  StarOutlined,
   EditOutlined,
   DeleteOutlined,
   PlusOutlined,
@@ -37,6 +39,19 @@ interface ManageCoursesClientProps {
   categories: Category[]
   availableLessons: any[]
   availableQuizzes: any[]
+}
+
+const { Text } = Typography
+
+function normalizeRating(value: number | string | null | undefined) {
+  const parsed = typeof value === "number" ? value : Number(value)
+  const safeValue = Number.isFinite(parsed) ? parsed : 0
+  const clamped = Math.max(0, Math.min(5, safeValue))
+  return Math.round(clamped * 2) / 2
+}
+
+function formatRating(value: number) {
+  return Number(value).toFixed(1)
 }
 
 export default function ManageCoursesClient({
@@ -198,7 +213,7 @@ export default function ManageCoursesClient({
       selectedCategoryList.forEach(cat => params.append('category', cat))
     }
     params.set("page", "1")
-    router.push(`/courses/manage?${params.toString()}`)
+    router.push(`/courses/management?${params.toString()}`)
   }
 
   // --- Approve ---
@@ -331,7 +346,7 @@ export default function ManageCoursesClient({
     const params = new URLSearchParams()
     if (query) params.set("query", query)
     params.set("page", String(newPage))
-    router.push(`/courses/manage?${params.toString()}`)
+    router.push(`/courses/management?${params.toString()}`)
   }
 
   // Status color mapping
@@ -395,6 +410,32 @@ export default function ManageCoursesClient({
               status as keyof typeof COURSE_STATUS_LABELS
             ] || status}
           </Tag>
+        )
+      },
+    },
+    {
+      title: "Avg. Rating",
+      dataIndex: "average_rating",
+      key: "average_rating",
+      render: (averageRating: number | string | null) => {
+        const normalizedRating = normalizeRating(averageRating)
+
+        if (normalizedRating === 0) {
+          return <Text className="!font-normal text-gray-500">N/A</Text>
+        }
+
+        return (
+          <div className="flex items-center gap-2 whitespace-nowrap text-gray-600">
+            <Rate
+              allowHalf
+              disabled
+              value={1}
+              count={1}
+            />
+            <Text className="!font-normal text-gray-600">
+              {formatRating(normalizedRating)}
+            </Text>
+          </div>
         )
       },
     },
@@ -471,7 +512,7 @@ export default function ManageCoursesClient({
       title: "Actions",
       key: "actions",
       render: (_: any, record: Course) => (
-        <div className="flex gap-2">
+        <div className="grid grid-cols-2 gap-1 w-fit">
           {/* Nút Edit mới dùng để mở Modal */}
           <Button
             type="text"
@@ -488,11 +529,16 @@ export default function ManageCoursesClient({
           {/* Nút Delete */}
           <Button
             type="text"
-            danger
+            danger={record.status !== "published"}
             icon={<DeleteOutlined />}
             size="small"
+            disabled={record.status === "published" || record.status === "pending_approval"}
             // ✅ Thêm nền đỏ nhạt khi hover
-            className="hover:bg-red-50"
+            className={
+              record.status === "published" || record.status === "pending_approval"
+                ? "!text-gray-400 cursor-not-allowed"
+                : "hover:bg-red-50"
+            }
             onClick={(e) => {
               // 🛑 Ngăn chặn hành vi mặc định và lan truyền
               e.stopPropagation()
@@ -502,6 +548,51 @@ export default function ManageCoursesClient({
               console.log("🔴 Client: Đã bấm nút Delete ID:", record.id)
 
               handleDelete(record)
+            }}
+          />
+
+          <Button
+            type="text"
+            icon={<ReadOutlined />}
+            size="small"
+            disabled={record.status !== "published"}
+            className={
+              record.status !== "published"
+                ? "!text-gray-400 cursor-not-allowed"
+                : "text-green-600 hover:!text-green-700 hover:bg-green-50"
+            }
+            onClick={(e) => {
+              e.stopPropagation()
+              e.preventDefault()
+              if (record.status !== "published") return
+              router.push(`/courses/management/${record.id}/enrollments`)
+            }}
+          />
+
+          <Button
+            type="text"
+            icon={<StarOutlined />}
+            size="small"
+            disabled={record.status !== "published"}
+            style={record.status === "published" ? { color: "#ca8a04" } : undefined}
+            className={
+              record.status !== "published"
+                ? "!text-gray-400 cursor-not-allowed"
+                : "hover:bg-yellow-50"
+            }
+            onMouseEnter={(e) => {
+              if (record.status !== "published") return
+              e.currentTarget.style.color = "#b45309"
+            }}
+            onMouseLeave={(e) => {
+              if (record.status !== "published") return
+              e.currentTarget.style.color = "#ca8a04"
+            }}
+            onClick={(e) => {
+              e.stopPropagation()
+              e.preventDefault()
+              if (record.status !== "published") return
+              router.push(`/courses/management/${record.id}/feedback`)
             }}
           />
         </div>
