@@ -6,7 +6,7 @@ import bcrypt from "bcryptjs"
 import { cookies } from "next/headers"
 
 /**
- * Type cho User response
+ * Type cho User response hiiiii
  */
 export type User = {
   id: string

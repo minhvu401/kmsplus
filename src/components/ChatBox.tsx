@@ -192,11 +192,11 @@ const ChatBox = React.forwardRef<any, ChatBoxProps>(
     const [input, setInput] = useState("")
     const [loading, setLoading] = useState(false)
     const [listLoading, setListLoading] = useState(false)
-    const [skipNextLoadMessages, setSkipNextLoadMessages] = useState(false)
     const messagesEndRef = useRef<HTMLDivElement>(null)
     const [authenticated, setAuthenticated] = useState<boolean>(false)
     const [authLoading, setAuthLoading] = useState(true)
     const [showHistoryDrawer, setShowHistoryDrawer] = useState(false)
+    const newConversationIdRef = useRef<number | null>(null)
 
     // Update currentConversation when initialConversation prop changes
     useEffect(() => {
@@ -235,13 +235,13 @@ const ChatBox = React.forwardRef<any, ChatBoxProps>(
     // Load messages when conversation changes
     useEffect(() => {
       if (!currentConversation || !authenticated) return
-      // Skip loading if we just sent a message (messages already set locally)
-      if (skipNextLoadMessages) {
-        setSkipNextLoadMessages(false)
+      // Skip loading if this conversation was just created (messages already in state)
+      if (newConversationIdRef.current === currentConversation.id) {
+        newConversationIdRef.current = null
         return
       }
       loadMessages(currentConversation.id)
-    }, [currentConversation, authenticated, skipNextLoadMessages])
+    }, [currentConversation, authenticated])
 
     // Scroll to bottom when messages change
     useEffect(() => {
@@ -332,8 +332,8 @@ const ChatBox = React.forwardRef<any, ChatBoxProps>(
 
           // Update conversation if it's new
           if (!currentConversation) {
+            newConversationIdRef.current = data.conversation.id
             setCurrentConversation(data.conversation)
-            setSkipNextLoadMessages(true)
           }
 
           // Replace temp user message with real one and add AI response
@@ -567,15 +567,24 @@ const ChatBox = React.forwardRef<any, ChatBoxProps>(
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+                if (
+                  e.key === "Enter" &&
+                  !e.ctrlKey &&
+                  !e.metaKey &&
+                  !e.shiftKey
+                ) {
+                  e.preventDefault()
                   handleSendMessage()
+                } else if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+                  e.preventDefault()
+                  setInput(input + "\n")
                 }
               }}
               placeholder={
                 authLoading
                   ? "Đang kiểm tra đăng nhập..."
                   : authenticated
-                    ? "Nhập câu hỏi... (Ctrl+Enter để gửi)"
+                    ? "Nhập câu hỏi... (Enter để gửi)"
                     : "Vui lòng đăng nhập để chat"
               }
               rows={3}
