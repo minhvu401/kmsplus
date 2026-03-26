@@ -8,7 +8,12 @@
 
 import React, { useEffect, useState } from "react"
 import { Row, Col, Spin, Empty, Alert, Divider } from "antd"
-import { LineChartOutlined, TeamOutlined, BookOutlined, SmileOutlined } from "@ant-design/icons"
+import {
+  LineChartOutlined,
+  TeamOutlined,
+  BookOutlined,
+  SmileOutlined,
+} from "@ant-design/icons"
 import useUserStore from "@/store/useUserStore"
 import { Role } from "@/enum/role.enum"
 import ActiveUsersChart from "./components/ActiveUsersChart"
@@ -17,10 +22,16 @@ import CourseCompletionRateCard from "./components/CourseCompletionRateCard"
 import TopCategoriesChart from "./components/TopCategoriesChart"
 import ContentRatingChart from "./components/ContentRatingChart"
 import StatCard from "./components/StatCard"
+import AISuggestionPanel from "@/components/AISuggestionPanel"
+import { useAutoAISuggestion } from "@/components/hooks/useAutoAISuggestion"
 
 export default function DashboardMetricsPage() {
   const { user, userRole } = useUserStore()
   const [loading, setLoading] = useState(true)
+
+  // Auto-check and create suggestion when admin/director accesses dashboard
+  const isAdmin = userRole === Role.ADMIN || userRole === Role.DIRECTOR
+  useAutoAISuggestion(30, isAdmin)
 
   useEffect(() => {
     // Simulate loading
@@ -39,7 +50,7 @@ export default function DashboardMetricsPage() {
   // Check if user has permission to access Dashboard Metrics
   const allowedRoles = [Role.DIRECTOR, Role.ADMIN]
   const hasAccess = allowedRoles.includes(userRole as Role)
-  
+
   if (!hasAccess) {
     return (
       <div className="p-6 bg-white m-6 rounded-lg">
@@ -64,7 +75,9 @@ export default function DashboardMetricsPage() {
               Dashboard Metrics
             </h1>
             <p className="text-gray-600 mt-3 max-w-2xl leading-relaxed">
-              Real-time performance analytics and insights for organizational effectiveness. Monitor adoption, engagement, and training impact across your organization.
+              Real-time performance analytics and insights for organizational
+              effectiveness. Monitor adoption, engagement, and training impact
+              across your organization.
             </p>
           </div>
         </div>
@@ -115,6 +128,11 @@ export default function DashboardMetricsPage() {
         </Row>
       </div>
 
+      {/* AI Suggestion Panel */}
+      <div className="mb-8 animate-fadeInDown">
+        <AISuggestionPanel />
+      </div>
+
       {/* Main Charts Grid */}
       <Row gutter={[20, 20]} className="w-full animate-fadeInUp">
         {/* Row 1: Active Users & Adoption Rate */}
@@ -127,7 +145,11 @@ export default function DashboardMetricsPage() {
       </Row>
 
       {/* Row 2: Course Completion Rate & Top Categories */}
-      <Row gutter={[20, 20]} className="mt-6 w-full animate-fadeInUp" style={{ animationDelay: "0.2s" }}>
+      <Row
+        gutter={[20, 20]}
+        className="mt-6 w-full animate-fadeInUp"
+        style={{ animationDelay: "0.2s" }}
+      >
         <Col xs={24} lg={12} className="transition-all duration-500">
           <CourseCompletionRateCard />
         </Col>
@@ -137,7 +159,11 @@ export default function DashboardMetricsPage() {
       </Row>
 
       {/* Row 3: Content Rating - Full Width */}
-      <Row gutter={[20, 20]} className="mt-6 w-full animate-fadeInUp" style={{ animationDelay: "0.4s" }}>
+      <Row
+        gutter={[20, 20]}
+        className="mt-6 w-full animate-fadeInUp"
+        style={{ animationDelay: "0.4s" }}
+      >
         <Col xs={24} className="transition-all duration-500">
           <ContentRatingChart />
         </Col>

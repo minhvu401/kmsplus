@@ -260,6 +260,51 @@ export async function updateQuizQuestions(
   revalidatePath("/quizzes")
 }
 
+/**
+ * Cập nhật thông tin chi tiết của quiz (title, description, time limit, passing score, max attempts)
+ * - Tham số: quizId (number), data object
+ * - Yêu cầu xác thực (requireAuth)
+ */
+export async function updateQuizMetadata(
+  quizId: number,
+  data: {
+    title: string
+    description?: string
+    time_limit_minutes?: number | null
+    passing_score?: number
+    max_attempts?: number
+  }
+) {
+  await requireAuth()
+
+  const sanitizedTitle = sanitizeTitle(data.title)
+  const sanitizedDescription = data.description
+    ? sanitizeDescription(data.description)
+    : undefined
+
+  // Validate
+  const validationResult = QuizMetadataDto.safeParse({
+    title: sanitizedTitle,
+    description: sanitizedDescription || "",
+  })
+  if (!validationResult.success) {
+    throw new Error(
+      validationResult.error.issues.map((e) => e.message).join(", ")
+    )
+  }
+
+  await updateQuizAction(quizId, {
+    title: sanitizedTitle,
+    ...(sanitizedDescription && { description: sanitizedDescription }),
+    time_limit_minutes: data.time_limit_minutes,
+    passing_score: data.passing_score || 70,
+    max_attempts: data.max_attempts || 3,
+  })
+
+  revalidatePath("/quizzes")
+  revalidatePath(`/quizzes/${quizId}`)
+}
+
 export async function startQuizAttempt(curriculumItemId: number) {
   const user = await requireAuth()
 

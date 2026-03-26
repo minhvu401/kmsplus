@@ -25,6 +25,7 @@ export type Course = {
   id: number
   creator_id: number
   category_id: number | null // ✅ Added category_id
+  category_name?: string | null // ✅ Added category_name from JOIN
   title: string
   description: string | null
   thumbnail_url: string | null
@@ -80,7 +81,7 @@ type GetAllCoursesParams = {
   page?: number
   limit?: number
   sort?: "trending" | "popular" | "newest" | "top-rated"
-  category?: string // ✅ Added filter param
+  categories?: string[] // ✅ Changed to array for multi-select
   rating?: string // ✅ Added rating filter (all, 4plus, 3plus, 2plus)
 }
 
@@ -109,7 +110,7 @@ export async function getAllCoursesAction({
   page = 1,
   limit = 10,
   sort = "trending",
-  category = "all",
+  categories = [],
   rating = "all",
 }: GetAllCoursesParams) {
   const offset = (page - 1) * limit
@@ -134,22 +135,25 @@ export async function getAllCoursesAction({
       break
   }
 
-  // ✅ Xử lý Filter Category
-  const categoryCondition =
-    category && category !== "all" && category !== ""
-      ? sql`AND category_id = ${category}`
+  // ✅ Xử lý Filter Category (Multiple Categories)
+  const categoryCondition = 
+    categories && categories.length > 0
+      ? sql`AND category_id = ANY(${categories.map(c => parseInt(c, 10))})`
       : sql``
 
   // ✅ Xử lý Filter Rating
   // TODO: Add rating filter logic when rating column is available in database
   // const ratingCondition = rating && rating !== "all" ? sql`AND rating >= ${getRatingValue(rating)}` : sql``
 
-  // Query Courses
+  // Query Courses with Category Join
   const rows = await sql`
-    SELECT *
-    FROM courses
-    WHERE deleted_at IS NULL
-      AND title ILIKE ${"%" + query + "%"}
+    SELECT 
+      c.*,
+      cat.name as category_name
+    FROM courses c
+    LEFT JOIN categories cat ON c.category_id = cat.id
+    WHERE c.deleted_at IS NULL
+      AND c.title ILIKE ${"%" + query + "%"}
       ${categoryCondition} 
     ORDER BY ${sql.unsafe(orderBy)}
     LIMIT ${limit}
@@ -159,9 +163,10 @@ export async function getAllCoursesAction({
   // Count Total
   const totalResult = await sql`
     SELECT COUNT(*) 
-    FROM courses 
-    WHERE deleted_at IS NULL
-      AND title ILIKE ${"%" + query + "%"}
+    FROM courses c
+    LEFT JOIN categories cat ON c.category_id = cat.id
+    WHERE c.deleted_at IS NULL
+      AND c.title ILIKE ${"%" + query + "%"}
       ${categoryCondition}
   `
 
@@ -174,10 +179,14 @@ export async function getAllCoursesAction({
 }
 
 export async function getCourseByIdAction(id: number) {
-  // 1. Lấy thông tin cơ bản của Course
+  // 1. Lấy thông tin cơ bản của Course (có category)
   const courseResult = await sql`
-    SELECT * FROM courses
-    WHERE id = ${id} AND deleted_at IS NULL
+    SELECT 
+      c.*,
+      cat.name as category_name
+    FROM courses c
+    LEFT JOIN categories cat ON c.category_id = cat.id
+    WHERE c.id = ${id} AND c.deleted_at IS NULL
   `
   if (courseResult.length === 0) return null
   const course = courseResult[0] as Course
@@ -544,7 +553,7 @@ export async function getPublishedCoursesService({
   page = 1,
   limit = 12,
   sort = "trending",
-  category = "all",
+  categories = [],
   rating = "all",
   userId = 0,
 }: GetAllCoursesParams & { userId?: number }) {
@@ -567,10 +576,11 @@ export async function getPublishedCoursesService({
         break
     }
 
-    const categoryCondition =
-      category && category !== "all"
-        ? sql`AND c.category_id = ${category}`
-        : sql``
+  // ✅ Xử lý Filter Category (Multiple Categories)
+  const categoryCondition = 
+    categories && categories.length > 0
+      ? sql`AND category_id = ANY(${categories.map(c => parseInt(c, 10))})`
+      : sql``
 
     // ✅ DEBUG 1: In ra toàn bộ khóa học Published (Bỏ qua Visibility)
     const rawCourses = await sql`

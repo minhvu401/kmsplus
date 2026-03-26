@@ -48,8 +48,21 @@ export default function CreateQuestionModalWrapper() {
     return (
         <>
             <Button
-                type="primary"
-                size="large"
+                style={{
+                    background: '#ffffff',
+                    borderColor: '#1e40af',
+                    borderWidth: '1.5px',
+                    borderRadius: '0.375rem',
+                    color: '#1e40af',
+                    fontSize: '12px',
+                    fontWeight: 500,
+                    height: '36px',
+                    paddingInline: '14px',
+                    boxShadow: '0 2px 8px rgba(30, 64, 175, 0.12)',
+                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0,
+                }}
                 icon={<PlusOutlined />}
                 onClick={() => {
                     if (categoriesError) {
@@ -59,6 +72,18 @@ export default function CreateQuestionModalWrapper() {
                     setIsModalOpen(true);
                 }}
                 disabled={isLoadingCategories}
+                onMouseEnter={(e) => {
+                    const button = e.currentTarget as HTMLButtonElement;
+                    button.style.background = '#f8fafc';
+                    button.style.boxShadow = '0 8px 20px rgba(30, 64, 175, 0.2)';
+                    button.style.borderColor = '#1e3a8a';
+                }}
+                onMouseLeave={(e) => {
+                    const button = e.currentTarget as HTMLButtonElement;
+                    button.style.background = '#ffffff';
+                    button.style.boxShadow = '0 2px 8px rgba(30, 64, 175, 0.12)';
+                    button.style.borderColor = '#1e40af';
+                }}
             >
                 {isLoadingCategories ? 'Đang tải...' : 'Tạo Câu Hỏi Mới'}
             </Button>

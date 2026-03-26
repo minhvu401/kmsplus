@@ -7,6 +7,16 @@ export async function getQuestions(page: number = 1, limit: number = 10) {
   return service.getQuestionsAction(page, limit)
 }
 
+export async function getQuestionsByCategory(categoryId: number) {
+  // await requireAuth()
+  return service.getQuestionsByCategoryAction(categoryId)
+}
+
+export async function getAllQuestions() {
+  // await requireAuth()
+  return service.getAllQuestionsAction()
+}
+
 export async function getCategories() {
   // await requireAuth()
   return service.getCategoriesAction()

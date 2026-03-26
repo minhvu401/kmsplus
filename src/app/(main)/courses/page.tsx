@@ -83,7 +83,7 @@ export default async function CoursesPage({
         page,
         sort: sortToUse,
         limit: DEFAULT_LIMIT,
-        category: category,
+        categories: category !== "all" ? [category] : undefined,
         rating: rating,
         userId, // ✅ Truyền userId vào đây
       }),

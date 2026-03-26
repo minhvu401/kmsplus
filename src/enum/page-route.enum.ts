@@ -5,7 +5,6 @@ export enum PageRoute {
   COURSES = "/courses",
   ARTICLES = "/articles",
   QUESTIONS = "/questions",
-  QUIZZES = "/quizzes",
   QUESTION_BANK = "/question-bank",
   USER_MANAGEMENT = "/user-management",
   ROLE_PERMISSIONS = "/role-permissions",
@@ -15,4 +14,5 @@ export enum PageRoute {
   CATEGORY_MANAGEMENT = "/categories/management",
   COURSE_MANAGEMENT = "/courses/management",
   QUESTION_BANK_MANAGEMENT = "/question-bank",
+  ARTICLE_MANAGEMENT = "/articles/management"
 }

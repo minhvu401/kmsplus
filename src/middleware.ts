@@ -16,7 +16,7 @@ const protectedRoutes = [
   PageRoute.COURSES,
   PageRoute.ARTICLES,
   PageRoute.QUESTIONS,
-  PageRoute.QUIZZES,
+  PageRoute.QUIZ_MANAGEMENT,
   PageRoute.QUESTION_BANK,
   PageRoute.USER_MANAGEMENT,
 ]
@@ -24,9 +24,9 @@ const protectedRoutes = [
 export async function middleware(request: NextRequest) {
   const { pathname, search } = request.nextUrl
   const token = request.cookies.get("token")?.value
-  
+
   // Check for NextAuth session - NextAuth v5 can use different cookie names
-  const nextAuthToken = 
+  const nextAuthToken =
     request.cookies.get("next-auth.session-token")?.value ||
     request.cookies.get("authjs.session-token")?.value ||
     request.cookies.get("__Secure-next-auth.session-token")?.value ||
@@ -57,7 +57,9 @@ export async function middleware(request: NextRequest) {
       }
       // If NextAuth token exists, just allow (NextAuth will validate it)
       console.log("Redirecting to dashboard (already logged in)")
-      return NextResponse.redirect(new URL(PageRoute.DASHBOARD_METRICS, request.url))
+      return NextResponse.redirect(
+        new URL(PageRoute.DASHBOARD_METRICS, request.url)
+      )
     } catch (error) {
       // Token invalid → xóa cookie
       console.log("Token invalid, deleting cookie")
