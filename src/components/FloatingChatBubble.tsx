@@ -200,14 +200,14 @@ export default function FloatingChatBubble() {
         <div
           className="fixed bottom-0 right-6 w-96 bg-white rounded-t-2xl shadow-2xl flex flex-col z-50 animate-fade-in border border-gray-200"
           style={{
-            height: "calc(100vh - 24px)",
-            maxHeight: "calc(100vh - 24px)",
+            height: "calc(78vh - 23px)",
+            maxHeight: "calc(78vh - 23px)",
           }}
         >
           {/* Header with buttons */}
           <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-6 py-4 rounded-t-2xl flex items-center justify-between">
             <div>
-              <h3 className="font-bold text-lg">Chat AI Assistant</h3>
+              <h3 className="font-bold text-md">Chat AI Assistant</h3>
               <p className="text-xs text-blue-100">Hỏi đáp về KMS Plus</p>
             </div>
             <div className="flex items-center gap-2">
