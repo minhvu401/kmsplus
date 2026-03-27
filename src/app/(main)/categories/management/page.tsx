@@ -5,7 +5,9 @@ import { Table, Input, Button, Space, Typography, Card, Modal, Form, message, Se
 import { SearchOutlined, PlusOutlined, EditOutlined, DeleteOutlined, RollbackOutlined, InboxOutlined, ClearOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { getAllCategories, createCategory, updateCategory, deleteCategory, restoreCategory, getCategoryById } from '@/action/categories/categoriesAction';
+import { getAllDepartments } from '@/action/department/departmentActions';
 import type { Category } from '@/service/categories.service';
+import type { Department } from '@/service/department.service';
 
 const { Text, Title } = Typography;
 
@@ -33,6 +35,7 @@ export default function CategoriesManagement() {
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
   
   const [categories, setCategories] = useState<Category[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
   const [filteredCategories, setFilteredCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
@@ -50,6 +53,10 @@ export default function CategoriesManagement() {
   useEffect(() => {
     loadCategories();
   }, [debouncedSearchQuery, filterStatus, sortOrder]);
+
+  useEffect(() => {
+    loadDepartments();
+  }, []);
 
   useEffect(() => {
     const active = debouncedSearchQuery !== '' || filterStatus !== 'all';
@@ -90,6 +97,17 @@ export default function CategoriesManagement() {
     }
   };
 
+  const loadDepartments = async () => {
+    try {
+      const rows = await getAllDepartments();
+      setDepartments(rows || []);
+    } catch (error) {
+      console.error('Error loading departments:', error);
+      message.error('Failed to load departments');
+      setDepartments([]);
+    }
+  };
+
   const handleClearFilters = () => {
     setSearchQuery('');
     setFilterStatus('all');
@@ -100,8 +118,8 @@ export default function CategoriesManagement() {
     try {
       const formData = new FormData();
       formData.append('name', values.name);
-      if (values.parent_id) {
-        formData.append('parent_id', values.parent_id);
+      if (values.department_id) {
+        formData.append('department_id', values.department_id);
       }
 
       const result = await createCategory(formData);
@@ -135,7 +153,7 @@ export default function CategoriesManagement() {
         }
         editForm.setFieldsValue({
           name: result.data.name,
-          parent_id: result.data.parent_id || undefined,
+          department_id: result.data.department_id || undefined,
         });
       } else {
         message.error('Failed to load category');
@@ -155,8 +173,8 @@ export default function CategoriesManagement() {
       const formData = new FormData();
       formData.append('id', String(editingCategoryId));
       formData.append('name', values.name);
-      if (values.parent_id) {
-        formData.append('parent_id', values.parent_id);
+      if (values.department_id) {
+        formData.append('department_id', values.department_id);
       }
 
       const result = await updateCategory(formData);
@@ -207,12 +225,6 @@ export default function CategoriesManagement() {
 
   const columns: ColumnsType<Category> = [
     {
-      title: 'ID',
-      dataIndex: 'id',
-      key: 'id',
-      width: 80,
-    },
-    {
       title: 'Name',
       dataIndex: 'name',
       key: 'name',
@@ -221,13 +233,14 @@ export default function CategoriesManagement() {
       ),
     },
     {
-      title: 'Parent Category',
-      dataIndex: 'parent_id',
-      key: 'parent_id',
-      render: (parent_id: string | null) => {
-        if (!parent_id) return <Text type="secondary">-</Text>;
-        const parent = categories.find(c => c.id === parent_id);
-        return parent ? parent.name : <Text type="secondary">Unknown</Text>;
+      title: 'Department',
+      dataIndex: 'department_name',
+      key: 'department_name',
+      render: (_departmentName: string | null, record: Category) => {
+        if (record.department_name) return record.department_name;
+        if (!record.department_id) return <Text type="secondary">-</Text>;
+        const department = departments.find((d) => d.id === record.department_id);
+        return department ? department.name : <Text type="secondary">Unknown</Text>;
       },
     },
     {
@@ -276,14 +289,11 @@ export default function CategoriesManagement() {
     },
   ];
 
-  // Get available parent categories (excluding deleted and the current editing category)
-  const getParentOptions = () => {
-    return categories
-      .filter(cat => !cat.is_deleted && cat.id !== String(editingCategoryId))
-      .map(cat => ({
-        label: cat.name,
-        value: Number(cat.id),
-      }));
+  const getDepartmentOptions = () => {
+    return departments.map((department) => ({
+      label: department.name,
+      value: department.id,
+    }));
   };
 
   return (
@@ -478,10 +488,12 @@ export default function CategoriesManagement() {
                             <Text strong>{category.id}</Text>
                           </div>
                           <div className="flex justify-between">
-                            <Text type="secondary">Parent:</Text>
+                            <Text type="secondary">Department:</Text>
                             <Text strong>
-                              {category.parent_id 
-                                ? categories.find(c => c.id === category.parent_id)?.name || 'Unknown'
+                              {category.department_name
+                                ? category.department_name
+                                : category.department_id
+                                ? departments.find((d) => d.id === category.department_id)?.name || 'Unknown'
                                 : '-'}
                             </Text>
                           </div>
@@ -558,15 +570,15 @@ export default function CategoriesManagement() {
           </Form.Item>
 
           <Form.Item
-            label="Parent Category (Optional)"
-            name="parent_id"
+            label="Department (Optional)"
+            name="department_id"
           >
             <Select
-              placeholder="Select parent category"
+              placeholder="Select department"
               allowClear
               showSearch
               optionFilterProp="label"
-              options={getParentOptions()}
+              options={getDepartmentOptions()}
             />
           </Form.Item>
         </Form>
@@ -601,15 +613,15 @@ export default function CategoriesManagement() {
           </Form.Item>
 
           <Form.Item
-            label="Parent Category (Optional)"
-            name="parent_id"
+            label="Department (Optional)"
+            name="department_id"
           >
             <Select
-              placeholder="Select parent category"
+              placeholder="Select department"
               allowClear
               showSearch
               optionFilterProp="label"
-              options={getParentOptions()}
+              options={getDepartmentOptions()}
             />
           </Form.Item>
         </Form>

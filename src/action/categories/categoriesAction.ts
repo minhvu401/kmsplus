@@ -42,8 +42,8 @@ export async function createCategory(formData: FormData) {
     await requireAuth()
     
     const name = formData.get('name') as string
-    const parentIdRaw = formData.get('parent_id') as string | null
-    const parent_id = parentIdRaw ? parseInt(parentIdRaw, 10) : null
+    const departmentIdRaw = formData.get('department_id') as string | null
+    const department_id = departmentIdRaw ? parseInt(departmentIdRaw, 10) : null
 
     if (!name) {
       return { 
@@ -54,7 +54,7 @@ export async function createCategory(formData: FormData) {
 
     const result = await createCategoryAction({
       name,
-      parent_id,
+      department_id,
     })
 
     return result
@@ -76,8 +76,8 @@ export async function updateCategory(formData: FormData) {
     
     const id = formData.get('id') as string
     const name = formData.get('name') as string
-    const parentIdRaw = formData.get('parent_id') as string | null
-    const parent_id = parentIdRaw ? parseInt(parentIdRaw, 10) : null
+    const departmentIdRaw = formData.get('department_id') as string | null
+    const department_id = departmentIdRaw ? parseInt(departmentIdRaw, 10) : null
 
     if (!id || !name) {
       return { 
@@ -89,7 +89,7 @@ export async function updateCategory(formData: FormData) {
     const result = await updateCategoryAction({
       id: parseInt(id),
       name,
-      parent_id,
+      department_id,
     })
 
     return result
