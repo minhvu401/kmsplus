@@ -4,7 +4,8 @@ import { sql } from "@/lib/database"
 
 export type Category = {
   id: string
-  parent_id: string | null
+  department_id: number | null
+  department_name?: string | null
   name: string
   is_deleted: boolean
   created_at: Date
@@ -12,13 +13,13 @@ export type Category = {
 
 export type CreateCategoryInput = {
   name: string
-  parent_id?: number | null
+  department_id?: number | null
 }
 
 export type UpdateCategoryInput = {
   id: number
   name: string
-  parent_id?: number | null
+  department_id?: number | null
 }
 
 /**
@@ -28,13 +29,15 @@ export async function getAllCategoriesAction(): Promise<Category[]> {
   try {
     const categories = await sql`
       SELECT 
-        id,
-        parent_id,
-        name,
-        is_deleted,
-        created_at
-      FROM categories
-      ORDER BY is_deleted ASC, parent_id NULLS FIRST, name ASC
+        c.id,
+        c.department_id,
+        c.name,
+        c.is_deleted,
+        c.created_at,
+        d.name AS department_name
+      FROM categories c
+      LEFT JOIN department d ON c.department_id = d.id
+      ORDER BY c.is_deleted ASC, c.department_id NULLS FIRST, c.name ASC
     `
     return categories as Category[]
   } catch (error: any) {
@@ -50,13 +53,15 @@ export async function getCategoryByIdAction(categoryId: number): Promise<{ succe
   try {
     const categories = await sql`
       SELECT 
-        id,
-        parent_id,
-        name,
-        is_deleted,
-        created_at
-      FROM categories
-      WHERE id = ${categoryId}
+        c.id,
+        c.department_id,
+        c.name,
+        c.is_deleted,
+        c.created_at,
+        d.name AS department_name
+      FROM categories c
+      LEFT JOIN department d ON c.department_id = d.id
+      WHERE c.id = ${categoryId}
       LIMIT 1
     `
 
@@ -79,20 +84,20 @@ export async function getCategoryByIdAction(categoryId: number): Promise<{ succe
  */
 export async function createCategoryAction(input: CreateCategoryInput): Promise<{ success: boolean; message: string; categoryId?: string }> {
   try {
-    const { name, parent_id } = input
+    const { name, department_id } = input
 
     // Validate name
     if (!name || name.trim().length === 0) {
       return { success: false, message: 'Category name is required' }
     }
 
-    // Check if parent_id exists (if provided)
-    if (parent_id) {
-      const parentCheck = await sql`
-        SELECT id FROM categories WHERE id = ${parent_id} AND is_deleted = false
+    // Check if department_id exists (if provided)
+    if (department_id) {
+      const departmentCheck = await sql`
+        SELECT id FROM department WHERE id = ${department_id} AND is_deleted = false
       `
-      if (parentCheck.length === 0) {
-        return { success: false, message: 'Parent category not found' }
+      if (departmentCheck.length === 0) {
+        return { success: false, message: 'Department not found' }
       }
     }
 
@@ -105,8 +110,8 @@ export async function createCategoryAction(input: CreateCategoryInput): Promise<
     }
 
     const result = await sql`
-      INSERT INTO categories (name, parent_id, created_at)
-      VALUES (${name.trim()}, ${parent_id || null}, NOW())
+      INSERT INTO categories (name, department_id, created_at)
+      VALUES (${name.trim()}, ${department_id || null}, NOW())
       RETURNING id
     `
 
@@ -130,25 +135,20 @@ export async function createCategoryAction(input: CreateCategoryInput): Promise<
  */
 export async function updateCategoryAction(input: UpdateCategoryInput): Promise<{ success: boolean; message: string }> {
   try {
-    const { id, name, parent_id } = input
+    const { id, name, department_id } = input
 
     // Validate name
     if (!name || name.trim().length === 0) {
       return { success: false, message: 'Category name is required' }
     }
 
-    // Prevent setting parent_id to itself
-    if (parent_id && parent_id === id) {
-      return { success: false, message: 'Category cannot be its own parent' }
-    }
-
-    // Check if parent_id exists (if provided)
-    if (parent_id) {
-      const parentCheck = await sql`
-        SELECT id FROM categories WHERE id = ${parent_id} AND is_deleted = false
+    // Check if department_id exists (if provided)
+    if (department_id) {
+      const departmentCheck = await sql`
+        SELECT id FROM department WHERE id = ${department_id} AND is_deleted = false
       `
-      if (parentCheck.length === 0) {
-        return { success: false, message: 'Parent category not found' }
+      if (departmentCheck.length === 0) {
+        return { success: false, message: 'Department not found' }
       }
     }
 
@@ -167,7 +167,7 @@ export async function updateCategoryAction(input: UpdateCategoryInput): Promise<
       UPDATE categories
       SET 
         name = ${name.trim()},
-        parent_id = ${parent_id || null}
+        department_id = ${department_id || null}
       WHERE id = ${id} AND is_deleted = false
       RETURNING id
     `
@@ -188,14 +188,6 @@ export async function updateCategoryAction(input: UpdateCategoryInput): Promise<
  */
 export async function deleteCategoryAction(categoryId: number): Promise<{ success: boolean; message: string }> {
   try {
-    // Check if category has children
-    const children = await sql`
-      SELECT id FROM categories WHERE parent_id = ${categoryId} AND is_deleted = false
-    `
-    if (children.length > 0) {
-      return { success: false, message: 'Cannot delete category with subcategories. Delete subcategories first.' }
-    }
-
     const result = await sql`
       UPDATE categories
       SET is_deleted = true
