@@ -21,7 +21,7 @@ import {
   Row,
   Col,
   Spin,
-  Rate,
+  Avatar,
   Segmented,
 } from "antd"
 import {
@@ -34,6 +34,7 @@ import {
   CheckOutlined,
   CloseOutlined,
   ClearOutlined,
+  UserOutlined,
 } from "@ant-design/icons"
 import type { Course } from "@/service/course.service"
 import type { Category } from "@/service/question.service"
@@ -58,17 +59,6 @@ interface ManageCoursesClientProps {
   categories: Category[]
   availableLessons: any[]
   availableQuizzes: any[]
-}
-
-function normalizeRating(value: number | string | null | undefined) {
-  const parsed = typeof value === "number" ? value : Number(value)
-  const safeValue = Number.isFinite(parsed) ? parsed : 0
-  const clamped = Math.max(0, Math.min(5, safeValue))
-  return Math.round(clamped * 2) / 2
-}
-
-function formatRating(value: number) {
-  return Number(value).toFixed(1)
 }
 
 export default function ManageCoursesClient({
@@ -412,6 +402,44 @@ export default function ManageCoursesClient({
       ),
     },
     {
+      title: "Creator",
+      key: "creator",
+      render: (_: any, record: Course) => {
+        const creatorName =
+          (record as any).creator_name ||
+          (record as any).creator_full_name ||
+          (record as any).full_name ||
+          "Unknown user"
+        const creatorAvatar =
+          (record as any).creator_avatar ||
+          (record as any).creator_avatar_url ||
+          (record as any).avatar_url ||
+          (record as any).user_avatar ||
+          null
+
+        const getInitials = (name: string) =>
+          name
+            .split(" ")
+            .filter(Boolean)
+            .slice(0, 2)
+            .map((part) => part[0]?.toUpperCase())
+            .join("") || "U"
+
+        return (
+          <div className="flex items-center gap-3">
+            <Avatar
+              src={creatorAvatar || undefined}
+              icon={!creatorAvatar ? <UserOutlined /> : undefined}
+              size={32}
+            >
+              {!creatorAvatar ? getInitials(creatorName) : null}
+            </Avatar>
+            <Text className="text-gray-700">{creatorName}</Text>
+          </div>
+        )
+      },
+    },
+    {
       title: "Status",
       dataIndex: "status",
       key: "status",
@@ -430,43 +458,6 @@ export default function ManageCoursesClient({
           </Tag>
         )
       },
-    },
-    {
-      title: "Avg. Rating",
-      dataIndex: "average_rating",
-      key: "average_rating",
-      render: (averageRating: number | string | null) => {
-        const normalizedRating = normalizeRating(averageRating)
-
-        if (normalizedRating === 0) {
-          return <Text className="!font-normal text-gray-500">N/A</Text>
-        }
-
-        return (
-          <div className="flex items-center gap-2 whitespace-nowrap text-gray-600">
-            <Rate allowHalf disabled value={1} count={1} />
-            <Text className="!font-normal text-gray-600">
-              {formatRating(normalizedRating)}
-            </Text>
-          </div>
-        )
-      },
-    },
-    {
-      title: "Enrollments",
-      dataIndex: "enrollment_count",
-      key: "enrollment_count",
-      render: (count: number) => (
-        <span className="text-gray-600">{count.toLocaleString()}</span>
-      ),
-    },
-    {
-      title: "Duration",
-      dataIndex: "duration_hours",
-      key: "duration_hours",
-      render: (hours: number | null) => (
-        <span className="text-gray-600">{hours ? `${hours}h` : "--"}</span>
-      ),
     },
     {
       title: "Category",
@@ -527,93 +518,131 @@ export default function ManageCoursesClient({
       render: (_: any, record: Course) => (
         <div className="grid grid-cols-2 gap-1 w-fit">
           {/* Nút Edit mới dùng để mở Modal */}
-          <Button
-            type="text"
-            icon={<EditOutlined />}
-            size="small"
-            // className="border-blue-600 text-blue-600 hover:!border-blue-700 hover:!text-blue-700 hover:bg-blue-50"
-            className="text-blue-600 hover:!text-blue-700 hover:bg-blue-50"
-            onClick={(e) => {
-              e.stopPropagation() // Chặn sự kiện click vào hàng
-              handleOpenUpdate(record) // Gọi hàm mở Modal với dữ liệu hàng hiện tại
-            }}
-          />
+          <Tooltip title="Edit course">
+            <span>
+              <Button
+                type="text"
+                icon={<EditOutlined />}
+                size="small"
+                // className="border-blue-600 text-blue-600 hover:!border-blue-700 hover:!text-blue-700 hover:bg-blue-50"
+                className="text-blue-600 hover:!text-blue-700 hover:bg-blue-50"
+                onClick={(e) => {
+                  e.stopPropagation() // Chặn sự kiện click vào hàng
+                  handleOpenUpdate(record) // Gọi hàm mở Modal với dữ liệu hàng hiện tại
+                }}
+              />
+            </span>
+          </Tooltip>
 
           {/* Nút Delete */}
-          <Button
-            type="text"
-            danger={record.status !== "published"}
-            icon={<DeleteOutlined />}
-            size="small"
-            disabled={
-              record.status === "published" ||
-              record.status === "pending_approval"
+          <Tooltip
+            title={
+              record.status === "published"
+                ? "Course is published"
+                : record.status === "pending_approval"
+                  ? "Course is pending approval"
+                  : "Delete course"
             }
-            // ✅ Thêm nền đỏ nhạt khi hover
-            className={
-              record.status === "published" ||
-              record.status === "pending_approval"
-                ? "!text-gray-400 cursor-not-allowed"
-                : "hover:bg-red-50"
-            }
-            onClick={(e) => {
-              // 🛑 Ngăn chặn hành vi mặc định và lan truyền
-              e.stopPropagation()
-              e.preventDefault()
+          >
+            <span>
+              <Button
+                type="text"
+                danger={record.status !== "published"}
+                icon={<DeleteOutlined />}
+                size="small"
+                disabled={
+                  record.status === "published" ||
+                  record.status === "pending_approval"
+                }
+                // ✅ Thêm nền đỏ nhạt khi hover
+                className={
+                  record.status === "published" ||
+                  record.status === "pending_approval"
+                    ? "!text-gray-400 cursor-not-allowed"
+                    : "hover:bg-red-50"
+                }
+                onClick={(e) => {
+                  // 🛑 Ngăn chặn hành vi mặc định và lan truyền
+                  e.stopPropagation()
+                  e.preventDefault()
 
-              // 🟢 Kiểm tra Console trình duyệt (F12) xem dòng này có hiện không
-              console.log("🔴 Client: Đã bấm nút Delete ID:", record.id)
+                  // 🟢 Kiểm tra Console trình duyệt (F12) xem dòng này có hiện không
+                  console.log("🔴 Client: Đã bấm nút Delete ID:", record.id)
 
-              handleDelete(record)
-            }}
-          />
+                  handleDelete(record)
+                }}
+              />
+            </span>
+          </Tooltip>
 
-          <Button
-            type="text"
-            icon={<ReadOutlined />}
-            size="small"
-            disabled={record.status !== "published"}
-            className={
+          <Tooltip
+            title={
               record.status !== "published"
-                ? "!text-gray-400 cursor-not-allowed"
-                : "text-green-600 hover:!text-green-700 hover:bg-green-50"
+                ? "Course is not published"
+                : "View enrollments"
             }
-            onClick={(e) => {
-              e.stopPropagation()
-              e.preventDefault()
-              if (record.status !== "published") return
-              router.push(`/courses/management/${record.id}/enrollments`)
-            }}
-          />
+          >
+            <span>
+              <Button
+                type="text"
+                icon={<ReadOutlined />}
+                size="small"
+                disabled={record.status !== "published"}
+                className={
+                  record.status !== "published"
+                    ? "!text-gray-400 cursor-not-allowed"
+                    : "text-green-600 hover:!text-green-700 hover:bg-green-50"
+                }
+                onClick={(e) => {
+                  e.stopPropagation()
+                  e.preventDefault()
+                  if (record.status !== "published") return
+                  router.push(`/courses/management/${record.id}/enrollments`)
+                }}
+              />
+            </span>
+          </Tooltip>
 
-          <Button
-            type="text"
-            icon={<StarOutlined />}
-            size="small"
-            disabled={record.status !== "published"}
-            style={
-              record.status === "published" ? { color: "#ca8a04" } : undefined
-            }
-            className={
+          <Tooltip
+            title={
               record.status !== "published"
-                ? "!text-gray-400 cursor-not-allowed"
-                : "hover:bg-yellow-50"
+                ? "Course is not published"
+                : "View feedback"
             }
-            onMouseEnter={(e) => {
-              if (record.status !== "published") return
-              e.currentTarget.style.color = "#b45309"
-            }}
-            onMouseLeave={(e) => {
-              if (record.status !== "published") return
-              e.currentTarget.style.color = "#ca8a04"
-            }}
-            onClick={(e) => {
-              e.stopPropagation()
-              e.preventDefault()
-              if (record.status !== "published") return
-              router.push(`/courses/management/${record.id}/feedback`)
-            }}
-          />
+          >
+            <span>
+              <Button
+                type="text"
+                icon={<StarOutlined />}
+                size="small"
+                disabled={record.status !== "published"}
+                style={
+                  record.status === "published"
+                    ? { color: "#ca8a04" }
+                    : undefined
+                }
+                className={
+                  record.status !== "published"
+                    ? "!text-gray-400 cursor-not-allowed"
+                    : "hover:bg-yellow-50"
+                }
+                onMouseEnter={(e) => {
+                  if (record.status !== "published") return
+                  e.currentTarget.style.color = "#b45309"
+                }}
+                onMouseLeave={(e) => {
+                  if (record.status !== "published") return
+                  e.currentTarget.style.color = "#ca8a04"
+                }}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  e.preventDefault()
+                  if (record.status !== "published") return
+                  router.push(`/courses/management/${record.id}/feedback`)
+                }}
+              />
+            </span>
+          </Tooltip>
         </div>
       ),
     },
@@ -844,20 +873,54 @@ export default function ManageCoursesClient({
                             {course.title}
                           </Link>
                         }
+                        description={
+                          <div className="mt-2 flex items-center gap-2 text-gray-500">
+                            <span className="text-xs">by</span>
+                            <Avatar
+                              size={22}
+                              src={
+                                (course as any).creator_avatar ||
+                                (course as any).creator_avatar_url ||
+                                (course as any).avatar_url ||
+                                (course as any).user_avatar ||
+                                undefined
+                              }
+                              icon={
+                                !(
+                                  (course as any).creator_avatar ||
+                                  (course as any).creator_avatar_url ||
+                                  (course as any).avatar_url ||
+                                  (course as any).user_avatar
+                                ) ? (
+                                  <UserOutlined />
+                                ) : undefined
+                              }
+                            >
+                              {!(course as any).creator_avatar &&
+                              !(course as any).creator_avatar_url &&
+                              !(course as any).avatar_url &&
+                              !(course as any).user_avatar
+                                ? (((course as any).creator_name ||
+                                    (course as any).creator_full_name ||
+                                    (course as any).full_name ||
+                                    "Unknown user") as string)
+                                    .split(" ")
+                                    .filter(Boolean)
+                                    .slice(0, 2)
+                                    .map((part) => part[0]?.toUpperCase())
+                                    .join("") || "U"
+                                : null}
+                            </Avatar>
+                            <Text className="!mb-0 !text-gray-600 text-sm">
+                              {(course as any).creator_name ||
+                                (course as any).creator_full_name ||
+                                (course as any).full_name ||
+                                "Unknown user"}
+                            </Text>
+                          </div>
+                        }
                       />
                       <div className="mt-3 space-y-2 text-sm">
-                        <div className="flex justify-between">
-                          <Text type="secondary">Enrollments:</Text>
-                          <Text strong>{course.enrollment_count}</Text>
-                        </div>
-                        <div className="flex justify-between">
-                          <Text type="secondary">Duration:</Text>
-                          <Text strong>
-                            {course.duration_hours
-                              ? `${course.duration_hours}h`
-                              : "--"}
-                          </Text>
-                        </div>
                         <div className="flex justify-between">
                           <Text type="secondary">Category:</Text>
                           <Text strong>{course.category_name || "--"}</Text>
@@ -871,32 +934,128 @@ export default function ManageCoursesClient({
                           </Text>
                         </div>
                       </div>
-                      <div className="mt-4 flex gap-2">
-                        <Button
-                          type="text"
-                          size="small"
-                          icon={<EditOutlined />}
-                          className="flex-1 text-blue-600 hover:!text-blue-700"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleOpenUpdate(course)
-                          }}
-                        >
-                          Edit
-                        </Button>
-                        <Button
-                          type="text"
-                          danger
-                          size="small"
-                          icon={<DeleteOutlined />}
-                          className="flex-1"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleDelete(course)
-                          }}
-                        >
-                          Delete
-                        </Button>
+                      <div className="mt-4 space-y-2">
+                        <div className="flex gap-2">
+                          <Button
+                            type="text"
+                            size="small"
+                            icon={<EditOutlined />}
+                            className="flex-1 text-blue-600 hover:!text-blue-700"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleOpenUpdate(course)
+                            }}
+                          >
+                            Edit
+                          </Button>
+                          <Tooltip
+                            title={
+                              course.status === "published"
+                                ? "Course is published"
+                                : course.status === "pending_approval"
+                                  ? "Course is pending approval"
+                                  : ""
+                            }
+                          >
+                            <span className="flex-1">
+                              <Button
+                                type="text"
+                                danger={course.status !== "published"}
+                                size="small"
+                                icon={<DeleteOutlined />}
+                                disabled={
+                                  course.status === "published" ||
+                                  course.status === "pending_approval"
+                                }
+                                className={
+                                  course.status === "published" ||
+                                  course.status === "pending_approval"
+                                    ? "w-full !text-gray-400 cursor-not-allowed"
+                                    : "w-full hover:bg-red-50"
+                                }
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleDelete(course)
+                                }}
+                              >
+                                Delete
+                              </Button>
+                            </span>
+                          </Tooltip>
+                        </div>
+                        <div className="flex gap-2">
+                          <Tooltip
+                            title={
+                              course.status !== "published"
+                                ? "Course is not published"
+                                : ""
+                            }
+                          >
+                            <span className="w-full">
+                              <Button
+                                type="text"
+                                size="small"
+                                icon={<ReadOutlined />}
+                                disabled={course.status !== "published"}
+                                className={
+                                  course.status !== "published"
+                                    ? "w-full !text-gray-400 cursor-not-allowed"
+                                    : "w-full text-green-600 hover:!text-green-700 hover:bg-green-50"
+                                }
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  if (course.status !== "published") return
+                                  router.push(`/courses/management/${course.id}/enrollments`)
+                                }}
+                              >
+                                View Enrollments
+                              </Button>
+                            </span>
+                          </Tooltip>
+                        </div>
+                        <div className="flex gap-2">
+                          <Tooltip
+                            title={
+                              course.status !== "published"
+                                ? "Course is not published"
+                                : ""
+                            }
+                          >
+                            <span className="w-full">
+                              <Button
+                                type="text"
+                                size="small"
+                                icon={<StarOutlined />}
+                                disabled={course.status !== "published"}
+                                className={
+                                  course.status !== "published"
+                                    ? "w-full !text-gray-400 cursor-not-allowed"
+                                    : "w-full hover:bg-yellow-50"
+                                }
+                                style={
+                                  course.status === "published"
+                                    ? { color: "#ca8a04" }
+                                    : undefined
+                                }
+                                onMouseEnter={(e) => {
+                                  if (course.status !== "published") return
+                                  e.currentTarget.style.color = "#b45309"
+                                }}
+                                onMouseLeave={(e) => {
+                                  if (course.status !== "published") return
+                                  e.currentTarget.style.color = "#ca8a04"
+                                }}
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  if (course.status !== "published") return
+                                  router.push(`/courses/management/${course.id}/feedback`)
+                                }}
+                              >
+                                View Feedback
+                              </Button>
+                            </span>
+                          </Tooltip>
+                        </div>
                       </div>
                     </Card>
                   </Col>
