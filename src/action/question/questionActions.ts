@@ -104,6 +104,54 @@ export async function updateQuestion(_prevState: State,
   return { message: null, errors: {} };
 }
 
+export async function updateQuestionForManagement(
+  formData: FormData
+): Promise<{
+  success: boolean
+  message: string
+  errors?: Record<string, string[] | undefined>
+}> {
+  const validated = UpdateQuestionDto.safeParse({
+    title: formData.get("title"),
+    content: formData.get("content"),
+    category_id: formData.get("category_id"),
+    id: formData.get("id"),
+  })
+
+  if (!validated.success) {
+    return {
+      success: false,
+      message: "Invalid or missing fields. Failed to update question.",
+      errors: validated.error.flatten().fieldErrors,
+    }
+  }
+
+  const result = await service.updateQuestionAction(validated.data)
+
+  if (result?.errors && Object.keys(result.errors).length > 0) {
+    return {
+      success: false,
+      message: result.message ?? "Validation failed",
+      errors: result.errors,
+    }
+  }
+
+  if (result?.success) {
+    revalidatePath("/questions")
+    revalidatePath("/questions/management")
+    revalidatePath(`/questions/${validated.data.id}`)
+    return {
+      success: true,
+      message: result.message ?? "Question updated successfully",
+    }
+  }
+
+  return {
+    success: false,
+    message: result?.message ?? "Failed to update question",
+  }
+}
+
 export async function deleteQuestion(id: string) {
   //await requireAuth()
   const result = await service.deleteQuestionAction(id);
@@ -121,6 +169,34 @@ export async function deleteQuestion(id: string) {
   }
 
   return { message: null, errors: {} };
+}
+
+export async function deleteQuestionForManagement(id: string): Promise<{
+  success: boolean
+  message: string
+}> {
+  const result = await service.deleteQuestionAction(id)
+
+  if (result?.errors && Object.keys(result.errors).length > 0) {
+    return {
+      success: false,
+      message: result.message ?? "Validation failed",
+    }
+  }
+
+  if (result?.success) {
+    revalidatePath("/questions")
+    revalidatePath("/questions/management")
+    return {
+      success: true,
+      message: result.message ?? "Question deleted successfully",
+    }
+  }
+
+  return {
+    success: false,
+    message: result?.message ?? "Failed to delete question",
+  }
 }
 
 export async function closeQuestion(id: string) {
@@ -142,6 +218,35 @@ export async function closeQuestion(id: string) {
   return { message: null, errors: {} };
 }
 
+export async function closeQuestionForManagement(id: string): Promise<{
+  success: boolean
+  message: string
+}> {
+  const result = await service.closeQuestionAction(id)
+
+  if (result?.errors && Object.keys(result.errors).length > 0) {
+    return {
+      success: false,
+      message: result.message ?? "Validation failed",
+    }
+  }
+
+  if (result?.success) {
+    revalidatePath("/questions")
+    revalidatePath("/questions/management")
+    revalidatePath(`/questions/${id}`)
+    return {
+      success: true,
+      message: result.message ?? "Question closed successfully",
+    }
+  }
+
+  return {
+    success: false,
+    message: result?.message ?? "Failed to close question",
+  }
+}
+
 export async function openQuestion(id: string) {
   //await requireAuth()
   const result = await service.openQuestionAction(id);
@@ -159,6 +264,35 @@ export async function openQuestion(id: string) {
   }
 
   return { message: null, errors: {} };
+}
+
+export async function openQuestionForManagement(id: string): Promise<{
+  success: boolean
+  message: string
+}> {
+  const result = await service.openQuestionAction(id)
+
+  if (result?.errors && Object.keys(result.errors).length > 0) {
+    return {
+      success: false,
+      message: result.message ?? "Validation failed",
+    }
+  }
+
+  if (result?.success) {
+    revalidatePath("/questions")
+    revalidatePath("/questions/management")
+    revalidatePath(`/questions/${id}`)
+    return {
+      success: true,
+      message: result.message ?? "Question opened successfully",
+    }
+  }
+
+  return {
+    success: false,
+    message: result?.message ?? "Failed to open question",
+  }
 }
 
 export async function getActiveCategories() {

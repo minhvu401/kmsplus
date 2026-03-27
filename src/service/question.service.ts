@@ -267,6 +267,53 @@ export async function getActiveCategoriesAction(): Promise<Category[]> {
 }
 
 const DEFAULT_QUESTIONS_PER_PAGE = 10
+
+const normalizeQuestionSearchQuery = (query: string): string => {
+  return query
+    .replace(/\+/g, " ")
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&nbsp;|&#160;/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+}
+
+const buildQuestionSearchCondition = (query: string) => {
+  const rawQuery = query.trim()
+
+  // Empty query should not filter results.
+  if (!rawQuery) {
+    return sql`TRUE`
+  }
+
+  const normalizedQuery = normalizeQuestionSearchQuery(rawQuery)
+
+  // Query that only contains HTML tags/syntax should not match all rich-text rows.
+  if (!normalizedQuery) {
+    return sql`FALSE`
+  }
+
+  const likePattern = `%${normalizedQuery}%`
+
+  return sql`
+    (
+      users.full_name ILIKE ${likePattern} OR
+      users.email ILIKE ${likePattern} OR
+      questions.title ILIKE ${likePattern} OR
+      regexp_replace(
+        regexp_replace(
+          regexp_replace(COALESCE(questions.content, ''), '<[^>]+>', ' ', 'g'),
+          '&nbsp;|&#160;',
+          ' ',
+          'gi'
+        ),
+        '\\s+',
+        ' ',
+        'g'
+      ) ILIKE ${likePattern}
+    )
+  `
+}
+
 // FETCH QUESTIONS PAGES
 export async function fetchQuestionPagesAction(
   query: string,
@@ -275,11 +322,9 @@ export async function fetchQuestionPagesAction(
   limit: number = DEFAULT_QUESTIONS_PER_PAGE
 ) {
   try {
+    const searchCondition = buildQuestionSearchCondition(query)
     let sqlQuery = sql`
-      WHERE ( users.full_name ILIKE ${"%" + query + "%"} OR
-       users.email ILIKE ${"%" + query + "%"} OR
-       questions.title ILIKE ${"%" + query + "%"} OR
-       questions.content ILIKE ${"%" + query + "%"})
+      WHERE ${searchCondition}
       AND questions.deleted_at IS NULL
     `
 
@@ -332,11 +377,9 @@ export async function fetchFilteredQuestionsAction(
   const offset = (currentPage - 1) * pageSize
 
   try {
+    const searchCondition = buildQuestionSearchCondition(query)
     let sqlQuery = sql`
-      WHERE ( users.full_name ILIKE ${'%' + query + '%'} OR
-       users.email ILIKE ${'%' + query + '%'} OR
-       questions.title ILIKE ${'%' + query + '%'} OR
-       questions.content ILIKE ${'%' + query + '%'})
+      WHERE ${searchCondition}
       AND questions.deleted_at IS NULL
     `;
 

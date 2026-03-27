@@ -6,11 +6,6 @@ import { requirePermission } from "@/lib/requirePermission"
 import { Permission } from "@/enum/permission.enum"
 import Search from "@/components/ui/questions/search"
 import { CreateQuestion } from "@/components/ui/questions/create-button"
-import {
-    FilterCategory,
-    FilterStatus,
-    SortBy,
-} from "@/components/ui/questions/filters"
 import { getActiveCategories } from "@/action/question/questionActions"
 import { Flex } from "antd"
 import PageWrapper from "@/components/ui/questions/page-wrapper"
@@ -75,18 +70,8 @@ export default async function QuestionsManagePage(props: {
                     />
                 </Flex>
 
-                <Flex
-                    align="center"
-                    gap={56}
-                    style={{ marginBottom: 24, width: "100%" }}
-                >
-                    <FilterCategory categories={categories} />
-                    <FilterStatus />
-                    <SortBy />
-                </Flex>
-
                 {/* Table */}
-                <ManageQuestionsTable questions={questions} />
+                <ManageQuestionsTable questions={questions} categories={categories} />
 
                 {/* Page Size Selector */}
                 <Flex className="flex justify-end my-6">
