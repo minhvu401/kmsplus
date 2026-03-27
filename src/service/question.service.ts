@@ -240,28 +240,16 @@ export async function getActiveCategoriesAction(): Promise<Category[]> {
   const result = await sql`
     SELECT 
       c.id AS category_id,
-      c.name AS category_name,
-      p.id AS parent_id,
-      p.name AS parent_name
+      c.name AS category_name
     FROM categories AS c
-    LEFT JOIN categories AS p ON c.parent_id = p.id
     WHERE c.is_deleted = FALSE
     ORDER BY c.id
   `
 
-  const categories: Category[] = result.map((row: any) => {
-    if (row.parent_id) {
-      return {
-        id: row.category_id,
-        name: row.parent_name + " - " + row.category_name,
-      }
-    } else {
-      return {
-        id: row.category_id,
-        name: row.category_name,
-      }
-    }
-  })
+  const categories: Category[] = result.map((row: any) => ({
+    id: row.category_id,
+    name: row.category_name,
+  }))
 
   return categories as Category[]
 }
