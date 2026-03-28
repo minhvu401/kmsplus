@@ -26,6 +26,7 @@ export type Course = {
   creator_id: number
   category_id: number | null // ✅ Added category_id
   category_name?: string | null // ✅ Added category_name from JOIN
+  creator_name?: string | null // ✅ Added creator_name from JOIN
   title: string
   description: string | null
   thumbnail_url: string | null
@@ -83,6 +84,9 @@ type GetAllCoursesParams = {
   sort?: "trending" | "popular" | "newest" | "top-rated"
   categories?: string[] // ✅ Changed to array for multi-select
   rating?: string // ✅ Added rating filter (all, 4plus, 3plus, 2plus)
+  userId?: number // ✅ Added userId for role-based filtering
+  userRole?: string // ✅ Added userRole for permission checking
+  creatorId?: number // ✅ Added creator filter
 }
 
 // --- CATEGORY ACTIONS ---
@@ -112,6 +116,8 @@ export async function getAllCoursesAction({
   sort = "trending",
   categories = [],
   rating = "all",
+  userId,
+  userRole,
 }: GetAllCoursesParams) {
   const offset = (page - 1) * limit
 
@@ -135,26 +141,46 @@ export async function getAllCoursesAction({
       break
   }
 
-  // ✅ Xử lý Filter Category (Multiple Categories)
-  const categoryCondition = 
+  //
+  const categoryCondition =
     categories && categories.length > 0
-      ? sql`AND category_id = ANY(${categories.map(c => parseInt(c, 10))})`
+      ? sql`AND category_id = ANY(${categories.map((c) => parseInt(c, 10))})`
       : sql``
 
-  // ✅ Xử lý Filter Rating
-  // TODO: Add rating filter logic when rating column is available in database
-  // const ratingCondition = rating && rating !== "all" ? sql`AND rating >= ${getRatingValue(rating)}` : sql``
+  //
+  console.log(` [DEBUG] Đang check quyền cho User ID: ${userId}`)
+
+  //
+  // (An toàn tuyệt đối, không sợ JWT bị thiếu Role)
+  const permissionCondition =
+    userId && userId !== 0
+      ? sql`
+    AND (
+      -- Kịch bản 1: Nếu là Admin (Tên role chứa chữ 'admin') -> Bỏ qua lọc creator_id (Thấy tất cả)
+      EXISTS (
+        SELECT 1 FROM user_roles ur
+        JOIN roles r ON ur.role_id = r.id
+        WHERE ur.user_id = ${userId} AND r.name ILIKE '%admin%'
+      )
+      -- Kịch bản 2: Nếu KHÔNG phải Admin -> Ép buộc chỉ thấy khóa do chính mình tạo
+      OR c.creator_id = ${userId}
+    )
+  `
+      : sql``
 
   // Query Courses with Category Join
   const rows = await sql`
     SELECT 
       c.*,
-      cat.name as category_name
+      cat.name as category_name,
+      u.full_name as creator_name -- 👈 LẤY THÊM TÊN TÁC GIẢ TỪ BẢNG USERS
     FROM courses c
     LEFT JOIN categories cat ON c.category_id = cat.id
+    LEFT JOIN users u ON c.creator_id = u.id -- 👈 THÊM DÒNG JOIN NÀY
     WHERE c.deleted_at IS NULL
       AND c.title ILIKE ${"%" + query + "%"}
       ${categoryCondition} 
+      ${permissionCondition}
     ORDER BY ${sql.unsafe(orderBy)}
     LIMIT ${limit}
     OFFSET ${offset}
@@ -168,7 +194,20 @@ export async function getAllCoursesAction({
     WHERE c.deleted_at IS NULL
       AND c.title ILIKE ${"%" + query + "%"}
       ${categoryCondition}
+      ${permissionCondition}
   `
+
+  // ✅ DEBUG: Query để xem tổng số courses trong DB (bỏ qua filter)
+  const allCoursesResult = await sql`
+    SELECT COUNT(*) as total_all_courses
+    FROM courses c
+    WHERE c.deleted_at IS NULL
+  `
+
+  console.log(
+    ` [DEBUG] Total courses in DB: ${allCoursesResult[0].total_all_courses}`
+  )
+  console.log(` [DEBUG] Filtered courses count: ${totalResult[0].count}`)
 
   const totalCount = parseInt(totalResult[0].count as string, 10)
 
@@ -576,11 +615,11 @@ export async function getPublishedCoursesService({
         break
     }
 
-  // ✅ Xử lý Filter Category (Multiple Categories)
-  const categoryCondition = 
-    categories && categories.length > 0
-      ? sql`AND category_id = ANY(${categories.map(c => parseInt(c, 10))})`
-      : sql``
+    // ✅ Xử lý Filter Category (Multiple Categories)
+    const categoryCondition =
+      categories && categories.length > 0
+        ? sql`AND category_id = ANY(${categories.map((c) => parseInt(c, 10))})`
+        : sql``
 
     // ✅ DEBUG 1: In ra toàn bộ khóa học Published (Bỏ qua Visibility)
     const rawCourses = await sql`
