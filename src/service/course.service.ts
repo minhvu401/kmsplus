@@ -24,6 +24,8 @@ const sqlTransaction = postgres(connectionString, {
 export type Course = {
   id: number
   creator_id: number
+  creator_name?: string | null
+  creator_avatar_url?: string | null
   category_id: number | null // ✅ Added category_id
   category_name?: string | null // ✅ Added category_name from JOIN
   creator_name?: string | null // ✅ Added creator_name from JOIN
@@ -173,10 +175,11 @@ export async function getAllCoursesAction({
     SELECT 
       c.*,
       cat.name as category_name,
-      u.full_name as creator_name -- 👈 LẤY THÊM TÊN TÁC GIẢ TỪ BẢNG USERS
+      u.full_name as creator_name,
+      u.avatar_url as creator_avatar_url
     FROM courses c
     LEFT JOIN categories cat ON c.category_id = cat.id
-    LEFT JOIN users u ON c.creator_id = u.id -- 👈 THÊM DÒNG JOIN NÀY
+    LEFT JOIN users u ON c.creator_id = u.id
     WHERE c.deleted_at IS NULL
       AND c.title ILIKE ${"%" + query + "%"}
       ${categoryCondition} 

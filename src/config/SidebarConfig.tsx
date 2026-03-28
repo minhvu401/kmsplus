@@ -264,6 +264,15 @@ const createTrainingManagerSidebarItems = (
         marginBottom: "8px",
       },
     } as MenuItem,
+     // Q&A Management
+    {
+      key: PageRoute.QA_MANAGEMENT,
+      icon: <MessageOutlined />,
+      label: "Q&A Management",
+      title: "Q&A Management - Manage Questions & Answers",
+      route: PageRoute.QA_MANAGEMENT,
+      onClick: () => navigate(PageRoute.QA_MANAGEMENT),
+    },
     // Article Management
     {
       key: PageRoute.ARTICLE_MANAGEMENT,
@@ -414,6 +423,15 @@ const createSystemAdminSidebarItems = (
         marginBottom: "8px",
       },
     } as MenuItem,
+     // Q&A Management
+    {
+      key: PageRoute.QA_MANAGEMENT,
+      icon: <MessageOutlined />,
+      label: "Q&A Management",
+      title: "Q&A Management - Manage Questions & Answers",
+      route: PageRoute.QA_MANAGEMENT,
+      onClick: () => navigate(PageRoute.QA_MANAGEMENT),
+    },
     // Article Management
     {
       key: PageRoute.ARTICLE_MANAGEMENT,

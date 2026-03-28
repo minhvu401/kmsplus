@@ -1,5 +1,6 @@
 import { Geist, Geist_Mono, Lato } from "next/font/google"
 import { Metadata } from "next"
+import { AntdRegistry } from "@ant-design/nextjs-registry"
 import "./globals.css"
 import { RootProvider } from "./RootProvider"
 
@@ -36,7 +37,9 @@ export default function RootLayout({
         style={{ fontFamily: "var(--font-lato), sans-serif" }}
         suppressHydrationWarning
       >
-        <RootProvider>{children}</RootProvider>
+        <AntdRegistry>
+          <RootProvider>{children}</RootProvider>
+        </AntdRegistry>
       </body>
     </html>
   )
