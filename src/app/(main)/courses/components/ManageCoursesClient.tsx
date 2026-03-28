@@ -411,6 +411,18 @@ export default function ManageCoursesClient({
         </Link>
       ),
     },
+    // 👇 CHÈN CỘT AUTHOR VÀO ĐÂY (VỊ TRÍ THỨ 2) 👇
+    {
+      title: "Author",
+      dataIndex: "creator_name",
+      key: "creator_name",
+      render: (creatorName: string | null) => (
+        <div className="font-medium text-gray-700">
+          {creatorName || "Unknown"}
+        </div>
+      ),
+    },
+    // 👆 KẾT THÚC CỘT AUTHOR 👆
     {
       title: "Status",
       dataIndex: "status",
@@ -785,8 +797,10 @@ export default function ManageCoursesClient({
               dataSource={filteredCourses}
               rowKey="id"
               pagination={{
+                current: page,
                 pageSize: 10,
-                total: filteredCourses.length,
+                total: totalCount,
+                onChange: handlePageChange,
                 showTotal: (total) => `Total ${total} courses`,
               }}
               bordered
