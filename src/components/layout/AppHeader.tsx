@@ -343,7 +343,7 @@ export default function AppHeader({ collapsed }: HeaderProps) {
         <Dropdown
           trigger={["hover"]}
           placement="bottomRight"
-          dropdownRender={() => notificationDropdown}
+          popupRender={() => notificationDropdown}
           open={notificationOpen}
           onOpenChange={setNotificationOpen}
         >
