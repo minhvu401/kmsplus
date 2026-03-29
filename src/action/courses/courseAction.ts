@@ -53,8 +53,17 @@ export async function getCategoriesAPI() {
 // --- FETCH ACTIONS ---
 
 export async function getAllCourses(params: GetAllCoursesParams) {
-  await requireAuth() // Hoặc bỏ nếu trang này public
-  return getAllCoursesAction(params)
+  const user = await requireAuth() // Lấy thông tin user hiện tại
+  console.log(`🔍 [ACTION DEBUG] User from requireAuth:`, user)
+  console.log(
+    `🔍 [ACTION DEBUG] Passing to service: userId=${user?.id ? parseInt(user.id) : undefined}, userRole=${user?.role || undefined}`
+  )
+
+  return getAllCoursesAction({
+    ...params,
+    userId: user?.id ? parseInt(user.id) : undefined,
+    userRole: user?.role || undefined,
+  })
 }
 
 export async function getCourseById(id: number) {
