@@ -28,7 +28,6 @@ export type Course = {
   creator_avatar_url?: string | null
   category_id: number | null // ✅ Added category_id
   category_name?: string | null // ✅ Added category_name from JOIN
-  creator_name?: string | null // ✅ Added creator_name from JOIN
   title: string
   description: string | null
   thumbnail_url: string | null
