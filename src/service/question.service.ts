@@ -64,11 +64,7 @@ export async function getAllQuestionsAction(): Promise<Question[]> {
     FROM questions
     JOIN users ON questions.user_id = users.id
     JOIN categories ON questions.category_id = categories.id
-  `(
-    // Debug log
-    "Fetched questions:",
-    questions
-  )
+  `
 
   return questions as Question[]
 }

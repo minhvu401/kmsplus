@@ -28,11 +28,7 @@ export default async function LearningPage({ params }: LearningPageProps) {
 
   // 3. Kiểm tra quyền truy cập
   if (!course)
-    notFound()(
-      // 👇👇👇 DEBUG QUAN TRỌNG: Xem enrollmentData thực sự là gì
-      "👉 [DEBUG PAGE] Enrollment Data:",
-      enrollmentData
-    )
+    notFound()
 
   // Xử lý nếu enrollmentData là mảng (thường query SQL trả về mảng)
   let enrollment = null

@@ -5,11 +5,8 @@ import { updateArticlesStatusConstraint } from "@/service/articles.service"
 export async function POST(request: Request) {
   try {
     // Require authentication
-    await requireAuth()("🔧 Starting articles constraint migration...")
-    const result = await updateArticlesStatusConstraint()(
-      "✅ Migration result:",
-      result
-    )
+    await requireAuth()
+    const result = await updateArticlesStatusConstraint()
 
     return NextResponse.json(result)
   } catch (error: any) {

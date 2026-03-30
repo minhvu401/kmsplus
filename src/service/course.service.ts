@@ -484,7 +484,6 @@ export async function updateFullCourseAction(id: number, data: any) {
 
       if (isPublished) {
         // 🔥 KỊCH BẢN A: KHÓA HỌC ĐÃ XUẤT BẢN -> CHỈ CẬP NHẬT VISIBILITY & RULES
-        ;("🔒 [Update] Khóa học đã Xuất bản. Chỉ cập nhật Quy tắc & Hiển thị.")
 
         await tx`
           UPDATE courses

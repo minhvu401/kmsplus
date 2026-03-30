@@ -273,10 +273,7 @@ export default function CreateQuizModal({
     }))
 
     try {
-      const response = await getQuestions(1, 1000)(
-        "Questions response:",
-        response
-      )
+      const response = await getQuestions(1, 1000)
 
       if (response && response.data && response.data.length > 0) {
         const questions = response.data.map((q: any) => ({

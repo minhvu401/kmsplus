@@ -81,7 +81,7 @@ export default function EditArticlePage() {
         selection.removeAllRanges()
         selection.addRange(savedSelectionRef.current)
       } catch (e) {
-        ;("Could not restore selection")
+        console.error("Error restoring selection:", e)
       }
     }
   }

@@ -544,8 +544,6 @@ export default function CreateQuizPage() {
   }
 
   const handleSubmit = async () => {
-    ;("[handleSubmit] Starting submission...")
-
     // Only check step 0 and 1, step 2 is final review step
     if (!stepValid[0] || !stepValid[1]) {
       console.warn("[handleSubmit] Step validation failed:", stepValid)
@@ -590,21 +588,10 @@ export default function CreateQuizPage() {
         )
       }
 
-      ;("[handleSubmit] FormData prepared, sending to /api/quizzes/create...",
-        {
-          course_id: payload.course_id,
-          title: payload.title,
-          questionCount: payload.questions?.length || 0,
-        })
-
       const response = await fetch("/api/quizzes/create", {
         method: "POST",
         body: formData,
-      })(
-        "[handleSubmit] Response received:",
-        response.status,
-        response.statusText
-      )
+      })
 
       if (!response.ok) {
         const errorData = await response.json()
@@ -612,10 +599,8 @@ export default function CreateQuizPage() {
         throw new Error(errorData.error || "Failed to create quiz")
       }
 
-      const responseData = await response.json()(
-        "[handleSubmit] Success:",
-        responseData
-      )
+      const responseData = await response.json()
+      console.log("[handleSubmit] Success:", responseData)
       message.success("Tạo bài thi thành công!")
       router.push("/quizzes")
     } catch (error) {
