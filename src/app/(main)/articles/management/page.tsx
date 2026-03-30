@@ -185,6 +185,8 @@ export default function ArticleManagement() {
   const [loadingArticles, setLoadingArticles] = useState(false)
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [articlesError, setArticlesError] = useState<string | null>(null)
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null)
+  const [enforceCreatorOnlyEdit, setEnforceCreatorOnlyEdit] = useState(false)
 
   const [tags, setTags] = useState<Tag[]>([])
   const [loadingTags, setLoadingTags] = useState(false)
@@ -242,6 +244,12 @@ export default function ArticleManagement() {
     })
   }
 
+  const canEditArticle = (article: Article) => {
+    if (!enforceCreatorOnlyEdit) return true
+    if (!currentUserId) return false
+    return Number(article.author_id) === Number(currentUserId)
+  }
+
   const refreshCurrentArticles = async (showLoader: boolean = true) => {
     if (loadingUserInfo) return
 
@@ -271,6 +279,8 @@ export default function ArticleManagement() {
 
       setArticles(res?.data || [])
       setTotalArticles(res?.total || 0)
+      setCurrentUserId(res?.currentUserId ?? null)
+      setEnforceCreatorOnlyEdit(Boolean(res?.isHeadOfDepartmentView))
     } catch (err: any) {
       setArticlesError(err?.message || String(err))
       setArticles([])
@@ -593,12 +603,14 @@ export default function ArticleManagement() {
       fixed: "right",
       render: (_, record) => (
         <Space size="small">
-          <Button
-            type="text"
-            icon={<EditOutlined />}
-            size="small"
-            onClick={() => openEditModal(Number(record.id))}
-          />
+          {canEditArticle(record) && (
+            <Button
+              type="text"
+              icon={<EditOutlined />}
+              size="small"
+              onClick={() => openEditModal(Number(record.id))}
+            />
+          )}
           <Button
             type="text"
             danger={!record.is_deleted}
@@ -1073,14 +1085,16 @@ export default function ArticleManagement() {
                                 ))}
                               </Space>
                               <Space>
-                                <Button
-                                  type="text"
-                                  icon={<EditOutlined />}
-                                  size="small"
-                                  onClick={() =>
-                                    openEditModal(Number(article.id))
-                                  }
-                                />
+                                {canEditArticle(article) && (
+                                  <Button
+                                    type="text"
+                                    icon={<EditOutlined />}
+                                    size="small"
+                                    onClick={() =>
+                                      openEditModal(Number(article.id))
+                                    }
+                                  />
+                                )}
                                 <Button
                                   type="text"
                                   danger={!article.is_deleted}

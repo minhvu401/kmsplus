@@ -23,6 +23,7 @@ import {
   Spin,
   Avatar,
   Segmented,
+  type TableProps,
 } from "antd"
 import {
   SearchOutlined,
@@ -53,6 +54,8 @@ const { Text } = Typography
 interface ManageCoursesClientProps {
   courses: Course[]
   totalCount: number
+  currentUserId?: number | null
+  enforceCreatorOnlyEdit?: boolean
   query: string
   page: number
   selectedCategories: string[]
@@ -64,6 +67,8 @@ interface ManageCoursesClientProps {
 export default function ManageCoursesClient({
   courses,
   totalCount,
+  currentUserId,
+  enforceCreatorOnlyEdit = false,
   query,
   page,
   selectedCategories,
@@ -94,6 +99,12 @@ export default function ManageCoursesClient({
   const [selectedStatus, setSelectedStatus] = useState("All")
   const [viewMode, setViewMode] = useState<"list" | "grid">("list")
   const [filteredCourses, setFilteredCourses] = useState<Course[]>(courses)
+
+  const canEditCourse = (course: Course) => {
+    if (!enforceCreatorOnlyEdit) return true
+    if (!currentUserId) return false
+    return Number(course.creator_id) === Number(currentUserId)
+  }
 
   // Check if any filter is active
   useEffect(() => {
@@ -377,7 +388,7 @@ export default function ManageCoursesClient({
   // --- Columns ---
   const columns = [
     {
-      title: "Title",
+      title: "Course Title", // Đổi tên cột cho rõ nghĩa
       dataIndex: "title",
       key: "title",
       render: (text: string, record: Course) => (
@@ -385,18 +396,29 @@ export default function ManageCoursesClient({
           href={`/courses/${record.id}`}
           className="flex items-center space-x-4 group hover:cursor-pointer"
         >
-          {record.thumbnail_url && (
+          {record.thumbnail_url ? (
             <img
               src={record.thumbnail_url}
               alt={text}
-              className="w-16 h-12 rounded object-cover border border-gray-100"
+              className="w-20 h-14 rounded object-cover border border-gray-200 flex-shrink-0"
               onError={(e) => {
                 e.currentTarget.style.display = "none"
               }}
             />
+          ) : (
+            <div className="w-20 h-14 rounded bg-gray-100 border border-gray-200 flex-shrink-0 flex items-center justify-center">
+              <span className="text-gray-400 text-xs">No image</span>
+            </div>
           )}
-          <div className="font-medium text-gray-900 group-hover:text-blue-600 transition-colors">
-            {text}
+          <div className="flex flex-col justify-center">
+            {/* Title: Chữ in đậm, màu xanh dương */}
+            <div className="font-semibold text-blue-600 group-hover:text-blue-800 transition-colors text-base line-clamp-1">
+              {text}
+            </div>
+            {/* Category: Chữ nhỏ, màu xám ngay bên dưới */}
+            <div className="text-sm text-gray-500 mt-0.5">
+              {record.category_name || "Uncategorized"}
+            </div>
           </div>
         </Link>
       ),
@@ -434,7 +456,7 @@ export default function ManageCoursesClient({
             >
               {!creatorAvatar ? getInitials(creatorName) : null}
             </Avatar>
-            <Text className="text-gray-700">{creatorName}</Text>
+            <Text className="text-gray-700 font-medium">{creatorName}</Text>
           </div>
         )
       },
@@ -451,7 +473,10 @@ export default function ManageCoursesClient({
         if (status === "rejected") color = "error"
 
         return (
-          <Tag color={color} className="uppercase text-xs font-semibold">
+          <Tag
+            color={color}
+            className="uppercase text-xs font-bold px-2 py-0.5 rounded-full"
+          >
             {COURSE_STATUS_LABELS[
               status as keyof typeof COURSE_STATUS_LABELS
             ] || status}
@@ -459,25 +484,21 @@ export default function ManageCoursesClient({
         )
       },
     },
-    {
-      title: "Category",
-      dataIndex: "category_name",
-      key: "category_name",
-      render: (categoryName: string | null) => (
-        <span className="text-gray-600">{categoryName || "--"}</span>
-      ),
-    },
+    // ĐÃ XÓA CỘT CATEGORY Ở ĐÂY
     {
       title: "Created",
       dataIndex: "created_at",
       key: "created_at",
       render: (date: Date) => (
-        <span className="text-gray-500">
-          {new Date(date).toLocaleDateString("vi-VN")}
+        <span className="text-gray-500 font-medium">
+          {new Date(date).toLocaleDateString("vi-VN", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+          })}
         </span>
       ),
     },
-    // 👇 CHÈN CỘT MỚI VÀO ĐÂY
     {
       title: "Confirm Course",
       key: "confirm",
@@ -513,26 +534,26 @@ export default function ManageCoursesClient({
       ),
     },
     {
-      title: "Actions",
+      title: <div className="text-center">Actions</div>,
       key: "actions",
+      align: "center" as const,
       render: (_: any, record: Course) => (
-        <div className="grid grid-cols-2 gap-1 w-fit">
-          {/* Nút Edit mới dùng để mở Modal */}
-          <Tooltip title="Edit course">
-            <span>
+        <div className="flex flex-nowrap items-center justify-center gap-1">
+          {/* Nút Edit */}
+          {canEditCourse(record) ? (
+            <Tooltip title="Edit course">
               <Button
                 type="text"
                 icon={<EditOutlined />}
-                size="small"
-                // className="border-blue-600 text-blue-600 hover:!border-blue-700 hover:!text-blue-700 hover:bg-blue-50"
-                className="text-blue-600 hover:!text-blue-700 hover:bg-blue-50"
+                size="middle"
+                className="text-blue-600 hover:!text-blue-700 hover:bg-blue-50 rounded-full"
                 onClick={(e) => {
-                  e.stopPropagation() // Chặn sự kiện click vào hàng
-                  handleOpenUpdate(record) // Gọi hàm mở Modal với dữ liệu hàng hiện tại
+                  e.stopPropagation()
+                  handleOpenUpdate(record)
                 }}
               />
-            </span>
-          </Tooltip>
+            </Tooltip>
+          ) : null}
 
           {/* Nút Delete */}
           <Tooltip
@@ -544,38 +565,30 @@ export default function ManageCoursesClient({
                   : "Delete course"
             }
           >
-            <span>
-              <Button
-                type="text"
-                danger={record.status !== "published"}
-                icon={<DeleteOutlined />}
-                size="small"
-                disabled={
-                  record.status === "published" ||
-                  record.status === "pending_approval"
-                }
-                // ✅ Thêm nền đỏ nhạt khi hover
-                className={
-                  record.status === "published" ||
-                  record.status === "pending_approval"
-                    ? "!text-gray-400 cursor-not-allowed"
-                    : "hover:bg-red-50"
-                }
-                onClick={(e) => {
-                  // 🛑 Ngăn chặn hành vi mặc định và lan truyền
-                  e.stopPropagation()
-                  e.preventDefault()(
-                    // 🟢 Kiểm tra Console trình duyệt (F12) xem dòng này có hiện không
-                    "🔴 Client: Đã bấm nút Delete ID:",
-                    record.id
-                  )
-
-                  handleDelete(record)
-                }}
-              />
-            </span>
+            <Button
+              type="text"
+              danger={record.status !== "published"}
+              icon={<DeleteOutlined />}
+              size="middle"
+              disabled={
+                record.status === "published" ||
+                record.status === "pending_approval"
+              }
+              className={
+                record.status === "published" ||
+                record.status === "pending_approval"
+                  ? "!text-gray-400 cursor-not-allowed rounded-full"
+                  : "hover:bg-red-50 rounded-full"
+              }
+              onClick={(e) => {
+                e.stopPropagation()
+                e.preventDefault()
+                handleDelete(record)
+              }}
+            />
           </Tooltip>
 
+          {/* Nút Enrollments */}
           <Tooltip
             title={
               record.status !== "published"
@@ -583,27 +596,26 @@ export default function ManageCoursesClient({
                 : "View enrollments"
             }
           >
-            <span>
-              <Button
-                type="text"
-                icon={<ReadOutlined />}
-                size="small"
-                disabled={record.status !== "published"}
-                className={
-                  record.status !== "published"
-                    ? "!text-gray-400 cursor-not-allowed"
-                    : "text-green-600 hover:!text-green-700 hover:bg-green-50"
-                }
-                onClick={(e) => {
-                  e.stopPropagation()
-                  e.preventDefault()
-                  if (record.status !== "published") return
-                  router.push(`/courses/management/${record.id}/enrollments`)
-                }}
-              />
-            </span>
+            <Button
+              type="text"
+              icon={<ReadOutlined />}
+              size="middle"
+              disabled={record.status !== "published"}
+              className={
+                record.status !== "published"
+                  ? "!text-gray-400 cursor-not-allowed rounded-full"
+                  : "text-green-600 hover:!text-green-700 hover:bg-green-50 rounded-full"
+              }
+              onClick={(e) => {
+                e.stopPropagation()
+                e.preventDefault()
+                if (record.status !== "published") return
+                router.push(`/courses/management/${record.id}/enrollments`)
+              }}
+            />
           </Tooltip>
 
+          {/* Nút Feedback */}
           <Tooltip
             title={
               record.status !== "published"
@@ -611,38 +623,34 @@ export default function ManageCoursesClient({
                 : "View feedback"
             }
           >
-            <span>
-              <Button
-                type="text"
-                icon={<StarOutlined />}
-                size="small"
-                disabled={record.status !== "published"}
-                style={
-                  record.status === "published"
-                    ? { color: "#ca8a04" }
-                    : undefined
-                }
-                className={
-                  record.status !== "published"
-                    ? "!text-gray-400 cursor-not-allowed"
-                    : "hover:bg-yellow-50"
-                }
-                onMouseEnter={(e) => {
-                  if (record.status !== "published") return
-                  e.currentTarget.style.color = "#b45309"
-                }}
-                onMouseLeave={(e) => {
-                  if (record.status !== "published") return
-                  e.currentTarget.style.color = "#ca8a04"
-                }}
-                onClick={(e) => {
-                  e.stopPropagation()
-                  e.preventDefault()
-                  if (record.status !== "published") return
-                  router.push(`/courses/management/${record.id}/feedback`)
-                }}
-              />
-            </span>
+            <Button
+              type="text"
+              icon={<StarOutlined />}
+              size="middle"
+              disabled={record.status !== "published"}
+              style={
+                record.status === "published" ? { color: "#ca8a04" } : undefined
+              }
+              className={
+                record.status !== "published"
+                  ? "!text-gray-400 cursor-not-allowed rounded-full"
+                  : "hover:bg-yellow-50 rounded-full"
+              }
+              onMouseEnter={(e) => {
+                if (record.status !== "published") return
+                e.currentTarget.style.color = "#b45309"
+              }}
+              onMouseLeave={(e) => {
+                if (record.status !== "published") return
+                e.currentTarget.style.color = "#ca8a04"
+              }}
+              onClick={(e) => {
+                e.stopPropagation()
+                e.preventDefault()
+                if (record.status !== "published") return
+                router.push(`/courses/management/${record.id}/feedback`)
+              }}
+            />
           </Tooltip>
         </div>
       ),
@@ -815,8 +823,10 @@ export default function ManageCoursesClient({
               dataSource={filteredCourses}
               rowKey="id"
               pagination={{
+                current: page,
                 pageSize: 10,
-                total: filteredCourses.length,
+                total: totalCount,
+                onChange: handlePageChange,
                 showTotal: (total) => `Total ${total} courses`,
               }}
               bordered
@@ -863,7 +873,10 @@ export default function ManageCoursesClient({
                         </Tag>
                       }
                       className="cursor-pointer hover:shadow-lg transition-shadow"
-                      onClick={() => handleOpenUpdate(course)}
+                      onClick={() => {
+                        if (!canEditCourse(course)) return
+                        handleOpenUpdate(course)
+                      }}
                     >
                       <Card.Meta
                         title={
@@ -939,18 +952,20 @@ export default function ManageCoursesClient({
                       </div>
                       <div className="mt-4 space-y-2">
                         <div className="flex gap-2">
-                          <Button
-                            type="text"
-                            size="small"
-                            icon={<EditOutlined />}
-                            className="flex-1 text-blue-600 hover:!text-blue-700"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              handleOpenUpdate(course)
-                            }}
-                          >
-                            Edit
-                          </Button>
+                          {canEditCourse(course) ? (
+                            <Button
+                              type="text"
+                              size="small"
+                              icon={<EditOutlined />}
+                              className="flex-1 text-blue-600 hover:!text-blue-700"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleOpenUpdate(course)
+                              }}
+                            >
+                              Edit
+                            </Button>
+                          ) : null}
                           <Tooltip
                             title={
                               course.status === "published"

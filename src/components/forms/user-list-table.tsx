@@ -27,6 +27,7 @@ interface User {
   full_name: string
   avatar_url?: string
   created_at: Date
+  department_name?: string
   role_name?: string
   role_id?: string
   is_active?: string | boolean
@@ -203,6 +204,14 @@ export default function UserListTable({
       },
       sorter: (a: User, b: User) =>
         (a.role_name || "").localeCompare(b.role_name || ""),
+    },
+    {
+      title: "Department",
+      dataIndex: "department_name",
+      key: "department_name",
+      render: (text: string | undefined) => <span>{text || "-"}</span>,
+      sorter: (a: User, b: User) =>
+        (a.department_name || "").localeCompare(b.department_name || ""),
     },
     {
       title: "Status",
