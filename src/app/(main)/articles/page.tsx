@@ -1,7 +1,13 @@
-'use client'
+"use client"
 
-import React, { useState, useEffect, useRef, type ClipboardEvent, type KeyboardEvent } from 'react'
-import { useRouter } from 'next/navigation'
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  type ClipboardEvent,
+  type KeyboardEvent,
+} from "react"
+import { useRouter } from "next/navigation"
 import {
   Button,
   Modal,
@@ -22,7 +28,7 @@ import {
   Tooltip,
   Tag,
   Avatar,
-} from 'antd'
+} from "antd"
 import {
   EditOutlined,
   UploadOutlined,
@@ -31,25 +37,21 @@ import {
   UserOutlined,
   MessageOutlined,
   ClearOutlined,
-} from '@ant-design/icons'
+} from "@ant-design/icons"
 import {
   getPublishedArticles,
   getAllTags,
   getAllCategories,
   createArticle,
   getTopAuthors,
-} from '@/action/articles/articlesManagementAction'
-import { uploadImageToCloudinary } from '@/lib/cloudinary'
-import QuillEditor from '@/components/QuillEditor'
-import { ArticleCard } from '@/components/ui/articles/article-card'
-import { TopAuthors } from '@/components/ui/articles/top-authors'
-import { ArticleSearch } from '@/components/ui/articles/article-search'
-import { stripHtml } from '@/utils/sanitize'
-import type { Article, TopAuthor } from '@/service/articles.service'
-
-if (typeof window !== 'undefined') {
-  ;(window as any).React = React
-}
+} from "@/action/articles/articlesManagementAction"
+import { uploadImageToCloudinary } from "@/lib/cloudinary"
+import QuillEditor from "@/components/QuillEditor"
+import { ArticleCard } from "@/components/ui/articles/article-card"
+import { TopAuthors } from "@/components/ui/articles/top-authors"
+import { ArticleSearch } from "@/components/ui/articles/article-search"
+import { stripHtml } from "@/utils/sanitize"
+import type { Article, TopAuthor } from "@/service/articles.service"
 
 const { Text, Title, Paragraph } = Typography
 const { useBreakpoint } = Grid
@@ -63,26 +65,34 @@ export default function ViewArticlePage() {
   const [tags, setTags] = useState<string[]>([])
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null)
-  const [searchQuery, setSearchQuery] = useState<string>('')
-  const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest')
+  const [searchQuery, setSearchQuery] = useState<string>("")
+  const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest")
   const [currentPage, setCurrentPage] = useState(1)
   const [totalArticles, setTotalArticles] = useState(0)
   const [loading, setLoading] = useState(true)
   const [loadingAuthors, setLoadingAuthors] = useState(true)
   const [loadingCategories, setLoadingCategories] = useState(false)
-  const [categories, setCategories] = useState<{ id: number; name: string }[]>([])
+  const [categories, setCategories] = useState<{ id: number; name: string }[]>(
+    []
+  )
   const [topAuthors, setTopAuthors] = useState<TopAuthor[]>([])
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [createForm] = Form.useForm()
-  const [titleContent, setTitleContent] = useState('')
-  const [contentValue, setContentValue] = useState('')
-  const [imageUrl, setImageUrl] = useState('')
-  const [thumbnailUrl, setThumbnailUrl] = useState('')
-  const [thumbnailUploadError, setThumbnailUploadError] = useState('')
+  const [titleContent, setTitleContent] = useState("")
+  const [contentValue, setContentValue] = useState("")
+  const [imageUrl, setImageUrl] = useState("")
+  const [thumbnailUrl, setThumbnailUrl] = useState("")
+  const [thumbnailUploadError, setThumbnailUploadError] = useState("")
   const [uploadingThumbnail, setUploadingThumbnail] = useState(false)
-  const [selectedTagsForCreate, setSelectedTagsForCreate] = useState<string[]>([])
-  const [selectedCategoryForCreate, setSelectedCategoryForCreate] = useState<number | undefined>()
-  const [submitStatus, setSubmitStatus] = useState<'draft' | 'published' | 'pending'>('published')
+  const [selectedTagsForCreate, setSelectedTagsForCreate] = useState<string[]>(
+    []
+  )
+  const [selectedCategoryForCreate, setSelectedCategoryForCreate] = useState<
+    number | undefined
+  >()
+  const [submitStatus, setSubmitStatus] = useState<
+    "draft" | "published" | "pending"
+  >("published")
   const [creatingArticle, setCreatingArticle] = useState(false)
   const titleEditorRef = useRef<HTMLDivElement>(null)
   const pageSize = 10
@@ -102,7 +112,7 @@ export default function ViewArticlePage() {
       setArticles(result?.data || [])
       setTotalArticles(result?.total || 0)
     } catch (err: any) {
-      message.error('Lỗi tải bài viết')
+      message.error("Lỗi tải bài viết")
       console.error(err)
       setArticles([])
       setTotalArticles(0)
@@ -114,21 +124,33 @@ export default function ViewArticlePage() {
   const loadFilterData = async () => {
     setLoadingCategories(true)
     try {
-      const [tagsRes, categoriesRes] = await Promise.all([getAllTags(), getAllCategories()])
+      const [tagsRes, categoriesRes] = await Promise.all([
+        getAllTags(),
+        getAllCategories(),
+      ])
       const tagNames = (tagsRes || []).map((t: any) => t.name)
       const normalizedCategories = Array.isArray(categoriesRes)
         ? categoriesRes
-            .filter((c: any) => Number.isInteger(c?.id) && typeof c?.name === 'string' && c.name.trim().length > 0)
+            .filter(
+              (c: any) =>
+                Number.isInteger(c?.id) &&
+                typeof c?.name === "string" &&
+                c.name.trim().length > 0
+            )
             .map((c: any) => ({ id: Number(c.id), name: c.name.trim() }))
-            .filter((c: { id: number; name: string }, index: number, arr: { id: number; name: string }[]) =>
-              arr.findIndex((x) => x.id === c.id) === index
+            .filter(
+              (
+                c: { id: number; name: string },
+                index: number,
+                arr: { id: number; name: string }[]
+              ) => arr.findIndex((x) => x.id === c.id) === index
             )
         : []
 
       setTags(tagNames)
       setCategories(normalizedCategories)
     } catch (err) {
-      console.error('Lỗi tải bộ lọc bài viết', err)
+      console.error("Lỗi tải bộ lọc bài viết", err)
       setTags([])
       setCategories([])
     } finally {
@@ -151,7 +173,7 @@ export default function ViewArticlePage() {
       const authors = await getTopAuthors(5)
       setTopAuthors(authors)
     } catch (err) {
-      console.error('Lỗi tải tác giả nổi bật', err)
+      console.error("Lỗi tải tác giả nổi bật", err)
     } finally {
       setLoadingAuthors(false)
     }
@@ -159,28 +181,28 @@ export default function ViewArticlePage() {
 
   const resetCreateForm = () => {
     createForm.resetFields()
-    setTitleContent('')
-    setContentValue('')
-    setImageUrl('')
-    setThumbnailUrl('')
-    setThumbnailUploadError('')
+    setTitleContent("")
+    setContentValue("")
+    setImageUrl("")
+    setThumbnailUrl("")
+    setThumbnailUploadError("")
     setSelectedTagsForCreate([])
     setSelectedCategoryForCreate(undefined)
-    setSubmitStatus('published')
+    setSubmitStatus("published")
     if (titleEditorRef.current) {
-      titleEditorRef.current.innerText = ''
+      titleEditorRef.current.innerText = ""
     }
   }
 
   const handleThumbnailUpload = async (file: File) => {
     setUploadingThumbnail(true)
     try {
-      const result = await uploadImageToCloudinary(file, 'article-thumbnails')
+      const result = await uploadImageToCloudinary(file, "article-thumbnails")
       setThumbnailUrl(result.secure_url)
-      setThumbnailUploadError('')
-      message.success('Ảnh bìa đã được tải lên')
+      setThumbnailUploadError("")
+      message.success("Ảnh bìa đã được tải lên")
     } catch (error: any) {
-      const rawError = error?.message || 'Lỗi tải ảnh bìa'
+      const rawError = error?.message || "Lỗi tải ảnh bìa"
       if (/file size too large/i.test(rawError)) {
         const tooLargeError = `Ảnh bìa vượt quá ${THUMBNAIL_MAX_SIZE_MB}MB. Vui lòng chọn ảnh nhỏ hơn.`
         setThumbnailUploadError(tooLargeError)
@@ -199,7 +221,7 @@ export default function ViewArticlePage() {
 
     const imgRegex = /<img[^>]+src=["']([^"']+)["'][^>]*>/g
     let match
-    let firstImage = ''
+    let firstImage = ""
 
     while ((match = imgRegex.exec(value)) !== null) {
       if (match[1]) {
@@ -213,33 +235,36 @@ export default function ViewArticlePage() {
 
   const handleCreateSubmit = async (values: any) => {
     if (!titleContent.trim() || !contentValue.trim()) {
-      message.error('Vui lòng nhập tiêu đề và nội dung')
+      message.error("Vui lòng nhập tiêu đề và nội dung")
       return
     }
 
     setCreatingArticle(true)
     try {
       const formData = new FormData()
-      formData.append('title', titleContent)
-      formData.append('content', contentValue)
-      formData.append('status', submitStatus)
-      formData.append('tags', JSON.stringify(selectedTagsForCreate))
-      formData.append('category_id', selectedCategoryForCreate ? String(selectedCategoryForCreate) : '')
-      formData.append('image_url', imageUrl)
-      formData.append('thumbnail_url', thumbnailUrl)
+      formData.append("title", titleContent)
+      formData.append("content", contentValue)
+      formData.append("status", submitStatus)
+      formData.append("tags", JSON.stringify(selectedTagsForCreate))
+      formData.append(
+        "category_id",
+        selectedCategoryForCreate ? String(selectedCategoryForCreate) : ""
+      )
+      formData.append("image_url", imageUrl)
+      formData.append("thumbnail_url", thumbnailUrl)
 
       const result = await createArticle(formData)
       if (result.success) {
-        message.success('Bài viết đã được tạo thành công!')
+        message.success("Bài viết đã được tạo thành công!")
         setIsModalOpen(false)
         resetCreateForm()
         setCurrentPage(1)
         await loadArticles()
       } else {
-        message.error(result.message || 'Lỗi tạo bài viết')
+        message.error(result.message || "Lỗi tạo bài viết")
       }
     } catch (error: any) {
-      message.error(error?.message || 'Có lỗi xảy ra')
+      message.error(error?.message || "Có lỗi xảy ra")
     } finally {
       setCreatingArticle(false)
     }
@@ -260,7 +285,12 @@ export default function ViewArticlePage() {
         <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-blue-900 bg-clip-text text-transparent mb-4">
           Bài Viết
         </h1>
-        <Flex align="center" justify="space-between" gap={24} style={{ marginBottom: 16 }}>
+        <Flex
+          align="center"
+          justify="space-between"
+          gap={24}
+          style={{ marginBottom: 16 }}
+        >
           <p className="text-gray-600 max-w-2xl leading-relaxed">
             Kho tàng tri thức & chia sẻ kinh nghiệm từ cộng đồng KMSPlus.
           </p>
@@ -274,16 +304,18 @@ export default function ViewArticlePage() {
             }}
             className="border-blue-900 text-blue-900 !bg-white hover:!border-blue-900 hover:!text-blue-900"
             style={{
-              borderWidth: '1.5px',
-              height: '36px',
-              fontSize: '12px',
+              borderWidth: "1.5px",
+              height: "36px",
+              fontSize: "12px",
               flexShrink: 0,
             }}
           >
             Tạo Bài Viết Mới
           </Button>
         </Flex>
-        <Divider style={{ borderColor: 'rgba(37, 99, 235, 0.15)', margin: '16px 0' }} />
+        <Divider
+          style={{ borderColor: "rgba(37, 99, 235, 0.15)", margin: "16px 0" }}
+        />
       </div>
 
       {/* Main Content */}
@@ -292,49 +324,55 @@ export default function ViewArticlePage() {
         <div className="lg:col-span-2">
           {/* Search & Filters Widget - White Card (Compact) - Matches Q&A Design */}
           <div className="bg-white rounded-lg shadow-sm p-5 mb-6">
-            <Flex 
-              wrap="wrap"
-              align="center" 
-              gap={8} 
-              style={{ width: '100%' }}
-            >
+            <Flex wrap="wrap" align="center" gap={8} style={{ width: "100%" }}>
               {/* Search - Full width on first row */}
-              <div style={{ flex: '1 1 100%', minWidth: '200px', marginBottom: 12 }}>
-                <ArticleSearch onSearch={(query) => {
-                  setSearchQuery(query)
-                  setCurrentPage(1)
-                }} />
+              <div
+                style={{
+                  flex: "1 1 100%",
+                  minWidth: "200px",
+                  marginBottom: 12,
+                }}
+              >
+                <ArticleSearch
+                  onSearch={(query) => {
+                    setSearchQuery(query)
+                    setCurrentPage(1)
+                  }}
+                />
               </div>
 
               {/* Category Filter - Native Select like Q&A */}
               <select
-                value={selectedCategory || 'any'}
+                value={selectedCategory || "any"}
                 onChange={(e) => {
-                  const val = e.target.value === 'any' ? null : parseInt(e.target.value)
+                  const val =
+                    e.target.value === "any" ? null : parseInt(e.target.value)
                   setSelectedCategory(val)
                   setCurrentPage(1)
                 }}
                 style={{
-                  height: '36px',
-                  padding: '0 10px',
-                  borderRadius: '0.375rem',
-                  border: '1px solid #e5e7eb',
-                  backgroundColor: 'white',
-                  fontSize: '13px',
-                  color: '#374151',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  borderColor: selectedCategory !== null ? '#2563eb' : '#e5e7eb',
-                  flex: '1 1 auto',
-                  minWidth: '140px',
+                  height: "36px",
+                  padding: "0 10px",
+                  borderRadius: "0.375rem",
+                  border: "1px solid #e5e7eb",
+                  backgroundColor: "white",
+                  fontSize: "13px",
+                  color: "#374151",
+                  cursor: "pointer",
+                  transition: "all 0.2s",
+                  borderColor:
+                    selectedCategory !== null ? "#2563eb" : "#e5e7eb",
+                  flex: "1 1 auto",
+                  minWidth: "140px",
                 }}
                 onMouseEnter={(e) => {
                   if (selectedCategory === null) {
-                    e.currentTarget.style.borderColor = '#60a5fa';
+                    e.currentTarget.style.borderColor = "#60a5fa"
                   }
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = selectedCategory !== null ? '#2563eb' : '#e5e7eb';
+                  e.currentTarget.style.borderColor =
+                    selectedCategory !== null ? "#2563eb" : "#e5e7eb"
                 }}
                 title="Lọc theo danh mục"
               >
@@ -358,8 +396,8 @@ export default function ViewArticlePage() {
                 }}
                 options={tags.map((tag) => ({ label: tag, value: tag }))}
                 style={{
-                  flex: '1 1 auto',
-                  minWidth: '140px',
+                  flex: "1 1 auto",
+                  minWidth: "140px",
                 }}
                 optionFilterProp="label"
                 showSearch
@@ -370,27 +408,27 @@ export default function ViewArticlePage() {
               <select
                 value={sortOrder}
                 onChange={(e) => {
-                  setSortOrder(e.target.value as 'newest' | 'oldest')
+                  setSortOrder(e.target.value as "newest" | "oldest")
                   setCurrentPage(1)
                 }}
                 style={{
-                  height: '36px',
-                  padding: '0 10px',
-                  borderRadius: '0.375rem',
-                  border: '1px solid #e5e7eb',
-                  backgroundColor: 'white',
-                  fontSize: '13px',
-                  color: '#374151',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  flex: '1 1 auto',
-                  minWidth: '110px',
+                  height: "36px",
+                  padding: "0 10px",
+                  borderRadius: "0.375rem",
+                  border: "1px solid #e5e7eb",
+                  backgroundColor: "white",
+                  fontSize: "13px",
+                  color: "#374151",
+                  cursor: "pointer",
+                  transition: "all 0.2s",
+                  flex: "1 1 auto",
+                  minWidth: "110px",
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = '#60a5fa';
+                  e.currentTarget.style.borderColor = "#60a5fa"
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = '#e5e7eb';
+                  e.currentTarget.style.borderColor = "#e5e7eb"
                 }}
                 title="Sắp xếp"
               >
@@ -406,17 +444,43 @@ export default function ViewArticlePage() {
                   onClick={() => {
                     setSelectedTags([])
                     setSelectedCategory(null)
-                    setSortOrder('newest')
-                    setSearchQuery('')
+                    setSortOrder("newest")
+                    setSearchQuery("")
                     setCurrentPage(1)
                   }}
-                  disabled={selectedTags.length === 0 && selectedCategory === null && sortOrder === 'newest' && searchQuery === ''}
+                  disabled={
+                    selectedTags.length === 0 &&
+                    selectedCategory === null &&
+                    sortOrder === "newest" &&
+                    searchQuery === ""
+                  }
                   style={{
-                    height: '36px',
-                    padding: '0 12px',
-                    color: !(selectedTags.length === 0 && selectedCategory === null && sortOrder === 'newest' && searchQuery === '') ? '#ef4444' : '#d1d5db',
-                    opacity: !(selectedTags.length === 0 && selectedCategory === null && sortOrder === 'newest' && searchQuery === '') ? 1 : 0.5,
-                    cursor: !(selectedTags.length === 0 && selectedCategory === null && sortOrder === 'newest' && searchQuery === '') ? 'pointer' : 'not-allowed',
+                    height: "36px",
+                    padding: "0 12px",
+                    color: !(
+                      selectedTags.length === 0 &&
+                      selectedCategory === null &&
+                      sortOrder === "newest" &&
+                      searchQuery === ""
+                    )
+                      ? "#ef4444"
+                      : "#d1d5db",
+                    opacity: !(
+                      selectedTags.length === 0 &&
+                      selectedCategory === null &&
+                      sortOrder === "newest" &&
+                      searchQuery === ""
+                    )
+                      ? 1
+                      : 0.5,
+                    cursor: !(
+                      selectedTags.length === 0 &&
+                      selectedCategory === null &&
+                      sortOrder === "newest" &&
+                      searchQuery === ""
+                    )
+                      ? "pointer"
+                      : "not-allowed",
                   }}
                   icon={<ClearOutlined />}
                   title="Xóa bộ lọc"
@@ -428,19 +492,26 @@ export default function ViewArticlePage() {
           {/* Articles Grid - White Card */}
           <div className="bg-white rounded-lg shadow-sm p-6">
             {articles.length === 0 ? (
-              <Empty description="Không tìm thấy bài viết nào" style={{ padding: '48px 0' }} />
+              <Empty
+                description="Không tìm thấy bài viết nào"
+                style={{ padding: "48px 0" }}
+              />
             ) : (
               <>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                   {articles.map((article) => {
-                    const snippet = stripHtml((article as any).content || '').slice(0, 150)
-                    const tagList = (article.article_tags || '')
-                      .split(',')
+                    const snippet = stripHtml(
+                      (article as any).content || ""
+                    ).slice(0, 150)
+                    const tagList = (article.article_tags || "")
+                      .split(",")
                       .map((t) => t.trim())
                       .filter(Boolean)
 
                     // Calculate reading time (estimate: 200 words per minute)
-                    const wordCount = stripHtml((article as any).content || '').split(/\s+/).length
+                    const wordCount = stripHtml(
+                      (article as any).content || ""
+                    ).split(/\s+/).length
                     const readingTime = Math.max(1, Math.ceil(wordCount / 200))
 
                     return (
@@ -449,7 +520,7 @@ export default function ViewArticlePage() {
                         id={article.id}
                         title={article.title}
                         snippet={snippet}
-                        authorName={article.author_name || 'Anonymous'}
+                        authorName={article.author_name || "Anonymous"}
                         thumbnailUrl={article.thumbnail_url || undefined}
                         publishedAt={article.created_at}
                         viewCount={Math.floor(Math.random() * 500) + 50}
@@ -465,11 +536,27 @@ export default function ViewArticlePage() {
                 {/* Pagination */}
                 {totalArticles > pageSize && (
                   <>
-                    <Divider style={{ margin: '24px 0', borderColor: '#f3f4f6' }} />
-                    <Flex justify="space-between" align="center" style={{ marginTop: 20 }}>
-                      <div style={{ fontSize: '13px', color: '#6b7280' }}>
-                        Hiển thị <span style={{ fontWeight: '500' }}>{articles.length > 0 ? (currentPage - 1) * pageSize + 1 : 0}-
-                        {Math.min(currentPage * pageSize, totalArticles)}</span> trên <span style={{ fontWeight: '500' }}>{totalArticles}</span> bài viết
+                    <Divider
+                      style={{ margin: "24px 0", borderColor: "#f3f4f6" }}
+                    />
+                    <Flex
+                      justify="space-between"
+                      align="center"
+                      style={{ marginTop: 20 }}
+                    >
+                      <div style={{ fontSize: "13px", color: "#6b7280" }}>
+                        Hiển thị{" "}
+                        <span style={{ fontWeight: "500" }}>
+                          {articles.length > 0
+                            ? (currentPage - 1) * pageSize + 1
+                            : 0}
+                          -{Math.min(currentPage * pageSize, totalArticles)}
+                        </span>{" "}
+                        trên{" "}
+                        <span style={{ fontWeight: "500" }}>
+                          {totalArticles}
+                        </span>{" "}
+                        bài viết
                       </div>
                       <Pagination
                         current={currentPage}
@@ -502,29 +589,41 @@ export default function ViewArticlePage() {
         }}
         footer={null}
         width={900}
-        style={{ maxHeight: '90vh', overflow: 'auto' }}
+        style={{ maxHeight: "90vh", overflow: "auto" }}
       >
         <Form form={createForm} layout="vertical" onFinish={handleCreateSubmit}>
           {/* Title */}
           <Form.Item
-            label={<span style={{ fontSize: '13px', fontWeight: '600', color: '#111827' }}>Tiêu đề</span>}
+            label={
+              <span
+                style={{
+                  fontSize: "13px",
+                  fontWeight: "600",
+                  color: "#111827",
+                }}
+              >
+                Tiêu đề
+              </span>
+            }
             rules={[
               {
                 required: true,
                 validator: () => {
-                  const textContent = titleContent.replace(/<[^>]*>/g, '').trim()
+                  const textContent = titleContent
+                    .replace(/<[^>]*>/g, "")
+                    .trim()
                   if (!textContent) {
-                    return Promise.reject('Vui lòng nhập tiêu đề')
+                    return Promise.reject("Vui lòng nhập tiêu đề")
                   }
                   if (textContent.length > 150) {
-                    return Promise.reject('Tiêu đề phải dưới 150 ký tự')
+                    return Promise.reject("Tiêu đề phải dưới 150 ký tự")
                   }
                   return Promise.resolve()
                 },
               },
             ]}
           >
-            <Input 
+            <Input
               placeholder="Nhập tiêu đề bài viết"
               value={titleContent}
               onChange={(e) => setTitleContent(e.target.value)}
@@ -533,21 +632,39 @@ export default function ViewArticlePage() {
           </Form.Item>
 
           <Flex justify="flex-end" align="center" className="mb-4">
-            <span style={{ fontSize: '11px', color: '#6b7280' }}>
-              {titleContent.replace(/<[^>]*>/g, '').trim().length} / 150
+            <span style={{ fontSize: "11px", color: "#6b7280" }}>
+              {titleContent.replace(/<[^>]*>/g, "").trim().length} / 150
             </span>
           </Flex>
 
-          <Divider style={{ margin: '12px 0', borderColor: '#f3f4f6' }} />
+          <Divider style={{ margin: "12px 0", borderColor: "#f3f4f6" }} />
 
           {/* Thumbnail Upload */}
-          <Form.Item label={<span style={{ fontSize: '13px', fontWeight: '600', color: '#111827' }}>Ảnh bìa</span>}>
+          <Form.Item
+            label={
+              <span
+                style={{
+                  fontSize: "13px",
+                  fontWeight: "600",
+                  color: "#111827",
+                }}
+              >
+                Ảnh bìa
+              </span>
+            }
+          >
             <Flex vertical gap="middle">
               {thumbnailUrl && (
                 <img
                   src={thumbnailUrl}
                   alt="Thumbnail preview"
-                  style={{ width: '160px', height: '120px', objectFit: 'cover', borderRadius: '0.375rem', border: '1px solid #e5e7eb' }}
+                  style={{
+                    width: "160px",
+                    height: "120px",
+                    objectFit: "cover",
+                    borderRadius: "0.375rem",
+                    border: "1px solid #e5e7eb",
+                  }}
                 />
               )}
               <Upload
@@ -563,38 +680,52 @@ export default function ViewArticlePage() {
                     return Upload.LIST_IGNORE
                   }
 
-                  setThumbnailUploadError('')
+                  setThumbnailUploadError("")
                   handleThumbnailUpload(file)
                   return false
                 }}
               >
-                <Button icon={<UploadOutlined />} loading={uploadingThumbnail} disabled={uploadingThumbnail}>
-                  {uploadingThumbnail ? 'Đang tải lên...' : 'Tải lên ảnh bìa'}
+                <Button
+                  icon={<UploadOutlined />}
+                  loading={uploadingThumbnail}
+                  disabled={uploadingThumbnail}
+                >
+                  {uploadingThumbnail ? "Đang tải lên..." : "Tải lên ảnh bìa"}
                 </Button>
               </Upload>
               {thumbnailUploadError && (
-                <Text type="danger" style={{ fontSize: '12px' }}>
+                <Text type="danger" style={{ fontSize: "12px" }}>
                   {thumbnailUploadError}
                 </Text>
               )}
             </Flex>
           </Form.Item>
 
-          <Divider style={{ margin: '12px 0', borderColor: '#f3f4f6' }} />
+          <Divider style={{ margin: "12px 0", borderColor: "#f3f4f6" }} />
 
           {/* Content */}
           <Form.Item
-            label={<span style={{ fontSize: '13px', fontWeight: '600', color: '#111827' }}>Nội dung</span>}
+            label={
+              <span
+                style={{
+                  fontSize: "13px",
+                  fontWeight: "600",
+                  color: "#111827",
+                }}
+              >
+                Nội dung
+              </span>
+            }
             rules={[
               {
                 required: true,
                 validator: () => {
                   const textContent = stripHtml(contentValue).trim()
                   if (!textContent) {
-                    return Promise.reject('Vui lòng nhập nội dung')
+                    return Promise.reject("Vui lòng nhập nội dung")
                   }
                   if (textContent.length > 5000) {
-                    return Promise.reject('Nội dung phải dưới 5000 ký tự')
+                    return Promise.reject("Nội dung phải dưới 5000 ký tự")
                   }
                   return Promise.resolve()
                 },
@@ -610,31 +741,61 @@ export default function ViewArticlePage() {
           </Form.Item>
 
           <Flex justify="flex-end" align="center" className="mb-4">
-            <span style={{ fontSize: '11px', color: '#6b7280' }}>
-              {stripHtml(contentValue).replace(/<[^>]*>/g, '').trim().length} / 5,000
+            <span style={{ fontSize: "11px", color: "#6b7280" }}>
+              {
+                stripHtml(contentValue)
+                  .replace(/<[^>]*>/g, "")
+                  .trim().length
+              }{" "}
+              / 5,000
             </span>
           </Flex>
 
-          <Divider style={{ margin: '12px 0', borderColor: '#f3f4f6' }} />
+          <Divider style={{ margin: "12px 0", borderColor: "#f3f4f6" }} />
 
           {/* Category */}
           <Form.Item
-            label={<span style={{ fontSize: '13px', fontWeight: '600', color: '#111827' }}>Danh mục</span>}
-            rules={[{ required: true, message: 'Vui lòng chọn danh mục' }]}
+            label={
+              <span
+                style={{
+                  fontSize: "13px",
+                  fontWeight: "600",
+                  color: "#111827",
+                }}
+              >
+                Danh mục
+              </span>
+            }
+            rules={[{ required: true, message: "Vui lòng chọn danh mục" }]}
           >
             <Select
               placeholder="Chọn danh mục"
               value={selectedCategoryForCreate}
               onChange={setSelectedCategoryForCreate}
-              options={categories.map((cat) => ({ label: cat.name, value: cat.id }))}
+              options={categories.map((cat) => ({
+                label: cat.name,
+                value: cat.id,
+              }))}
               allowClear
             />
           </Form.Item>
 
-          <Divider style={{ margin: '12px 0', borderColor: '#f3f4f6' }} />
+          <Divider style={{ margin: "12px 0", borderColor: "#f3f4f6" }} />
 
           {/* Tags */}
-          <Form.Item label={<span style={{ fontSize: '13px', fontWeight: '600', color: '#111827' }}>Thẻ</span>}>
+          <Form.Item
+            label={
+              <span
+                style={{
+                  fontSize: "13px",
+                  fontWeight: "600",
+                  color: "#111827",
+                }}
+              >
+                Thẻ
+              </span>
+            }
+          >
             <Select
               mode="tags"
               placeholder="Thêm hoặc chọn thẻ"
@@ -650,7 +811,7 @@ export default function ViewArticlePage() {
               <Button
                 size="large"
                 icon={<SendOutlined />}
-                onClick={() => setSubmitStatus('draft')}
+                onClick={() => setSubmitStatus("draft")}
                 htmlType="submit"
                 loading={creatingArticle}
               >
@@ -674,7 +835,7 @@ export default function ViewArticlePage() {
                   htmlType="submit"
                   size="large"
                   icon={<SendOutlined />}
-                  onClick={() => setSubmitStatus('pending')}
+                  onClick={() => setSubmitStatus("pending")}
                   loading={creatingArticle}
                 >
                   Gửi để phê duyệt

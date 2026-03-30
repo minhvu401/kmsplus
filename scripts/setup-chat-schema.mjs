@@ -4,8 +4,6 @@ const sql = postgres(process.env.DATABASE_URL)
 
 async function setupChatSchema() {
   try {
-    ;("🔧 Starting chat schema migration...")
-
     // Create conversations table
     await sql`
       CREATE TABLE IF NOT EXISTS conversations (
