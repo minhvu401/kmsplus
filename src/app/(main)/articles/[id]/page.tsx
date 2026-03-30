@@ -624,20 +624,21 @@ export default function ArticleDetailPage() {
             <Card className="border border-gray-100 shadow-sm">
               {(article.status === 'published' || article.status === 'draft' || article.status === 'pending' || article.status === 'rejected') && (
                 <div className="mb-4">
+                  {(() => {
+                    const backToPublished = article.status === 'published'
+                    const targetPath = backToPublished ? '/articles' : '/articles/management'
+                    const backLabel = backToPublished ? 'Back to Articles' : 'Back to Articles Management'
+
+                    return (
                   <Button
                     icon={<ArrowLeftOutlined />}
-                    onClick={() =>
-                      router.push(
-                        article.status === 'published'
-                          ? '/articles'
-                          : '/articles/management'
-                      )
-                    }
-                  >
-                    {article.status === 'published'
-                      ? 'Back to Articles'
-                      : 'Back to Articles Management'}
-                  </Button>
+                    shape="circle"
+                    onClick={() => router.push(targetPath)}
+                    aria-label={backLabel}
+                    title={backLabel}
+                  />
+                    )
+                  })()}
                 </div>
               )}
 

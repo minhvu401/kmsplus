@@ -3,9 +3,11 @@
 import React, { useState, useEffect, useRef, type KeyboardEvent, type ClipboardEvent } from 'react';
 import { Table, Input, Select, Button, Space, Flex, Typography, Tag as AntTag, Card, Alert, Segmented, Row, Col, Spin, Modal, Form, Divider, message, Tooltip, Upload, Pagination } from 'antd';
 import { SearchOutlined, PlusOutlined, EditOutlined, DeleteOutlined, SendOutlined, CloseOutlined, SaveOutlined, RollbackOutlined, UploadOutlined } from '@ant-design/icons';
+import ImgCrop from 'antd-img-crop';
 import type { ColumnsType } from 'antd/es/table';
 import type { FormInstance } from 'antd/es/form';
-import { filterByTagAndCategory, getAllTags, deleteArticle, getAllCategories, createArticle, getArticleById, updateArticle, restoreArticle } from '@/action/articles/articlesManagementAction';
+import { filterByTagAndCategory, getAllTags, deleteArticle, getAllCategories, createArticle, getArticleById, updateArticle, restoreArticle, getCurrentUserDetail, type CurrentUserInfo } from '@/action/articles/articlesManagementAction';
+import { getAllDepartments } from '@/action/department/departmentActions';
 import type { Article, Tag } from '@/service/articles.service';
 import { uploadImageToCloudinary, getCloudinaryThumbnailUrl } from '@/lib/cloudinary';
 import QuillEditor from '@/components/QuillEditor';
@@ -91,10 +93,12 @@ export default function ArticleManagement() {
   const PAGE_SIZE = 10;
   const THUMBNAIL_MAX_SIZE_MB = 10;
   const THUMBNAIL_MAX_SIZE_BYTES = THUMBNAIL_MAX_SIZE_MB * 1024 * 1024;
+  const THUMBNAIL_ASPECT_RATIO = 4 / 3;
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
   const [selectedTag, setSelectedTag] = useState('All Tags');
   const [selectedCategory, setSelectedCategory] = useState<number | 'All'>('All');
+  const [selectedDepartment, setSelectedDepartment] = useState<number | 'All'>('All');
   const [selectedStatus, setSelectedStatus] = useState('All');
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
   const [currentPage, setCurrentPage] = useState(1);
@@ -111,6 +115,7 @@ export default function ArticleManagement() {
   const [submitStatus, setSubmitStatus] = useState<'draft' | 'published' | 'pending'>('published');
   const [creatingArticle, setCreatingArticle] = useState(false);
   const [uploadingThumbnail, setUploadingThumbnail] = useState(false); // New
+  const [categoryIdFormValue, setCategoryIdFormValue] = useState<number | undefined>(undefined);
   const titleEditorRef = useRef<HTMLDivElement>(null);
 
   const [articles, setArticles] = useState<Article[]>([]);
@@ -121,10 +126,14 @@ export default function ArticleManagement() {
 
   const [tags, setTags] = useState<Tag[]>([]);
   const [loadingTags, setLoadingTags] = useState(false);
-  const [categories, setCategories] = useState<{ id: number; name: string }[]>([]);
+  const [categories, setCategories] = useState<{ id: number; name: string; department_id?: number | null }[]>([]);
   const [loadingCategories, setLoadingCategories] = useState(false);
+  const [departments, setDepartments] = useState<{ id: number; name: string }[]>([]);
+  const [loadingDepartments, setLoadingDepartments] = useState(false);
   const [userRoles, setUserRoles] = useState<string[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [currentUser, setCurrentUser] = useState<CurrentUserInfo | null>(null);
+  const [loadingUserInfo, setLoadingUserInfo] = useState(true);
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingArticleId, setEditingArticleId] = useState<number | null>(null);
@@ -138,6 +147,7 @@ export default function ArticleManagement() {
   const [loadingEditData, setLoadingEditData] = useState(false);
   const [editThumbnailUrl, setEditThumbnailUrl] = useState(''); // New
   const [uploadingEditThumbnail, setUploadingEditThumbnail] = useState(false); // New
+  const [editCategoryId, setEditCategoryId] = useState<number | undefined>(undefined);
 
   const statusColors: Record<string, string> = {
     published: 'green',
@@ -154,10 +164,17 @@ export default function ArticleManagement() {
     return parsedDate.toLocaleString('vi-VN', {
       timeZone: 'Asia/Ho_Chi_Minh',
       hour12: false,
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
     });
   };
 
   const refreshCurrentArticles = async (showLoader: boolean = true) => {
+    if (loadingUserInfo) return;
+
     setArticlesError(null);
     if (showLoader) setLoadingArticles(true);
     try {
@@ -271,16 +288,31 @@ export default function ArticleManagement() {
       return;
     }
 
-    refreshCurrentArticles();
-  }, [debouncedSearchQuery, selectedTag, selectedCategory, selectedStatus, sortOrder, currentPage]);
+    if (!loadingUserInfo) {
+      refreshCurrentArticles();
+    }
+  }, [debouncedSearchQuery, selectedTag, selectedCategory, selectedStatus, sortOrder, currentPage, loadingUserInfo]);
 
   useEffect(() => {
     (async () => {
       try {
+        setLoadingUserInfo(true);
+        const user = await getCurrentUserDetail();
+        if (user) {
+          setCurrentUser(user);
+          setUserRoles(user.roles || []);
+          setIsAdmin(user.isAdmin || false);
+          if (!user.isAdmin && user.department_id) {
+            setSelectedDepartment(user.department_id);
+          }
+        }
+      } catch (err) {
+        console.error('Error loading user info:', err);
+        setCurrentUser(null);
         setUserRoles([]);
         setIsAdmin(false);
-      } catch (err) {
-        console.error('Error loading user roles:', err);
+      } finally {
+        setLoadingUserInfo(false);
       }
     })();
   }, []);
@@ -305,7 +337,16 @@ export default function ArticleManagement() {
       setLoadingCategories(true);
       try {
         const res = await getAllCategories();
-        setCategories(res || []);
+        let filteredCategories = res || [];
+        
+        // Nếu user không phải admin, chỉ hiển thị categories của department user đó
+        if (!isAdmin && currentUser?.department_id) {
+          filteredCategories = filteredCategories.filter(
+            cat => cat.department_id === currentUser.department_id
+          );
+        }
+        
+        setCategories(filteredCategories);
       } catch (err) {
         console.error('Error loading categories:', err);
         setCategories([]);
@@ -313,7 +354,28 @@ export default function ArticleManagement() {
         setLoadingCategories(false);
       }
     })();
-  }, []);
+  }, [isAdmin, currentUser?.department_id]);
+
+  useEffect(() => {
+    (async () => {
+      if (!isAdmin) {
+        setDepartments([]);
+        setLoadingDepartments(false);
+        return;
+      }
+
+      setLoadingDepartments(true);
+      try {
+        const res = await getAllDepartments();
+        setDepartments(res || []);
+      } catch (err) {
+        console.error('Error loading departments:', err);
+        setDepartments([]);
+      } finally {
+        setLoadingDepartments(false);
+      }
+    })();
+  }, [isAdmin]);
 
   const columns: ColumnsType<Article> = [
     {
@@ -321,6 +383,7 @@ export default function ArticleManagement() {
       dataIndex: 'id',
       key: 'id',
       width: 80,
+      fixed: 'left',
     },
     {
       title: 'Article Title',
@@ -418,15 +481,6 @@ export default function ArticleManagement() {
       ),
     },
     {
-      title: 'Approved By',
-      dataIndex: 'approver_name',
-      key: 'approver_name',
-      width: 170,
-      render: (approverName: string | null, record: Article) => (
-        <Text>{approverName || (record.approved_by ? `User #${record.approved_by}` : '-')}</Text>
-      ),
-    },
-    {
       title: 'Created At',
       dataIndex: 'created_at',
       key: 'created_at',
@@ -457,6 +511,7 @@ export default function ArticleManagement() {
       title: 'Action',
       key: 'action',
       width: 100,
+      fixed: 'right',
       render: (_, record) => (
         <Space size="small">
           <Button
@@ -483,9 +538,22 @@ export default function ArticleManagement() {
     ...tags.map((tag) => ({ label: tag.name, value: tag.name })),
   ];
 
+  const filteredCategoriesByDepartment = isAdmin && selectedDepartment !== 'All'
+    ? categories.filter(cat => cat.department_id === selectedDepartment)
+    : categories;
+
+  const departmentOptions = isAdmin
+    ? [
+        { label: 'All Departments', value: 'All' },
+        ...departments.map((dept) => ({ label: dept.name, value: dept.id })),
+      ]
+    : departments
+        .filter((dept) => dept.id === currentUser?.department_id)
+        .map((dept) => ({ label: dept.name, value: dept.id }));
+
   const categoryOptions = [
     { label: 'All Categories', value: 'All' },
-    ...categories.map((cat) => ({ label: cat.name, value: cat.id })),
+    ...filteredCategoriesByDepartment.map((cat) => ({ label: cat.name, value: cat.id })),
   ];
 
   const statusOptions = [
@@ -496,6 +564,14 @@ export default function ArticleManagement() {
     { label: 'Rejected', value: 'rejected' },
     { label: 'Archived', value: 'archived' },
   ];
+
+  const scopedCategoriesByUserDepartment = !isAdmin
+    ? categories.filter((cat) => cat.department_id === currentUser?.department_id)
+    : categories;
+
+  const formCategoriesByDepartment = scopedCategoriesByUserDepartment;
+
+  const editFormCategoriesByDepartment = scopedCategoriesByUserDepartment;
 
   const handleArchiveClick = async (articleId: number, isDeleted: boolean) => {
     const confirmText = isDeleted
@@ -532,6 +608,7 @@ export default function ArticleManagement() {
         setEditImageUrl(article.image_url || '');
         setEditThumbnailUrl(article.thumbnail_url || '');
         setEditSelectedTags(article.tags || []);
+        setEditCategoryId(article.category_id || undefined);
         
         editForm.setFieldsValue({
           title: article.title,
@@ -694,7 +771,7 @@ export default function ArticleManagement() {
           />
 
           {/* Filters Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className={`grid grid-cols-1 sm:grid-cols-2 ${isAdmin ? 'lg:grid-cols-6' : 'lg:grid-cols-5'} gap-4`}>
             <div className="flex flex-col">
               <Text type="secondary" className="text-sm font-medium mb-2">
                 Tags
@@ -708,6 +785,22 @@ export default function ArticleManagement() {
                 className="w-full"
               />
             </div>
+
+            {isAdmin && (
+              <div className="flex flex-col">
+                <Text type="secondary" className="text-sm font-medium mb-2">
+                  Department
+                </Text>
+                <Select
+                  value={selectedDepartment}
+                  onChange={setSelectedDepartment}
+                  options={departmentOptions}
+                  loading={loadingDepartments}
+                  size="middle"
+                  className="w-full"
+                />
+              </div>
+            )}
 
             <div className="flex flex-col">
               <Text type="secondary" className="text-sm font-medium mb-2">
@@ -775,13 +868,14 @@ export default function ArticleManagement() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Content Widget - White Card (Full Width) */}
         <div className="lg:col-span-3">
-          <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+          <div className="bg-white rounded-lg shadow-sm overflow-x-auto">
         {viewMode === 'list' ? (
           <Table
             columns={columns}
             dataSource={articles}
             loading={loadingArticles}
             rowKey="id"
+            scroll={{ x: 1800 }}
             pagination={{
               current: currentPage,
               pageSize: 10,
@@ -827,9 +921,6 @@ export default function ArticleManagement() {
                           </Text>
                           <Text type="secondary">
                             Approved At: {formatVietnamDateTime(article.approved_at)}
-                          </Text>
-                          <Text type="secondary">
-                            Approved By: {article.approver_name || (article.approved_by ? `User #${article.approved_by}` : '-')}
                           </Text>
                           <Text type="secondary">
                             Deleted At: {formatVietnamDateTime(article.deleted_at)}
@@ -937,6 +1028,7 @@ export default function ArticleManagement() {
                 setThumbnailUploadError('');
                 setSelectedTagsForCreate([]);
                 setSubmitStatus('published');
+                setCategoryIdFormValue(undefined);
                 await refreshCurrentArticles(false);
               } else {
                 message.error(result.message || 'Failed to create article');
@@ -1010,32 +1102,34 @@ export default function ArticleManagement() {
                   className="w-40 h-30 object-cover rounded-lg border"
                 />
               )}
-              <Upload
-                maxCount={1}
-                accept="image/*"
-                showUploadList={false}
-                beforeUpload={(file) => {
-                  const isTooLarge = file.size > THUMBNAIL_MAX_SIZE_BYTES;
-                  if (isTooLarge) {
-                    const tooLargeError = `Ảnh thumbnail vượt quá ${THUMBNAIL_MAX_SIZE_MB}MB. Vui lòng chọn ảnh nhỏ hơn.`;
-                    setThumbnailUploadError(tooLargeError);
-                    message.error(tooLargeError);
-                    return Upload.LIST_IGNORE;
-                  }
+              <ImgCrop aspect={THUMBNAIL_ASPECT_RATIO} quality={1} modalTitle="Crop thumbnail image">
+                <Upload
+                  maxCount={1}
+                  accept="image/*"
+                  showUploadList={false}
+                  beforeUpload={(file) => {
+                    const isTooLarge = file.size > THUMBNAIL_MAX_SIZE_BYTES;
+                    if (isTooLarge) {
+                      const tooLargeError = `Ảnh thumbnail vượt quá ${THUMBNAIL_MAX_SIZE_MB}MB. Vui lòng chọn ảnh nhỏ hơn.`;
+                      setThumbnailUploadError(tooLargeError);
+                      message.error(tooLargeError);
+                      return Upload.LIST_IGNORE;
+                    }
 
-                  setThumbnailUploadError('');
-                  handleThumbnailUpload(file);
-                  return false;
-                }}
-              >
-                <Button 
-                  icon={<UploadOutlined />} 
-                  loading={uploadingThumbnail}
-                  disabled={uploadingThumbnail}
+                    setThumbnailUploadError('');
+                    handleThumbnailUpload(file as File);
+                    return false;
+                  }}
                 >
-                  {uploadingThumbnail ? 'Uploading...' : 'Click to Upload Thumbnail'}
-                </Button>
-              </Upload>
+                  <Button 
+                    icon={<UploadOutlined />} 
+                    loading={uploadingThumbnail}
+                    disabled={uploadingThumbnail}
+                  >
+                    {uploadingThumbnail ? 'Uploading...' : 'Click to Upload Thumbnail'}
+                  </Button>
+                </Upload>
+              </ImgCrop>
               {thumbnailUploadError && (
                 <Text type="danger" className="text-sm">
                   {thumbnailUploadError}
@@ -1095,10 +1189,12 @@ export default function ArticleManagement() {
               size="large"
               placeholder="Select a category"
               loading={loadingCategories}
-              options={categories.map((cat) => ({ label: cat.name, value: cat.id }))}
+              options={formCategoriesByDepartment.map((cat) => ({ label: cat.name, value: cat.id }))}
               optionFilterProp="label"
               showSearch
               allowClear
+              value={categoryIdFormValue}
+              onChange={(value) => setCategoryIdFormValue(value)}
             />
           </Form.Item>
 
@@ -1147,6 +1243,7 @@ export default function ArticleManagement() {
                   setContentValue('');
                   setSelectedTagsForCreate([]);
                   setSubmitStatus('published');
+                  setCategoryIdFormValue(undefined);
                 }}
                 disabled={creatingArticle}
               >
@@ -1270,22 +1367,32 @@ export default function ArticleManagement() {
                     className="w-40 h-30 object-cover rounded-lg border"
                   />
                 )}
-                <Upload
-                  maxCount={1}
-                  accept="image/*"
-                  beforeUpload={(file) => {
-                    handleEditThumbnailUpload(file);
-                    return false;
-                  }}
-                >
-                  <Button 
-                    icon={<UploadOutlined />} 
-                    loading={uploadingEditThumbnail}
-                    disabled={uploadingEditThumbnail}
+                <ImgCrop aspect={THUMBNAIL_ASPECT_RATIO} quality={1} modalTitle="Crop thumbnail image">
+                  <Upload
+                    maxCount={1}
+                    accept="image/*"
+                    showUploadList={false}
+                    beforeUpload={(file) => {
+                      const isTooLarge = file.size > THUMBNAIL_MAX_SIZE_BYTES;
+                      if (isTooLarge) {
+                        const tooLargeError = `Ảnh thumbnail vượt quá ${THUMBNAIL_MAX_SIZE_MB}MB. Vui lòng chọn ảnh nhỏ hơn.`;
+                        message.error(tooLargeError);
+                        return Upload.LIST_IGNORE;
+                      }
+
+                      handleEditThumbnailUpload(file as File);
+                      return false;
+                    }}
                   >
-                    Click to Upload Thumbnail
-                  </Button>
-                </Upload>
+                    <Button 
+                      icon={<UploadOutlined />} 
+                      loading={uploadingEditThumbnail}
+                      disabled={uploadingEditThumbnail}
+                    >
+                      Click to Upload Thumbnail
+                    </Button>
+                  </Upload>
+                </ImgCrop>
               </Flex>
             </Form.Item>
 
@@ -1339,10 +1446,12 @@ export default function ArticleManagement() {
                 size="large"
                 placeholder="Select a category"
                 loading={loadingCategories}
-                options={categories.map((cat) => ({ label: cat.name, value: cat.id }))}
+                options={editFormCategoriesByDepartment.map((cat) => ({ label: cat.name, value: cat.id }))}
                 optionFilterProp="label"
                 showSearch
                 allowClear
+                value={editCategoryId}
+                onChange={(value) => setEditCategoryId(value)}
               />
             </Form.Item>
 
@@ -1383,6 +1492,7 @@ export default function ArticleManagement() {
                     setEditSelectedTags([]);
                     setEditingArticleId(null);
                     setEditSubmitStatus('published');
+                    setEditCategoryId(undefined);
                   }}
                   disabled={editingArticle}
                 >
