@@ -184,8 +184,6 @@ Always respond as an encouraging, knowledgeable teacher - not as a technical sys
       "System prompt for the answer explanation feature that provides deeper understanding of quiz answers",
       EXPLANATION_PROMPT
     )
-
-    console.log("✅ AI prompts initialized successfully")
   } catch (error) {
     console.error("Error initializing default prompts:", error)
   }

@@ -159,7 +159,7 @@ export default function ManageCoursesClient({
         throw new Error("Course data not found")
       }
 
-      console.log("🔥 [DEBUG] Full Course Data fetched:", fullCourse)
+      ;("🔥 [DEBUG] Full Course Data fetched:", fullCourse)
 
       // 2. Xử lý chuẩn hóa dữ liệu Curriculum
       // DB có thể trả về 'curriculum' hoặc 'curriculum_sections', kiểm tra cả 2
@@ -564,10 +564,11 @@ export default function ManageCoursesClient({
                 onClick={(e) => {
                   // 🛑 Ngăn chặn hành vi mặc định và lan truyền
                   e.stopPropagation()
-                  e.preventDefault()
-
-                  // 🟢 Kiểm tra Console trình duyệt (F12) xem dòng này có hiện không
-                  console.log("🔴 Client: Đã bấm nút Delete ID:", record.id)
+                  e.preventDefault()(
+                    // 🟢 Kiểm tra Console trình duyệt (F12) xem dòng này có hiện không
+                    "🔴 Client: Đã bấm nút Delete ID:",
+                    record.id
+                  )
 
                   handleDelete(record)
                 }}
@@ -900,10 +901,12 @@ export default function ManageCoursesClient({
                               !(course as any).creator_avatar_url &&
                               !(course as any).avatar_url &&
                               !(course as any).user_avatar
-                                ? (((course as any).creator_name ||
-                                    (course as any).creator_full_name ||
-                                    (course as any).full_name ||
-                                    "Unknown user") as string)
+                                ? (
+                                    ((course as any).creator_name ||
+                                      (course as any).creator_full_name ||
+                                      (course as any).full_name ||
+                                      "Unknown user") as string
+                                  )
                                     .split(" ")
                                     .filter(Boolean)
                                     .slice(0, 2)
@@ -1005,7 +1008,9 @@ export default function ManageCoursesClient({
                                 onClick={(e) => {
                                   e.stopPropagation()
                                   if (course.status !== "published") return
-                                  router.push(`/courses/management/${course.id}/enrollments`)
+                                  router.push(
+                                    `/courses/management/${course.id}/enrollments`
+                                  )
                                 }}
                               >
                                 View Enrollments
@@ -1048,7 +1053,9 @@ export default function ManageCoursesClient({
                                 onClick={(e) => {
                                   e.stopPropagation()
                                   if (course.status !== "published") return
-                                  router.push(`/courses/management/${course.id}/feedback`)
+                                  router.push(
+                                    `/courses/management/${course.id}/feedback`
+                                  )
                                 }}
                               >
                                 View Feedback

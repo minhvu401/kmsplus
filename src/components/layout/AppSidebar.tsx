@@ -30,18 +30,21 @@ const AppSidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
         if (response.ok) {
           const data = await response.json()
           // Try both data.role and data.user.role
-          const roleFromAPI = data.role || data.user?.role
-
-          console.log("🔍 API /auth/me response:", data)
-          console.log("📋 roleFromAPI:", roleFromAPI)
-          console.log("📋 Role.ADMIN:", Role.ADMIN)
-          console.log("🔄 Object.values(Role):", Object.values(Role))
+          const roleFromAPI =
+            data.role ||
+            data.user?.role("🔍 API /auth/me response:", data)(
+              "📋 roleFromAPI:",
+              roleFromAPI
+            )("📋 Role.ADMIN:", Role.ADMIN)(
+              "🔄 Object.values(Role):",
+              Object.values(Role)
+            )
 
           if (roleFromAPI) {
             const roleValue = Object.values(Role).find(
               (r) => r === roleFromAPI
             ) as Role | undefined
-            console.log("✅ Found roleValue:", roleValue)
+            ;("✅ Found roleValue:", roleValue)
             setUserRole(roleValue)
           }
         }

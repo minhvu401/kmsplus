@@ -25,7 +25,7 @@ export function useAutoAISuggestion(
           await createAISuggestion(daysToCheck)
         }
       } catch (error) {
-        console.log("Auto-suggestion check info:", error)
+        ;("Auto-suggestion check info:", error)
         // Silently fail - user might not be admin
       }
     }

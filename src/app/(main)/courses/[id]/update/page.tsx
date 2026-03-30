@@ -81,7 +81,7 @@ export default async function UpdateCoursePage({
           availableQuizzes={availableQuizzes}
           onSuccess={() => {
             // Handle successful course update
-            console.log("Course updated successfully")
+            ;("Course updated successfully")
             // You can add additional logic here like redirecting
           }}
         />

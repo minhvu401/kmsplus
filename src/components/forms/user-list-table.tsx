@@ -105,9 +105,7 @@ export default function UserListTable({
     const formData = new FormData()
     formData.append("userId", selectedUser.id)
     formData.append("email", values.email)
-    formData.append("fullName", values.fullName)
-
-    console.log("Submitting update with:", {
+    formData.append("fullName", values.fullName)("Submitting update with:", {
       userId: selectedUser.id,
       email: values.email,
       fullName: values.fullName,

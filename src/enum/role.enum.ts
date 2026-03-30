@@ -28,14 +28,14 @@ export const RoleConfig = {
     name: "Admin",
     label: "Quản trị viên",
   },
-  // [Role.DASHBOARD_VIEWER]: {
-  //   id: 5,
-  //   name: "Dashboard Viewer",
-  //   label: "Người xem bảng điều khiển",
-  // },
   [Role.DIRECTOR]: {
-    id: 6,
+    id: 5,
     name: "Director",
     label: "Giám đốc",
+  },
+  [Role.DASHBOARD_VIEWER]: {
+    id: 6,
+    name: "Dashboard Viewer",
+    label: "Người xem bảng điều khiển",
   },
 } as const

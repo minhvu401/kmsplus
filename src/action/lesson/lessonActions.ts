@@ -55,8 +55,6 @@ export async function updateLessonAPI(
     duration_minutes?: number | null
   }
 ) {
-  console.log("🔥 [Server Action] Updating Lesson (Overwrite):", id)
-
   // 1. Map dữ liệu vào đúng cột DB
   const updatePayload: any = {
     title: data.title,
@@ -83,7 +81,6 @@ export async function updateLessonAPI(
 
 // ✅ DELETE CƠ BẢN (Xóa thẳng, không check)
 export async function deleteLessonAPI(id: number) {
-  console.log("🔥 [Server Action] Deleting Lesson:", id)
   try {
     await deleteLessonService(id) // Gọi hàm xóa thường trong service
     return { success: true }
@@ -101,8 +98,6 @@ export async function createNewLessonAPI(data: {
   category_id?: number | null
   duration_minutes?: number | null
 }): Promise<Lesson> {
-  console.log("🔥 [Server Action] Creating Lesson:", data)
-
   try {
     const newLesson = await createLessonAction({
       title: data.title,
@@ -131,7 +126,6 @@ export async function checkLessonDependencyAPI(id: number) {
 
 // ✅ 2. Xóa thông minh (Tự quyết định Hard hay Soft Delete)
 export async function smartDeleteLessonAPI(id: number) {
-  console.log("🧠 [Smart Action] Deleting:", id)
   const usage = await checkLessonUsageService(id)
 
   if (usage.total > 0) {
@@ -157,8 +151,6 @@ export async function smartUpdateLessonAPI(
   },
   mode: "overwrite" | "save_as_new"
 ) {
-  console.log(`🧠 [Smart Action] Update mode: ${mode}`, id)
-
   // Chuẩn bị payload chuẩn cho DB
   const payload: any = {
     title: data.title,

@@ -133,7 +133,7 @@ export async function getTableSampleData(
   try {
     // Use template literal with parameterized table name
     // For actual usage, ensure proper parameterization
-    console.log(`Note: getTableSampleData called for ${tableName}`)
+    ;`Note: getTableSampleData called for ${tableName}`
     return []
   } catch (error) {
     console.error(`Error getting sample data from ${tableName}:`, error)

@@ -14,11 +14,12 @@ import {
   Empty,
   Tag,
 } from "antd"
+import { InfoCircleOutlined, UnorderedListOutlined } from "@ant-design/icons"
 import {
-  InfoCircleOutlined,
-  UnorderedListOutlined,
-} from "@ant-design/icons"
-import { getQuizById, getQuizQuestions, updateQuizQuestions } from "@/action/quiz/quizActions"
+  getQuizById,
+  getQuizQuestions,
+  updateQuizQuestions,
+} from "@/action/quiz/quizActions"
 import { getQuestions } from "@/action/question-bank/questionBankActions"
 
 interface Quiz {
@@ -91,9 +92,7 @@ export default function EditQuizModal({
         getQuizById(quizId),
         getQuizQuestions(quizId),
         getQuestions(1, 1000),
-      ])
-
-      console.log("Current Questions from DB:", currentQuestions)
+      ])("Current Questions from DB:", currentQuestions)
 
       if (quiz) {
         form.setFieldsValue({
@@ -106,8 +105,9 @@ export default function EditQuizModal({
       }
 
       // Set current question IDs - Convert to numbers
-      const currentIds = (currentQuestions as QuizQuestion[]).map((q) => Number(q.question_id))
-      console.log("Selected Question IDs:", currentIds)
+      const currentIds = (currentQuestions as QuizQuestion[]).map((q) =>
+        Number(q.question_id)
+      )("Selected Question IDs:", currentIds)
       setSelectedQuestionIds(currentIds)
       setOriginalQuestionIds(currentIds)
 
@@ -118,8 +118,7 @@ export default function EditQuizModal({
           text: q.question_text,
           type: q.type,
           description: q.explanation || "",
-        }))
-        console.log("All Questions from Bank:", questions)
+        }))("All Questions from Bank:", questions)
         setAllQuestions(questions)
       }
     } catch (error) {
@@ -193,7 +192,8 @@ export default function EditQuizModal({
   const filteredQuestions = allQuestions.filter(
     (q) =>
       q.text.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (q.description && q.description.toLowerCase().includes(searchQuery.toLowerCase()))
+      (q.description &&
+        q.description.toLowerCase().includes(searchQuery.toLowerCase()))
   )
 
   // Sort: selected questions first
@@ -303,7 +303,8 @@ export default function EditQuizModal({
         <div className="mt-4">
           <div className="flex justify-between items-center mb-4">
             <span className="text-gray-600">
-              Đã chọn {selectedQuestionIds.length} / {allQuestions.length} câu hỏi
+              Đã chọn {selectedQuestionIds.length} / {allQuestions.length} câu
+              hỏi
               {hasQuestionsChanged() && (
                 <Tag color="orange" className="ml-2">
                   Đã thay đổi
@@ -340,16 +341,24 @@ export default function EditQuizModal({
                         onChange={() => handleQuestionToggle(question.id)}
                       />
                       <div className="flex-1">
-                        <p className={`font-medium ${isSelected ? "text-blue-700" : ""}`}>
+                        <p
+                          className={`font-medium ${isSelected ? "text-blue-700" : ""}`}
+                        >
                           {question.text}
                         </p>
                         <div className="flex gap-2 mt-1">
-                          <Tag color={question.type === "single_choice" ? "blue" : "green"}>
-                            {question.type === "single_choice" ? "Một đáp án" : "Nhiều đáp án"}
+                          <Tag
+                            color={
+                              question.type === "single_choice"
+                                ? "blue"
+                                : "green"
+                            }
+                          >
+                            {question.type === "single_choice"
+                              ? "Một đáp án"
+                              : "Nhiều đáp án"}
                           </Tag>
-                          {isSelected && (
-                            <Tag color="blue">Đã chọn</Tag>
-                          )}
+                          {isSelected && <Tag color="blue">Đã chọn</Tag>}
                         </div>
                       </div>
                     </div>
@@ -377,23 +386,14 @@ export default function EditQuizModal({
         <Button key="cancel" onClick={onClose}>
           Hủy
         </Button>,
-        <Button
-          key="save"
-          type="primary"
-          loading={saving}
-          onClick={handleSave}
-        >
+        <Button key="save" type="primary" loading={saving} onClick={handleSave}>
           Lưu Thay Đổi
         </Button>,
       ]}
       destroyOnHidden
     >
       <Spin spinning={loading}>
-        <Tabs
-          activeKey={activeTab}
-          onChange={setActiveTab}
-          items={tabItems}
-        />
+        <Tabs activeKey={activeTab} onChange={setActiveTab} items={tabItems} />
       </Spin>
     </Modal>
   )
