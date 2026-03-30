@@ -294,8 +294,6 @@ export async function updateUserInfoAction(
   const fullName = formData.get("fullName") as string
   const email = formData.get("email") as string
 
-  console.log("Update request:", { userId, fullName, email })
-
   if (!userId) {
     return {
       success: false,
@@ -368,8 +366,6 @@ export async function updateUserInfoAction(
         WHERE id = ${userId}
       `
     }
-
-    console.log("User updated successfully:", userId)
 
     return {
       success: true,

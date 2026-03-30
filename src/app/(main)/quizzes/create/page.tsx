@@ -2,7 +2,16 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { Button, Spin, message, Input, Form, Select, Modal, Checkbox } from "antd"
+import {
+  Button,
+  Spin,
+  message,
+  Input,
+  Form,
+  Select,
+  Modal,
+  Checkbox,
+} from "antd"
 import {
   ArrowLeftOutlined,
   ArrowRightOutlined,
@@ -18,11 +27,7 @@ import { sanitizeTitle, sanitizeDescription } from "@/utils/sanitize"
 // Constants
 const TOTAL_QUIZ_POINTS = 100 // Tổng điểm quiz cố định
 
-const steps = [
-  "Thông Tin Cơ Bản",
-  "Thêm Câu Hỏi",
-  "Xem Lại & Công Bố",
-]
+const steps = ["Thông Tin Cơ Bản", "Thêm Câu Hỏi", "Xem Lại & Công Bố"]
 
 interface QuizPayload {
   course_id: number
@@ -33,7 +38,7 @@ interface QuizPayload {
   passing_score?: number
   max_attempts?: number
   questions?: Question[]
-  targetType?: 'PUBLIC' | 'DEPARTMENTS'
+  targetType?: "PUBLIC" | "DEPARTMENTS"
   targetDeptIds?: number[]
 }
 
@@ -58,14 +63,14 @@ interface AddQuestionsModalState {
 
 /**
  * Create Quiz Page with Multi-Step Form
- * 
+ *
  * User Stories Implementation:
  * [US-01] Basic Metadata: Nhập Tên bài thi (Title), Mô tả (Description)
  * [US-02] Set Duration: Cài đặt thời gian làm bài (phút)
  * [US-03] Pass Criteria: Cài đặt Passing Score (Điểm đạt)
  * [US-04] Max Attempts: Cài đặt số lần được phép làm lại bài thi
  * [US-06] Add from Bank: Mở popup Question Bank, chọn nhiều câu hỏi để add
- * 
+ *
  * Acceptance Criteria:
  * AC1: Trường Title là bắt buộc (Required)
  * AC2: Trường Description là tùy chọn (Optional)
@@ -97,7 +102,7 @@ export default function CreateQuizPage() {
     passing_score: 80,
     max_attempts: 3,
     questions: [],
-    targetType: 'PUBLIC',
+    targetType: "PUBLIC",
     targetDeptIds: [],
   })
 
@@ -110,7 +115,9 @@ export default function CreateQuizPage() {
   })
 
   // State for departments
-  const [departments, setDepartments] = useState<Array<{ id: number; name: string }>>([])
+  const [departments, setDepartments] = useState<
+    Array<{ id: number; name: string }>
+  >([])
 
   // ============================================
   // VALIDATION LOGIC
@@ -156,7 +163,8 @@ export default function CreateQuizPage() {
   useEffect(() => {
     const loadDepartments = async () => {
       try {
-        const { getAllDepartments } = await import("@/action/department/departmentActions")
+        const { getAllDepartments } =
+          await import("@/action/department/departmentActions")
         const deptData = await getAllDepartments()
         setDepartments(deptData)
       } catch (error) {
@@ -174,12 +182,14 @@ export default function CreateQuizPage() {
       message.error("Vui lòng thêm ít nhất 10 câu hỏi")
       return false
     }
-    
+
     if (payload.questions.length < 10) {
-      message.error(`Bạn cần thêm ít nhất 10 câu hỏi (hiện tại: ${payload.questions.length} câu)`)
+      message.error(
+        `Bạn cần thêm ít nhất 10 câu hỏi (hiện tại: ${payload.questions.length} câu)`
+      )
       return false
     }
-    
+
     return true
   }
 
@@ -311,17 +321,18 @@ export default function CreateQuizPage() {
    */
   const handleOpenAddQuestionsModal = async () => {
     // Get IDs of questions already in the quiz
-    const existingQuestionIds = (payload.questions || []).map(q => q.id)
-    
+    const existingQuestionIds = (payload.questions || []).map((q) => q.id)
+
     setModalState((prev) => ({
       ...prev,
       visible: true,
       loading: true,
-      selectedQuestionIds: existingQuestionIds,  // Pre-select existing questions
+      selectedQuestionIds: existingQuestionIds, // Pre-select existing questions
     }))
     try {
       // Import từ action/question-bank/questionBankActions
-      const { getQuestions } = await import("@/action/question-bank/questionBankActions")
+      const { getQuestions } =
+        await import("@/action/question-bank/questionBankActions")
 
       // Gọi action để lấy danh sách câu hỏi
       const response = await getQuestions(1, 1000) // Lấy 1000 câu hỏi đầu tiên
@@ -356,14 +367,15 @@ export default function CreateQuizPage() {
         loading: false,
       }))
     }
-
   }
   /**
- * Filter câu hỏi theo search query
- */
-  const filteredQuestions = modalState.questions.filter((question) =>
-    question.text.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (question.description && question.description.toLowerCase().includes(searchQuery.toLowerCase()))
+   * Filter câu hỏi theo search query
+   */
+  const filteredQuestions = modalState.questions.filter(
+    (question) =>
+      question.text.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (question.description &&
+        question.description.toLowerCase().includes(searchQuery.toLowerCase()))
   )
   /**
    * Đóng modal thêm câu hỏi
@@ -377,10 +389,10 @@ export default function CreateQuizPage() {
   }
 
   /**
- * Xử lý chọn/bỏ chọn câu hỏi
- * - AC2: Cho phép check nhiều câu hỏi
- * - Fix: Cho phép deselect bằng cách click lại
- */
+   * Xử lý chọn/bỏ chọn câu hỏi
+   * - AC2: Cho phép check nhiều câu hỏi
+   * - Fix: Cho phép deselect bằng cách click lại
+   */
   const handleQuestionSelect = (questionId: number) => {
     setModalState((prev) => {
       const isCurrentlySelected = prev.selectedQuestionIds.includes(questionId)
@@ -396,7 +408,7 @@ export default function CreateQuizPage() {
 
   /**
    * [US-06] Scenario 1: Bấm "Add Selected" cập nhật danh sách câu hỏi
-   * 
+   *
    * Logic:
    * - Những câu được select trong modal → giữ lại trong quiz
    * - Những câu bị deselect trong modal → xóa khỏi quiz
@@ -439,7 +451,7 @@ export default function CreateQuizPage() {
 
   const handleDrop = (e: React.DragEvent, dropIndex: number) => {
     e.preventDefault()
-    
+
     if (draggedIndex === null || draggedIndex === dropIndex) {
       setDraggedIndex(null)
       return
@@ -448,12 +460,12 @@ export default function CreateQuizPage() {
     setPayload((prev) => {
       const newQuestions = [...(prev.questions || [])]
       const draggedQuestion = newQuestions[draggedIndex]
-      
+
       // Remove from old position
       newQuestions.splice(draggedIndex, 1)
       // Insert at new position
       newQuestions.splice(dropIndex, 0, draggedQuestion)
-      
+
       return {
         ...prev,
         questions: newQuestions,
@@ -470,7 +482,7 @@ export default function CreateQuizPage() {
 
   /**
    * [US-09] Calculate total score and points per question
-   * Business Rule: 
+   * Business Rule:
    * - TotalScore = 100 (fixed)
    * - PointsPerQuestion = 100 / Count(questions)
    */
@@ -532,8 +544,8 @@ export default function CreateQuizPage() {
   }
 
   const handleSubmit = async () => {
-    console.log("[handleSubmit] Starting submission...")
-    
+    ;("[handleSubmit] Starting submission...")
+
     // Only check step 0 and 1, step 2 is final review step
     if (!stepValid[0] || !stepValid[1]) {
       console.warn("[handleSubmit] Step validation failed:", stepValid)
@@ -578,18 +590,21 @@ export default function CreateQuizPage() {
         )
       }
 
-      console.log("[handleSubmit] FormData prepared, sending to /api/quizzes/create...", {
-        course_id: payload.course_id,
-        title: payload.title,
-        questionCount: payload.questions?.length || 0
-      })
+      ;("[handleSubmit] FormData prepared, sending to /api/quizzes/create...",
+        {
+          course_id: payload.course_id,
+          title: payload.title,
+          questionCount: payload.questions?.length || 0,
+        })
 
       const response = await fetch("/api/quizzes/create", {
         method: "POST",
         body: formData,
-      })
-
-      console.log("[handleSubmit] Response received:", response.status, response.statusText)
+      })(
+        "[handleSubmit] Response received:",
+        response.status,
+        response.statusText
+      )
 
       if (!response.ok) {
         const errorData = await response.json()
@@ -597,8 +612,10 @@ export default function CreateQuizPage() {
         throw new Error(errorData.error || "Failed to create quiz")
       }
 
-      const responseData = await response.json()
-      console.log("[handleSubmit] Success:", responseData)
+      const responseData = await response.json()(
+        "[handleSubmit] Success:",
+        responseData
+      )
       message.success("Tạo bài thi thành công!")
       router.push("/quizzes")
     } catch (error) {
@@ -641,16 +658,18 @@ export default function CreateQuizPage() {
                 className="w-full"
               >
                 <div
-                  className={`flex flex-col items-center gap-2 ${index > current ? "opacity-50 cursor-not-allowed" : ""
-                    }`}
+                  className={`flex flex-col items-center gap-2 ${
+                    index > current ? "opacity-50 cursor-not-allowed" : ""
+                  }`}
                 >
                   <div
-                    className={`w-10 h-10 rounded-full flex items-center justify-center font-bold transition-all ${index === current
-                      ? "bg-blue-600 text-white ring-2 ring-blue-300"
-                      : stepValid[index]
-                        ? "bg-green-500 text-white"
-                        : "bg-gray-300 text-gray-600"
-                      }`}
+                    className={`w-10 h-10 rounded-full flex items-center justify-center font-bold transition-all ${
+                      index === current
+                        ? "bg-blue-600 text-white ring-2 ring-blue-300"
+                        : stepValid[index]
+                          ? "bg-green-500 text-white"
+                          : "bg-gray-300 text-gray-600"
+                    }`}
                   >
                     {stepValid[index] ? <CheckCircleOutlined /> : index + 1}
                   </div>
@@ -662,8 +681,9 @@ export default function CreateQuizPage() {
 
               {index < steps.length - 1 && (
                 <div
-                  className={`h-1 mt-3 rounded transition-colors ${stepValid[index] ? "bg-green-500" : "bg-gray-300"
-                    }`}
+                  className={`h-1 mt-3 rounded transition-colors ${
+                    stepValid[index] ? "bg-green-500" : "bg-gray-300"
+                  }`}
                 />
               )}
             </div>
@@ -740,7 +760,7 @@ export default function CreateQuizPage() {
                       style={{ flex: 1 }}
                     />
                     {payload.time_limit_minutes === 0 ||
-                      payload.time_limit_minutes === undefined ? (
+                    payload.time_limit_minutes === undefined ? (
                       <span className="text-green-600 font-medium whitespace-nowrap text-sm bg-green-50 px-3 py-2 rounded">
                         🔓 Unlimited
                       </span>
@@ -849,11 +869,13 @@ export default function CreateQuizPage() {
                   </div>
 
                   {/* Total Score Info Bar */}
-                  <div className={`p-4 rounded border-l-4 mb-4 ${
-                    isPassingScoreValid 
-                      ? "bg-green-50 border-l-green-500" 
-                      : "bg-yellow-50 border-l-yellow-500"
-                  }`}>
+                  <div
+                    className={`p-4 rounded border-l-4 mb-4 ${
+                      isPassingScoreValid
+                        ? "bg-green-50 border-l-green-500"
+                        : "bg-yellow-50 border-l-yellow-500"
+                    }`}
+                  >
                     <div className="flex items-start gap-3">
                       {isPassingScoreValid ? (
                         <CheckCircleOutlined className="text-green-600 mt-0.5" />
@@ -861,17 +883,24 @@ export default function CreateQuizPage() {
                         <WarningOutlined className="text-yellow-600 mt-0.5" />
                       )}
                       <div className="flex-1">
-                        <p className={`font-medium ${
-                          isPassingScoreValid ? "text-green-900" : "text-yellow-900"
-                        }`}>
-                          Tổng điểm bài thi: <span className="text-lg">{totalScore}</span> điểm 
+                        <p
+                          className={`font-medium ${
+                            isPassingScoreValid
+                              ? "text-green-900"
+                              : "text-yellow-900"
+                          }`}
+                        >
+                          Tổng điểm bài thi:{" "}
+                          <span className="text-lg">{totalScore}</span> điểm
                         </p>
                         <p className="text-sm text-gray-700 mt-1">
-                          ({payload.questions.length} câu × {pointsPerQuestion.toFixed(2)} điểm/câu)
+                          ({payload.questions.length} câu ×{" "}
+                          {pointsPerQuestion.toFixed(2)} điểm/câu)
                         </p>
                         {!isPassingScoreValid && (
                           <p className="text-sm text-yellow-800 mt-2">
-                            ⚠️ Điểm đạt ({passingScore}%) vượt quá tổng điểm ({totalScore}). Vui lòng cân đối lại!
+                            ⚠️ Điểm đạt ({passingScore}%) vượt quá tổng điểm (
+                            {totalScore}). Vui lòng cân đối lại!
                           </p>
                         )}
                       </div>
@@ -933,10 +962,7 @@ export default function CreateQuizPage() {
                 onCancel={handleCloseAddQuestionsModal}
                 width={900}
                 footer={[
-                  <Button
-                    key="cancel"
-                    onClick={handleCloseAddQuestionsModal}
-                  >
+                  <Button key="cancel" onClick={handleCloseAddQuestionsModal}>
                     Hủy
                   </Button>,
                   <Button
@@ -966,23 +992,25 @@ export default function CreateQuizPage() {
                     <div className="space-y-2 max-h-96 overflow-y-auto border border-gray-200 rounded p-4 bg-gray-50">
                       {filteredQuestions.length > 0 ? (
                         filteredQuestions.map((question) => {
-                          const isSelected = modalState.selectedQuestionIds.includes(
-                            question.id
-                          )
+                          const isSelected =
+                            modalState.selectedQuestionIds.includes(question.id)
 
                           return (
                             <div
                               key={question.id}
                               onClick={() => handleQuestionSelect(question.id)}
-                              className={`p-3 border rounded-lg cursor-pointer transition-all ${isSelected
-                                ? "bg-blue-100 border-blue-400 shadow-sm"
-                                : "bg-white hover:bg-blue-50 border-gray-200 hover:border-blue-300"
-                                }`}
+                              className={`p-3 border rounded-lg cursor-pointer transition-all ${
+                                isSelected
+                                  ? "bg-blue-100 border-blue-400 shadow-sm"
+                                  : "bg-white hover:bg-blue-50 border-gray-200 hover:border-blue-300"
+                              }`}
                             >
                               <div className="flex gap-3">
                                 <Checkbox
                                   checked={isSelected}
-                                  onChange={() => handleQuestionSelect(question.id)}
+                                  onChange={() =>
+                                    handleQuestionSelect(question.id)
+                                  }
                                   onClick={(e) => e.stopPropagation()}
                                 />
                                 <div className="flex-1 min-w-0">
@@ -1037,7 +1065,7 @@ export default function CreateQuizPage() {
                   <p className="text-sm text-gray-600">Thời gian làm bài:</p>
                   <p className="text-lg">
                     {payload.time_limit_minutes === 0 ||
-                      payload.time_limit_minutes === undefined
+                    payload.time_limit_minutes === undefined
                       ? "Không giới hạn"
                       : `${payload.time_limit_minutes} phút`}
                   </p>
@@ -1070,7 +1098,9 @@ export default function CreateQuizPage() {
 
               {/* Phân Phối Bài Thi */}
               <div className="mt-8">
-                <h3 className="text-lg font-semibold mb-4">Phân Phối Bài Thi</h3>
+                <h3 className="text-lg font-semibold mb-4">
+                  Phân Phối Bài Thi
+                </h3>
                 <div className="space-y-4 bg-blue-50 p-4 rounded border border-blue-200">
                   {/* Radio Button: Public / Departments */}
                   <Form layout="vertical">
@@ -1081,19 +1111,23 @@ export default function CreateQuizPage() {
                             type="radio"
                             name="targetType"
                             value="PUBLIC"
-                            checked={payload.targetType === 'PUBLIC'}
+                            checked={payload.targetType === "PUBLIC"}
                             onChange={() => {
                               setPayload((prev) => ({
                                 ...prev,
-                                targetType: 'PUBLIC',
+                                targetType: "PUBLIC",
                                 targetDeptIds: [],
                               }))
                             }}
                             className="w-4 h-4"
                           />
                           <span className="ml-3">
-                            <p className="font-medium">Công Khai (Toàn Công Ty)</p>
-                            <p className="text-sm text-gray-600">Tất cả nhân viên có thể thấy bài thi này</p>
+                            <p className="font-medium">
+                              Công Khai (Toàn Công Ty)
+                            </p>
+                            <p className="text-sm text-gray-600">
+                              Tất cả nhân viên có thể thấy bài thi này
+                            </p>
                           </span>
                         </label>
 
@@ -1102,29 +1136,28 @@ export default function CreateQuizPage() {
                             type="radio"
                             name="targetType"
                             value="DEPARTMENTS"
-                            checked={payload.targetType === 'DEPARTMENTS'}
+                            checked={payload.targetType === "DEPARTMENTS"}
                             onChange={() => {
                               setPayload((prev) => ({
                                 ...prev,
-                                targetType: 'DEPARTMENTS',
+                                targetType: "DEPARTMENTS",
                               }))
                             }}
                             className="w-4 h-4"
                           />
                           <span className="ml-3">
                             <p className="font-medium">Phòng Ban Cụ Thể</p>
-                            <p className="text-sm text-gray-600">Chỉ những phòng ban được chọn mới thấy</p>
+                            <p className="text-sm text-gray-600">
+                              Chỉ những phòng ban được chọn mới thấy
+                            </p>
                           </span>
                         </label>
                       </div>
                     </Form.Item>
 
                     {/* Department Select - Show only when DEPARTMENTS is selected */}
-                    {payload.targetType === 'DEPARTMENTS' && (
-                      <Form.Item 
-                        label="Chọn Phòng Ban"
-                        required
-                      >
+                    {payload.targetType === "DEPARTMENTS" && (
+                      <Form.Item label="Chọn Phòng Ban" required>
                         <Select
                           mode="multiple"
                           placeholder="Chọn phòng ban..."
@@ -1145,15 +1178,19 @@ export default function CreateQuizPage() {
 
                     {/* Display selected distribution */}
                     <div className="mt-4 p-3 bg-white rounded border border-gray-200">
-                      {payload.targetType === 'PUBLIC' ? (
+                      {payload.targetType === "PUBLIC" ? (
                         <p className="text-sm text-gray-700">
                           ✓ <strong>Công Khai:</strong> Tất cả nhân viên công ty
                         </p>
                       ) : (
                         <p className="text-sm text-gray-700">
-                          ✓ <strong>Phòng Ban:</strong> {payload.targetDeptIds && payload.targetDeptIds.length > 0
+                          ✓ <strong>Phòng Ban:</strong>{" "}
+                          {payload.targetDeptIds &&
+                          payload.targetDeptIds.length > 0
                             ? departments
-                                .filter((d) => payload.targetDeptIds?.includes(d.id))
+                                .filter((d) =>
+                                  payload.targetDeptIds?.includes(d.id)
+                                )
                                 .map((d) => d.name)
                                 .join(", ")
                             : "(Chưa chọn phòng ban)"}
@@ -1166,10 +1203,10 @@ export default function CreateQuizPage() {
             </div>
           )}
         </div>
-      </Spin >
+      </Spin>
 
       {/* Navigation Buttons */}
-      < div className="mt-8 flex items-center justify-between gap-4" >
+      <div className="mt-8 flex items-center justify-between gap-4">
         <Button
           onClick={handlePrev}
           disabled={current === 0}
@@ -1186,7 +1223,11 @@ export default function CreateQuizPage() {
               onClick={handleNext}
               icon={<ArrowRightOutlined />}
               size="large"
-              disabled={current === 1 ? (payload.questions?.length || 0) < 10 : Object.keys(errors).length > 0}
+              disabled={
+                current === 1
+                  ? (payload.questions?.length || 0) < 10
+                  : Object.keys(errors).length > 0
+              }
             >
               Tiếp Theo
             </Button>
@@ -1207,7 +1248,7 @@ export default function CreateQuizPage() {
             </Button>
           )}
         </div>
-      </div >
-    </div >
+      </div>
+    </div>
   )
 }

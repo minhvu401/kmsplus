@@ -4,7 +4,7 @@ const sql = postgres(process.env.DATABASE_URL)
 
 async function setupChatSchema() {
   try {
-    console.log("🔧 Starting chat schema migration...")
+    ;("🔧 Starting chat schema migration...")
 
     // Create conversations table
     await sql`
@@ -24,9 +24,7 @@ async function setupChatSchema() {
 
     await sql`
       CREATE INDEX IF NOT EXISTS idx_conversations_created_at ON conversations(created_at)
-    `
-
-    console.log("✅ Conversations table created/verified")
+    `("✅ Conversations table created/verified")
 
     // Create messages table
     await sql`
@@ -46,9 +44,7 @@ async function setupChatSchema() {
 
     await sql`
       CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(created_at)
-    `
-
-    console.log("✅ Messages table created/verified")
+    `("✅ Messages table created/verified")
 
     // Create function for trigger
     await sql`
@@ -74,10 +70,9 @@ async function setupChatSchema() {
       AFTER INSERT ON messages
       FOR EACH ROW
       EXECUTE FUNCTION update_conversations_timestamp()
-    `
-
-    console.log("✅ Trigger for auto-update created/verified")
-    console.log("\n✅ Chat schema setup completed successfully!")
+    `("✅ Trigger for auto-update created/verified")(
+      "\n✅ Chat schema setup completed successfully!"
+    )
 
     process.exit(0)
   } catch (error) {

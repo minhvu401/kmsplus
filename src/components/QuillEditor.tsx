@@ -28,7 +28,6 @@ export default function QuillEditor({
   // Keep latest value for async init
   useEffect(() => {
     valueRef.current = value
-    console.log('🎯 QuillEditor - Value prop updated:', { valueLength: value?.length || 0, isReady, value: value?.substring(0, 50) + '...' })
   }, [value, isReady])
 
   const imageHandler = useCallback(async () => {
@@ -51,10 +50,16 @@ export default function QuillEditor({
           quillRef.current.setSelection(range.index + 1)
         }
 
-        message.success({ content: "Image uploaded successfully", key: "imageUpload" })
+        message.success({
+          content: "Image uploaded successfully",
+          key: "imageUpload",
+        })
       } catch (error: any) {
         console.error("Image upload error:", error)
-        message.error({ content: error?.message || "Failed to upload image", key: "imageUpload" })
+        message.error({
+          content: error?.message || "Failed to upload image",
+          key: "imageUpload",
+        })
       }
     }
 
@@ -71,7 +76,7 @@ export default function QuillEditor({
 
         // Clear any existing toolbar siblings and container content to avoid duplicates
         const parent = container.parentElement
-        parent?.querySelectorAll('.ql-toolbar').forEach((node) => node.remove())
+        parent?.querySelectorAll(".ql-toolbar").forEach((node) => node.remove())
         container.innerHTML = ""
 
         const quill = new Quill(container, {
@@ -120,7 +125,6 @@ export default function QuillEditor({
         quillRef.current = quill
         initializedRef.current = true
         setIsReady(true)
-        console.log('✅ QuillEditor - Initialized. Initial content length:', initialHtml.length)
       } catch (error) {
         console.error("Failed to initialize Quill:", error)
       }
@@ -132,20 +136,12 @@ export default function QuillEditor({
   // Separate effect for content updates after init - PRIORITY update
   useEffect(() => {
     if (!quillRef.current) {
-      console.log('⚠️ QuillEditor - quillRef not ready')
       return
     }
 
     const currentHtml = quillRef.current.root.innerHTML
-    console.log('🔄 QuillEditor - Checking content update:', { 
-      isReady, 
-      currentHtml: currentHtml?.substring(0, 30), 
-      newValue: value?.substring(0, 30),
-      equal: currentHtml === value
-    })
-    
+
     if (currentHtml !== value && value !== undefined) {
-      console.log('🔄 QuillEditor - SETTING new content:', { value: value?.substring(0, 50) })
       isSettingContent.current = true
       quillRef.current.root.innerHTML = value || ""
       isSettingContent.current = false
@@ -161,4 +157,3 @@ export default function QuillEditor({
     </div>
   )
 }
-

@@ -35,10 +35,10 @@ export async function middleware(request: NextRequest) {
   // Check if user is authenticated via custom token OR NextAuth
   const isAuthenticated = token || nextAuthToken
 
-  // console.log("Middleware called for:", pathname + search)
-  // console.log("Token:", token ? "exists" : "undefined")
-  // console.log("NextAuth Token:", nextAuthToken ? "exists" : "undefined")
-  // console.log("All cookies:", Array.from(request.cookies.getSetCookie() || []))
+  // ("Middleware called for:", pathname + search)
+  // ("Token:", token ? "exists" : "undefined")
+  // ("NextAuth Token:", nextAuthToken ? "exists" : "undefined")
+  // ("All cookies:", Array.from(request.cookies.getSetCookie() || []))
 
   const isProtectedRoute = protectedRoutes.some((route) =>
     pathname.startsWith(route)
@@ -56,13 +56,11 @@ export async function middleware(request: NextRequest) {
         await verifyToken(token)
       }
       // If NextAuth token exists, just allow (NextAuth will validate it)
-      console.log("Redirecting to dashboard (already logged in)")
       return NextResponse.redirect(
         new URL(PageRoute.DASHBOARD_METRICS, request.url)
       )
     } catch (error) {
       // Token invalid → xóa cookie
-      console.log("Token invalid, deleting cookie")
       const response = NextResponse.next()
       response.cookies.delete("token")
       return response
@@ -71,7 +69,6 @@ export async function middleware(request: NextRequest) {
 
   // Nếu chưa login và truy cập protected route → redirect về login
   if (isProtectedRoute && !isAuthenticated) {
-    console.log("No token, redirecting to login")
     const loginUrl = new URL(PageRoute.LOGIN, request.url)
     loginUrl.searchParams.set("callbackUrl", pathname)
     return NextResponse.redirect(loginUrl)
@@ -86,18 +83,16 @@ export async function middleware(request: NextRequest) {
       if (pathname.startsWith(PageRoute.USER_MANAGEMENT)) {
         const userRole = decoded.role as Role
         if (!hasPermission(userRole, Permission.MANAGE_USERS)) {
-          console.log("User does not have MANAGE_USERS permission")
           return NextResponse.redirect(
             new URL(PageRoute.DASHBOARD_METRICS, request.url)
           )
         }
       }
 
-      // console.log("Token verified successfully for:", pathname)
+      // ("Token verified successfully for:", pathname)
       return NextResponse.next() // Token valid → cho qua
     } catch (error: any) {
       // Token invalid/expired → redirect về login và xóa cookie
-      console.log("Token verification failed:", error?.message || error)
       const loginUrl = new URL(PageRoute.LOGIN, request.url)
       loginUrl.searchParams.set("reason", "session_expired")
       const response = NextResponse.redirect(loginUrl)
@@ -108,7 +103,6 @@ export async function middleware(request: NextRequest) {
 
   // Nếu có NextAuth token → cho qua (NextAuth will handle validation)
   if (isProtectedRoute && nextAuthToken) {
-    console.log("NextAuth token verified, allowing access")
     return NextResponse.next()
   }
 

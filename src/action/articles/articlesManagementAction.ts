@@ -2,7 +2,23 @@
 
 import { requireAuth } from "@/lib/auth"
 import { sql } from "@/lib/database"
-import { getAllArticlesAction, filterByTagAction, getAllTagsAction, createArticleAction, deleteArticleAction, getAllCategoriesAction, getArticleByIdAction, updateArticleAction, restoreArticleAction, approveArticleAction, rejectArticleAction, resubmitArticleAction, updateArticlesStatusConstraint, getTopAuthorsAction, getPublishedArticlesAction } from "@/service/articles.service"
+import {
+  getAllArticlesAction,
+  filterByTagAction,
+  getAllTagsAction,
+  createArticleAction,
+  deleteArticleAction,
+  getAllCategoriesAction,
+  getArticleByIdAction,
+  updateArticleAction,
+  restoreArticleAction,
+  approveArticleAction,
+  rejectArticleAction,
+  resubmitArticleAction,
+  updateArticlesStatusConstraint,
+  getTopAuthorsAction,
+  getPublishedArticlesAction,
+} from "@/service/articles.service"
 
 export type CurrentUserInfo = {
   id: number
@@ -21,7 +37,7 @@ export type CurrentUserInfo = {
 export async function getCurrentUserDetail(): Promise<CurrentUserInfo | null> {
   try {
     const authUser = await requireAuth()
-    
+
     const users = await sql`
       SELECT 
         u.id,
@@ -37,14 +53,16 @@ export async function getCurrentUserDetail(): Promise<CurrentUserInfo | null> {
       WHERE u.id = ${Number(authUser.id)} AND u.status = 'active'
       GROUP BY u.id, u.email, u.full_name, u.avatar_url, u.status, u.department_id
     `
-    
+
     if (users.length === 0) {
       return null
     }
-    
+
     const user = users[0] as any
-    const isAdmin = (user.roles || []).includes('admin') || (user.roles || []).includes('Admin')
-    
+    const isAdmin =
+      (user.roles || []).includes("admin") ||
+      (user.roles || []).includes("Admin")
+
     return {
       id: Number(user.id),
       email: user.email,
@@ -53,10 +71,10 @@ export async function getCurrentUserDetail(): Promise<CurrentUserInfo | null> {
       department_id: user.department_id,
       status: user.status,
       roles: user.roles || [],
-      isAdmin
+      isAdmin,
     }
   } catch (error: any) {
-    console.error('Error getting current user detail:', error)
+    console.error("Error getting current user detail:", error)
     return null
   }
 }
@@ -86,10 +104,10 @@ export async function filterByTagAndCategory(
   tagFilter?: string,
   categoryId?: number,
   statusFilter?: string,
-  isDeletedFilter?: boolean | 'all',
-  sortOrder: 'newest' | 'oldest' = 'newest',
+  isDeletedFilter?: boolean | "all",
+  sortOrder: "newest" | "oldest" = "newest",
   page: number = 1,
-  pageSize: number = 12,
+  pageSize: number = 12
 ) {
   const currentUser = await getCurrentUserDetail()
   if (!currentUser) {
@@ -106,7 +124,7 @@ export async function filterByTagAndCategory(
     page,
     pageSize,
     currentUser.id,
-    currentUser.isAdmin,
+    currentUser.isAdmin
   )
 }
 
@@ -127,7 +145,7 @@ export async function approveArticle(id: number) {
 
 export async function rejectArticle(id: number) {
   const currentUser = await requireAuth()
-  return rejectArticleAction(id, '', Number(currentUser.id))
+  return rejectArticleAction(id, "", Number(currentUser.id))
 }
 
 export async function resubmitArticle(
@@ -136,12 +154,21 @@ export async function resubmitArticle(
   content: string,
   tags?: string[],
   category_id?: number | null,
-    department_id?: number | null,
+  department_id?: number | null,
   image_url?: string | null,
   thumbnail_url?: string | null
 ) {
   await requireAuth()
-  return resubmitArticleAction(id, title, content, tags, category_id, department_id, image_url, thumbnail_url)
+  return resubmitArticleAction(
+    id,
+    title,
+    content,
+    tags,
+    category_id,
+    department_id,
+    image_url,
+    thumbnail_url
+  )
 }
 
 export async function getAllCategories() {
@@ -155,32 +182,32 @@ export async function createArticle(formData: FormData) {
     if (!currentUser) {
       return {
         success: false,
-        message: 'Authentication required'
+        message: "Authentication required",
       }
     }
-    
-    const title = formData.get('title') as string
-    const content = formData.get('content') as string
-    const status = ((formData.get('status') as string) || 'draft') as 'draft' | 'pending' | 'published'
-    const tags = formData.get('tags') as string
-    const categoryIdRaw = formData.get('category_id') as string | null
-    const category_id = categoryIdRaw ? parseInt(categoryIdRaw, 10) : null
-    const image_url = (formData.get('image_url') as string) || null
-    const thumbnail_url = (formData.get('thumbnail_url') as string) || null
 
-    console.log('Form data:', { title, content, status, tags, category_id, image_url, thumbnail_url })
+    const title = formData.get("title") as string
+    const content = formData.get("content") as string
+    const status = ((formData.get("status") as string) || "draft") as
+      | "draft"
+      | "pending"
+      | "published"
+    const tags = formData.get("tags") as string
+    const categoryIdRaw = formData.get("category_id") as string | null
+    const category_id = categoryIdRaw ? parseInt(categoryIdRaw, 10) : null
+    const image_url = (formData.get("image_url") as string) || null
+    const thumbnail_url = (formData.get("thumbnail_url") as string) || null
 
     // Validate input
     if (!title || !content) {
-      return { 
-        success: false, 
-        message: 'Title and content are required' 
+      return {
+        success: false,
+        message: "Title and content are required",
       }
     }
 
     // Cast author_id sang số (bigint trong database)
     const authorId = currentUser.id
-    console.log('Author ID:', authorId)
 
     if (category_id !== null && !currentUser.isAdmin) {
       const categoryRows = await sql`
@@ -193,7 +220,7 @@ export async function createArticle(formData: FormData) {
       if (categoryRows.length === 0) {
         return {
           success: false,
-          message: 'Category not found'
+          message: "Category not found",
         }
       }
 
@@ -201,7 +228,7 @@ export async function createArticle(formData: FormData) {
       if (categoryDepartmentId !== (currentUser.department_id ?? null)) {
         return {
           success: false,
-          message: 'You can only use categories in your department'
+          message: "You can only use categories in your department",
         }
       }
     }
@@ -212,7 +239,7 @@ export async function createArticle(formData: FormData) {
       try {
         parsedTags = JSON.parse(tags)
       } catch (e) {
-        console.error('Error parsing tags:', e)
+        console.error("Error parsing tags:", e)
       }
     }
 
@@ -225,22 +252,20 @@ export async function createArticle(formData: FormData) {
       status,
       category_id,
       image_url,
-      thumbnail_url
+      thumbnail_url,
     })
 
-    console.log('Create article result:', result)
     return result
-
   } catch (error: any) {
-    console.error('Error in createArticle action:', error)
-    console.error('Error details:', {
+    console.error("Error in createArticle action:", error)
+    console.error("Error details:", {
       message: error?.message,
       code: error?.code,
-      detail: error?.detail
+      detail: error?.detail,
     })
-    return { 
-      success: false, 
-      message: `Error: ${error?.message || 'Failed to create article'}` 
+    return {
+      success: false,
+      message: `Error: ${error?.message || "Failed to create article"}`,
     }
   }
 }
@@ -250,10 +275,10 @@ export async function getArticleById(id: number) {
     await requireAuth()
     return await getArticleByIdAction(id)
   } catch (error: any) {
-    console.error('Error fetching article:', error)
-    return { 
-      success: false, 
-      message: error?.message || 'Failed to fetch article' 
+    console.error("Error fetching article:", error)
+    return {
+      success: false,
+      message: error?.message || "Failed to fetch article",
     }
   }
 }
@@ -264,23 +289,23 @@ export async function updateArticle(formData: FormData) {
     if (!currentUser) {
       return {
         success: false,
-        message: 'Authentication required'
+        message: "Authentication required",
       }
     }
-    
-    const id = formData.get('id') as string
-    const title = formData.get('title') as string
-    const content = formData.get('content') as string
-    const tags = formData.get('tags') as string
-    const categoryIdRaw = formData.get('category_id') as string | null
+
+    const id = formData.get("id") as string
+    const title = formData.get("title") as string
+    const content = formData.get("content") as string
+    const tags = formData.get("tags") as string
+    const categoryIdRaw = formData.get("category_id") as string | null
     const category_id = categoryIdRaw ? parseInt(categoryIdRaw, 10) : null
-    const image_url = (formData.get('image_url') as string) || null
-    const thumbnail_url = (formData.get('thumbnail_url') as string) || null
+    const image_url = (formData.get("image_url") as string) || null
+    const thumbnail_url = (formData.get("thumbnail_url") as string) || null
 
     if (!title || !content) {
-      return { 
-        success: false, 
-        message: 'Title and content are required' 
+      return {
+        success: false,
+        message: "Title and content are required",
       }
     }
 
@@ -289,7 +314,7 @@ export async function updateArticle(formData: FormData) {
       try {
         parsedTags = JSON.parse(tags)
       } catch (e) {
-        console.error('Error parsing tags:', e)
+        console.error("Error parsing tags:", e)
       }
     }
 
@@ -303,14 +328,17 @@ export async function updateArticle(formData: FormData) {
     if (articleRows.length === 0) {
       return {
         success: false,
-        message: 'Article not found'
+        message: "Article not found",
       }
     }
 
-    if (!currentUser.isAdmin && Number(articleRows[0].author_id) !== currentUser.id) {
+    if (
+      !currentUser.isAdmin &&
+      Number(articleRows[0].author_id) !== currentUser.id
+    ) {
       return {
         success: false,
-        message: 'You can only edit your own articles'
+        message: "You can only edit your own articles",
       }
     }
 
@@ -325,7 +353,7 @@ export async function updateArticle(formData: FormData) {
       if (categoryRows.length === 0) {
         return {
           success: false,
-          message: 'Category not found'
+          message: "Category not found",
         }
       }
 
@@ -333,7 +361,7 @@ export async function updateArticle(formData: FormData) {
       if (categoryDepartmentId !== (currentUser.department_id ?? null)) {
         return {
           success: false,
-          message: 'You can only use categories in your department'
+          message: "You can only use categories in your department",
         }
       }
     }
@@ -345,15 +373,15 @@ export async function updateArticle(formData: FormData) {
       tags: parsedTags,
       category_id,
       image_url,
-      thumbnail_url
+      thumbnail_url,
     })
 
     return result
   } catch (error: any) {
-    console.error('Error in updateArticle action:', error)
-    return { 
-      success: false, 
-      message: error?.message || 'Failed to update article' 
+    console.error("Error in updateArticle action:", error)
+    return {
+      success: false,
+      message: error?.message || "Failed to update article",
     }
   }
 }
@@ -363,7 +391,7 @@ export async function getTopAuthors(limit: number = 5) {
     await requireAuth()
     return await getTopAuthorsAction(limit)
   } catch (error: any) {
-    console.error('Error fetching top authors:', error)
+    console.error("Error fetching top authors:", error)
     return []
   }
 }
@@ -372,7 +400,7 @@ export async function getPublishedArticles(params: {
   searchQuery?: string
   selectedTags?: string[]
   categoryId?: number | null
-  sortOrder?: 'newest' | 'oldest'
+  sortOrder?: "newest" | "oldest"
   page?: number
   pageSize?: number
 }) {

@@ -72,8 +72,6 @@ export async function deleteCourseAPI(courseId: number) {
     const user = await requireAuth()
     if (!user) throw new Error("Unauthorized")
 
-    console.log("🔥 [API] Deleting course (Soft Delete):", courseId)
-
     const result = await deleteCourseAction(courseId)
 
     if (result.success) {
@@ -101,8 +99,6 @@ export async function createCourseAPI(
   try {
     const user = await requireAuth()
     if (!user?.id) throw new Error("Unauthorized")
-
-    console.log("🔥 [API] Creating course:", data.title)
 
     const courseData: CreateCoursePayload = {
       ...data,
@@ -145,7 +141,6 @@ export async function updateCourseAPI(
 ): Promise<UpdateAPIResponse> {
   try {
     await requireAuth()
-    console.log("🔥 [API] Updating course:", courseId)
 
     const result = await updateFullCourseAction(courseId, data as any)
 

@@ -5,7 +5,7 @@ import { sql } from "@/lib/database"
 // 1. Hàm lấy danh sách bài đã học (Dùng để hiển thị khi vào trang)
 export async function getCompletedItemIds(enrollmentId: number) {
   try {
-    console.log(`🔍 [GET] Đang lấy progress cho Enrollment ID: ${enrollmentId}`)
+    ;`🔍 [GET] Đang lấy progress cho Enrollment ID: ${enrollmentId}`
 
     const result = await sql`
       SELECT completed_item_ids 
@@ -14,8 +14,7 @@ export async function getCompletedItemIds(enrollmentId: number) {
     `
 
     if (result.length > 0) {
-      const data = result[0].completed_item_ids
-      console.log(`✅ [GET] Kết quả từ DB:`, data)
+      const data = result[0].completed_item_ids(`✅ [GET] Kết quả từ DB:`, data)
 
       // Đảm bảo luôn trả về mảng số (nếu DB trả về null thì trả về [])
       if (Array.isArray(data)) {
@@ -31,7 +30,7 @@ export async function getCompletedItemIds(enrollmentId: number) {
       return []
     }
 
-    console.log(`⚠️ [GET] Không tìm thấy enrollment hoặc chưa có bài học nào.`)
+    ;`⚠️ [GET] Không tìm thấy enrollment hoặc chưa có bài học nào.`
     return []
   } catch (error) {
     console.error("❌ [GET] Lỗi khi lấy danh sách bài học:", error)
@@ -46,9 +45,7 @@ export async function updateProgressService(
   itemId: number,
   itemType: "lesson" | "quiz"
 ) {
-  console.log(
-    `🚀 [UPDATE] Bắt đầu update: User ${userId}, Course ${courseId}, Item ${itemId}`
-  )
+  ;`🚀 [UPDATE] Bắt đầu update: User ${userId}, Course ${courseId}, Item ${itemId}`
 
   try {
     // A. Lấy dữ liệu cũ + thông tin course để tính progress
@@ -77,7 +74,7 @@ export async function updateProgressService(
       completedIds = Array.isArray(parsed) ? parsed.map((id) => Number(id)) : []
     }
 
-    console.log("📝 [UPDATE] Danh sách cũ:", completedIds)
+    ;("📝 [UPDATE] Danh sách cũ:", completedIds)
 
     // Chuẩn hóa về curriculum_items.id để theo dõi tiến độ thống nhất cho lesson/quiz.
     const resolvedItemRows = await sql`
@@ -95,32 +92,32 @@ export async function updateProgressService(
     `
 
     const normalizedItemId =
-      resolvedItemRows.length > 0 ? Number(resolvedItemRows[0].id) : Number(itemId)
+      resolvedItemRows.length > 0
+        ? Number(resolvedItemRows[0].id)
+        : Number(itemId)
 
     // B. Thêm bài mới vào mảng
     if (!completedIds.includes(normalizedItemId)) {
       completedIds.push(normalizedItemId)
     } else {
-      console.log("⚠️ [UPDATE] Bài học này đã có trong danh sách rồi.")
+      ;("⚠️ [UPDATE] Bài học này đã có trong danh sách rồi.")
     }
 
-    console.log("💾 [UPDATE] Danh sách mới sắp lưu:", completedIds)
+    ;("💾 [UPDATE] Danh sách mới sắp lưu:", completedIds)
 
     // C. Tính toán progress percentage mới
     const totalItems = enrollment.total_items || 0
     const newProgressPercentage =
-      totalItems > 0 ? Math.round((completedIds.length / totalItems) * 100) : 0
-
-    console.log(
-      `📊 [UPDATE] Progress mới: ${newProgressPercentage}% (${completedIds.length}/${totalItems} items)`
-    )
+      totalItems > 0
+        ? Math.round((completedIds.length / totalItems) * 100)
+        : 0(
+            `📊 [UPDATE] Progress mới: ${newProgressPercentage}% (${completedIds.length}/${totalItems} items)`
+          )
 
     // D. Xác định status mới
     const newStatus = newProgressPercentage >= 100 ? "completed" : "in_progress"
     const completedAtValue =
-      newStatus === "completed"
-        ? enrollment.completed_at ?? new Date()
-        : null
+      newStatus === "completed" ? (enrollment.completed_at ?? new Date()) : null
 
     // E. Cập nhật xuống DB
     // Lưu ý: Ép kiểu ::jsonb để Postgres hiểu đây là JSON
@@ -132,9 +129,7 @@ export async function updateProgressService(
         status = ${newStatus},
         completed_at = ${completedAtValue}
       WHERE id = ${enrollment.id}
-    `
-
-    console.log("✅ [UPDATE] Lưu vào DB thành công!")
+    `("✅ [UPDATE] Lưu vào DB thành công!")
     return { success: true, progressPercentage: newProgressPercentage }
   } catch (error) {
     console.error("❌ [UPDATE] Lỗi Database:", error)

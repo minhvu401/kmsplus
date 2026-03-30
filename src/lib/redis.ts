@@ -23,7 +23,6 @@ async function getRedisClient() {
 
     // Test connection
     await redisClient.ping()
-    console.log("✅ Redis (Upstash) connected successfully")
     return redisClient
   } catch (error) {
     console.error("❌ Redis connection error:", error)
