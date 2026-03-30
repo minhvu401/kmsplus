@@ -116,8 +116,17 @@ export default function ViewArticlePage() {
     try {
       const [tagsRes, categoriesRes] = await Promise.all([getAllTags(), getAllCategories()])
       const tagNames = (tagsRes || []).map((t: any) => t.name)
+      const normalizedCategories = Array.isArray(categoriesRes)
+        ? categoriesRes
+            .filter((c: any) => Number.isInteger(c?.id) && typeof c?.name === 'string' && c.name.trim().length > 0)
+            .map((c: any) => ({ id: Number(c.id), name: c.name.trim() }))
+            .filter((c: { id: number; name: string }, index: number, arr: { id: number; name: string }[]) =>
+              arr.findIndex((x) => x.id === c.id) === index
+            )
+        : []
+
       setTags(tagNames)
-      setCategories(categoriesRes || [])
+      setCategories(normalizedCategories)
     } catch (err) {
       console.error('Lỗi tải bộ lọc bài viết', err)
       setTags([])
