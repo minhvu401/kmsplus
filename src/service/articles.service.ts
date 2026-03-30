@@ -340,10 +340,10 @@ export async function filterByTagAction(
               AND LOWER(t_filter.name) = LOWER(${tagFilter})
           )`
         : sql``}
-      ${!isAdmin ? sql`AND a.author_id = ${userId ?? -1}` : sql``}
+      ${!isAdmin && managedDepartmentId === null ? sql`AND a.author_id = ${userId ?? -1}` : sql``}
     
     GROUP BY 
-      a.id, a.author_id, a.title, a.status, a.approved_by, a.approved_at, a.deleted_at, a.created_at, a.updated_at, a.is_deleted, a.image_url, a.thumbnail_url, c.name, u.full_name, ua.full_name
+      a.id, a.author_id, a.title, a.status, a.approved_by, a.approved_at, a.deleted_at, a.created_at, a.updated_at, a.is_deleted, a.image_url, a.thumbnail_url, c.name, c.department_id, d.name, u.full_name, ua.full_name
     ORDER BY
       COALESCE(a.approved_at, a.created_at) ${sortOrder === 'oldest' ? sql`ASC` : sql`DESC`},
       a.id DESC
