@@ -54,6 +54,8 @@ const { Text } = Typography
 interface ManageCoursesClientProps {
   courses: Course[]
   totalCount: number
+  currentUserId?: number | null
+  enforceCreatorOnlyEdit?: boolean
   query: string
   page: number
   selectedCategories: string[]
@@ -65,6 +67,8 @@ interface ManageCoursesClientProps {
 export default function ManageCoursesClient({
   courses,
   totalCount,
+  currentUserId,
+  enforceCreatorOnlyEdit = false,
   query,
   page,
   selectedCategories,
@@ -95,6 +99,12 @@ export default function ManageCoursesClient({
   const [selectedStatus, setSelectedStatus] = useState("All")
   const [viewMode, setViewMode] = useState<"list" | "grid">("list")
   const [filteredCourses, setFilteredCourses] = useState<Course[]>(courses)
+
+  const canEditCourse = (course: Course) => {
+    if (!enforceCreatorOnlyEdit) return true
+    if (!currentUserId) return false
+    return Number(course.creator_id) === Number(currentUserId)
+  }
 
   // Check if any filter is active
   useEffect(() => {
@@ -524,13 +534,13 @@ export default function ManageCoursesClient({
       ),
     },
     {
-      title: "Actions",
+      title: <div className="text-center">Actions</div>,
       key: "actions",
-      align: "right" as const, // Đẩy các nút actions sang phải cho gọn
+      align: "center" as const,
       render: (_: any, record: Course) => (
-        <div className="flex flex-col items-end gap-1">
-          <div className="flex gap-1 justify-end">
-            {/* Nút Edit */}
+        <div className="flex flex-nowrap items-center justify-center gap-1">
+          {/* Nút Edit */}
+          {canEditCourse(record) ? (
             <Tooltip title="Edit course">
               <Button
                 type="text"
@@ -543,109 +553,107 @@ export default function ManageCoursesClient({
                 }}
               />
             </Tooltip>
+          ) : null}
 
-            {/* Nút Delete */}
-            <Tooltip
-              title={
+          {/* Nút Delete */}
+          <Tooltip
+            title={
+              record.status === "published"
+                ? "Course is published"
+                : record.status === "pending_approval"
+                  ? "Course is pending approval"
+                  : "Delete course"
+            }
+          >
+            <Button
+              type="text"
+              danger={record.status !== "published"}
+              icon={<DeleteOutlined />}
+              size="middle"
+              disabled={
+                record.status === "published" ||
+                record.status === "pending_approval"
+              }
+              className={
+                record.status === "published" ||
+                record.status === "pending_approval"
+                  ? "!text-gray-400 cursor-not-allowed rounded-full"
+                  : "hover:bg-red-50 rounded-full"
+              }
+              onClick={(e) => {
+                e.stopPropagation()
+                e.preventDefault()
+                handleDelete(record)
+              }}
+            />
+          </Tooltip>
+
+          {/* Nút Enrollments */}
+          <Tooltip
+            title={
+              record.status !== "published"
+                ? "Course is not published"
+                : "View enrollments"
+            }
+          >
+            <Button
+              type="text"
+              icon={<ReadOutlined />}
+              size="middle"
+              disabled={record.status !== "published"}
+              className={
+                record.status !== "published"
+                  ? "!text-gray-400 cursor-not-allowed rounded-full"
+                  : "text-green-600 hover:!text-green-700 hover:bg-green-50 rounded-full"
+              }
+              onClick={(e) => {
+                e.stopPropagation()
+                e.preventDefault()
+                if (record.status !== "published") return
+                router.push(`/courses/management/${record.id}/enrollments`)
+              }}
+            />
+          </Tooltip>
+
+          {/* Nút Feedback */}
+          <Tooltip
+            title={
+              record.status !== "published"
+                ? "Course is not published"
+                : "View feedback"
+            }
+          >
+            <Button
+              type="text"
+              icon={<StarOutlined />}
+              size="middle"
+              disabled={record.status !== "published"}
+              style={
                 record.status === "published"
-                  ? "Course is published"
-                  : record.status === "pending_approval"
-                    ? "Course is pending approval"
-                    : "Delete course"
+                  ? { color: "#ca8a04" }
+                  : undefined
               }
-            >
-              <Button
-                type="text"
-                danger={record.status !== "published"}
-                icon={<DeleteOutlined />}
-                size="middle"
-                disabled={
-                  record.status === "published" ||
-                  record.status === "pending_approval"
-                }
-                className={
-                  record.status === "published" ||
-                  record.status === "pending_approval"
-                    ? "!text-gray-400 cursor-not-allowed rounded-full"
-                    : "hover:bg-red-50 rounded-full"
-                }
-                onClick={(e) => {
-                  e.stopPropagation()
-                  e.preventDefault()
-                  handleDelete(record)
-                }}
-              />
-            </Tooltip>
-          </div>
-
-          <div className="flex gap-1 justify-end">
-            {/* Nút Enrollments */}
-            <Tooltip
-              title={
+              className={
                 record.status !== "published"
-                  ? "Course is not published"
-                  : "View enrollments"
+                  ? "!text-gray-400 cursor-not-allowed rounded-full"
+                  : "hover:bg-yellow-50 rounded-full"
               }
-            >
-              <Button
-                type="text"
-                icon={<ReadOutlined />}
-                size="middle"
-                disabled={record.status !== "published"}
-                className={
-                  record.status !== "published"
-                    ? "!text-gray-400 cursor-not-allowed rounded-full"
-                    : "text-green-600 hover:!text-green-700 hover:bg-green-50 rounded-full"
-                }
-                onClick={(e) => {
-                  e.stopPropagation()
-                  e.preventDefault()
-                  if (record.status !== "published") return
-                  router.push(`/courses/management/${record.id}/enrollments`)
-                }}
-              />
-            </Tooltip>
-
-            {/* Nút Feedback */}
-            <Tooltip
-              title={
-                record.status !== "published"
-                  ? "Course is not published"
-                  : "View feedback"
-              }
-            >
-              <Button
-                type="text"
-                icon={<StarOutlined />}
-                size="middle"
-                disabled={record.status !== "published"}
-                style={
-                  record.status === "published"
-                    ? { color: "#ca8a04" }
-                    : undefined
-                }
-                className={
-                  record.status !== "published"
-                    ? "!text-gray-400 cursor-not-allowed rounded-full"
-                    : "hover:bg-yellow-50 rounded-full"
-                }
-                onMouseEnter={(e) => {
-                  if (record.status !== "published") return
-                  e.currentTarget.style.color = "#b45309"
-                }}
-                onMouseLeave={(e) => {
-                  if (record.status !== "published") return
-                  e.currentTarget.style.color = "#ca8a04"
-                }}
-                onClick={(e) => {
-                  e.stopPropagation()
-                  e.preventDefault()
-                  if (record.status !== "published") return
-                  router.push(`/courses/management/${record.id}/feedback`)
-                }}
-              />
-            </Tooltip>
-          </div>
+              onMouseEnter={(e) => {
+                if (record.status !== "published") return
+                e.currentTarget.style.color = "#b45309"
+              }}
+              onMouseLeave={(e) => {
+                if (record.status !== "published") return
+                e.currentTarget.style.color = "#ca8a04"
+              }}
+              onClick={(e) => {
+                e.stopPropagation()
+                e.preventDefault()
+                if (record.status !== "published") return
+                router.push(`/courses/management/${record.id}/feedback`)
+              }}
+            />
+          </Tooltip>
         </div>
       ),
     },
@@ -867,7 +875,10 @@ export default function ManageCoursesClient({
                         </Tag>
                       }
                       className="cursor-pointer hover:shadow-lg transition-shadow"
-                      onClick={() => handleOpenUpdate(course)}
+                      onClick={() => {
+                        if (!canEditCourse(course)) return
+                        handleOpenUpdate(course)
+                      }}
                     >
                       <Card.Meta
                         title={
@@ -943,18 +954,20 @@ export default function ManageCoursesClient({
                       </div>
                       <div className="mt-4 space-y-2">
                         <div className="flex gap-2">
-                          <Button
-                            type="text"
-                            size="small"
-                            icon={<EditOutlined />}
-                            className="flex-1 text-blue-600 hover:!text-blue-700"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              handleOpenUpdate(course)
-                            }}
-                          >
-                            Edit
-                          </Button>
+                          {canEditCourse(course) ? (
+                            <Button
+                              type="text"
+                              size="small"
+                              icon={<EditOutlined />}
+                              className="flex-1 text-blue-600 hover:!text-blue-700"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleOpenUpdate(course)
+                              }}
+                            >
+                              Edit
+                            </Button>
+                          ) : null}
                           <Tooltip
                             title={
                               course.status === "published"
