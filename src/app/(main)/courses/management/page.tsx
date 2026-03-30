@@ -33,7 +33,12 @@ export default async function ManagerCoursesPage({ searchParams }: Props) {
   ])
 
   // 2. Trích xuất mảng courses
-  const { courses = [], totalCount = 0 } = coursesData || {}
+  const {
+    courses = [],
+    totalCount = 0,
+    isHeadOfDepartmentView = false,
+    currentUserId = null,
+  } = coursesData || {}
 
   // 👇 LOGIC AN TOÀN: Kiểm tra xem kết quả trả về là Mảng hay Object
   const safeLessons = Array.isArray(lessonsRes)
@@ -52,6 +57,8 @@ export default async function ManagerCoursesPage({ searchParams }: Props) {
         <ManageCoursesClient
           courses={courses}
           totalCount={totalCount}
+          currentUserId={currentUserId}
+          enforceCreatorOnlyEdit={isHeadOfDepartmentView}
           query={query}
           page={page}
           selectedCategories={selectedCategories}
