@@ -24,11 +24,13 @@ const { Text } = Typography
 
 interface CreateUserFormProps {
   roles: { id: number; name: string }[]
+  departments: { id: number; name: string }[]
   onSuccess?: () => void
 }
 
 export default function CreateUserForm({
   roles,
+  departments,
   onSuccess,
 }: CreateUserFormProps) {
   const { language } = useLanguageStore()
@@ -70,6 +72,7 @@ export default function CreateUserForm({
     formData.append("password", values.password)
     formData.append("fullName", values.fullName)
     formData.append("roleId", values.roleId)
+    formData.append("departmentId", values.departmentId)
 
     startTransition(() => {
       createUserAction(formData)
@@ -154,6 +157,36 @@ export default function CreateUserForm({
             options={Object.entries(RoleConfig).map(([_, config]) => ({
               label: config.label,
               value: config.id,
+            }))}
+          />
+        </Form.Item>
+
+        {/* Department Field */}
+        <Form.Item
+          label={<Text strong>{language === "vi" ? "Phòng ban" : "Department"}</Text>}
+          name="departmentId"
+          rules={[
+            {
+              required: true,
+              message:
+                language === "vi"
+                  ? "Vui lòng chọn phòng ban"
+                  : "Please select a department",
+            },
+          ]}
+          help={state.errors?.departmentId?.[0]}
+          validateStatus={state.errors?.departmentId ? "error" : ""}
+        >
+          <Select
+            placeholder={
+              language === "vi"
+                ? "Chọn phòng ban"
+                : "Select a department"
+            }
+            disabled={isLoading}
+            options={departments.map((department) => ({
+              label: department.name,
+              value: department.id,
             }))}
           />
         </Form.Item>

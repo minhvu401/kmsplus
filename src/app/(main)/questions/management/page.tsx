@@ -53,13 +53,14 @@ export default async function QuestionsManagePage(props: {
             <Flex className="p-6" vertical>
                 <QuestionsNotification />
                 {/* Header */}
-                <Flex className="mb-6">
-                    <Flex className="flex items-center justify-between mb-6">
-                        <Flex>
-                            <h1 className="text-gray-600 text-3xl font-bold">Manage forum questions</h1>
-                        </Flex>
-                    </Flex>
-                </Flex>
+                <div className="mb-8">
+                    <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-blue-900 bg-clip-text text-transparent mb-4">
+                        Q&amp;A Management
+                    </h1>
+                    <p className="text-gray-600 max-w-2xl leading-relaxed">
+                        Manage and organize forum questions
+                    </p>
+                </div>
 
                 <Flex align="center" gap={28} style={{ marginBottom: 24 }}>
                     <Search placeholder="Search questions..." />

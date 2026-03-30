@@ -49,12 +49,23 @@ export default function QuestionDetails({ userId, question, categories }: { user
     const updatedAt = new Date(question.updated_at);
 
     return (
-        <Flex vertical align="center" gap={12} style={{ marginTop: 24 }}>
+        <Flex
+            vertical
+            align="center"
+            gap={14}
+            style={{
+                marginTop: 24,
+                width: "100%",
+                maxWidth: 980,
+                marginInline: "auto",
+                paddingInline: 8,
+            }}
+        >
             {/* Title and Menu */}
             <Flex
                 align="flex-start"
                 justify="space-between"
-                style={{ width: "100%", marginBottom: 12, gap: 12 }}
+                style={{ width: "100%", marginBottom: 14, gap: 16 }}
             >
                 <Flex style={{ flex: 1, minWidth: 0 }}>
                     <Title
@@ -89,7 +100,13 @@ export default function QuestionDetails({ userId, question, categories }: { user
             </Flex>
 
             {/* Metadata Row */}
-            <Flex align="center" justify="flex-start" gap={48} style={{ color: "#4b5563", fontWeight: 500, width: "100%" }}>
+            <Flex
+                align="center"
+                justify="flex-start"
+                gap={20}
+                wrap="wrap"
+                style={{ color: "#4b5563", fontWeight: 500, width: "100%" }}
+            >
                 <Text>asked on {createdAt.toLocaleDateString()}</Text>
                 {question.is_closed ? (
                     <Text>closed on {updatedAt.toLocaleDateString()}</Text>
@@ -101,7 +118,7 @@ export default function QuestionDetails({ userId, question, categories }: { user
             {/* Content */}
             <Flex justify="flex-start" style={{ width: "100%", marginTop: 16, flexDirection: "column", gap: 12 }}>
                 <div 
-                    className="prose prose-sm max-w-none text-gray-700"
+                    className="prose prose-sm md:prose-base max-w-none text-gray-700"
                     style={{ fontSize: 16, lineHeight: 1.6 }}
                     dangerouslySetInnerHTML={{ __html: question.content }}
                 />

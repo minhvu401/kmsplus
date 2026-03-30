@@ -91,12 +91,23 @@ export async function filterByTagAndCategory(
   page: number = 1,
   pageSize: number = 12,
 ) {
-  const currentUser = await getCurrentUserDetail()
-  if (!currentUser) {
-    return { data: [], total: 0 }
+  const currentUser = await getCurrentUserDetail();
+  const currentUserId = currentUser?.id ? Number(currentUser.id) : null;
+  const isAdmin = !!currentUser?.isAdmin;
+
+  let managedDepartmentId: number | null = null;
+  if (currentUserId && Number.isFinite(currentUserId)) {
+    const deptRows = await sql`
+      SELECT id
+      FROM department
+      WHERE head_of_department_id = ${currentUserId}
+        AND is_deleted = FALSE
+      LIMIT 1
+    `;
+    managedDepartmentId = deptRows.length > 0 ? Number(deptRows[0].id) : null;
   }
 
-  return filterByTagAction(
+  const result = await filterByTagAction(
     searchQuery,
     tagFilter,
     categoryId,
@@ -105,9 +116,19 @@ export async function filterByTagAndCategory(
     sortOrder,
     page,
     pageSize,
-    currentUser.id,
-    currentUser.isAdmin,
-  )
+    {
+      currentUserId,
+      managedDepartmentId,
+    },
+    currentUserId ?? undefined,
+    isAdmin,
+  );
+
+  return {
+    ...result,
+    currentUserId,
+    isHeadOfDepartmentView: managedDepartmentId !== null,
+  };
 }
 
 export async function deleteArticle(id: number) {

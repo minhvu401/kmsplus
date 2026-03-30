@@ -265,27 +265,67 @@ export default function CategoriesManagement() {
       title: 'Action',
       key: 'action',
       width: 140,
-      render: (_, record) => (
-        <Space size="small">
-          <Button
-            type="text"
-            icon={<EditOutlined />}
-            size="small"
-            disabled={record.is_deleted}
-            className="text-blue-600 hover:!text-blue-700 hover:bg-blue-50"
-            onClick={() => openEditModal(Number(record.id))}
-          />
-          <Button
-            type="text"
-            icon={record.is_deleted ? <RollbackOutlined /> : <InboxOutlined />}
-            size="small"
-            loading={deletingId === Number(record.id)}
-            onClick={() => handleDeleteClick(Number(record.id), record.is_deleted)}
-            danger={!record.is_deleted}
-            className={record.is_deleted ? "hover:bg-blue-50" : "hover:bg-red-50"}
-          />
+      render: (_, record) => {
+        const isGeneralCategory = Number(record.id) === 1;
+        const isEditDisabled = record.is_deleted || isGeneralCategory;
+
+        return (
+          <Space size="small">
+          <Tooltip
+            title={
+              isGeneralCategory
+                ? "'General' is a permanent category."
+                : record.is_deleted
+                ? 'Course is archived'
+                : 'Edit Category'
+            }
+          >
+            <span>
+              <Button
+                type="text"
+                icon={<EditOutlined />}
+                size="small"
+                disabled={isEditDisabled}
+                className={
+                  isEditDisabled
+                    ? "!text-gray-400 cursor-not-allowed hover:!text-gray-400 hover:!bg-transparent"
+                    : "text-blue-600 hover:!text-blue-700 hover:bg-blue-50"
+                }
+                onClick={() => openEditModal(Number(record.id))}
+              />
+            </span>
+          </Tooltip>
+          <Tooltip
+            title={
+              isGeneralCategory
+                ? "'General' is a permanent category."
+                : record.is_deleted
+                ? 'Restore Category'
+                : 'Archive Category'
+            }
+          >
+            <span>
+              <Button
+                type="text"
+                icon={record.is_deleted ? <RollbackOutlined /> : <InboxOutlined />}
+                size="small"
+                loading={deletingId === Number(record.id)}
+                disabled={isGeneralCategory}
+                onClick={() => handleDeleteClick(Number(record.id), record.is_deleted)}
+                danger={!record.is_deleted && !isGeneralCategory}
+                className={
+                  isGeneralCategory
+                    ? "!text-gray-400 cursor-not-allowed hover:!text-gray-400 hover:!bg-transparent"
+                    : record.is_deleted
+                    ? "text-green-600 hover:!text-green-700 hover:bg-green-50"
+                    : "hover:bg-red-50"
+                }
+              />
+            </span>
+          </Tooltip>
         </Space>
-      ),
+        )
+      },
     },
   ];
 
@@ -464,6 +504,8 @@ export default function CategoriesManagement() {
                 {filteredCategories.map((category) => {
                   const statusColor = category.is_deleted ? 'red' : 'green';
                   const statusLabel = category.is_deleted ? 'Archived' : 'Published';
+                  const isGeneralCategory = Number(category.id) === 1;
+                  const isEditDisabled = category.is_deleted || isGeneralCategory;
                   return (
                     <Col xs={24} sm={12} lg={8} xl={6} key={category.id}>
                       <Card
@@ -484,10 +526,6 @@ export default function CategoriesManagement() {
                         />
                         <div className="mt-4 space-y-2 text-sm">
                           <div className="flex justify-between">
-                            <Text type="secondary">ID:</Text>
-                            <Text strong>{category.id}</Text>
-                          </div>
-                          <div className="flex justify-between">
                             <Text type="secondary">Department:</Text>
                             <Text strong>
                               {category.department_name
@@ -505,32 +543,67 @@ export default function CategoriesManagement() {
                           </div>
                         </div>
                         <div className="mt-4 flex gap-2">
-                          <Button
-                            type="text"
-                            size="small"
-                            icon={<EditOutlined />}
-                            className="flex-1 text-blue-600 hover:!text-blue-700"
-                            disabled={category.is_deleted}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              openEditModal(Number(category.id));
-                            }}
+                          <Tooltip
+                            title={
+                              isGeneralCategory
+                                ? "'General' is a permanent category."
+                                : category.is_deleted
+                                ? 'Course is archived'
+                                : 'Edit Category'
+                            }
                           >
-                            Edit
-                          </Button>
-                          <Button
-                            type="text"
-                            danger={!category.is_deleted}
-                            size="small"
-                            icon={category.is_deleted ? <RollbackOutlined /> : <InboxOutlined />}
-                            className="flex-1"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteClick(Number(category.id), category.is_deleted);
-                            }}
+                            <span className="flex-1">
+                              <Button
+                                type="text"
+                                size="small"
+                                icon={<EditOutlined />}
+                                className={
+                                  isEditDisabled
+                                    ? "w-full !text-gray-400 cursor-not-allowed hover:!text-gray-400 hover:!bg-transparent"
+                                    : "w-full text-blue-600 hover:!text-blue-700"
+                                }
+                                disabled={isEditDisabled}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openEditModal(Number(category.id));
+                                }}
+                              >
+                                Edit
+                              </Button>
+                            </span>
+                          </Tooltip>
+                          <Tooltip
+                            title={
+                              isGeneralCategory
+                                ? "'General' is a permanent category."
+                                : category.is_deleted
+                                ? 'Restore Category'
+                                : 'Archive Category'
+                            }
                           >
-                            {category.is_deleted ? 'Restore' : 'Delete'}
-                          </Button>
+                            <span className="flex-1">
+                              <Button
+                                type="text"
+                                danger={!category.is_deleted && !isGeneralCategory}
+                                size="small"
+                                icon={category.is_deleted ? <RollbackOutlined /> : <InboxOutlined />}
+                                disabled={isGeneralCategory}
+                                className={
+                                  isGeneralCategory
+                                    ? "w-full !text-gray-400 cursor-not-allowed hover:!text-gray-400 hover:!bg-transparent"
+                                    : category.is_deleted
+                                    ? "w-full text-green-600 hover:!text-green-700 hover:bg-green-50"
+                                    : "w-full"
+                                }
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteClick(Number(category.id), category.is_deleted);
+                                }}
+                              >
+                                {category.is_deleted ? 'Restore' : 'Archive'}
+                              </Button>
+                            </span>
+                          </Tooltip>
                         </div>
                       </Card>
                     </Col>
@@ -570,12 +643,12 @@ export default function CategoriesManagement() {
           </Form.Item>
 
           <Form.Item
-            label="Department (Optional)"
+            label="Department"
             name="department_id"
+            rules={[{ required: true, message: 'Please select department' }]}
           >
             <Select
               placeholder="Select department"
-              allowClear
               showSearch
               optionFilterProp="label"
               options={getDepartmentOptions()}
