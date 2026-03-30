@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useActionState, startTransition } from 'react';
-import { Form, Input, Select, Button, Typography, Flex, Modal, Divider } from 'antd';
+import { useState, useActionState, startTransition, useEffect } from 'react';
+import { Form, Input, Select, Button, Typography, Flex, message } from 'antd';
 import { State, createAnswer } from '@/action/question/questionActions';
 import RichTextEditor from "@/components/ui/RichTextEditor";
 
@@ -20,6 +20,7 @@ function ContentEditor({ value = '', onChange, placeholder }: ContentEditorProps
       value={value}
       onChange={(val) => onChange?.(val)}
       placeholder={placeholder}
+      size = "compact"
     />
   );
 }
@@ -32,19 +33,37 @@ export default function CreateAnswerForm({
     questionId: number;
 }) {
     const [form] = Form.useForm();
-    const [isSubmitVisible, setSubmitVisible] = useState(false);
     const [contentCount, setContentCount] = useState(0);
+    const [messageApi, contextHolder] = message.useMessage();
 
     const initialState: State = { message: null, errors: {} };
     const [state, createAnswerAction] = useActionState(createAnswer, initialState);
 
-    const handleSubmit = () => {
-        setSubmitVisible(false);
-        form.submit();
-    };
+    useEffect(() => {
+        if (!state?.message) return;
+
+        const errorDetails = state.errors
+            ? Object.values(state.errors)
+                  .flat()
+                  .filter(Boolean)
+                  .join(' | ')
+            : '';
+
+        if (errorDetails) {
+            messageApi.error(errorDetails);
+            return;
+        }
+
+        if (state.message === 'Missing or invalid fields. Failed to create answer.') {
+            return;
+        }
+
+        messageApi.error(state.message);
+    }, [state, messageApi]);
 
     return (
         <>
+            {contextHolder}
             <Flex
                 vertical
                 gap={8}
@@ -97,40 +116,13 @@ export default function CreateAnswerForm({
 
                     <Flex justify="space-between" align="center">
                         <Text type="secondary">Character limit {contentCount} / 600</Text>
-                        <Button type="primary" size="large" onClick={() => setSubmitVisible(true)}>
-                            Submit
+                        <Button type="primary" size="large" htmlType="submit">
+                            Send
                         </Button>
                     </Flex>
 
-                    {state.message && (
-                        <>
-                            <Text type="danger" style={{ display: 'block', marginTop: 2 }}>
-                                {state.message}
-                            </Text>
-                            {state.errors?.content?.map((err) => (
-                                <Text key={err} type="danger" style={{ display: 'block' }}>- {err}</Text>
-                            ))}
-                        </>
-                    )}
                 </Form>
             </Flex>
-
-
-            <Modal
-                title="Confirmation"
-                open={isSubmitVisible}
-                onCancel={() => setSubmitVisible(false)}
-                footer={[
-                    <Button key="cancel" onClick={() => setSubmitVisible(false)}>
-                        Cancel
-                    </Button>,
-                    <Button key="submit" type="primary" onClick={handleSubmit}>
-                        Submit
-                    </Button>,
-                ]}
-            >
-                <Text>Are you sure you want to submit this answer?</Text>
-            </Modal>
         </>
     );
 }
