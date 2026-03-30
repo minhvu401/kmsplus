@@ -65,6 +65,7 @@ export async function createUserByAdminAction(
   const password = formData.get("password") as string
   const fullName = formData.get("fullName") as string
   const roleId = formData.get("roleId") as string
+  const departmentId = formData.get("departmentId") as string
 
   // Validate inputs
   const errors: Record<string, string[]> = {}
@@ -83,6 +84,10 @@ export async function createUserByAdminAction(
 
   if (!roleId) {
     errors.roleId = ["Role is required"]
+  }
+
+  if (!departmentId) {
+    errors.departmentId = ["Department is required"]
   }
 
   if (Object.keys(errors).length > 0) {
@@ -111,8 +116,8 @@ export async function createUserByAdminAction(
 
     // Create user
     const createUserResult = await sql`
-      INSERT INTO users (email, password_hash, full_name, created_at)
-      VALUES (${email}, ${hashedPassword}, ${fullName}, NOW())
+      INSERT INTO users (email, password_hash, full_name, department_id, created_at)
+      VALUES (${email}, ${hashedPassword}, ${fullName}, ${departmentId}, NOW())
       RETURNING id
     `
 
@@ -180,9 +185,11 @@ export async function getAllUsersForManagementAction(): Promise<UserManagementSt
         u.avatar_url,
         u.created_at,
         u.status,
+        d.name as department_name,
         r.name as role_name,
         ur.role_id
       FROM users u
+      LEFT JOIN department d ON u.department_id = d.id
       LEFT JOIN user_roles ur ON u.id = ur.user_id
       LEFT JOIN roles r ON ur.role_id = r.id
       WHERE u.status = 'active'
