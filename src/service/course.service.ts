@@ -85,6 +85,9 @@ type GetAllCoursesParams = {
   sort?: "trending" | "popular" | "newest" | "top-rated"
   categories?: string[] // ✅ Changed to array for multi-select
   rating?: string // ✅ Added rating filter (all, 4plus, 3plus, 2plus)
+  userId?: number // ✅ Added userId for role-based filtering
+  userRole?: string // ✅ Added userRole for permission checking
+  creatorId?: number // ✅ Added creator filter
 }
 
 // --- CATEGORY ACTIONS ---
@@ -114,8 +117,67 @@ export async function getAllCoursesAction({
   sort = "trending",
   categories = [],
   rating = "all",
+  userId,
+  userRole,
 }: GetAllCoursesParams) {
   const offset = (page - 1) * limit
+
+  let isAdmin = false
+  let isHeadOfDepartment = false
+  let managedDepartmentId: number | null = null
+
+  if (userId && userId !== 0) {
+    const roleCheckResult = await sql`
+      SELECT
+        EXISTS (
+          SELECT 1
+          FROM user_roles ur
+          JOIN roles r ON ur.role_id = r.id
+          WHERE ur.user_id = ${userId}
+            AND r.name ILIKE '%admin%'
+        ) AS is_admin,
+        EXISTS (
+          SELECT 1
+          FROM user_roles ur
+          JOIN roles r ON ur.role_id = r.id
+          WHERE ur.user_id = ${userId}
+            AND (
+              r.name ILIKE '%head of department%'
+              OR r.name ILIKE '%director%'
+            )
+        ) AS is_hod_role,
+        (
+          SELECT d.id
+          FROM department d
+          WHERE d.head_of_department_id = ${userId}
+            AND d.is_deleted = FALSE
+          LIMIT 1
+        ) AS managed_department_id,
+        (
+          SELECT u.department_id
+          FROM users u
+          WHERE u.id = ${userId}
+          LIMIT 1
+        ) AS user_department_id
+    `
+
+    isAdmin = Boolean(roleCheckResult?.[0]?.is_admin)
+
+    const departmentManagedByUser =
+      roleCheckResult?.[0]?.managed_department_id !== null
+        ? Number(roleCheckResult?.[0]?.managed_department_id)
+        : null
+    const userDepartmentId =
+      roleCheckResult?.[0]?.user_department_id !== null
+        ? Number(roleCheckResult?.[0]?.user_department_id)
+        : null
+
+    const hasHodRole = Boolean(roleCheckResult?.[0]?.is_hod_role)
+    isHeadOfDepartment = hasHodRole || departmentManagedByUser !== null
+
+    // Prefer department explicitly managed by this user, fallback to user's own department.
+    managedDepartmentId = departmentManagedByUser ?? userDepartmentId
+  }
 
   // Xử lý Sort
   let orderBy = ""
@@ -137,15 +199,41 @@ export async function getAllCoursesAction({
       break
   }
 
-  // ✅ Xử lý Filter Category (Multiple Categories)
-  const categoryCondition = 
+  //
+  const categoryCondition =
     categories && categories.length > 0
-      ? sql`AND category_id = ANY(${categories.map(c => parseInt(c, 10))})`
+      ? sql`AND category_id = ANY(${categories.map((c) => parseInt(c, 10))})`
       : sql``
 
-  // ✅ Xử lý Filter Rating
-  // TODO: Add rating filter logic when rating column is available in database
-  // const ratingCondition = rating && rating !== "all" ? sql`AND rating >= ${getRatingValue(rating)}` : sql``
+  //
+  console.log(` [DEBUG] Đang check quyền cho User ID: ${userId}`)
+
+  //
+  // (An toàn tuyệt đối, không sợ JWT bị thiếu Role)
+  const permissionCondition =
+    userId && userId !== 0
+      ? isAdmin
+        ? sql``
+        : isHeadOfDepartment
+          ? sql`
+      AND (
+        c.creator_id = ${userId}
+        ${managedDepartmentId !== null
+          ? sql`
+        OR c.creator_id IN (
+          SELECT u2.id
+          FROM users u2
+          WHERE u2.department_id = ${managedDepartmentId}
+        )
+        `
+          : sql``}
+      )
+    `
+          : sql`AND c.creator_id = ${userId}`
+      : sql``
+
+  const hodNonDraftCondition =
+    isHeadOfDepartment && !isAdmin ? sql`AND c.status <> 'draft'` : sql``
 
   // Query Courses with Category Join
   const rows = await sql`
@@ -159,7 +247,9 @@ export async function getAllCoursesAction({
     LEFT JOIN users u ON c.creator_id = u.id
     WHERE c.deleted_at IS NULL
       AND c.title ILIKE ${"%" + query + "%"}
+      ${hodNonDraftCondition}
       ${categoryCondition} 
+      ${permissionCondition}
     ORDER BY ${sql.unsafe(orderBy)}
     LIMIT ${limit}
     OFFSET ${offset}
@@ -172,14 +262,30 @@ export async function getAllCoursesAction({
     LEFT JOIN categories cat ON c.category_id = cat.id
     WHERE c.deleted_at IS NULL
       AND c.title ILIKE ${"%" + query + "%"}
+      ${hodNonDraftCondition}
       ${categoryCondition}
+      ${permissionCondition}
   `
+
+  // ✅ DEBUG: Query để xem tổng số courses trong DB (bỏ qua filter)
+  const allCoursesResult = await sql`
+    SELECT COUNT(*) as total_all_courses
+    FROM courses c
+    WHERE c.deleted_at IS NULL
+  `
+
+  console.log(
+    ` [DEBUG] Total courses in DB: ${allCoursesResult[0].total_all_courses}`
+  )
+  console.log(` [DEBUG] Filtered courses count: ${totalResult[0].count}`)
 
   const totalCount = parseInt(totalResult[0].count as string, 10)
 
   return {
     courses: rows as Course[],
     totalCount,
+    isHeadOfDepartmentView: isHeadOfDepartment,
+    currentUserId: userId || null,
   }
 }
 
@@ -581,11 +687,11 @@ export async function getPublishedCoursesService({
         break
     }
 
-  // ✅ Xử lý Filter Category (Multiple Categories)
-  const categoryCondition = 
-    categories && categories.length > 0
-      ? sql`AND category_id = ANY(${categories.map(c => parseInt(c, 10))})`
-      : sql``
+    // ✅ Xử lý Filter Category (Multiple Categories)
+    const categoryCondition =
+      categories && categories.length > 0
+        ? sql`AND category_id = ANY(${categories.map((c) => parseInt(c, 10))})`
+        : sql``
 
     // ✅ DEBUG 1: In ra toàn bộ khóa học Published (Bỏ qua Visibility)
     const rawCourses = await sql`
