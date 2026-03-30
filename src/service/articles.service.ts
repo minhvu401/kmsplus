@@ -14,7 +14,10 @@ export type Article = {
   title: string
   content?: string
   article_tags: string | null
+  category_id?: number | null
   category_name?: string | null
+  department_id?: number | null
+  department_name?: string | null
   author_name?: string | null
   approver_name?: string | null
   status: string
@@ -55,6 +58,7 @@ export type CreateArticleInput = {
   author_id: number
   status: 'draft' | 'pending' | 'published'
   category_id?: number | null
+  department_id?: number | null
   image_url?: string | null
   thumbnail_url?: string | null
 }
@@ -65,6 +69,7 @@ export type UpdateArticleInput = {
   content: string
   tags: string[]
   category_id?: number | null
+  department_id?: number | null
   image_url?: string | null
   thumbnail_url?: string | null
 }
@@ -230,14 +235,18 @@ export async function getAllArticlesAction(): Promise<Article[]> {
       a.is_deleted,
       a.image_url,
       a.thumbnail_url,
+      a.category_id,
+      c.department_id,
       STRING_AGG(t.name, ', ') as article_tags,
       c.name as category_name,
+      d.name as department_name,
       u.full_name as author_name,
       ua.full_name as approver_name
     FROM articles a
     LEFT JOIN article_tags at ON a.id = at.article_id
     LEFT JOIN tags t ON at.tag_id = t.id
     LEFT JOIN categories c ON a.category_id = c.id
+    LEFT JOIN department d ON c.department_id = d.id
     LEFT JOIN users u ON a.author_id = u.id
     LEFT JOIN users ua ON a.approved_by = ua.id
     GROUP BY a.id, a.author_id, a.title, a.content, a.status, a.approved_by, a.approved_at, a.deleted_at, a.created_at, a.updated_at, a.is_deleted, a.image_url, a.thumbnail_url, c.name, u.full_name, ua.full_name
@@ -268,6 +277,8 @@ export async function filterByTagAction(
     currentUserId?: number | null
     managedDepartmentId?: number | null
   },
+  userId?: number,
+  isAdmin: boolean = false,
 ): Promise<PaginatedArticlesResult> {
   const normalizedPage = Number.isFinite(page) && page > 0 ? Math.floor(page) : 1
   const normalizedPageSize = Number.isFinite(pageSize) && pageSize > 0 ? Math.floor(pageSize) : 12
@@ -299,14 +310,18 @@ export async function filterByTagAction(
       a.is_deleted,
       a.image_url,
       a.thumbnail_url,
+      a.category_id,
+      c.department_id,
       STRING_AGG(t.name, ', ') as article_tags,
       c.name as category_name,
+      d.name as department_name,
       u.full_name as author_name,
       ua.full_name as approver_name
     FROM articles a
     LEFT JOIN article_tags at ON a.id = at.article_id
     LEFT JOIN tags t ON at.tag_id = t.id
     LEFT JOIN categories c ON a.category_id = c.id
+    LEFT JOIN department d ON c.department_id = d.id
     LEFT JOIN users u ON a.author_id = u.id
     LEFT JOIN users ua ON a.approved_by = ua.id
     
@@ -325,6 +340,7 @@ export async function filterByTagAction(
               AND LOWER(t_filter.name) = LOWER(${tagFilter})
           )`
         : sql``}
+      ${!isAdmin ? sql`AND a.author_id = ${userId ?? -1}` : sql``}
     
     GROUP BY 
       a.id, a.author_id, a.title, a.status, a.approved_by, a.approved_at, a.deleted_at, a.created_at, a.updated_at, a.is_deleted, a.image_url, a.thumbnail_url, c.name, u.full_name, ua.full_name
@@ -353,6 +369,7 @@ export async function filterByTagAction(
               AND LOWER(t_filter.name) = LOWER(${tagFilter})
           )`
         : sql``}
+      ${!isAdmin ? sql`AND a.author_id = ${userId ?? -1}` : sql``}
   `
 
   return {
@@ -361,14 +378,19 @@ export async function filterByTagAction(
   }
 }
 
-export async function getAllCategoriesAction(): Promise<{ id: number; name: string }[]> {
+export async function getAllCategoriesAction(): Promise<{ id: number; name: string; department_id?: number | null; department_name?: string | null }[]> {
   const categories = await sql`
-    SELECT id, name 
-    FROM categories
-    WHERE is_deleted = false
-    ORDER BY name ASC
+    SELECT 
+      c.id, 
+      c.name,
+      c.department_id,
+      d.name as department_name
+    FROM public.categories c
+    LEFT JOIN public.department d ON c.department_id = d.id
+    WHERE c.is_deleted = false
+    ORDER BY d.name ASC NULLS LAST, c.name ASC
   `
-  return categories as { id: number; name: string }[]
+  return categories as { id: number; name: string; department_id?: number | null; department_name?: string | null }[]
 }
 
 export async function getPublishedArticlesAction(
@@ -641,6 +663,7 @@ export async function resubmitArticleAction(
   content: string,
   tags?: string[],
   category_id?: number | null,
+    department_id?: number | null,
   image_url?: string | null,
   thumbnail_url?: string | null
 ): Promise<{ success: boolean; message: string }> {
@@ -726,22 +749,27 @@ export async function getArticleByIdAction(articleId: number): Promise<{ success
         a.deleted_at,
         a.reason,
         a.category_id,
+        c.department_id,
         a.author_id,
         a.image_url,
         a.thumbnail_url,
         STRING_AGG(t.name, ',') as tags,
         a.created_at,
         a.updated_at,
+        c.name as category_name,
+        d.name as department_name,
         u.full_name as author_name,
         u.email as author_email,
         ua.full_name as approver_name
       FROM articles a
       LEFT JOIN article_tags at ON a.id = at.article_id
       LEFT JOIN tags t ON at.tag_id = t.id
+      LEFT JOIN categories c ON a.category_id = c.id
+      LEFT JOIN department d ON c.department_id = d.id
       LEFT JOIN users u ON a.author_id = u.id
       LEFT JOIN users ua ON a.approved_by = ua.id
       WHERE a.id = ${articleId}
-      GROUP BY a.id, a.title, a.content, a.status, a.approved_by, a.approved_at, a.deleted_at, a.reason, a.category_id, a.author_id, a.image_url, a.thumbnail_url, a.created_at, a.updated_at, u.full_name, u.email, ua.full_name
+      GROUP BY a.id, a.title, a.content, a.status, a.approved_by, a.approved_at, a.deleted_at, a.reason, a.category_id, c.department_id, a.author_id, a.image_url, a.thumbnail_url, a.created_at, a.updated_at, c.name, d.name, u.full_name, u.email, ua.full_name
       LIMIT 1
     `
 
@@ -764,7 +792,10 @@ export async function getArticleByIdAction(articleId: number): Promise<{ success
         deleted_at: article.deleted_at,
         reason: article.reason,
         category_id: article.category_id,
+        department_id: article.department_id,
         author_id: article.author_id,
+        category_name: article.category_name,
+        department_name: article.department_name,
         author_name: article.author_name,
         author_email: article.author_email,
         approver_name: article.approver_name,

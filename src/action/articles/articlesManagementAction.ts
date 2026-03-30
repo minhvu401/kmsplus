@@ -4,6 +4,63 @@ import { requireAuth } from "@/lib/auth"
 import { sql } from "@/lib/database"
 import { getAllArticlesAction, filterByTagAction, getAllTagsAction, createArticleAction, deleteArticleAction, getAllCategoriesAction, getArticleByIdAction, updateArticleAction, restoreArticleAction, approveArticleAction, rejectArticleAction, resubmitArticleAction, updateArticlesStatusConstraint, getTopAuthorsAction, getPublishedArticlesAction } from "@/service/articles.service"
 
+export type CurrentUserInfo = {
+  id: number
+  email: string
+  full_name: string
+  avatar_url?: string
+  department_id?: number | null
+  status: string
+  roles: string[]
+  isAdmin: boolean
+}
+
+/**
+ * Lấy thông tin user hiện tại với department_id và roles
+ */
+export async function getCurrentUserDetail(): Promise<CurrentUserInfo | null> {
+  try {
+    const authUser = await requireAuth()
+    
+    const users = await sql`
+      SELECT 
+        u.id,
+        u.email,
+        u.full_name,
+        u.avatar_url,
+        u.status,
+        u.department_id,
+        ARRAY_AGG(DISTINCT r.name) as roles
+      FROM users u
+      LEFT JOIN user_roles ur ON u.id = ur.user_id
+      LEFT JOIN roles r ON ur.role_id = r.id
+      WHERE u.id = ${Number(authUser.id)} AND u.status = 'active'
+      GROUP BY u.id, u.email, u.full_name, u.avatar_url, u.status, u.department_id
+    `
+    
+    if (users.length === 0) {
+      return null
+    }
+    
+    const user = users[0] as any
+    const isAdmin = (user.roles || []).includes('admin') || (user.roles || []).includes('Admin')
+    
+    return {
+      id: Number(user.id),
+      email: user.email,
+      full_name: user.full_name,
+      avatar_url: user.avatar_url,
+      department_id: user.department_id,
+      status: user.status,
+      roles: user.roles || [],
+      isAdmin
+    }
+  } catch (error: any) {
+    console.error('Error getting current user detail:', error)
+    return null
+  }
+}
+
 export async function setupArticlesConstraint() {
   await requireAuth()
   return updateArticlesStatusConstraint()
@@ -98,11 +155,12 @@ export async function resubmitArticle(
   content: string,
   tags?: string[],
   category_id?: number | null,
+    department_id?: number | null,
   image_url?: string | null,
   thumbnail_url?: string | null
 ) {
   await requireAuth()
-  return resubmitArticleAction(id, title, content, tags, category_id, image_url, thumbnail_url)
+  return resubmitArticleAction(id, title, content, tags, category_id, department_id, image_url, thumbnail_url)
 }
 
 export async function getAllCategories() {
@@ -112,9 +170,13 @@ export async function getAllCategories() {
 
 export async function createArticle(formData: FormData) {
   try {
-    // Lấy thông tin user hiện tại (đã authenticated)
-    const currentUser = await requireAuth()
-    console.log('Current user:', currentUser)
+    const currentUser = await getCurrentUserDetail()
+    if (!currentUser) {
+      return {
+        success: false,
+        message: 'Authentication required'
+      }
+    }
     
     const title = formData.get('title') as string
     const content = formData.get('content') as string
@@ -136,8 +198,32 @@ export async function createArticle(formData: FormData) {
     }
 
     // Cast author_id sang số (bigint trong database)
-    const authorId = parseInt(currentUser.id, 10)
+    const authorId = currentUser.id
     console.log('Author ID:', authorId)
+
+    if (category_id !== null && !currentUser.isAdmin) {
+      const categoryRows = await sql`
+        SELECT department_id
+        FROM categories
+        WHERE id = ${category_id} AND is_deleted = false
+        LIMIT 1
+      `
+
+      if (categoryRows.length === 0) {
+        return {
+          success: false,
+          message: 'Category not found'
+        }
+      }
+
+      const categoryDepartmentId = categoryRows[0].department_id ?? null
+      if (categoryDepartmentId !== (currentUser.department_id ?? null)) {
+        return {
+          success: false,
+          message: 'You can only use categories in your department'
+        }
+      }
+    }
 
     // Parse tags from JSON string
     let parsedTags: string[] = []
@@ -193,7 +279,13 @@ export async function getArticleById(id: number) {
 
 export async function updateArticle(formData: FormData) {
   try {
-    await requireAuth()
+    const currentUser = await getCurrentUserDetail()
+    if (!currentUser) {
+      return {
+        success: false,
+        message: 'Authentication required'
+      }
+    }
     
     const id = formData.get('id') as string
     const title = formData.get('title') as string
@@ -217,6 +309,51 @@ export async function updateArticle(formData: FormData) {
         parsedTags = JSON.parse(tags)
       } catch (e) {
         console.error('Error parsing tags:', e)
+      }
+    }
+
+    const articleRows = await sql`
+      SELECT author_id
+      FROM articles
+      WHERE id = ${parseInt(id, 10)}
+      LIMIT 1
+    `
+
+    if (articleRows.length === 0) {
+      return {
+        success: false,
+        message: 'Article not found'
+      }
+    }
+
+    if (!currentUser.isAdmin && Number(articleRows[0].author_id) !== currentUser.id) {
+      return {
+        success: false,
+        message: 'You can only edit your own articles'
+      }
+    }
+
+    if (category_id !== null && !currentUser.isAdmin) {
+      const categoryRows = await sql`
+        SELECT department_id
+        FROM categories
+        WHERE id = ${category_id} AND is_deleted = false
+        LIMIT 1
+      `
+
+      if (categoryRows.length === 0) {
+        return {
+          success: false,
+          message: 'Category not found'
+        }
+      }
+
+      const categoryDepartmentId = categoryRows[0].department_id ?? null
+      if (categoryDepartmentId !== (currentUser.department_id ?? null)) {
+        return {
+          success: false,
+          message: 'You can only use categories in your department'
+        }
       }
     }
 
