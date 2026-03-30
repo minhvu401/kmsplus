@@ -1,6 +1,7 @@
 "use server"
 
 import { requireAuth } from "@/lib/auth"
+import { sql } from "@/lib/database"
 import { getAllArticlesAction, filterByTagAction, getAllTagsAction, createArticleAction, deleteArticleAction, getAllCategoriesAction, getArticleByIdAction, updateArticleAction, restoreArticleAction, approveArticleAction, rejectArticleAction, resubmitArticleAction, updateArticlesStatusConstraint, getTopAuthorsAction, getPublishedArticlesAction } from "@/service/articles.service"
 
 export async function setupArticlesConstraint() {
@@ -33,8 +34,42 @@ export async function filterByTagAndCategory(
   page: number = 1,
   pageSize: number = 12,
 ) {
-  await requireAuth()
-  return filterByTagAction(searchQuery, tagFilter, categoryId, statusFilter, isDeletedFilter, sortOrder, page, pageSize)
+  const currentUser = await requireAuth()
+  const currentUserId = currentUser?.id ? Number(currentUser.id) : null
+
+  let managedDepartmentId: number | null = null
+  if (currentUserId && Number.isFinite(currentUserId)) {
+    const deptRows = await sql`
+      SELECT id
+      FROM department
+      WHERE head_of_department_id = ${currentUserId}
+        AND is_deleted = FALSE
+      LIMIT 1
+    `
+
+    managedDepartmentId = deptRows.length > 0 ? Number(deptRows[0].id) : null
+  }
+
+  const result = await filterByTagAction(
+    searchQuery,
+    tagFilter,
+    categoryId,
+    statusFilter,
+    isDeletedFilter,
+    sortOrder,
+    page,
+    pageSize,
+    {
+      currentUserId,
+      managedDepartmentId,
+    }
+  )
+
+  return {
+    ...result,
+    currentUserId,
+    isHeadOfDepartmentView: managedDepartmentId !== null,
+  }
 }
 
 export async function deleteArticle(id: number) {
