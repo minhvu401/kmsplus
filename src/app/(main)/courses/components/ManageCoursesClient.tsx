@@ -60,6 +60,7 @@ interface ManageCoursesClientProps {
   categories: Category[]
   availableLessons: any[]
   availableQuizzes: any[]
+  userRole?: string // ✅ Bổ sung thêm dòng này
 }
 
 export default function ManageCoursesClient({
@@ -71,6 +72,7 @@ export default function ManageCoursesClient({
   categories,
   availableLessons,
   availableQuizzes,
+  userRole = "", // ✅ Nhận prop userRole
 }: ManageCoursesClientProps) {
   const router = useRouter()
   const pathname = usePathname()
@@ -489,40 +491,46 @@ export default function ManageCoursesClient({
         </span>
       ),
     },
-    {
-      title: "Confirm Course",
-      key: "confirm",
-      render: (_: any, record: Course) => (
-        <div className="flex gap-2">
-          {record.status === "pending_approval" ? (
-            <>
-              <Button
-                type="primary"
-                size="small"
-                icon={<CheckOutlined />}
-                className="bg-blue-600 border-none hover:!bg-blue-700"
-                onClick={() => handleApprove(record)}
-              >
-                Approve
-              </Button>
-              <Button
-                danger
-                size="small"
-                icon={<CloseOutlined />}
-                className="hover:!bg-red-50"
-                onClick={() => handleReject(record.id, record.title)}
-              >
-                Reject
-              </Button>
-            </>
-          ) : (
-            <span className="text-gray-400 text-xs italic pl-2">
-              No action needed
-            </span>
-          )}
-        </div>
-      ),
-    },
+    // ✅ KIỂM TRA ROLE ĐỂ HIỂN THỊ CỘT CONFIRM COURSE
+    // Nếu role chứa chữ 'admin' thì mới render cái object cột này ra
+    ...(userRole.toLowerCase().includes("admin")
+      ? [
+          {
+            title: "Confirm Course",
+            key: "confirm",
+            render: (_: any, record: Course) => (
+              <div className="flex gap-2">
+                {record.status === "pending_approval" ? (
+                  <>
+                    <Button
+                      type="primary"
+                      size="small"
+                      icon={<CheckOutlined />}
+                      className="bg-blue-600 border-none hover:!bg-blue-700"
+                      onClick={() => handleApprove(record)}
+                    >
+                      Approve
+                    </Button>
+                    <Button
+                      danger
+                      size="small"
+                      icon={<CloseOutlined />}
+                      className="hover:!bg-red-50"
+                      onClick={() => handleReject(record.id, record.title)}
+                    >
+                      Reject
+                    </Button>
+                  </>
+                ) : (
+                  <span className="text-gray-400 text-xs italic pl-2">
+                    No action needed
+                  </span>
+                )}
+              </div>
+            ),
+          },
+        ]
+      : []), // Nếu không phải admin thì trả về mảng rỗng (ẩn cột)
     {
       title: "Actions",
       key: "actions",
