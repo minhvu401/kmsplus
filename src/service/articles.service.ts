@@ -10,6 +10,7 @@ const VIETNAM_NOW = sql`TIMEZONE('Asia/Ho_Chi_Minh', NOW())`
 
 export type Article = {
   id: string
+  author_id?: number
   title: string
   content?: string
   article_tags: string | null
@@ -217,6 +218,7 @@ export async function getAllArticlesAction(): Promise<Article[]> {
   const articles = await sql`
     SELECT 
       a.id, 
+      a.author_id,
       a.title, 
       a.content,
       a.status, 
@@ -238,7 +240,7 @@ export async function getAllArticlesAction(): Promise<Article[]> {
     LEFT JOIN categories c ON a.category_id = c.id
     LEFT JOIN users u ON a.author_id = u.id
     LEFT JOIN users ua ON a.approved_by = ua.id
-    GROUP BY a.id, a.title, a.content, a.status, a.approved_by, a.approved_at, a.deleted_at, a.created_at, a.updated_at, a.is_deleted, a.image_url, a.thumbnail_url, c.name, u.full_name, ua.full_name
+    GROUP BY a.id, a.author_id, a.title, a.content, a.status, a.approved_by, a.approved_at, a.deleted_at, a.created_at, a.updated_at, a.is_deleted, a.image_url, a.thumbnail_url, c.name, u.full_name, ua.full_name
     ORDER BY a.updated_at DESC
   `
   return articles as Article[]
@@ -262,15 +264,31 @@ export async function filterByTagAction(
   sortOrder: 'newest' | 'oldest' = 'newest',
   page: number = 1,
   pageSize: number = 12,
+  accessContext?: {
+    currentUserId?: number | null
+    managedDepartmentId?: number | null
+  },
 ): Promise<PaginatedArticlesResult> {
   const normalizedPage = Number.isFinite(page) && page > 0 ? Math.floor(page) : 1
   const normalizedPageSize = Number.isFinite(pageSize) && pageSize > 0 ? Math.floor(pageSize) : 12
   const offset = (normalizedPage - 1) * normalizedPageSize
   const query = `%${searchQuery}%`
+  const managedDepartmentId = accessContext?.managedDepartmentId ?? null
+  const permissionCondition =
+    managedDepartmentId !== null
+      ? sql`AND a.author_id IN (
+          SELECT u.id
+          FROM users u
+          WHERE u.department_id = ${managedDepartmentId}
+        )`
+      : sql``
+  const hodNonDraftCondition =
+    managedDepartmentId !== null ? sql`AND a.status <> 'draft'` : sql``
 
   const articles = await sql`
     SELECT 
       a.id, 
+      a.author_id,
       a.title, 
       a.status, 
       a.approved_by,
@@ -293,6 +311,8 @@ export async function filterByTagAction(
     LEFT JOIN users ua ON a.approved_by = ua.id
     
     WHERE a.title ILIKE ${query}
+      ${permissionCondition}
+      ${hodNonDraftCondition}
       ${categoryId ? sql`AND a.category_id = ${categoryId}` : sql``}
       ${statusFilter && statusFilter !== 'All' ? sql`AND a.status = ${statusFilter}` : sql``}
       ${isDeletedFilter === true ? sql`AND a.is_deleted = TRUE` : isDeletedFilter === false ? sql`AND a.is_deleted = FALSE` : sql``}
@@ -307,7 +327,7 @@ export async function filterByTagAction(
         : sql``}
     
     GROUP BY 
-      a.id, a.title, a.status, a.approved_by, a.approved_at, a.deleted_at, a.created_at, a.updated_at, a.is_deleted, a.image_url, a.thumbnail_url, c.name, u.full_name, ua.full_name
+      a.id, a.author_id, a.title, a.status, a.approved_by, a.approved_at, a.deleted_at, a.created_at, a.updated_at, a.is_deleted, a.image_url, a.thumbnail_url, c.name, u.full_name, ua.full_name
     ORDER BY
       COALESCE(a.approved_at, a.created_at) ${sortOrder === 'oldest' ? sql`ASC` : sql`DESC`},
       a.id DESC
@@ -319,6 +339,8 @@ export async function filterByTagAction(
     SELECT COUNT(*)::INT AS total
     FROM articles a
     WHERE a.title ILIKE ${query}
+      ${permissionCondition}
+      ${hodNonDraftCondition}
       ${categoryId ? sql`AND a.category_id = ${categoryId}` : sql``}
       ${statusFilter && statusFilter !== 'All' ? sql`AND a.status = ${statusFilter}` : sql``}
       ${isDeletedFilter === true ? sql`AND a.is_deleted = TRUE` : isDeletedFilter === false ? sql`AND a.is_deleted = FALSE` : sql``}

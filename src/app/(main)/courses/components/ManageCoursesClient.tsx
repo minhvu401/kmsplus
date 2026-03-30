@@ -54,6 +54,8 @@ const { Text } = Typography
 interface ManageCoursesClientProps {
   courses: Course[]
   totalCount: number
+  currentUserId?: number | null
+  enforceCreatorOnlyEdit?: boolean
   query: string
   page: number
   selectedCategories: string[]
@@ -66,6 +68,8 @@ interface ManageCoursesClientProps {
 export default function ManageCoursesClient({
   courses,
   totalCount,
+  currentUserId,
+  enforceCreatorOnlyEdit = false,
   query,
   page,
   selectedCategories,
@@ -97,6 +101,12 @@ export default function ManageCoursesClient({
   const [selectedStatus, setSelectedStatus] = useState("All")
   const [viewMode, setViewMode] = useState<"list" | "grid">("list")
   const [filteredCourses, setFilteredCourses] = useState<Course[]>(courses)
+
+  const canEditCourse = (course: Course) => {
+    if (!enforceCreatorOnlyEdit) return true
+    if (!currentUserId) return false
+    return Number(course.creator_id) === Number(currentUserId)
+  }
 
   // Check if any filter is active
   useEffect(() => {
@@ -532,24 +542,26 @@ export default function ManageCoursesClient({
         ]
       : []), // Nếu không phải admin thì trả về mảng rỗng (ẩn cột)
     {
-      title: "Actions",
+      title: <div className="text-center">Actions</div>,
       key: "actions",
-      align: "right" as const, // Đẩy các nút actions sang phải cho gọn
+      align: "center" as const,
       render: (_: any, record: Course) => (
-        <div className="flex gap-1 justify-end">
+        <div className="flex flex-nowrap items-center justify-center gap-1">
           {/* Nút Edit */}
-          <Tooltip title="Edit course">
-            <Button
-              type="text"
-              icon={<EditOutlined />}
-              size="middle"
-              className="text-blue-600 hover:!text-blue-700 hover:bg-blue-50 rounded-full"
-              onClick={(e) => {
-                e.stopPropagation()
-                handleOpenUpdate(record)
-              }}
-            />
-          </Tooltip>
+          {canEditCourse(record) ? (
+            <Tooltip title="Edit course">
+              <Button
+                type="text"
+                icon={<EditOutlined />}
+                size="middle"
+                className="text-blue-600 hover:!text-blue-700 hover:bg-blue-50 rounded-full"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleOpenUpdate(record)
+                }}
+              />
+            </Tooltip>
+          ) : null}
 
           {/* Nút Delete */}
           <Tooltip
@@ -625,7 +637,9 @@ export default function ManageCoursesClient({
               size="middle"
               disabled={record.status !== "published"}
               style={
-                record.status === "published" ? { color: "#ca8a04" } : undefined
+                record.status === "published"
+                  ? { color: "#ca8a04" }
+                  : undefined
               }
               className={
                 record.status !== "published"
@@ -869,7 +883,10 @@ export default function ManageCoursesClient({
                         </Tag>
                       }
                       className="cursor-pointer hover:shadow-lg transition-shadow"
-                      onClick={() => handleOpenUpdate(course)}
+                      onClick={() => {
+                        if (!canEditCourse(course)) return
+                        handleOpenUpdate(course)
+                      }}
                     >
                       <Card.Meta
                         title={
@@ -945,18 +962,20 @@ export default function ManageCoursesClient({
                       </div>
                       <div className="mt-4 space-y-2">
                         <div className="flex gap-2">
-                          <Button
-                            type="text"
-                            size="small"
-                            icon={<EditOutlined />}
-                            className="flex-1 text-blue-600 hover:!text-blue-700"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              handleOpenUpdate(course)
-                            }}
-                          >
-                            Edit
-                          </Button>
+                          {canEditCourse(course) ? (
+                            <Button
+                              type="text"
+                              size="small"
+                              icon={<EditOutlined />}
+                              className="flex-1 text-blue-600 hover:!text-blue-700"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleOpenUpdate(course)
+                              }}
+                            >
+                              Edit
+                            </Button>
+                          ) : null}
                           <Tooltip
                             title={
                               course.status === "published"
