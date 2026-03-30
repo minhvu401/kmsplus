@@ -576,29 +576,51 @@ export async function fetchAnswerPagesAction(
 export async function fetchFilteredAnswersAction(
   currentPage: number,
   questionId: number,
-  limit: number = DEFAULT_ANSWERS_PER_PAGE
+  limit: number = DEFAULT_ANSWERS_PER_PAGE,
+  sort: 'newest' | 'oldest' = 'newest',
 ): Promise<AnswerWithReplies[]> {
   const pageSize = Math.max(1, limit || DEFAULT_ANSWERS_PER_PAGE)
   const offset = (currentPage - 1) * pageSize
   try {
     // Fetch top-level answers (parent_id IS NULL) with pagination
-    const topLevelAnswers = await sql`
-      SELECT
-        a.id,
-        a.question_id,
-        a.user_id,
-        a.parent_id,
-        a.content,
-        a.created_at,
-        a.updated_at,
-        u.full_name AS user_name,
-        u.avatar_url AS user_avatar
-      FROM answers a
-      JOIN users u ON a.user_id = u.id
-      WHERE a.question_id = ${questionId} AND a.parent_id IS NULL
-      ORDER BY a.created_at DESC
-      LIMIT ${pageSize} OFFSET ${offset};
-    ` as Answer[];
+    let topLevelAnswers: Answer[];
+    if (sort === 'oldest') {
+      topLevelAnswers = await sql`
+        SELECT
+          a.id,
+          a.question_id,
+          a.user_id,
+          a.parent_id,
+          a.content,
+          a.created_at,
+          a.updated_at,
+          u.full_name AS user_name,
+          u.avatar_url AS user_avatar
+        FROM answers a
+        JOIN users u ON a.user_id = u.id
+        WHERE a.question_id = ${questionId} AND a.parent_id IS NULL
+        ORDER BY a.created_at ASC
+        LIMIT ${pageSize} OFFSET ${offset};
+      ` as Answer[];
+    } else {
+      topLevelAnswers = await sql`
+        SELECT
+          a.id,
+          a.question_id,
+          a.user_id,
+          a.parent_id,
+          a.content,
+          a.created_at,
+          a.updated_at,
+          u.full_name AS user_name,
+          u.avatar_url AS user_avatar
+        FROM answers a
+        JOIN users u ON a.user_id = u.id
+        WHERE a.question_id = ${questionId} AND a.parent_id IS NULL
+        ORDER BY a.created_at DESC
+        LIMIT ${pageSize} OFFSET ${offset};
+      ` as Answer[];
+    }
 
     if (topLevelAnswers.length === 0) {
       return [];
