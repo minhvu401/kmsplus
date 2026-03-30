@@ -36,7 +36,7 @@ export async function getAllUsersAction(): Promise<User[]> {
     FROM users 
     WHERE status = 'active'
     ORDER BY created_at DESC
-  `("Fetched users:", users) // Debug log
+  `
   return users as User[]
 }
 

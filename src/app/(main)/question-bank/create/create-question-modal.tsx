@@ -134,7 +134,6 @@ const CreateQuestionModal = ({
         questionType === "single_choice" ? correctIndex : correctIndexes,
       explanation: values.explanation?.trim() || null, // Optional explanation
     }
-    ;("Final Data to Submit:", finalData)
     try {
       if (editingRecord) {
         //logic edit

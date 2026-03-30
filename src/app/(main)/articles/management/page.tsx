@@ -309,11 +309,9 @@ export default function ArticleManagement() {
 
   // New: Handle thumbnail upload
   const handleThumbnailUpload = async (file: File) => {
-    ;("Starting thumbnail upload...", file.name, file.type, file.size)
     setUploadingThumbnail(true)
     try {
       const result = await uploadImageToCloudinary(file, "article-thumbnails")
-      ;("Upload successful:", result)
       setThumbnailUrl(result.secure_url)
       setThumbnailUploadError("")
       message.success("Thumbnail uploaded successfully")
@@ -335,11 +333,9 @@ export default function ArticleManagement() {
 
   // New: Handle edit thumbnail upload
   const handleEditThumbnailUpload = async (file: File) => {
-    ;("Starting edit thumbnail upload...", file.name, file.type, file.size)
     setUploadingEditThumbnail(true)
     try {
       const result = await uploadImageToCloudinary(file, "article-thumbnails")
-      ;("Upload successful:", result)
       setEditThumbnailUrl(result.secure_url)
       message.success("Thumbnail uploaded successfully")
     } catch (error: any) {
@@ -703,13 +699,6 @@ export default function ArticleManagement() {
       const result: any = await getArticleById(articleId)
       if (result.success && result.data) {
         const article = result.data
-        ;("📋 Edit Modal - Fetched article:",
-          {
-            id: articleId,
-            title: article.title,
-            contentLength: article.content?.length || 0,
-            content: article.content,
-          })
         setEditTitleContent(article.title || "")
         setEditContentValue(article.content || "")
         setEditImageUrl(article.image_url || "")

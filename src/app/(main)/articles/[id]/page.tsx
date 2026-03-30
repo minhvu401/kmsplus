@@ -145,7 +145,6 @@ export default function ArticleDetailPage() {
 
   useEffect(() => {
     if (!showResubmitModal || categories.length > 0) return
-
     ;(async () => {
       setLoadingCategories(true)
       try {
@@ -343,15 +342,12 @@ export default function ArticleDetailPage() {
   }
 
   const handleApprove = () => {
-    ;("🔵 handleApprove clicked")
     setShowApproveModal(true)
   }
 
   const confirmApprove = async () => {
-    ;("🟢 Approve confirmed, sending request...")
     setApproving(true)
     try {
-      ;("📤 Sending POST to /api/articles/approve with id:", articleId)
       const response = await fetch("/api/articles/approve", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -359,9 +355,7 @@ export default function ArticleDetailPage() {
         body: JSON.stringify({ id: parseInt(articleId, 10) }),
       })
 
-      ;("📥 Response status:", response.status, response.statusText)
       const result = await response.json()
-      ;("📥 Response data:", result)
 
       if (response.ok && result.success) {
         message.success(result.message || "Article approved successfully")
@@ -381,7 +375,6 @@ export default function ArticleDetailPage() {
   }
 
   const handleReject = () => {
-    ;("🔴 handleReject clicked")
     setShowRejectModal(true)
   }
 
@@ -397,13 +390,8 @@ export default function ArticleDetailPage() {
       return
     }
 
-    ;("🟠 Reject confirmed with reason, sending request...")
     setRejecting(true)
     try {
-      ;("📤 Sending POST to /api/articles/reject with id:",
-        articleId,
-        "reason:",
-        rejectReason)
       const response = await fetch("/api/articles/reject", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -414,9 +402,7 @@ export default function ArticleDetailPage() {
         }),
       })
 
-      ;("📥 Response status:", response.status, response.statusText)
       const result = await response.json()
-      ;("📥 Response data:", result)
 
       if (response.ok && result.success) {
         message.success(result.message || "Article rejected successfully")
@@ -451,17 +437,6 @@ export default function ArticleDetailPage() {
   }
 
   const handleResubmit = () => {
-    // Debug log to check article content
-    ;("Article data:",
-      {
-        title: article.title,
-        content: article.content?.substring(0, 100),
-        contentLength: article.content?.length,
-        thumbnail: article.thumbnail_url,
-        category: article.category_id,
-        tags: article.tags,
-      })
-
     // Populate the form with current article data
     const tags = article.tags
       ? Array.isArray(article.tags)

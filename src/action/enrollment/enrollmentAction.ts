@@ -104,15 +104,8 @@ export async function checkEnrollmentStatus(courseId: number, userId: number) {
 // 👇 HÀM MỚI
 export async function getEnrollmentOverview(courseId?: number) {
   try {
-    ;("🔐 [SERVER] getEnrollmentOverview called with courseId:", courseId)
-    await requireAuth()(
-      // Chỉ cho phép user đã đăng nhập
-      "🔐 [SERVER] Auth passed"
-    )
-    const result = await getEnrollmentOverviewService(courseId)(
-      "🔐 [SERVER] Service result:",
-      result
-    )
+    await requireAuth()
+    const result = await getEnrollmentOverviewService(courseId)
     return result
   } catch (error: any) {
     console.error("🔐 [SERVER] Error in getEnrollmentOverview:", error)

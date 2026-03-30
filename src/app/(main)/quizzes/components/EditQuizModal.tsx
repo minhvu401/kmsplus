@@ -92,7 +92,7 @@ export default function EditQuizModal({
         getQuizById(quizId),
         getQuizQuestions(quizId),
         getQuestions(1, 1000),
-      ])("Current Questions from DB:", currentQuestions)
+      ])
 
       if (quiz) {
         form.setFieldsValue({
@@ -107,7 +107,7 @@ export default function EditQuizModal({
       // Set current question IDs - Convert to numbers
       const currentIds = (currentQuestions as QuizQuestion[]).map((q) =>
         Number(q.question_id)
-      )("Selected Question IDs:", currentIds)
+      )
       setSelectedQuestionIds(currentIds)
       setOriginalQuestionIds(currentIds)
 
@@ -118,7 +118,7 @@ export default function EditQuizModal({
           text: q.question_text,
           type: q.type,
           description: q.explanation || "",
-        }))("All Questions from Bank:", questions)
+        }))
         setAllQuestions(questions)
       }
     } catch (error) {

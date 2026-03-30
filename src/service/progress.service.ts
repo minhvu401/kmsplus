@@ -14,7 +14,7 @@ export async function getCompletedItemIds(enrollmentId: number) {
     `
 
     if (result.length > 0) {
-      const data = result[0].completed_item_ids(`✅ [GET] Kết quả từ DB:`, data)
+      const data = result[0].completed_item_ids
 
       // Đảm bảo luôn trả về mảng số (nếu DB trả về null thì trả về [])
       if (Array.isArray(data)) {
@@ -74,8 +74,6 @@ export async function updateProgressService(
       completedIds = Array.isArray(parsed) ? parsed.map((id) => Number(id)) : []
     }
 
-    ;("📝 [UPDATE] Danh sách cũ:", completedIds)
-
     // Chuẩn hóa về curriculum_items.id để theo dõi tiến độ thống nhất cho lesson/quiz.
     const resolvedItemRows = await sql`
       SELECT ci.id
@@ -100,19 +98,15 @@ export async function updateProgressService(
     if (!completedIds.includes(normalizedItemId)) {
       completedIds.push(normalizedItemId)
     } else {
-      ;("⚠️ [UPDATE] Bài học này đã có trong danh sách rồi.")
+      console.warn(
+        `⚠️ [UPDATE] Item ID ${normalizedItemId} đã tồn tại trong completed_item_ids.`
+      )
     }
 
-    ;("💾 [UPDATE] Danh sách mới sắp lưu:", completedIds)
-
     // C. Tính toán progress percentage mới
-    const totalItems = enrollment.total_items || 0
-    const newProgressPercentage =
-      totalItems > 0
-        ? Math.round((completedIds.length / totalItems) * 100)
-        : 0(
-            `📊 [UPDATE] Progress mới: ${newProgressPercentage}% (${completedIds.length}/${totalItems} items)`
-          )
+    const totalItems = Number(enrollment.total_items) || 0
+    const newProgressPercentage: number =
+      totalItems > 0 ? Math.round((completedIds.length / totalItems) * 100) : 0
 
     // D. Xác định status mới
     const newStatus = newProgressPercentage >= 100 ? "completed" : "in_progress"
@@ -129,7 +123,7 @@ export async function updateProgressService(
         status = ${newStatus},
         completed_at = ${completedAtValue}
       WHERE id = ${enrollment.id}
-    `("✅ [UPDATE] Lưu vào DB thành công!")
+    `
     return { success: true, progressPercentage: newProgressPercentage }
   } catch (error) {
     console.error("❌ [UPDATE] Lỗi Database:", error)

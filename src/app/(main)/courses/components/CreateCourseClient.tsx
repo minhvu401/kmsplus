@@ -808,7 +808,7 @@ function CurriculumContentBank({
         throw new Error(errorData.error?.message || "Upload failed")
       }
 
-      const data = await res.json()("Upload Success:", data) // Kiểm tra xem có url trả về không
+      const data = await res.json() // Kiểm tra xem có url trả về không
 
       const fileUrl = data.secure_url || data.url
 

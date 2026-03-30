@@ -18,20 +18,17 @@ import { parseAndValidateQuizFormData } from "@/action/quiz/quizHelper"
  * - question_ids: JSON string array of question IDs (optional)
  */
 export async function POST(request: NextRequest) {
-  ;("[API /api/quizzes/create] Request received")
   try {
     // Verify authentication
-    ;("[API] Verifying authentication...")
-    await requireAuth()("[API] Authentication verified")
+    await requireAuth()
+    console.log("[API] Authentication verified")
 
-    const formData = await request.formData()(
-      "[API] FormData received, parsing and validating..."
-    )
+    const formData = await request.formData()
+    console.log("[API] FormData received, parsing and validating...")
 
     // Parse and validate FormData
-    const parsedData = parseAndValidateQuizFormData(formData)(
-      "[API] Data validated, calling createQuizAction..."
-    )
+    const parsedData = parseAndValidateQuizFormData(formData)
+    console.log("[API] Data validated, calling createQuizAction...")
 
     // Call service directly to create quiz
     await createQuizAction({
@@ -43,7 +40,8 @@ export async function POST(request: NextRequest) {
       passing_score: parsedData.passing_score,
       max_attempts: parsedData.max_attempts,
       questionIds: parsedData.questionIds,
-    })("[API] Quiz created successfully")
+    })
+    console.log("[API] Quiz created successfully")
     return NextResponse.json(
       { message: "Quiz created successfully" },
       { status: 201 }

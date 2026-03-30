@@ -284,7 +284,6 @@ export async function deleteQuestionAction(
       SET is_deleted = true, deleted_at = NOW()
       WHERE id = ${id};
     `
-    ;("Question deleted:", id, result)
     return {
       success: true,
       message: "Question deleted successfully",
