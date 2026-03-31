@@ -29,7 +29,7 @@ export type Question = {
   user_name: string
   category_name: string
   user_avatar?: string | null
-};
+}
 
 //TYPE FOR 'ANSWER' RESPONSE
 export type Answer = {
@@ -42,7 +42,7 @@ export type Answer = {
   updated_at: Date
   user_name: string
   user_avatar?: string | null
-};
+}
 
 // TYPE FOR 'TOP SHARER' RESPONSE
 export type TopSharer = {
@@ -50,7 +50,7 @@ export type TopSharer = {
   name: string
   score: number
   avatar_url?: string | null
-};
+}
 
 // GET ALL QUESTIONS
 export async function getAllQuestionsAction(): Promise<Question[]> {
@@ -65,8 +65,6 @@ export async function getAllQuestionsAction(): Promise<Question[]> {
     JOIN users ON questions.user_id = users.id
     JOIN categories ON questions.category_id = categories.id
   `
-  // Debug log
-  console.log("Fetched questions:", questions)
 
   return questions as Question[]
 }
@@ -369,7 +367,7 @@ export async function fetchFilteredQuestionsAction(
     let sqlQuery = sql`
       WHERE ${searchCondition}
       AND questions.deleted_at IS NULL
-    `;
+    `
 
     // Add category filter if it's a valid numeric ID
     const categoryId = parseInt(category, 10)
@@ -411,12 +409,12 @@ export async function fetchFilteredQuestionsAction(
   }
 }
 
-
 // ===================================== ANSWERS =====================================
 
 // GET ANSWERS FOR A QUESTION
-export async function getAnswersForQuestionAction(id: number): Promise<Answer[]> {
-
+export async function getAnswersForQuestionAction(
+  id: number
+): Promise<Answer[]> {
   const result = await sql`
     SELECT 
       answers.id, answers.question_id, answers.user_id, answers.parent_id,
@@ -429,8 +427,8 @@ export async function getAnswersForQuestionAction(id: number): Promise<Answer[]>
     ORDER BY answers.created_at ASC
   `
 
-  return result as Answer[];
-};
+  return result as Answer[]
+}
 
 export async function getAnswerDetailsAction(id: number): Promise<Answer> {
   const result = await sql`
@@ -467,7 +465,6 @@ export async function createAnswerAction(
       SET answer_count = answer_count + 1
       WHERE id = (SELECT question_id FROM inserted_answer)
     `
-
   } catch (error) {
     console.error("Error creating answer:", error)
     return {
@@ -537,13 +534,13 @@ export async function deleteAnswerAction(id: number): Promise<ActionResult> {
     errors: {},
     success: true,
   }
-};
+}
 
 // FETCH FILTERED ANSWERS
 const DEFAULT_ANSWERS_PER_PAGE = 5
 
 // Type for nested reply structure (recursive)
-type NestedReply = Answer & { replies: NestedReply[], reply_count?: number };
+type NestedReply = Answer & { replies: NestedReply[]; reply_count?: number }
 
 // Type for answers with nested replies (supports 4 levels inline)
 export type AnswerWithReplies = Answer & {
@@ -576,38 +573,60 @@ export async function fetchAnswerPagesAction(
 export async function fetchFilteredAnswersAction(
   currentPage: number,
   questionId: number,
-  limit: number = DEFAULT_ANSWERS_PER_PAGE
+  limit: number = DEFAULT_ANSWERS_PER_PAGE,
+  sort: "newest" | "oldest" = "newest"
 ): Promise<AnswerWithReplies[]> {
   const pageSize = Math.max(1, limit || DEFAULT_ANSWERS_PER_PAGE)
   const offset = (currentPage - 1) * pageSize
   try {
     // Fetch top-level answers (parent_id IS NULL) with pagination
-    const topLevelAnswers = await sql`
-      SELECT
-        a.id,
-        a.question_id,
-        a.user_id,
-        a.parent_id,
-        a.content,
-        a.created_at,
-        a.updated_at,
-        u.full_name AS user_name,
-        u.avatar_url AS user_avatar
-      FROM answers a
-      JOIN users u ON a.user_id = u.id
-      WHERE a.question_id = ${questionId} AND a.parent_id IS NULL
-      ORDER BY a.created_at DESC
-      LIMIT ${pageSize} OFFSET ${offset};
-    ` as Answer[];
-
-    if (topLevelAnswers.length === 0) {
-      return [];
+    let topLevelAnswers: Answer[]
+    if (sort === "oldest") {
+      topLevelAnswers = (await sql`
+        SELECT
+          a.id,
+          a.question_id,
+          a.user_id,
+          a.parent_id,
+          a.content,
+          a.created_at,
+          a.updated_at,
+          u.full_name AS user_name,
+          u.avatar_url AS user_avatar
+        FROM answers a
+        JOIN users u ON a.user_id = u.id
+        WHERE a.question_id = ${questionId} AND a.parent_id IS NULL
+        ORDER BY a.created_at ASC
+        LIMIT ${pageSize} OFFSET ${offset};
+      `) as Answer[]
+    } else {
+      topLevelAnswers = (await sql`
+        SELECT
+          a.id,
+          a.question_id,
+          a.user_id,
+          a.parent_id,
+          a.content,
+          a.created_at,
+          a.updated_at,
+          u.full_name AS user_name,
+          u.avatar_url AS user_avatar
+        FROM answers a
+        JOIN users u ON a.user_id = u.id
+        WHERE a.question_id = ${questionId} AND a.parent_id IS NULL
+        ORDER BY a.created_at DESC
+        LIMIT ${pageSize} OFFSET ${offset};
+      `) as Answer[]
     }
 
-    const topLevelIds = topLevelAnswers.map(a => a.id);
+    if (topLevelAnswers.length === 0) {
+      return []
+    }
+
+    const topLevelIds = topLevelAnswers.map((a) => a.id)
 
     // Fetch all replies up to 4 levels deep using recursive CTE
-    const allReplies = await sql`
+    const allReplies = (await sql`
       WITH RECURSIVE reply_tree AS (
         SELECT 
           a.id, a.question_id, a.user_id, a.parent_id, a.content,
@@ -632,76 +651,80 @@ export async function fetchFilteredAnswersAction(
       )
       SELECT * FROM reply_tree
       ORDER BY created_at ASC;
-    ` as (Answer & { depth: number })[];
+    `) as (Answer & { depth: number })[]
 
     // Get IDs of level 4 replies to check for deeper replies
-    const level4Ids = allReplies.filter(a => a.depth === 4).map(a => a.id);
-    
+    const level4Ids = allReplies.filter((a) => a.depth === 4).map((a) => a.id)
+
     // Count deeper replies (level 5+) for each top-level answer
-    let hasDeepReplies: Map<number, boolean> = new Map();
+    let hasDeepReplies: Map<number, boolean> = new Map()
     if (level4Ids.length > 0) {
       // Check if any level 4 replies have children
       const deeperExists = await sql`
         SELECT DISTINCT parent_id
         FROM answers
         WHERE parent_id = ANY(${level4Ids})
-      `;
-      
+      `
+
       if (deeperExists.length > 0) {
         // Find which top-level answers have deep replies by tracing back
-        const level4WithChildren = new Set(deeperExists.map((r: any) => r.parent_id));
-        
+        const level4WithChildren = new Set(
+          deeperExists.map((r: any) => r.parent_id)
+        )
+
         // For each top-level answer, check if any of its descendants at level 4 have children
         for (const topAnswer of topLevelAnswers) {
-          const hasDeep = allReplies.some(reply => {
-            if (reply.depth !== 4) return false;
-            if (!level4WithChildren.has(reply.id)) return false;
+          const hasDeep = allReplies.some((reply) => {
+            if (reply.depth !== 4) return false
+            if (!level4WithChildren.has(reply.id)) return false
             // Check if this reply is a descendant of topAnswer
-            let current = reply;
+            let current = reply
             while (current.depth > 1) {
-              const parent = allReplies.find(r => r.id === current.parent_id);
-              if (!parent) break;
-              current = parent;
+              const parent = allReplies.find((r) => r.id === current.parent_id)
+              if (!parent) break
+              current = parent
             }
-            return current.parent_id === topAnswer.id;
-          });
-          hasDeepReplies.set(topAnswer.id, hasDeep);
+            return current.parent_id === topAnswer.id
+          })
+          hasDeepReplies.set(topAnswer.id, hasDeep)
         }
       }
     }
 
     // Build nested structure for each top-level answer
-    type NestedReply = Answer & { replies: NestedReply[], reply_count?: number };
-    
+    type NestedReply = Answer & { replies: NestedReply[]; reply_count?: number }
+
     const buildNestedReplies = (parentId: number): NestedReply[] => {
       return allReplies
-        .filter(a => a.parent_id === parentId)
-        .map(a => ({
+        .filter((a) => a.parent_id === parentId)
+        .map((a) => ({
           ...a,
           replies: buildNestedReplies(a.id),
-          reply_count: 0
-        }));
-    };
+          reply_count: 0,
+        }))
+    }
 
     // Calculate total reply count recursively
     const countReplies = (replies: NestedReply[]): number => {
-      return replies.reduce((sum, r) => sum + 1 + countReplies(r.replies), 0);
-    };
+      return replies.reduce((sum, r) => sum + 1 + countReplies(r.replies), 0)
+    }
 
-    const answersWithReplies: AnswerWithReplies[] = topLevelAnswers.map(answer => {
-      const nestedReplies = buildNestedReplies(answer.id);
-      const totalCount = countReplies(nestedReplies);
-      const hasDeeper = hasDeepReplies.get(answer.id) || false;
-      
-      return {
-        ...answer,
-        replies: nestedReplies as any,
-        reply_count: totalCount,
-        has_deep_replies: hasDeeper
-      };
-    });
+    const answersWithReplies: AnswerWithReplies[] = topLevelAnswers.map(
+      (answer) => {
+        const nestedReplies = buildNestedReplies(answer.id)
+        const totalCount = countReplies(nestedReplies)
+        const hasDeeper = hasDeepReplies.get(answer.id) || false
 
-    return answersWithReplies;
+        return {
+          ...answer,
+          replies: nestedReplies as any,
+          reply_count: totalCount,
+          has_deep_replies: hasDeeper,
+        }
+      }
+    )
+
+    return answersWithReplies
   } catch (error) {
     console.error("Database Error:", error)
     throw new Error("Failed to fetch filtered answers.")
@@ -709,7 +732,9 @@ export async function fetchFilteredAnswersAction(
 }
 
 // Fetch full discussion thread starting from top-level ancestor
-export async function fetchFullDiscussionThreadAction(answerId: number): Promise<AnswerWithReplies> {
+export async function fetchFullDiscussionThreadAction(
+  answerId: number
+): Promise<AnswerWithReplies> {
   try {
     // First, find the top-level ancestor (where parent_id IS NULL)
     const ancestorResult = await sql`
@@ -728,16 +753,16 @@ export async function fetchFullDiscussionThreadAction(answerId: number): Promise
       SELECT id FROM ancestor_tree
       WHERE parent_id IS NULL
       LIMIT 1;
-    `;
+    `
 
     if (ancestorResult.length === 0) {
-      throw new Error("Top-level answer not found");
+      throw new Error("Top-level answer not found")
     }
 
-    const topLevelId = ancestorResult[0].id;
+    const topLevelId = ancestorResult[0].id
 
     // Fetch the root answer
-    const rootAnswer = await sql`
+    const rootAnswer = (await sql`
       SELECT
         a.id,
         a.question_id,
@@ -751,14 +776,14 @@ export async function fetchFullDiscussionThreadAction(answerId: number): Promise
       FROM answers a
       JOIN users u ON a.user_id = u.id
       WHERE a.id = ${topLevelId}
-    ` as Answer[];
+    `) as Answer[]
 
     if (rootAnswer.length === 0) {
-      throw new Error("Answer not found");
+      throw new Error("Answer not found")
     }
 
     // Fetch all descendants using recursive CTE
-    const allDescendants = await sql`
+    const allDescendants = (await sql`
       WITH RECURSIVE reply_tree AS (
         SELECT 
           a.id, a.question_id, a.user_id, a.parent_id, a.content,
@@ -783,26 +808,29 @@ export async function fetchFullDiscussionThreadAction(answerId: number): Promise
       )
       SELECT * FROM reply_tree
       ORDER BY created_at ASC;
-    ` as (Answer & { depth: number })[];
+    `) as (Answer & { depth: number })[]
 
     // Build nested structure recursively
-    type LocalNestedReply = Answer & { replies: LocalNestedReply[], reply_count?: number };
-    
+    type LocalNestedReply = Answer & {
+      replies: LocalNestedReply[]
+      reply_count?: number
+    }
+
     const buildNestedReplies = (parentId: number): LocalNestedReply[] => {
       return allDescendants
-        .filter(a => a.parent_id === parentId)
-        .map(a => ({
+        .filter((a) => a.parent_id === parentId)
+        .map((a) => ({
           ...a,
           replies: buildNestedReplies(a.id),
-          reply_count: 0
-        }));
-    };
+          reply_count: 0,
+        }))
+    }
 
     return {
       ...rootAnswer[0],
       replies: buildNestedReplies(topLevelId),
-      reply_count: allDescendants.length
-    };
+      reply_count: allDescendants.length,
+    }
   } catch (error) {
     console.error("Database Error:", error)
     throw new Error("Failed to fetch full discussion thread.")
@@ -810,7 +838,9 @@ export async function fetchFullDiscussionThreadAction(answerId: number): Promise
 }
 
 // GET TOP KNOWLEDGE SHARERS
-export async function getTopKnowledgeSharers(limit: number = 5): Promise<TopSharer[]> {
+export async function getTopKnowledgeSharers(
+  limit: number = 5
+): Promise<TopSharer[]> {
   try {
     const result = await sql`
       SELECT 

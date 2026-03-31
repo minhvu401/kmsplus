@@ -27,6 +27,7 @@
     "@neondatabase/serverless": "^1.0.2",
     "@upstash/redis": "^1.36.3",
     "antd": "^5.27.5",
+    "antd-img-crop": "^4.30.0",
     "bcryptjs": "^3.0.2",
     "cloudinary": "^2.9.0",
     "clsx": "^2.1.1",

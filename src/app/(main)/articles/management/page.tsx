@@ -1,33 +1,87 @@
-'use client';
+"use client"
 
-import React, { useState, useEffect, useRef, type KeyboardEvent, type ClipboardEvent } from 'react';
-import { Table, Input, Select, Button, Space, Flex, Typography, Tag as AntTag, Card, Alert, Segmented, Row, Col, Spin, Modal, Form, Divider, message, Tooltip, Upload, Pagination } from 'antd';
-import { SearchOutlined, PlusOutlined, EditOutlined, DeleteOutlined, SendOutlined, CloseOutlined, SaveOutlined, RollbackOutlined, UploadOutlined } from '@ant-design/icons';
-import type { ColumnsType } from 'antd/es/table';
-import type { FormInstance } from 'antd/es/form';
-import { filterByTagAndCategory, getAllTags, deleteArticle, getAllCategories, createArticle, getArticleById, updateArticle, restoreArticle } from '@/action/articles/articlesManagementAction';
-import type { Article, Tag } from '@/service/articles.service';
-import { uploadImageToCloudinary, getCloudinaryThumbnailUrl } from '@/lib/cloudinary';
-import QuillEditor from '@/components/QuillEditor';
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  type KeyboardEvent,
+  type ClipboardEvent,
+} from "react"
+import {
+  Table,
+  Input,
+  Select,
+  Button,
+  Space,
+  Flex,
+  Typography,
+  Tag as AntTag,
+  Card,
+  Alert,
+  Segmented,
+  Row,
+  Col,
+  Spin,
+  Modal,
+  Form,
+  Divider,
+  message,
+  Tooltip,
+  Upload,
+  Pagination,
+} from "antd"
+import {
+  SearchOutlined,
+  PlusOutlined,
+  EditOutlined,
+  DeleteOutlined,
+  SendOutlined,
+  CloseOutlined,
+  SaveOutlined,
+  RollbackOutlined,
+  UploadOutlined,
+} from "@ant-design/icons"
+import ImgCrop from "antd-img-crop"
+import type { ColumnsType } from "antd/es/table"
+import type { FormInstance } from "antd/es/form"
+import {
+  filterByTagAndCategory,
+  getAllTags,
+  deleteArticle,
+  getAllCategories,
+  createArticle,
+  getArticleById,
+  updateArticle,
+  restoreArticle,
+  getCurrentUserDetail,
+  type CurrentUserInfo,
+} from "@/action/articles/articlesManagementAction"
+import { getAllDepartments } from "@/action/department/departmentActions"
+import type { Article, Tag } from "@/service/articles.service"
+import {
+  uploadImageToCloudinary,
+  getCloudinaryThumbnailUrl,
+} from "@/lib/cloudinary"
+import QuillEditor from "@/components/QuillEditor"
 
-if (typeof window !== 'undefined') {
-  (window as any).React = React;
+if (typeof window !== "undefined") {
+  ;(window as any).React = React
 }
 
-const { Text, Title } = Typography;
+const { Text, Title } = Typography
 
 function useDebounce(value: string, delay: number) {
-  const [debouncedValue, setDebouncedValue] = useState(value);
+  const [debouncedValue, setDebouncedValue] = useState(value)
 
   useEffect(() => {
     const handler = setTimeout(() => {
-      setDebouncedValue(value);
-    }, delay);
+      setDebouncedValue(value)
+    }, delay)
 
     return () => {
-      clearTimeout(handler);
-    };
-  }, [value, delay]);
+      clearTimeout(handler)
+    }
+  }, [value, delay])
 
   return debouncedValue
 }
@@ -49,7 +103,7 @@ const restoreSelection = (ref: React.MutableRefObject<Range | null>) => {
       selection.removeAllRanges()
       selection.addRange(ref.current)
     } catch (e) {
-      console.log("Could not restore selection")
+      ;("Could not restore selection")
     }
   }
 }
@@ -88,97 +142,130 @@ const applyQuote = (
 }
 
 export default function ArticleManagement() {
-  const PAGE_SIZE = 10;
-  const THUMBNAIL_MAX_SIZE_MB = 10;
-  const THUMBNAIL_MAX_SIZE_BYTES = THUMBNAIL_MAX_SIZE_MB * 1024 * 1024;
-  const [searchQuery, setSearchQuery] = useState('');
-  const debouncedSearchQuery = useDebounce(searchQuery, 300);
-  const [selectedTag, setSelectedTag] = useState('All Tags');
-  const [selectedCategory, setSelectedCategory] = useState<number | 'All'>('All');
-  const [selectedStatus, setSelectedStatus] = useState('All');
-  const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
-  const [currentPage, setCurrentPage] = useState(1);
-  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
+  const PAGE_SIZE = 10
+  const THUMBNAIL_MAX_SIZE_MB = 10
+  const THUMBNAIL_MAX_SIZE_BYTES = THUMBNAIL_MAX_SIZE_MB * 1024 * 1024
+  const THUMBNAIL_ASPECT_RATIO = 4 / 3
+  const [searchQuery, setSearchQuery] = useState("")
+  const debouncedSearchQuery = useDebounce(searchQuery, 300)
+  const [selectedTag, setSelectedTag] = useState("All Tags")
+  const [selectedCategory, setSelectedCategory] = useState<number | "All">(
+    "All"
+  )
+  const [selectedDepartment, setSelectedDepartment] = useState<number | "All">(
+    "All"
+  )
+  const [selectedStatus, setSelectedStatus] = useState("All")
+  const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest")
+  const [currentPage, setCurrentPage] = useState(1)
+  const [viewMode, setViewMode] = useState<"list" | "grid">("list")
 
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [createForm] = Form.useForm();
-  const [titleContent, setTitleContent] = useState('');
-  const [contentValue, setContentValue] = useState('');
-  const [imageUrl, setImageUrl] = useState('');
-  const [thumbnailUrl, setThumbnailUrl] = useState(''); // New: Cloudinary thumbnail
-  const [thumbnailUploadError, setThumbnailUploadError] = useState('');
-  const [selectedTagsForCreate, setSelectedTagsForCreate] = useState<string[]>([]);
-  const [submitStatus, setSubmitStatus] = useState<'draft' | 'published' | 'pending'>('published');
-  const [creatingArticle, setCreatingArticle] = useState(false);
-  const [uploadingThumbnail, setUploadingThumbnail] = useState(false); // New
-  const titleEditorRef = useRef<HTMLDivElement>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [createForm] = Form.useForm()
+  const [titleContent, setTitleContent] = useState("")
+  const [contentValue, setContentValue] = useState("")
+  const [imageUrl, setImageUrl] = useState("")
+  const [thumbnailUrl, setThumbnailUrl] = useState("") // New: Cloudinary thumbnail
+  const [thumbnailUploadError, setThumbnailUploadError] = useState("")
+  const [selectedTagsForCreate, setSelectedTagsForCreate] = useState<string[]>(
+    []
+  )
+  const [submitStatus, setSubmitStatus] = useState<
+    "draft" | "published" | "pending"
+  >("published")
+  const [creatingArticle, setCreatingArticle] = useState(false)
+  const [uploadingThumbnail, setUploadingThumbnail] = useState(false) // New
+  const [categoryIdFormValue, setCategoryIdFormValue] = useState<
+    number | undefined
+  >(undefined)
+  const titleEditorRef = useRef<HTMLDivElement>(null)
 
-  const [articles, setArticles] = useState<Article[]>([]);
-  const [totalArticles, setTotalArticles] = useState(0);
-  const [loadingArticles, setLoadingArticles] = useState(false);
-  const [deletingId, setDeletingId] = useState<number | null>(null);
-  const [articlesError, setArticlesError] = useState<string | null>(null);
-  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
-  const [enforceCreatorOnlyEdit, setEnforceCreatorOnlyEdit] = useState(false);
+  const [articles, setArticles] = useState<Article[]>([])
+  const [totalArticles, setTotalArticles] = useState(0)
+  const [loadingArticles, setLoadingArticles] = useState(false)
+  const [deletingId, setDeletingId] = useState<number | null>(null)
+  const [articlesError, setArticlesError] = useState<string | null>(null)
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null)
+  const [enforceCreatorOnlyEdit, setEnforceCreatorOnlyEdit] = useState(false)
 
-  const [tags, setTags] = useState<Tag[]>([]);
-  const [loadingTags, setLoadingTags] = useState(false);
-  const [categories, setCategories] = useState<{ id: number; name: string }[]>([]);
-  const [loadingCategories, setLoadingCategories] = useState(false);
-  const [userRoles, setUserRoles] = useState<string[]>([]);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [tags, setTags] = useState<Tag[]>([])
+  const [loadingTags, setLoadingTags] = useState(false)
+  const [categories, setCategories] = useState<
+    { id: number; name: string; department_id?: number | null }[]
+  >([])
+  const [loadingCategories, setLoadingCategories] = useState(false)
+  const [departments, setDepartments] = useState<
+    { id: number; name: string }[]
+  >([])
+  const [loadingDepartments, setLoadingDepartments] = useState(false)
+  const [userRoles, setUserRoles] = useState<string[]>([])
+  const [isAdmin, setIsAdmin] = useState(false)
+  const [currentUser, setCurrentUser] = useState<CurrentUserInfo | null>(null)
+  const [loadingUserInfo, setLoadingUserInfo] = useState(true)
 
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [editingArticleId, setEditingArticleId] = useState<number | null>(null);
-  const [editForm] = Form.useForm();
-  const [editTitleContent, setEditTitleContent] = useState('');
-  const [editContentValue, setEditContentValue] = useState('');
-  const [editImageUrl, setEditImageUrl] = useState('');
-  const [editSelectedTags, setEditSelectedTags] = useState<string[]>([]);
-  const [editSubmitStatus, setEditSubmitStatus] = useState<'draft' | 'published' | 'pending'>('published');
-  const [editingArticle, setEditingArticle] = useState(false);
-  const [loadingEditData, setLoadingEditData] = useState(false);
-  const [editThumbnailUrl, setEditThumbnailUrl] = useState(''); // New
-  const [uploadingEditThumbnail, setUploadingEditThumbnail] = useState(false); // New
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const [editingArticleId, setEditingArticleId] = useState<number | null>(null)
+  const [editForm] = Form.useForm()
+  const [editTitleContent, setEditTitleContent] = useState("")
+  const [editContentValue, setEditContentValue] = useState("")
+  const [editImageUrl, setEditImageUrl] = useState("")
+  const [editSelectedTags, setEditSelectedTags] = useState<string[]>([])
+  const [editSubmitStatus, setEditSubmitStatus] = useState<
+    "draft" | "published" | "pending"
+  >("published")
+  const [editingArticle, setEditingArticle] = useState(false)
+  const [loadingEditData, setLoadingEditData] = useState(false)
+  const [editThumbnailUrl, setEditThumbnailUrl] = useState("") // New
+  const [uploadingEditThumbnail, setUploadingEditThumbnail] = useState(false) // New
+  const [editCategoryId, setEditCategoryId] = useState<number | undefined>(
+    undefined
+  )
 
   const statusColors: Record<string, string> = {
-    published: 'green',
-    draft: 'blue',
-    pending: 'gold',
-    rejected: 'red',
-    archived: 'red',
-  };
+    published: "green",
+    draft: "blue",
+    pending: "gold",
+    rejected: "red",
+    archived: "red",
+  }
 
   const formatVietnamDateTime = (date: Date | string | null | undefined) => {
-    if (!date) return '-';
-    const parsedDate = new Date(date);
-    if (Number.isNaN(parsedDate.getTime())) return '-';
-    return parsedDate.toLocaleString('vi-VN', {
-      timeZone: 'Asia/Ho_Chi_Minh',
+    if (!date) return "-"
+    const parsedDate = new Date(date)
+    if (Number.isNaN(parsedDate.getTime())) return "-"
+    return parsedDate.toLocaleString("vi-VN", {
+      timeZone: "Asia/Ho_Chi_Minh",
       hour12: false,
-    });
-  };
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    })
+  }
 
   const canEditArticle = (article: Article) => {
-    if (!enforceCreatorOnlyEdit) return true;
-    if (!currentUserId) return false;
-    return Number(article.author_id) === Number(currentUserId);
-  };
+    if (!enforceCreatorOnlyEdit) return true
+    if (!currentUserId) return false
+    return Number(article.author_id) === Number(currentUserId)
+  }
 
   const refreshCurrentArticles = async (showLoader: boolean = true) => {
-    setArticlesError(null);
-    if (showLoader) setLoadingArticles(true);
+    if (loadingUserInfo) return
+
+    setArticlesError(null)
+    if (showLoader) setLoadingArticles(true)
     try {
-      const catId = selectedCategory === 'All' ? undefined : selectedCategory;
-      let statusFilter = selectedStatus === 'All' ? undefined : selectedStatus;
-      let isDeletedFilter: 'all' | boolean = 'all';
-      
+      const catId = selectedCategory === "All" ? undefined : selectedCategory
+      let statusFilter = selectedStatus === "All" ? undefined : selectedStatus
+      let isDeletedFilter: "all" | boolean = "all"
+
       // If status filter is 'archived', set isDeletedFilter to true and reset statusFilter
-      if (statusFilter === 'archived') {
-        isDeletedFilter = true;
-        statusFilter = undefined;
+      if (statusFilter === "archived") {
+        isDeletedFilter = true
+        statusFilter = undefined
       }
-      
+
       const res = await filterByTagAndCategory(
         debouncedSearchQuery,
         selectedTag,
@@ -187,83 +274,79 @@ export default function ArticleManagement() {
         isDeletedFilter,
         sortOrder,
         currentPage,
-        PAGE_SIZE,
-      );
+        PAGE_SIZE
+      )
 
-      setArticles(res?.data || []);
-      setTotalArticles(res?.total || 0);
-      setCurrentUserId(res?.currentUserId ?? null);
-      setEnforceCreatorOnlyEdit(Boolean(res?.isHeadOfDepartmentView));
+      setArticles(res?.data || [])
+      setTotalArticles(res?.total || 0)
+      setCurrentUserId(res?.currentUserId ?? null)
+      setEnforceCreatorOnlyEdit(Boolean(res?.isHeadOfDepartmentView))
     } catch (err: any) {
-      setArticlesError(err?.message || String(err));
-      setArticles([]);
-      setTotalArticles(0);
+      setArticlesError(err?.message || String(err))
+      setArticles([])
+      setTotalArticles(0)
     } finally {
-      if (showLoader) setLoadingArticles(false);
+      if (showLoader) setLoadingArticles(false)
     }
-  };
+  }
 
   const handleEditorChange = (value: string) => {
-    setContentValue(value);
-    
-    const imgRegex = /<img[^>]+src=[\"']([^\"']+)[\"'][^>]*>/g;
-    let match;
-    let firstImage = '';
+    setContentValue(value)
+
+    const imgRegex = /<img[^>]+src=[\"']([^\"']+)[\"'][^>]*>/g
+    let match
+    let firstImage = ""
 
     while ((match = imgRegex.exec(value)) !== null) {
       if (match[1]) {
-        firstImage = match[1];
-        break;
+        firstImage = match[1]
+        break
       }
     }
 
-    setImageUrl(firstImage);
-  };
+    setImageUrl(firstImage)
+  }
 
   // New: Handle thumbnail upload
   const handleThumbnailUpload = async (file: File) => {
-    console.log('Starting thumbnail upload...', file.name, file.type, file.size);
-    setUploadingThumbnail(true);
+    setUploadingThumbnail(true)
     try {
-      const result = await uploadImageToCloudinary(file, 'article-thumbnails');
-      console.log('Upload successful:', result);
-      setThumbnailUrl(result.secure_url);
-      setThumbnailUploadError('');
-      message.success('Thumbnail uploaded successfully');
+      const result = await uploadImageToCloudinary(file, "article-thumbnails")
+      setThumbnailUrl(result.secure_url)
+      setThumbnailUploadError("")
+      message.success("Thumbnail uploaded successfully")
     } catch (error: any) {
-      console.error('Upload error:', error);
-      const rawError = error?.message || 'Failed to upload thumbnail';
+      console.error("Upload error:", error)
+      const rawError = error?.message || "Failed to upload thumbnail"
       if (/file size too large/i.test(rawError)) {
-        const tooLargeError = `Ảnh thumbnail vượt quá ${THUMBNAIL_MAX_SIZE_MB}MB. Vui lòng chọn ảnh nhỏ hơn.`;
-        setThumbnailUploadError(tooLargeError);
-        message.error(tooLargeError);
+        const tooLargeError = `Ảnh thumbnail vượt quá ${THUMBNAIL_MAX_SIZE_MB}MB. Vui lòng chọn ảnh nhỏ hơn.`
+        setThumbnailUploadError(tooLargeError)
+        message.error(tooLargeError)
       } else {
-        setThumbnailUploadError(rawError);
-        message.error(rawError);
+        setThumbnailUploadError(rawError)
+        message.error(rawError)
       }
     } finally {
-      setUploadingThumbnail(false);
+      setUploadingThumbnail(false)
     }
-  };
+  }
 
   // New: Handle edit thumbnail upload
   const handleEditThumbnailUpload = async (file: File) => {
-    console.log('Starting edit thumbnail upload...', file.name, file.type, file.size);
-    setUploadingEditThumbnail(true);
+    setUploadingEditThumbnail(true)
     try {
-      const result = await uploadImageToCloudinary(file, 'article-thumbnails');
-      console.log('Upload successful:', result);
-      setEditThumbnailUrl(result.secure_url);
-      message.success('Thumbnail uploaded successfully');
+      const result = await uploadImageToCloudinary(file, "article-thumbnails")
+      setEditThumbnailUrl(result.secure_url)
+      message.success("Thumbnail uploaded successfully")
     } catch (error: any) {
-      console.error('Upload error:', error);
-      message.error(error?.message || 'Failed to upload thumbnail');
+      console.error("Upload error:", error)
+      message.error(error?.message || "Failed to upload thumbnail")
     } finally {
-      setUploadingEditThumbnail(false);
+      setUploadingEditThumbnail(false)
     }
-  };
+  }
 
-  const filterKeyRef = useRef('');
+  const filterKeyRef = useRef("")
   useEffect(() => {
     const nextFilterKey = [
       debouncedSearchQuery,
@@ -271,202 +354,249 @@ export default function ArticleManagement() {
       String(selectedCategory),
       selectedStatus,
       sortOrder,
-    ].join('|');
+    ].join("|")
 
-    const hasFilterChanged = filterKeyRef.current !== nextFilterKey;
-    filterKeyRef.current = nextFilterKey;
+    const hasFilterChanged = filterKeyRef.current !== nextFilterKey
+    filterKeyRef.current = nextFilterKey
 
     if (hasFilterChanged && currentPage !== 1) {
-      setCurrentPage(1);
-      return;
+      setCurrentPage(1)
+      return
     }
 
-    refreshCurrentArticles();
-  }, [debouncedSearchQuery, selectedTag, selectedCategory, selectedStatus, sortOrder, currentPage]);
+    if (!loadingUserInfo) {
+      refreshCurrentArticles()
+    }
+  }, [
+    debouncedSearchQuery,
+    selectedTag,
+    selectedCategory,
+    selectedStatus,
+    sortOrder,
+    currentPage,
+    loadingUserInfo,
+  ])
 
   useEffect(() => {
-    (async () => {
+    ;(async () => {
       try {
-        setUserRoles([]);
-        setIsAdmin(false);
+        setLoadingUserInfo(true)
+        const user = await getCurrentUserDetail()
+        if (user) {
+          setCurrentUser(user)
+          setUserRoles(user.roles || [])
+          setIsAdmin(user.isAdmin || false)
+          if (!user.isAdmin && user.department_id) {
+            setSelectedDepartment(user.department_id)
+          }
+        }
       } catch (err) {
-        console.error('Error loading user roles:', err);
+        console.error("Error loading user info:", err)
+        setCurrentUser(null)
+        setUserRoles([])
+        setIsAdmin(false)
+      } finally {
+        setLoadingUserInfo(false)
       }
-    })();
-  }, []);
+    })()
+  }, [])
 
   useEffect(() => {
-    (async () => {
-      setLoadingTags(true);
+    ;(async () => {
+      setLoadingTags(true)
       try {
-        const res = await getAllTags();
-        setTags((res as Tag[]) || []);
+        const res = await getAllTags()
+        setTags((res as Tag[]) || [])
       } catch (err: any) {
-        console.error('Error loading tags:', err);
-        setTags([]);
+        console.error("Error loading tags:", err)
+        setTags([])
       } finally {
-        setLoadingTags(false);
+        setLoadingTags(false)
       }
-    })();
-  }, []);
+    })()
+  }, [])
 
   useEffect(() => {
-    (async () => {
-      setLoadingCategories(true);
+    ;(async () => {
+      setLoadingCategories(true)
       try {
-        const res = await getAllCategories();
-        setCategories(res || []);
+        const res = await getAllCategories()
+        let filteredCategories = res || []
+
+        // Nếu user không phải admin, chỉ hiển thị categories của department user đó
+        if (!isAdmin && currentUser?.department_id) {
+          filteredCategories = filteredCategories.filter(
+            (cat) => cat.department_id === currentUser.department_id
+          )
+        }
+
+        setCategories(filteredCategories)
       } catch (err) {
-        console.error('Error loading categories:', err);
-        setCategories([]);
+        console.error("Error loading categories:", err)
+        setCategories([])
       } finally {
-        setLoadingCategories(false);
+        setLoadingCategories(false)
       }
-    })();
-  }, []);
+    })()
+  }, [isAdmin, currentUser?.department_id])
+
+  useEffect(() => {
+    ;(async () => {
+      if (!isAdmin) {
+        setDepartments([])
+        setLoadingDepartments(false)
+        return
+      }
+
+      setLoadingDepartments(true)
+      try {
+        const res = await getAllDepartments()
+        setDepartments(res || [])
+      } catch (err) {
+        console.error("Error loading departments:", err)
+        setDepartments([])
+      } finally {
+        setLoadingDepartments(false)
+      }
+    })()
+  }, [isAdmin])
 
   const columns: ColumnsType<Article> = [
     {
-      title: 'ID',
-      dataIndex: 'id',
-      key: 'id',
+      title: "ID",
+      dataIndex: "id",
+      key: "id",
       width: 80,
+      fixed: "left",
     },
     {
-      title: 'Article Title',
-      dataIndex: 'title',
-      key: 'title',
+      title: "Article Title",
+      dataIndex: "title",
+      key: "title",
       width: 280,
       ellipsis: true,
       render: (title: string, record: Article) => (
-        <a 
+        <a
           href={`/articles/${record.id}`}
           className="text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
         >
-          {title?.trim() || '(No title)'}
+          {title?.trim() || "(No title)"}
         </a>
       ),
     },
     {
-      title: 'Tag',
-      dataIndex: 'article_tags',
-      key: 'article_tags',
+      title: "Tag",
+      dataIndex: "article_tags",
+      key: "article_tags",
       width: 150,
       render: (tagString: string) => {
-        if (!tagString) return <Text type="secondary">No tags</Text>;
+        if (!tagString) return <Text type="secondary">No tags</Text>
         const tagList = tagString
-          .split(',')
+          .split(",")
           .map((t) => t.trim())
-          .filter(Boolean);
-        
-        const visibleTags = tagList.slice(0, 2);
-        const hiddenTags = tagList.slice(2);
-        
+          .filter(Boolean)
+
+        const visibleTags = tagList.slice(0, 2)
+        const hiddenTags = tagList.slice(2)
+
         return (
           <Space size={[4, 4]} wrap>
             {visibleTags.map((tag) => (
-              <AntTag key={tag} color="blue">{tag}</AntTag>
+              <AntTag key={tag} color="blue">
+                {tag}
+              </AntTag>
             ))}
             {hiddenTags.length > 0 && (
-              <Tooltip title={hiddenTags.join(', ')}>
+              <Tooltip title={hiddenTags.join(", ")}>
                 <AntTag color="default">+{hiddenTags.length}</AntTag>
               </Tooltip>
             )}
           </Space>
-        );
+        )
       },
     },
     {
-      title: 'Category',
-      dataIndex: 'category_name',
-      key: 'category_name',
+      title: "Category",
+      dataIndex: "category_name",
+      key: "category_name",
       width: 150,
-      render: (category: string | null) => <Text>{category || 'null'}</Text>,
+      render: (category: string | null) => <Text>{category || "null"}</Text>,
     },
     // New: Thumbnail column
     {
-      title: 'Thumbnail',
-      dataIndex: 'thumbnail_url',
-      key: 'thumbnail_url',
+      title: "Thumbnail",
+      dataIndex: "thumbnail_url",
+      key: "thumbnail_url",
       width: 120,
       render: (thumbnailUrl: string, record: Article) => {
-        const src = thumbnailUrl || record.image_url;
+        const src = thumbnailUrl || record.image_url
         if (!src) {
-          return <Text type="secondary">No image</Text>;
+          return <Text type="secondary">No image</Text>
         }
 
         return (
-          <img 
+          <img
             src={src}
-            alt="Thumbnail" 
+            alt="Thumbnail"
             className="w-20 h-16 object-cover rounded"
             onError={(e) => {
-              (e.target as HTMLImageElement).src = "https://via.placeholder.com/80x60?text=No+Image";
+              ;(e.target as HTMLImageElement).src =
+                "https://via.placeholder.com/80x60?text=No+Image"
             }}
           />
-        );
+        )
       },
     },
     {
-      title: 'Status',
-      dataIndex: 'status',
-      key: 'status',
+      title: "Status",
+      dataIndex: "status",
+      key: "status",
       width: 120,
       render: (status: string, record: Article) => {
-        const displayStatus = record.is_deleted ? 'archived' : status;
-        const displayText = record.is_deleted ? 'Archived' : status;
-        return <AntTag color={statusColors[displayStatus] || 'default'}>{displayText}</AntTag>;
+        const displayStatus = record.is_deleted ? "archived" : status
+        const displayText = record.is_deleted ? "Archived" : status
+        return (
+          <AntTag color={statusColors[displayStatus] || "default"}>
+            {displayText}
+          </AntTag>
+        )
       },
     },
     {
-      title: 'Approved At',
-      dataIndex: 'approved_at',
-      key: 'approved_at',
+      title: "Approved At",
+      dataIndex: "approved_at",
+      key: "approved_at",
       width: 170,
-      render: (date: Date | null) => (
-        <Text>{formatVietnamDateTime(date)}</Text>
-      ),
+      render: (date: Date | null) => <Text>{formatVietnamDateTime(date)}</Text>,
     },
     {
-      title: 'Approved By',
-      dataIndex: 'approver_name',
-      key: 'approver_name',
+      title: "Created At",
+      dataIndex: "created_at",
+      key: "created_at",
       width: 170,
-      render: (approverName: string | null, record: Article) => (
-        <Text>{approverName || (record.approved_by ? `User #${record.approved_by}` : '-')}</Text>
-      ),
+      render: (date: Date) => <Text>{formatVietnamDateTime(date)}</Text>,
     },
     {
-      title: 'Created At',
-      dataIndex: 'created_at',
-      key: 'created_at',
+      title: "Deleted At",
+      dataIndex: "deleted_at",
+      key: "deleted_at",
       width: 170,
-      render: (date: Date) => (
-        <Text>{formatVietnamDateTime(date)}</Text>
-      ),
+      render: (date: Date | null) => <Text>{formatVietnamDateTime(date)}</Text>,
     },
     {
-      title: 'Deleted At',
-      dataIndex: 'deleted_at',
-      key: 'deleted_at',
-      width: 170,
-      render: (date: Date | null) => (
-        <Text>{formatVietnamDateTime(date)}</Text>
-      ),
-    },
-    {
-      title: 'Last Updated',
-      dataIndex: 'updated_at',
-      key: 'updated_at',
+      title: "Last Updated",
+      dataIndex: "updated_at",
+      key: "updated_at",
       width: 150,
       render: (date: Date) => (
         <Text type="warning">{formatVietnamDateTime(date)}</Text>
       ),
     },
     {
-      title: 'Action',
-      key: 'action',
+      title: "Action",
+      key: "action",
       width: 100,
+      fixed: "right",
       render: (_, record) => (
         <Space size="small">
           {canEditArticle(record) && (
@@ -483,143 +613,177 @@ export default function ArticleManagement() {
             icon={record.is_deleted ? <RollbackOutlined /> : <DeleteOutlined />}
             size="small"
             loading={deletingId === Number(record.id)}
-            onClick={() => handleArchiveClick(Number(record.id), !!record.is_deleted)}
+            onClick={() =>
+              handleArchiveClick(Number(record.id), !!record.is_deleted)
+            }
           />
         </Space>
       ),
     },
-  ];
+  ]
 
   const tagOptions = [
-    { label: 'All Tags', value: 'All Tags' },
+    { label: "All Tags", value: "All Tags" },
     ...tags.map((tag) => ({ label: tag.name, value: tag.name })),
-  ];
+  ]
+
+  const filteredCategoriesByDepartment =
+    isAdmin && selectedDepartment !== "All"
+      ? categories.filter((cat) => cat.department_id === selectedDepartment)
+      : categories
+
+  const departmentOptions = isAdmin
+    ? [
+        { label: "All Departments", value: "All" },
+        ...departments.map((dept) => ({ label: dept.name, value: dept.id })),
+      ]
+    : departments
+        .filter((dept) => dept.id === currentUser?.department_id)
+        .map((dept) => ({ label: dept.name, value: dept.id }))
 
   const categoryOptions = [
-    { label: 'All Categories', value: 'All' },
-    ...categories.map((cat) => ({ label: cat.name, value: cat.id })),
-  ];
+    { label: "All Categories", value: "All" },
+    ...filteredCategoriesByDepartment.map((cat) => ({
+      label: cat.name,
+      value: cat.id,
+    })),
+  ]
 
   const statusOptions = [
-    { label: 'All Status', value: 'All' },
-    { label: 'Draft', value: 'draft' },
-    { label: 'Published', value: 'published' },
-    { label: 'Pending', value: 'pending' },
-    { label: 'Rejected', value: 'rejected' },
-    { label: 'Archived', value: 'archived' },
-  ];
+    { label: "All Status", value: "All" },
+    { label: "Draft", value: "draft" },
+    { label: "Published", value: "published" },
+    { label: "Pending", value: "pending" },
+    { label: "Rejected", value: "rejected" },
+    { label: "Archived", value: "archived" },
+  ]
+
+  const scopedCategoriesByUserDepartment = !isAdmin
+    ? categories.filter(
+        (cat) => cat.department_id === currentUser?.department_id
+      )
+    : categories
+
+  const formCategoriesByDepartment = scopedCategoriesByUserDepartment
+
+  const editFormCategoriesByDepartment = scopedCategoriesByUserDepartment
 
   const handleArchiveClick = async (articleId: number, isDeleted: boolean) => {
     const confirmText = isDeleted
-      ? 'Restore this article?'
-      : 'Archive this article? (This will mark it as archived)';
-    const ok = window.confirm(confirmText);
-    if (!ok) return;
+      ? "Restore this article?"
+      : "Archive this article? (This will mark it as archived)"
+    const ok = window.confirm(confirmText)
+    if (!ok) return
     try {
-      setDeletingId(articleId);
-      const res = isDeleted ? await restoreArticle(articleId) : await deleteArticle(articleId);
+      setDeletingId(articleId)
+      const res = isDeleted
+        ? await restoreArticle(articleId)
+        : await deleteArticle(articleId)
       if (!res.success) {
-        throw new Error(res.message || 'Failed to update');
+        throw new Error(res.message || "Failed to update")
       }
-      await refreshCurrentArticles(false);
+      await refreshCurrentArticles(false)
     } catch (err: any) {
-      setArticlesError(err?.message || 'Failed to update');
+      setArticlesError(err?.message || "Failed to update")
     } finally {
-      setDeletingId(null);
+      setDeletingId(null)
     }
-  };
+  }
 
   const openEditModal = async (articleId: number) => {
-    setEditingArticleId(articleId);
-    setIsEditModalOpen(true);
-    setLoadingEditData(true);
-    
+    setEditingArticleId(articleId)
+    setIsEditModalOpen(true)
+    setLoadingEditData(true)
+
     try {
-      const result: any = await getArticleById(articleId);
+      const result: any = await getArticleById(articleId)
       if (result.success && result.data) {
-        const article = result.data;
-        console.log('📋 Edit Modal - Fetched article:', { id: articleId, title: article.title, contentLength: article.content?.length || 0, content: article.content });
-        setEditTitleContent(article.title || '');
-        setEditContentValue(article.content || '');
-        setEditImageUrl(article.image_url || '');
-        setEditThumbnailUrl(article.thumbnail_url || '');
-        setEditSelectedTags(article.tags || []);
-        
+        const article = result.data
+        setEditTitleContent(article.title || "")
+        setEditContentValue(article.content || "")
+        setEditImageUrl(article.image_url || "")
+        setEditThumbnailUrl(article.thumbnail_url || "")
+        setEditSelectedTags(article.tags || [])
+        setEditCategoryId(article.category_id || undefined)
+
         editForm.setFieldsValue({
           title: article.title,
           content: article.content,
           categoryId: article.category_id,
           tags: article.tags,
-        });
+        })
       } else {
-        message.error('Failed to load article');
-        setIsEditModalOpen(false);
+        message.error("Failed to load article")
+        setIsEditModalOpen(false)
       }
     } catch (err: any) {
-      message.error('Failed to load article');
-      setIsEditModalOpen(false);
+      message.error("Failed to load article")
+      setIsEditModalOpen(false)
     } finally {
-      setLoadingEditData(false);
+      setLoadingEditData(false)
     }
-  };
+  }
 
   const handleEditEditorChange = (value: string) => {
-    setEditContentValue(value);
-    
-    const imgRegex = /<img[^>]+src=[\"']([^\"']+)[\"'][^>]*>/g;
-    let match;
-    let firstImage = '';
+    setEditContentValue(value)
+
+    const imgRegex = /<img[^>]+src=[\"']([^\"']+)[\"'][^>]*>/g
+    let match
+    let firstImage = ""
 
     while ((match = imgRegex.exec(value)) !== null) {
       if (match[1]) {
-        firstImage = match[1];
-        break;
+        firstImage = match[1]
+        break
       }
     }
 
-    setEditImageUrl(firstImage);
-  };
+    setEditImageUrl(firstImage)
+  }
 
   const handleEditSubmit = async (values: any) => {
-    if (!editingArticleId) return;
-    setEditingArticle(true);
-    
+    if (!editingArticleId) return
+    setEditingArticle(true)
+
     try {
-      const formData = new FormData();
-      formData.append('id', String(editingArticleId));
-      formData.append('title', editTitleContent);
-      formData.append('content', editContentValue);
-      formData.append('status', editSubmitStatus);
-      formData.append('tags', JSON.stringify(editSelectedTags));
-      formData.append('category_id', values?.categoryId ? String(values.categoryId) : '');
-      formData.append('image_url', editImageUrl);
+      const formData = new FormData()
+      formData.append("id", String(editingArticleId))
+      formData.append("title", editTitleContent)
+      formData.append("content", editContentValue)
+      formData.append("status", editSubmitStatus)
+      formData.append("tags", JSON.stringify(editSelectedTags))
+      formData.append(
+        "category_id",
+        values?.categoryId ? String(values.categoryId) : ""
+      )
+      formData.append("image_url", editImageUrl)
       // New: Add thumbnail from Cloudinary
       if (editThumbnailUrl) {
-        formData.append('thumbnail_url', editThumbnailUrl);
+        formData.append("thumbnail_url", editThumbnailUrl)
       }
 
-      const result = await updateArticle(formData);
+      const result = await updateArticle(formData)
       if (result.success) {
-        message.success(result.message || 'Article updated successfully!');
-        setIsEditModalOpen(false);
-        editForm.resetFields();
-        setEditTitleContent('');
-        setEditContentValue('');
-        setEditImageUrl('');
-        setEditThumbnailUrl(''); // Reset thumbnail
-        setEditSelectedTags([]);
-        setEditingArticleId(null);
-        setEditSubmitStatus('published');
-        await refreshCurrentArticles(false);
+        message.success(result.message || "Article updated successfully!")
+        setIsEditModalOpen(false)
+        editForm.resetFields()
+        setEditTitleContent("")
+        setEditContentValue("")
+        setEditImageUrl("")
+        setEditThumbnailUrl("") // Reset thumbnail
+        setEditSelectedTags([])
+        setEditingArticleId(null)
+        setEditSubmitStatus("published")
+        await refreshCurrentArticles(false)
       } else {
-        message.error(result.message || 'Failed to update article');
+        message.error(result.message || "Failed to update article")
       }
     } catch (error: any) {
-      message.error(error?.message || 'An error occurred');
+      message.error(error?.message || "An error occurred")
     } finally {
-      setEditingArticle(false);
+      setEditingArticle(false)
     }
-  };
+  }
 
   return (
     <div className="p-8 bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50 min-h-screen">
@@ -628,54 +792,59 @@ export default function ArticleManagement() {
         <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-blue-900 bg-clip-text text-transparent mb-4">
           Article Management
         </h1>
-        <div className="flex align-center justify-between gap-6" style={{ marginBottom: 16 }}>
+        <div
+          className="flex align-center justify-between gap-6"
+          style={{ marginBottom: 16 }}
+        >
           <p className="text-gray-600 max-w-2xl leading-relaxed">
             Manage and organize your articles
           </p>
           <Button
             style={{
-              background: '#ffffff',
-              borderColor: '#1e40af',
-              borderWidth: '1.5px',
-              borderRadius: '0.375rem',
-              color: '#1e40af',
-              fontSize: '12px',
+              background: "#ffffff",
+              borderColor: "#1e40af",
+              borderWidth: "1.5px",
+              borderRadius: "0.375rem",
+              color: "#1e40af",
+              fontSize: "12px",
               fontWeight: 500,
-              height: '36px',
-              paddingInline: '14px',
-              boxShadow: '0 2px 8px rgba(30, 64, 175, 0.12)',
-              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-              whiteSpace: 'nowrap',
+              height: "36px",
+              paddingInline: "14px",
+              boxShadow: "0 2px 8px rgba(30, 64, 175, 0.12)",
+              transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+              whiteSpace: "nowrap",
               flexShrink: 0,
             }}
             icon={<EditOutlined />}
             onClick={() => {
-              createForm.resetFields();
-              setTitleContent('');
-              setContentValue('');
-              setSelectedTagsForCreate([]);
-              setSubmitStatus('published');
-              setImageUrl('');
-              setThumbnailUrl('');
-              setIsModalOpen(true);
+              createForm.resetFields()
+              setTitleContent("")
+              setContentValue("")
+              setSelectedTagsForCreate([])
+              setSubmitStatus("published")
+              setImageUrl("")
+              setThumbnailUrl("")
+              setIsModalOpen(true)
             }}
             onMouseEnter={(e) => {
-              const button = e.currentTarget as HTMLButtonElement;
-              button.style.background = '#f8fafc';
-              button.style.boxShadow = '0 8px 20px rgba(30, 64, 175, 0.2)';
-              button.style.borderColor = '#1e3a8a';
+              const button = e.currentTarget as HTMLButtonElement
+              button.style.background = "#f8fafc"
+              button.style.boxShadow = "0 8px 20px rgba(30, 64, 175, 0.2)"
+              button.style.borderColor = "#1e3a8a"
             }}
             onMouseLeave={(e) => {
-              const button = e.currentTarget as HTMLButtonElement;
-              button.style.background = '#ffffff';
-              button.style.boxShadow = '0 2px 8px rgba(30, 64, 175, 0.12)';
-              button.style.borderColor = '#1e40af';
+              const button = e.currentTarget as HTMLButtonElement
+              button.style.background = "#ffffff"
+              button.style.boxShadow = "0 2px 8px rgba(30, 64, 175, 0.12)"
+              button.style.borderColor = "#1e40af"
             }}
           >
             Create Article
           </Button>
         </div>
-        <Divider style={{ borderColor: 'rgba(37, 99, 235, 0.15)', margin: '16px 0' }} />
+        <Divider
+          style={{ borderColor: "rgba(37, 99, 235, 0.15)", margin: "16px 0" }}
+        />
       </div>
 
       {/* Error Alert */}
@@ -706,7 +875,9 @@ export default function ArticleManagement() {
           />
 
           {/* Filters Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div
+            className={`grid grid-cols-1 sm:grid-cols-2 ${isAdmin ? "lg:grid-cols-6" : "lg:grid-cols-5"} gap-4`}
+          >
             <div className="flex flex-col">
               <Text type="secondary" className="text-sm font-medium mb-2">
                 Tags
@@ -720,6 +891,22 @@ export default function ArticleManagement() {
                 className="w-full"
               />
             </div>
+
+            {isAdmin && (
+              <div className="flex flex-col">
+                <Text type="secondary" className="text-sm font-medium mb-2">
+                  Department
+                </Text>
+                <Select
+                  value={selectedDepartment}
+                  onChange={setSelectedDepartment}
+                  options={departmentOptions}
+                  loading={loadingDepartments}
+                  size="middle"
+                  className="w-full"
+                />
+              </div>
+            )}
 
             <div className="flex flex-col">
               <Text type="secondary" className="text-sm font-medium mb-2">
@@ -756,8 +943,8 @@ export default function ArticleManagement() {
                 value={sortOrder}
                 onChange={setSortOrder}
                 options={[
-                  { label: 'Newest First', value: 'newest' },
-                  { label: 'Oldest First', value: 'oldest' },
+                  { label: "Newest First", value: "newest" },
+                  { label: "Oldest First", value: "oldest" },
                 ]}
                 size="middle"
                 className="w-full"
@@ -771,10 +958,10 @@ export default function ArticleManagement() {
               <Segmented
                 size="middle"
                 value={viewMode}
-                onChange={(value) => setViewMode(value as 'list' | 'grid')}
+                onChange={(value) => setViewMode(value as "list" | "grid")}
                 options={[
-                  { label: 'List', value: 'list' },
-                  { label: 'Grid', value: 'grid' },
+                  { label: "List", value: "list" },
+                  { label: "Grid", value: "grid" },
                 ]}
                 block
               />
@@ -787,198 +974,263 @@ export default function ArticleManagement() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Content Widget - White Card (Full Width) */}
         <div className="lg:col-span-3">
-          <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-        {viewMode === 'list' ? (
-          <Table
-            columns={columns}
-            dataSource={articles}
-            loading={loadingArticles}
-            rowKey="id"
-            pagination={{
-              current: currentPage,
-              pageSize: 10,
-              total: articles.length,
-              onChange: setCurrentPage,
-              showSizeChanger: false,
-            }}
-          />
-        ) : (
-          <div className="p-6">
-            <Spin spinning={loadingArticles}>
-              <Row gutter={[16, 16]}>
-                {articles.map((article) => {
-                  const tagList = (article.article_tags || '')
-                    .split(',')
-                    .map((t) => t.trim())
-                    .filter(Boolean);
-                  const displayStatus = article.is_deleted ? 'archived' : article.status;
-                  const displayText = article.is_deleted ? 'Deleted' : article.status;
-                  return (
-                    <Col xs={24} sm={12} lg={8} xl={6} key={article.id}>
-                      <Card
-                        hoverable
-                        title={article.title}
-                        extra={<AntTag color={statusColors[displayStatus] || 'default'}>{displayText}</AntTag>}
-                        cover={(
-                          <img
-                            src={article.thumbnail_url || article.image_url || 'https://via.placeholder.com/240x160?text=No+Image'}
-                            alt="Thumbnail"
-                            className="h-40 w-full object-cover"
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).src = 'https://via.placeholder.com/240x160?text=No+Image';
-                            }}
-                          />
-                        )}
-                      >
-                        <Space direction="vertical" size="small" className="w-full">
-                          <Text type="secondary">
-                            Updated: {formatVietnamDateTime(article.updated_at)}
-                          </Text>
-                          <Text type="secondary">
-                            Created: {formatVietnamDateTime(article.created_at)}
-                          </Text>
-                          <Text type="secondary">
-                            Approved At: {formatVietnamDateTime(article.approved_at)}
-                          </Text>
-                          <Text type="secondary">
-                            Approved By: {article.approver_name || (article.approved_by ? `User #${article.approved_by}` : '-')}
-                          </Text>
-                          <Text type="secondary">
-                            Deleted At: {formatVietnamDateTime(article.deleted_at)}
-                          </Text>
-                          <div>
-                            <Text type="secondary" strong>Category: </Text>
-                            <Text>{article.category_name || 'null'}</Text>
-                          </div>
-                          <Space wrap size={[4, 4]}>
-                            {tagList.length === 0 && <Text type="secondary">No tags</Text>}
-                            {tagList.map((tag) => (
-                              <AntTag key={`${article.id}-${tag}`} color="blue">{tag}</AntTag>
-                            ))}
-                          </Space>
-                          <Space>
-                            {canEditArticle(article) && (
-                              <Button
-                                type="text"
-                                icon={<EditOutlined />}
-                                size="small"
-                                onClick={() => openEditModal(Number(article.id))}
+          <div className="bg-white rounded-lg shadow-sm overflow-x-auto">
+            {viewMode === "list" ? (
+              <Table
+                columns={columns}
+                dataSource={articles}
+                loading={loadingArticles}
+                rowKey="id"
+                scroll={{ x: 1800 }}
+                pagination={{
+                  current: currentPage,
+                  pageSize: 10,
+                  total: articles.length,
+                  onChange: setCurrentPage,
+                  showSizeChanger: false,
+                }}
+              />
+            ) : (
+              <div className="p-6">
+                <Spin spinning={loadingArticles}>
+                  <Row gutter={[16, 16]}>
+                    {articles.map((article) => {
+                      const tagList = (article.article_tags || "")
+                        .split(",")
+                        .map((t) => t.trim())
+                        .filter(Boolean)
+                      const displayStatus = article.is_deleted
+                        ? "archived"
+                        : article.status
+                      const displayText = article.is_deleted
+                        ? "Deleted"
+                        : article.status
+                      return (
+                        <Col xs={24} sm={12} lg={8} xl={6} key={article.id}>
+                          <Card
+                            hoverable
+                            title={article.title}
+                            extra={
+                              <AntTag
+                                color={statusColors[displayStatus] || "default"}
+                              >
+                                {displayText}
+                              </AntTag>
+                            }
+                            cover={
+                              <img
+                                src={
+                                  article.thumbnail_url ||
+                                  article.image_url ||
+                                  "https://via.placeholder.com/240x160?text=No+Image"
+                                }
+                                alt="Thumbnail"
+                                className="h-40 w-full object-cover"
+                                onError={(e) => {
+                                  ;(e.target as HTMLImageElement).src =
+                                    "https://via.placeholder.com/240x160?text=No+Image"
+                                }}
                               />
-                            )}
-                            <Button
-                              type="text"
-                              danger={!article.is_deleted}
-                              icon={article.is_deleted ? <RollbackOutlined /> : <DeleteOutlined />}
+                            }
+                          >
+                            <Space
+                              direction="vertical"
                               size="small"
-                              loading={deletingId === Number(article.id)}
-                              onClick={() => handleArchiveClick(Number(article.id), !!article.is_deleted)}
-                            />
-                          </Space>
-                        </Space>
-                      </Card>
-                    </Col>
-                  );
-                })}
-                {!loadingArticles && articles.length === 0 && (
-                  <Col span={24}>
-                    <Alert message="No articles found" type="info" showIcon />
-                  </Col>
-                )}
-              </Row>
-              {totalArticles > 0 && (
-                <Flex justify="end" className="mt-4">
-                  <Pagination
-                    current={currentPage}
-                    pageSize={PAGE_SIZE}
-                    total={totalArticles}
-                    onChange={setCurrentPage}
-                    showSizeChanger={false}
-                  />
-                </Flex>
-              )}
-            </Spin>
-          </div>
-        )}
+                              className="w-full"
+                            >
+                              <Text type="secondary">
+                                Updated:{" "}
+                                {formatVietnamDateTime(article.updated_at)}
+                              </Text>
+                              <Text type="secondary">
+                                Created:{" "}
+                                {formatVietnamDateTime(article.created_at)}
+                              </Text>
+                              <Text type="secondary">
+                                Approved At:{" "}
+                                {formatVietnamDateTime(article.approved_at)}
+                              </Text>
+                              <Text type="secondary">
+                                Deleted At:{" "}
+                                {formatVietnamDateTime(article.deleted_at)}
+                              </Text>
+                              <div>
+                                <Text type="secondary" strong>
+                                  Category:{" "}
+                                </Text>
+                                <Text>{article.category_name || "null"}</Text>
+                              </div>
+                              <Space wrap size={[4, 4]}>
+                                {tagList.length === 0 && (
+                                  <Text type="secondary">No tags</Text>
+                                )}
+                                {tagList.map((tag) => (
+                                  <AntTag
+                                    key={`${article.id}-${tag}`}
+                                    color="blue"
+                                  >
+                                    {tag}
+                                  </AntTag>
+                                ))}
+                              </Space>
+                              <Space>
+                                {canEditArticle(article) && (
+                                  <Button
+                                    type="text"
+                                    icon={<EditOutlined />}
+                                    size="small"
+                                    onClick={() =>
+                                      openEditModal(Number(article.id))
+                                    }
+                                  />
+                                )}
+                                <Button
+                                  type="text"
+                                  danger={!article.is_deleted}
+                                  icon={
+                                    article.is_deleted ? (
+                                      <RollbackOutlined />
+                                    ) : (
+                                      <DeleteOutlined />
+                                    )
+                                  }
+                                  size="small"
+                                  loading={deletingId === Number(article.id)}
+                                  onClick={() =>
+                                    handleArchiveClick(
+                                      Number(article.id),
+                                      !!article.is_deleted
+                                    )
+                                  }
+                                />
+                              </Space>
+                            </Space>
+                          </Card>
+                        </Col>
+                      )
+                    })}
+                    {!loadingArticles && articles.length === 0 && (
+                      <Col span={24}>
+                        <Alert
+                          message="No articles found"
+                          type="info"
+                          showIcon
+                        />
+                      </Col>
+                    )}
+                  </Row>
+                  {totalArticles > 0 && (
+                    <Flex justify="end" className="mt-4">
+                      <Pagination
+                        current={currentPage}
+                        pageSize={PAGE_SIZE}
+                        total={totalArticles}
+                        onChange={setCurrentPage}
+                        showSizeChanger={false}
+                      />
+                    </Flex>
+                  )}
+                </Spin>
+              </div>
+            )}
           </div>
         </div>
       </div>
 
       {/* Create/Edit Article Modals */}
       <Modal
-        title={<Title level={3} className="!mb-0">Create An Article</Title>}
+        title={
+          <Title level={3} className="!mb-0">
+            Create An Article
+          </Title>
+        }
         open={isModalOpen}
         onCancel={() => {
-          setIsModalOpen(false);
-          createForm.resetFields();
-          setTitleContent('');
-          setContentValue('');
-          setThumbnailUploadError('');
-          setSelectedTagsForCreate([]);
-          setSubmitStatus('published');
+          setIsModalOpen(false)
+          createForm.resetFields()
+          setTitleContent("")
+          setContentValue("")
+          setThumbnailUploadError("")
+          setSelectedTagsForCreate([])
+          setSubmitStatus("published")
         }}
         footer={null}
         width={900}
-        style={{ maxHeight: '90vh', overflow: 'auto' }}
+        style={{ maxHeight: "90vh", overflow: "auto" }}
         getContainer={() => document.body}
       >
         <Form
           form={createForm}
           layout="vertical"
           onFinish={async (values) => {
-            setCreatingArticle(true);
+            setCreatingArticle(true)
             try {
-              const formData = new FormData();
-              formData.append('title', titleContent);
-              formData.append('content', contentValue);
-              formData.append('status', submitStatus);
-              formData.append('tags', JSON.stringify(selectedTagsForCreate));
-              formData.append('category_id', values?.categoryId ? String(values.categoryId) : '');
-              formData.append('image_url', imageUrl);
+              const formData = new FormData()
+              formData.append("title", titleContent)
+              formData.append("content", contentValue)
+              formData.append("status", submitStatus)
+              formData.append("tags", JSON.stringify(selectedTagsForCreate))
+              formData.append(
+                "category_id",
+                values?.categoryId ? String(values.categoryId) : ""
+              )
+              formData.append("image_url", imageUrl)
               // New: Add thumbnail from Cloudinary
               if (thumbnailUrl) {
-                formData.append('thumbnail_url', thumbnailUrl);
+                formData.append("thumbnail_url", thumbnailUrl)
               }
 
-              const result = await createArticle(formData);
+              const result = await createArticle(formData)
               if (result.success) {
-                message.success(result.message || 'Article created successfully!');
-                setIsModalOpen(false);
-                createForm.resetFields();
-                setTitleContent('');
-                setContentValue('');
-                setImageUrl('');
-                setThumbnailUrl(''); // Reset thumbnail
-                setThumbnailUploadError('');
-                setSelectedTagsForCreate([]);
-                setSubmitStatus('published');
-                await refreshCurrentArticles(false);
+                message.success(
+                  result.message || "Article created successfully!"
+                )
+                setIsModalOpen(false)
+                createForm.resetFields()
+                setTitleContent("")
+                setContentValue("")
+                setImageUrl("")
+                setThumbnailUrl("") // Reset thumbnail
+                setThumbnailUploadError("")
+                setSelectedTagsForCreate([])
+                setSubmitStatus("published")
+                setCategoryIdFormValue(undefined)
+                await refreshCurrentArticles(false)
               } else {
-                message.error(result.message || 'Failed to create article');
+                message.error(result.message || "Failed to create article")
               }
             } catch (error: any) {
-              message.error(error?.message || 'An error occurred');
+              message.error(error?.message || "An error occurred")
             } finally {
-              setCreatingArticle(false);
+              setCreatingArticle(false)
             }
           }}
           validateTrigger="onBlur"
         >
           <Form.Item
-            label={<Text strong className="text-xl">Title</Text>}
+            label={
+              <Text strong className="text-xl">
+                Title
+              </Text>
+            }
             name="title"
             rules={[
-              { 
-                required: true, 
+              {
+                required: true,
                 validator: (_, value) => {
-                  const textContent = titleContent.replace(/<[^>]*>/g, '').trim();
+                  const textContent = titleContent
+                    .replace(/<[^>]*>/g, "")
+                    .trim()
                   if (!textContent) {
-                    return Promise.reject('Please enter a title');
+                    return Promise.reject("Please enter a title")
                   }
                   if (textContent.length > 150) {
-                    return Promise.reject('Title must be less than 150 characters');
+                    return Promise.reject(
+                      "Title must be less than 150 characters"
+                    )
                   }
-                  return Promise.resolve();
-                }
+                  return Promise.resolve()
+                },
               },
             ]}
           >
@@ -987,69 +1239,84 @@ export default function ArticleManagement() {
               contentEditable
               onInput={() => {
                 if (titleEditorRef.current) {
-                  setTitleContent(titleEditorRef.current.innerText);
+                  setTitleContent(titleEditorRef.current.innerText)
                 }
               }}
               onKeyDown={(e: KeyboardEvent<HTMLDivElement>) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
+                if (e.key === "Enter") {
+                  e.preventDefault()
                 }
               }}
               onPaste={(e: ClipboardEvent<HTMLDivElement>) => {
-                e.preventDefault();
-                const text = e.clipboardData.getData('text/plain').replace(/\s+/g, ' ').trim();
-                document.execCommand('insertText', false, text);
+                e.preventDefault()
+                const text = e.clipboardData
+                  .getData("text/plain")
+                  .replace(/\s+/g, " ")
+                  .trim()
+                document.execCommand("insertText", false, text)
               }}
               className="border border-gray-300 rounded p-3 min-h-[60px] focus:outline-none focus:border-blue-500 text-lg font-medium"
-              style={{ backgroundColor: 'white' }}
+              style={{ backgroundColor: "white" }}
             />
           </Form.Item>
 
           <Flex justify="flex-end" align="center" className="mt-2 mb-4">
             <Text type="secondary" className="text-sm">
-              {titleContent.replace(/<[^>]*>/g, '').trim().length} / 150
+              {titleContent.replace(/<[^>]*>/g, "").trim().length} / 150
             </Text>
           </Flex>
 
           {/* New: Thumbnail Upload */}
           <Form.Item
-            label={<Text strong className="text-base">Thumbnail Image</Text>}
+            label={
+              <Text strong className="text-base">
+                Thumbnail Image
+              </Text>
+            }
             name="thumbnail"
           >
             <Flex vertical gap="middle">
               {thumbnailUrl && (
-                <img 
-                  src={thumbnailUrl} 
-                  alt="Thumbnail preview" 
+                <img
+                  src={thumbnailUrl}
+                  alt="Thumbnail preview"
                   className="w-40 h-30 object-cover rounded-lg border"
                 />
               )}
-              <Upload
-                maxCount={1}
-                accept="image/*"
-                showUploadList={false}
-                beforeUpload={(file) => {
-                  const isTooLarge = file.size > THUMBNAIL_MAX_SIZE_BYTES;
-                  if (isTooLarge) {
-                    const tooLargeError = `Ảnh thumbnail vượt quá ${THUMBNAIL_MAX_SIZE_MB}MB. Vui lòng chọn ảnh nhỏ hơn.`;
-                    setThumbnailUploadError(tooLargeError);
-                    message.error(tooLargeError);
-                    return Upload.LIST_IGNORE;
-                  }
-
-                  setThumbnailUploadError('');
-                  handleThumbnailUpload(file);
-                  return false;
-                }}
+              <ImgCrop
+                aspect={THUMBNAIL_ASPECT_RATIO}
+                quality={1}
+                modalTitle="Crop thumbnail image"
               >
-                <Button 
-                  icon={<UploadOutlined />} 
-                  loading={uploadingThumbnail}
-                  disabled={uploadingThumbnail}
+                <Upload
+                  maxCount={1}
+                  accept="image/*"
+                  showUploadList={false}
+                  beforeUpload={(file) => {
+                    const isTooLarge = file.size > THUMBNAIL_MAX_SIZE_BYTES
+                    if (isTooLarge) {
+                      const tooLargeError = `Ảnh thumbnail vượt quá ${THUMBNAIL_MAX_SIZE_MB}MB. Vui lòng chọn ảnh nhỏ hơn.`
+                      setThumbnailUploadError(tooLargeError)
+                      message.error(tooLargeError)
+                      return Upload.LIST_IGNORE
+                    }
+
+                    setThumbnailUploadError("")
+                    handleThumbnailUpload(file as File)
+                    return false
+                  }}
                 >
-                  {uploadingThumbnail ? 'Uploading...' : 'Click to Upload Thumbnail'}
-                </Button>
-              </Upload>
+                  <Button
+                    icon={<UploadOutlined />}
+                    loading={uploadingThumbnail}
+                    disabled={uploadingThumbnail}
+                  >
+                    {uploadingThumbnail
+                      ? "Uploading..."
+                      : "Click to Upload Thumbnail"}
+                  </Button>
+                </Upload>
+              </ImgCrop>
               {thumbnailUploadError && (
                 <Text type="danger" className="text-sm">
                   {thumbnailUploadError}
@@ -1061,26 +1328,32 @@ export default function ArticleManagement() {
           <Divider />
 
           <Form.Item
-            label={<Text strong className="text-base">Content</Text>}
+            label={
+              <Text strong className="text-base">
+                Content
+              </Text>
+            }
             name="content"
             rules={[
-              { 
-                required: true, 
+              {
+                required: true,
                 validator: (_, value) => {
                   const stripHtml = (html: string) => {
-                    const tmp = document.createElement('DIV');
-                    tmp.innerHTML = html;
-                    return tmp.textContent || tmp.innerText || '';
+                    const tmp = document.createElement("DIV")
+                    tmp.innerHTML = html
+                    return tmp.textContent || tmp.innerText || ""
                   }
-                  const textContent = stripHtml(contentValue).trim();
+                  const textContent = stripHtml(contentValue).trim()
                   if (!textContent) {
-                    return Promise.reject('Please enter content');
+                    return Promise.reject("Please enter content")
                   }
                   if (textContent.length > 5000) {
-                    return Promise.reject('Content must be less than 5000 characters');
+                    return Promise.reject(
+                      "Content must be less than 5000 characters"
+                    )
                   }
-                  return Promise.resolve();
-                }
+                  return Promise.resolve()
+                },
               },
             ]}
           >
@@ -1094,37 +1367,53 @@ export default function ArticleManagement() {
 
           <Flex justify="flex-end" align="center" className="mt-2 mb-4">
             <Text type="secondary" className="text-sm">
-              {contentValue.replace(/<[^>]*>/g, '').trim().length} / 5,000
+              {contentValue.replace(/<[^>]*>/g, "").trim().length} / 5,000
             </Text>
           </Flex>
 
           <Divider />
 
           <Form.Item
-            label={<Text strong className="text-base">Category</Text>}
+            label={
+              <Text strong className="text-base">
+                Category
+              </Text>
+            }
             name="categoryId"
-            rules={[{ required: true, message: 'Please select a category' }]}
+            rules={[{ required: true, message: "Please select a category" }]}
           >
             <Select
               size="large"
               placeholder="Select a category"
               loading={loadingCategories}
-              options={categories.map((cat) => ({ label: cat.name, value: cat.id }))}
+              options={formCategoriesByDepartment.map((cat) => ({
+                label: cat.name,
+                value: cat.id,
+              }))}
               optionFilterProp="label"
               showSearch
               allowClear
+              value={categoryIdFormValue}
+              onChange={(value) => setCategoryIdFormValue(value)}
             />
           </Form.Item>
 
           <Divider />
 
           <Form.Item
-            label={<Text strong className="text-base">Tags</Text>}
+            label={
+              <Text strong className="text-base">
+                Tags
+              </Text>
+            }
             name="tags"
           >
             <Select
               mode="tags"
-              options={tags.map((tag) => ({ label: tag.name, value: tag.name }))}
+              options={tags.map((tag) => ({
+                label: tag.name,
+                value: tag.name,
+              }))}
               size="large"
               loading={loadingTags}
               placeholder="Type to search or add new tags"
@@ -1132,9 +1421,11 @@ export default function ArticleManagement() {
               onChange={setSelectedTagsForCreate}
               maxTagCount="responsive"
               showSearch
-              tokenSeparators={[',']}
+              tokenSeparators={[","]}
               filterOption={(input, option) =>
-                (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                (option?.label ?? "")
+                  .toLowerCase()
+                  .includes(input.toLowerCase())
               }
             />
           </Form.Item>
@@ -1144,7 +1435,7 @@ export default function ArticleManagement() {
               <Button
                 size="large"
                 icon={<SendOutlined />}
-                onClick={() => setSubmitStatus('draft')}
+                onClick={() => setSubmitStatus("draft")}
                 htmlType="submit"
                 loading={creatingArticle}
               >
@@ -1155,12 +1446,13 @@ export default function ArticleManagement() {
                 danger
                 icon={<CloseOutlined />}
                 onClick={() => {
-                  setIsModalOpen(false);
-                  createForm.resetFields();
-                  setTitleContent('');
-                  setContentValue('');
-                  setSelectedTagsForCreate([]);
-                  setSubmitStatus('published');
+                  setIsModalOpen(false)
+                  createForm.resetFields()
+                  setTitleContent("")
+                  setContentValue("")
+                  setSelectedTagsForCreate([])
+                  setSubmitStatus("published")
+                  setCategoryIdFormValue(undefined)
                 }}
                 disabled={creatingArticle}
               >
@@ -1172,7 +1464,7 @@ export default function ArticleManagement() {
                   htmlType="submit"
                   size="large"
                   icon={<SendOutlined />}
-                  onClick={() => setSubmitStatus('published')}
+                  onClick={() => setSubmitStatus("published")}
                   loading={creatingArticle}
                 >
                   Post
@@ -1184,7 +1476,7 @@ export default function ArticleManagement() {
                     htmlType="submit"
                     size="large"
                     icon={<SendOutlined />}
-                    onClick={() => setSubmitStatus('pending')}
+                    onClick={() => setSubmitStatus("pending")}
                     loading={creatingArticle}
                   >
                     Submit for Review
@@ -1200,17 +1492,17 @@ export default function ArticleManagement() {
         title="Edit Article"
         open={isEditModalOpen}
         onCancel={() => {
-          setIsEditModalOpen(false);
-          editForm.resetFields();
-          setEditTitleContent('');
-          setEditContentValue('');
-          setEditSelectedTags([]);
-          setEditingArticleId(null);
-          setEditSubmitStatus('published');
+          setIsEditModalOpen(false)
+          editForm.resetFields()
+          setEditTitleContent("")
+          setEditContentValue("")
+          setEditSelectedTags([])
+          setEditingArticleId(null)
+          setEditSubmitStatus("published")
         }}
         footer={null}
         width={900}
-        style={{ maxHeight: '90vh', overflow: 'auto' }}
+        style={{ maxHeight: "90vh", overflow: "auto" }}
         getContainer={() => document.body}
       >
         <Spin spinning={loadingEditData} tip="Loading article...">
@@ -1221,44 +1513,57 @@ export default function ArticleManagement() {
             validateTrigger="onBlur"
           >
             <Form.Item
-              label={<Text strong className="text-xl">Title</Text>}
+              label={
+                <Text strong className="text-xl">
+                  Title
+                </Text>
+              }
               name="title"
               rules={[
-                { 
-                  required: true, 
+                {
+                  required: true,
                   validator: (_, value) => {
-                    const textContent = editTitleContent.replace(/<[^>]*>/g, '').trim();
+                    const textContent = editTitleContent
+                      .replace(/<[^>]*>/g, "")
+                      .trim()
                     if (!textContent) {
-                      return Promise.reject('Please enter a title');
+                      return Promise.reject("Please enter a title")
                     }
                     if (textContent.length > 150) {
-                      return Promise.reject('Title must be less than 150 characters');
+                      return Promise.reject(
+                        "Title must be less than 150 characters"
+                      )
                     }
-                    return Promise.resolve();
-                  }
+                    return Promise.resolve()
+                  },
                 },
               ]}
             >
               <div
                 contentEditable
                 onInput={() => {
-                  const div = document.querySelector('[contentEditable]') as HTMLDivElement;
+                  const div = document.querySelector(
+                    "[contentEditable]"
+                  ) as HTMLDivElement
                   if (div) {
-                    setEditTitleContent(div.innerText);
+                    setEditTitleContent(div.innerText)
                   }
                 }}
                 onKeyDown={(e: KeyboardEvent<HTMLDivElement>) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
+                  if (e.key === "Enter") {
+                    e.preventDefault()
                   }
                 }}
                 onPaste={(e: ClipboardEvent<HTMLDivElement>) => {
-                  e.preventDefault();
-                  const text = e.clipboardData.getData('text/plain').replace(/\s+/g, ' ').trim();
-                  document.execCommand('insertText', false, text);
+                  e.preventDefault()
+                  const text = e.clipboardData
+                    .getData("text/plain")
+                    .replace(/\s+/g, " ")
+                    .trim()
+                  document.execCommand("insertText", false, text)
                 }}
                 className="border border-gray-300 rounded p-3 min-h-[60px] focus:outline-none focus:border-blue-500 text-lg font-medium"
-                style={{ backgroundColor: 'white' }}
+                style={{ backgroundColor: "white" }}
                 suppressContentEditableWarning
               >
                 {editTitleContent}
@@ -1267,65 +1572,99 @@ export default function ArticleManagement() {
 
             <Flex justify="flex-end" align="center" className="mt-2 mb-4">
               <Text type="secondary" className="text-sm">
-                {editTitleContent.replace(/<[^>]*>/g, '').trim().length} / 150
+                {editTitleContent.replace(/<[^>]*>/g, "").trim().length} / 150
               </Text>
             </Flex>
 
             {/* New: Edit Thumbnail Upload */}
             <Form.Item
-              label={<Text strong className="text-base">Thumbnail Image</Text>}
+              label={
+                <Text strong className="text-base">
+                  Thumbnail Image
+                </Text>
+              }
               name="editThumbnail"
             >
               <Flex vertical gap="middle">
                 {editThumbnailUrl && (
-                  <img 
-                    src={editThumbnailUrl} 
-                    alt="Thumbnail preview" 
+                  <img
+                    src={editThumbnailUrl}
+                    alt="Thumbnail preview"
                     className="w-40 h-30 object-cover rounded-lg border"
                   />
                 )}
-                <Upload
-                  maxCount={1}
-                  accept="image/*"
-                  beforeUpload={(file) => {
-                    handleEditThumbnailUpload(file);
-                    return false;
-                  }}
+                <ImgCrop
+                  aspect={THUMBNAIL_ASPECT_RATIO}
+                  quality={1}
+                  modalTitle="Crop thumbnail image"
                 >
-                  <Button 
-                    icon={<UploadOutlined />} 
-                    loading={uploadingEditThumbnail}
-                    disabled={uploadingEditThumbnail}
+                  <Upload
+                    maxCount={1}
+                    accept="image/*"
+                    showUploadList={false}
+                    beforeUpload={(file) => {
+                      const isTooLarge = file.size > THUMBNAIL_MAX_SIZE_BYTES
+                      if (isTooLarge) {
+                        const tooLargeError = `Ảnh thumbnail vượt quá ${THUMBNAIL_MAX_SIZE_MB}MB. Vui lòng chọn ảnh nhỏ hơn.`
+                        message.error(tooLargeError)
+                        return Upload.LIST_IGNORE
+                      }
+
+                      handleEditThumbnailUpload(file as File)
+                      return false
+                    }}
                   >
-                    Click to Upload Thumbnail
-                  </Button>
-                </Upload>
+                    <Button
+                      icon={<UploadOutlined />}
+                      loading={uploadingEditThumbnail}
+                      disabled={uploadingEditThumbnail}
+                    >
+                      Click to Upload Thumbnail
+                    </Button>
+                  </Upload>
+                </ImgCrop>
               </Flex>
             </Form.Item>
 
             <Divider />
 
             <Form.Item
-              label={<Text strong className="text-base">Content</Text>}
+              label={
+                <Text strong className="text-base">
+                  Content
+                </Text>
+              }
               name="content"
               rules={[
-                { 
-                  required: true, 
+                {
+                  required: true,
                   validator: (_, value) => {
-                    const textContent = editContentValue.replace(/<[^>]*>/g, '').trim();
+                    const textContent = editContentValue
+                      .replace(/<[^>]*>/g, "")
+                      .trim()
                     if (!textContent) {
-                      return Promise.reject('Please enter content');
+                      return Promise.reject("Please enter content")
                     }
                     if (textContent.length > 5000) {
-                      return Promise.reject('Content must be less than 5000 characters');
+                      return Promise.reject(
+                        "Content must be less than 5000 characters"
+                      )
                     }
-                    return Promise.resolve();
-                  }
+                    return Promise.resolve()
+                  },
                 },
               ]}
             >
               {loadingEditData ? (
-                <Spin tip="Loading content..." style={{ height: '400px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} />
+                <Spin
+                  tip="Loading content..."
+                  style={{
+                    height: "400px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                />
               ) : (
                 <QuillEditor
                   value={editContentValue}
@@ -1338,37 +1677,53 @@ export default function ArticleManagement() {
 
             <Flex justify="flex-end" align="center" className="mt-2 mb-4">
               <Text type="secondary" className="text-sm">
-                {editContentValue.replace(/<[^>]*>/g, '').trim().length} / 5,000
+                {editContentValue.replace(/<[^>]*>/g, "").trim().length} / 5,000
               </Text>
             </Flex>
 
             <Divider />
 
             <Form.Item
-              label={<Text strong className="text-base">Category</Text>}
+              label={
+                <Text strong className="text-base">
+                  Category
+                </Text>
+              }
               name="categoryId"
-              rules={[{ required: true, message: 'Please select a category' }]}
+              rules={[{ required: true, message: "Please select a category" }]}
             >
               <Select
                 size="large"
                 placeholder="Select a category"
                 loading={loadingCategories}
-                options={categories.map((cat) => ({ label: cat.name, value: cat.id }))}
+                options={editFormCategoriesByDepartment.map((cat) => ({
+                  label: cat.name,
+                  value: cat.id,
+                }))}
                 optionFilterProp="label"
                 showSearch
                 allowClear
+                value={editCategoryId}
+                onChange={(value) => setEditCategoryId(value)}
               />
             </Form.Item>
 
             <Divider />
 
             <Form.Item
-              label={<Text strong className="text-base">Tags</Text>}
+              label={
+                <Text strong className="text-base">
+                  Tags
+                </Text>
+              }
               name="tags"
             >
               <Select
                 mode="tags"
-                options={tags.map((tag) => ({ label: tag.name, value: tag.name }))}
+                options={tags.map((tag) => ({
+                  label: tag.name,
+                  value: tag.name,
+                }))}
                 size="large"
                 loading={loadingTags}
                 placeholder="Type to search or add new tags"
@@ -1376,9 +1731,11 @@ export default function ArticleManagement() {
                 onChange={setEditSelectedTags}
                 maxTagCount="responsive"
                 showSearch
-                tokenSeparators={[',']}
+                tokenSeparators={[","]}
                 filterOption={(input, option) =>
-                  (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                  (option?.label ?? "")
+                    .toLowerCase()
+                    .includes(input.toLowerCase())
                 }
               />
             </Form.Item>
@@ -1390,13 +1747,14 @@ export default function ArticleManagement() {
                   danger
                   icon={<CloseOutlined />}
                   onClick={() => {
-                    setIsEditModalOpen(false);
-                    editForm.resetFields();
-                    setEditTitleContent('');
-                    setEditContentValue('');
-                    setEditSelectedTags([]);
-                    setEditingArticleId(null);
-                    setEditSubmitStatus('published');
+                    setIsEditModalOpen(false)
+                    editForm.resetFields()
+                    setEditTitleContent("")
+                    setEditContentValue("")
+                    setEditSelectedTags([])
+                    setEditingArticleId(null)
+                    setEditSubmitStatus("published")
+                    setEditCategoryId(undefined)
                   }}
                   disabled={editingArticle}
                 >
@@ -1407,7 +1765,7 @@ export default function ArticleManagement() {
                   htmlType="submit"
                   size="large"
                   icon={<SaveOutlined />}
-                  onClick={() => setEditSubmitStatus('published')}
+                  onClick={() => setEditSubmitStatus("published")}
                   loading={editingArticle}
                 >
                   Update
@@ -1418,5 +1776,5 @@ export default function ArticleManagement() {
         </Spin>
       </Modal>
     </div>
-  );
+  )
 }

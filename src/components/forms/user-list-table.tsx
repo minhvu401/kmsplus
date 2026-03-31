@@ -108,12 +108,6 @@ export default function UserListTable({
     formData.append("email", values.email)
     formData.append("fullName", values.fullName)
 
-    console.log("Submitting update with:", {
-      userId: selectedUser.id,
-      email: values.email,
-      fullName: values.fullName,
-    })
-
     await updateUserInfoActionDispatch(formData)
   }
 

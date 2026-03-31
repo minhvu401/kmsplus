@@ -1,12 +1,12 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { requireAuth } from '@/lib/auth'
-import { createQuizAction } from '@/service/quiz.service'
-import { parseAndValidateQuizFormData } from '@/action/quiz/quizHelper'
+import { NextRequest, NextResponse } from "next/server"
+import { requireAuth } from "@/lib/auth"
+import { createQuizAction } from "@/service/quiz.service"
+import { parseAndValidateQuizFormData } from "@/action/quiz/quizHelper"
 
 /**
  * POST /api/quizzes/create
  * Create a new quiz with questions
- * 
+ *
  * Expects FormData with:
  * - course_id: number
  * - title: string
@@ -18,19 +18,17 @@ import { parseAndValidateQuizFormData } from '@/action/quiz/quizHelper'
  * - question_ids: JSON string array of question IDs (optional)
  */
 export async function POST(request: NextRequest) {
-  console.log('[API /api/quizzes/create] Request received')
   try {
     // Verify authentication
-    console.log('[API] Verifying authentication...')
     await requireAuth()
-    console.log('[API] Authentication verified')
+    console.log("[API] Authentication verified")
 
     const formData = await request.formData()
-    console.log('[API] FormData received, parsing and validating...')
+    console.log("[API] FormData received, parsing and validating...")
 
     // Parse and validate FormData
     const parsedData = parseAndValidateQuizFormData(formData)
-    console.log('[API] Data validated, calling createQuizAction...')
+    console.log("[API] Data validated, calling createQuizAction...")
 
     // Call service directly to create quiz
     await createQuizAction({
@@ -43,18 +41,15 @@ export async function POST(request: NextRequest) {
       max_attempts: parsedData.max_attempts,
       questionIds: parsedData.questionIds,
     })
-
-    console.log('[API] Quiz created successfully')
+    console.log("[API] Quiz created successfully")
     return NextResponse.json(
-      { message: 'Quiz created successfully' },
+      { message: "Quiz created successfully" },
       { status: 201 }
     )
   } catch (error) {
-    console.error('[API] Error creating quiz:', error)
-    const errorMessage = error instanceof Error ? error.message : 'Failed to create quiz'
-    return NextResponse.json(
-      { error: errorMessage },
-      { status: 500 }
-    )
+    console.error("[API] Error creating quiz:", error)
+    const errorMessage =
+      error instanceof Error ? error.message : "Failed to create quiz"
+    return NextResponse.json({ error: errorMessage }, { status: 500 })
   }
 }

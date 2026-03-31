@@ -40,7 +40,6 @@ export async function getCurrentUserInfor() {
           return user
         }
         // If user not found in DB, don't fall back to JWT - just return null
-        console.warn("User email from auth session not found in database:", email)
         return null
       } catch (error) {
         console.error("Error fetching user by email from auth session:", error)
@@ -49,7 +48,7 @@ export async function getCurrentUserInfor() {
         return null
       }
     }
-    
+
     // Only try JWT token if NO NextAuth session exists
     try {
       await requireAuth()
@@ -83,7 +82,7 @@ export async function getUserRoleAction(): Promise<string | null> {
         return user.role ?? null
       }
     }
-    
+
     // Fallback to JWT token
     const cookieStore = await cookies()
     const token = cookieStore.get("token")?.value

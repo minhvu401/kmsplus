@@ -181,9 +181,6 @@ export default function ManageCoursesClient({
       if (!fullCourse) {
         throw new Error("Course data not found")
       }
-
-      console.log("🔥 [DEBUG] Full Course Data fetched:", fullCourse)
-
       // 2. Xử lý chuẩn hóa dữ liệu Curriculum
       // DB có thể trả về 'curriculum' hoặc 'curriculum_sections', kiểm tra cả 2
       const rawCurriculum =

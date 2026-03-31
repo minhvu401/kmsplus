@@ -104,14 +104,8 @@ export async function checkEnrollmentStatus(courseId: number, userId: number) {
 // 👇 HÀM MỚI
 export async function getEnrollmentOverview(courseId?: number) {
   try {
-    console.log(
-      "🔐 [SERVER] getEnrollmentOverview called with courseId:",
-      courseId
-    )
-    await requireAuth() // Chỉ cho phép user đã đăng nhập
-    console.log("🔐 [SERVER] Auth passed")
+    await requireAuth()
     const result = await getEnrollmentOverviewService(courseId)
-    console.log("🔐 [SERVER] Service result:", result)
     return result
   } catch (error: any) {
     console.error("🔐 [SERVER] Error in getEnrollmentOverview:", error)
@@ -156,7 +150,10 @@ export async function getCourseLearnerEnrollmentDetail(params: {
     await requireAuth()
     return await getCourseLearnerEnrollmentDetailService(params)
   } catch (error: any) {
-    console.error("🔐 [SERVER] Error in getCourseLearnerEnrollmentDetail:", error)
+    console.error(
+      "🔐 [SERVER] Error in getCourseLearnerEnrollmentDetail:",
+      error
+    )
     return {
       success: false,
       error: error.message || "Authentication failed",
