@@ -1,7 +1,17 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Button, Spin, message, Input, Form, Select, Modal, Checkbox, Steps } from "antd"
+import {
+  Button,
+  Spin,
+  message,
+  Input,
+  Form,
+  Select,
+  Modal,
+  Checkbox,
+  Steps,
+} from "antd"
 import {
   ArrowLeftOutlined,
   ArrowRightOutlined,
@@ -20,11 +30,7 @@ import { getAllDepartments } from "@/action/department/departmentActions"
 // Constants
 const TOTAL_QUIZ_POINTS = 100
 
-const steps = [
-  "Thông Tin Cơ Bản",
-  "Thêm Câu Hỏi",
-  "Xem Lại & Công Bố",
-]
+const steps = ["Thông Tin Cơ Bản", "Thêm Câu Hỏi", "Xem Lại & Công Bố"]
 
 interface QuizPayload {
   course_id: number
@@ -35,7 +41,7 @@ interface QuizPayload {
   passing_score?: number
   max_attempts?: number
   questions?: Question[]
-  targetType?: 'PUBLIC' | 'DEPARTMENTS'
+  targetType?: "PUBLIC" | "DEPARTMENTS"
   targetDeptIds?: number[]
 }
 
@@ -64,7 +70,11 @@ interface CreateQuizModalProps {
   onSuccess: () => void
 }
 
-export default function CreateQuizModal({ visible, onClose, onSuccess }: CreateQuizModalProps) {
+export default function CreateQuizModal({
+  visible,
+  onClose,
+  onSuccess,
+}: CreateQuizModalProps) {
   const { user } = useUserStore()
 
   const [form] = Form.useForm()
@@ -86,7 +96,7 @@ export default function CreateQuizModal({ visible, onClose, onSuccess }: CreateQ
     passing_score: 80,
     max_attempts: 3,
     questions: [],
-    targetType: 'PUBLIC',
+    targetType: "PUBLIC",
     targetDeptIds: [],
   })
 
@@ -97,7 +107,9 @@ export default function CreateQuizModal({ visible, onClose, onSuccess }: CreateQ
     selectedQuestionIds: [],
   })
 
-  const [departments, setDepartments] = useState<Array<{ id: number; name: string }>>([])
+  const [departments, setDepartments] = useState<
+    Array<{ id: number; name: string }>
+  >([])
   const [searchQuery, setSearchQuery] = useState("")
 
   // Reset state when modal opens
@@ -115,7 +127,7 @@ export default function CreateQuizModal({ visible, onClose, onSuccess }: CreateQ
         passing_score: 80,
         max_attempts: 3,
         questions: [],
-        targetType: 'PUBLIC',
+        targetType: "PUBLIC",
         targetDeptIds: [],
       })
     }
@@ -175,12 +187,14 @@ export default function CreateQuizModal({ visible, onClose, onSuccess }: CreateQ
       message.error("Vui lòng thêm ít nhất 10 câu hỏi")
       return false
     }
-    
+
     if (payload.questions.length < 10) {
-      message.error(`Bạn cần thêm ít nhất 10 câu hỏi (hiện tại: ${payload.questions.length} câu)`)
+      message.error(
+        `Bạn cần thêm ít nhất 10 câu hỏi (hiện tại: ${payload.questions.length} câu)`
+      )
       return false
     }
-    
+
     return true
   }
 
@@ -206,7 +220,9 @@ export default function CreateQuizModal({ visible, onClose, onSuccess }: CreateQ
     if (errors.title) validateStep1()
   }
 
-  const handleDescriptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+  const handleDescriptionChange = (
+    e: React.ChangeEvent<HTMLTextAreaElement>
+  ) => {
     setPayload((prev) => ({ ...prev, description: e.target.value }))
     if (errors.description) validateStep1()
   }
@@ -236,7 +252,10 @@ export default function CreateQuizModal({ visible, onClose, onSuccess }: CreateQ
   }
 
   const handleMaxAttemptsChange = (value: number | null) => {
-    setPayload((prev) => ({ ...prev, max_attempts: value === null ? undefined : value }))
+    setPayload((prev) => ({
+      ...prev,
+      max_attempts: value === null ? undefined : value,
+    }))
   }
 
   // ============================================
@@ -244,8 +263,8 @@ export default function CreateQuizModal({ visible, onClose, onSuccess }: CreateQ
   // ============================================
 
   const handleOpenAddQuestionsModal = async () => {
-    const existingQuestionIds = (payload.questions || []).map(q => q.id)
-    
+    const existingQuestionIds = (payload.questions || []).map((q) => q.id)
+
     setModalState((prev) => ({
       ...prev,
       visible: true,
@@ -255,7 +274,6 @@ export default function CreateQuizModal({ visible, onClose, onSuccess }: CreateQ
 
     try {
       const response = await getQuestions(1, 1000)
-      console.log("Questions response:", response)
 
       if (response && response.data && response.data.length > 0) {
         const questions = response.data.map((q: any) => ({
@@ -278,13 +296,19 @@ export default function CreateQuizModal({ visible, onClose, onSuccess }: CreateQ
     }
   }
 
-  const filteredQuestions = modalState.questions.filter((question) =>
-    question.text.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (question.description && question.description.toLowerCase().includes(searchQuery.toLowerCase()))
+  const filteredQuestions = modalState.questions.filter(
+    (question) =>
+      question.text.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (question.description &&
+        question.description.toLowerCase().includes(searchQuery.toLowerCase()))
   )
 
   const handleCloseAddQuestionsModal = () => {
-    setModalState((prev) => ({ ...prev, visible: false, selectedQuestionIds: [] }))
+    setModalState((prev) => ({
+      ...prev,
+      visible: false,
+      selectedQuestionIds: [],
+    }))
   }
 
   const handleQuestionSelect = (questionId: number) => {
@@ -370,14 +394,20 @@ export default function CreateQuizModal({ visible, onClose, onSuccess }: CreateQ
       formData.append("description", payload.description)
       formData.append("status", payload.status)
       if (payload.time_limit_minutes !== undefined) {
-        formData.append("time_limit_minutes", String(payload.time_limit_minutes))
+        formData.append(
+          "time_limit_minutes",
+          String(payload.time_limit_minutes)
+        )
       }
       formData.append("passing_score", String(payload.passing_score || 80))
       if (payload.max_attempts !== undefined) {
         formData.append("max_attempts", String(payload.max_attempts))
       }
       if (payload.questions && payload.questions.length > 0) {
-        formData.append("question_ids", JSON.stringify(payload.questions.map((q) => q.id)))
+        formData.append(
+          "question_ids",
+          JSON.stringify(payload.questions.map((q) => q.id))
+        )
       }
 
       const response = await fetch("/api/quizzes/create", {
@@ -402,7 +432,9 @@ export default function CreateQuizModal({ visible, onClose, onSuccess }: CreateQ
     }
   }
 
-  const pointsPerQuestion = payload.questions?.length ? TOTAL_QUIZ_POINTS / payload.questions.length : 0
+  const pointsPerQuestion = payload.questions?.length
+    ? TOTAL_QUIZ_POINTS / payload.questions.length
+    : 0
 
   // ============================================
   // RENDER
@@ -428,7 +460,11 @@ export default function CreateQuizModal({ visible, onClose, onSuccess }: CreateQ
           current={current}
           items={steps.map((title, index) => ({
             title,
-            status: stepValid[index] ? 'finish' : (index === current ? 'process' : 'wait'),
+            status: stepValid[index]
+              ? "finish"
+              : index === current
+                ? "process"
+                : "wait",
           }))}
           className="mb-6"
         />
@@ -439,7 +475,11 @@ export default function CreateQuizModal({ visible, onClose, onSuccess }: CreateQ
             {current === 0 && (
               <Form form={form} layout="vertical" className="space-y-4">
                 <Form.Item
-                  label={<span>Tên Bài Thi <span className="text-red-500">*</span></span>}
+                  label={
+                    <span>
+                      Tên Bài Thi <span className="text-red-500">*</span>
+                    </span>
+                  }
                   validateStatus={errors.title ? "error" : ""}
                   help={errors.title}
                 >
@@ -537,11 +577,12 @@ export default function CreateQuizModal({ visible, onClose, onSuccess }: CreateQ
                       </span>
                       {payload.questions.length < 10 && (
                         <span className="text-red-500 text-sm">
-                          ⚠️ Cần thêm ít nhất {10 - payload.questions.length} câu nữa
+                          ⚠️ Cần thêm ít nhất {10 - payload.questions.length}{" "}
+                          câu nữa
                         </span>
                       )}
                     </div>
-                    
+
                     <div className="max-h-[300px] overflow-y-auto space-y-2">
                       {payload.questions.map((question, index) => (
                         <div
@@ -565,14 +606,17 @@ export default function CreateQuizModal({ visible, onClose, onSuccess }: CreateQ
 
                     <div className="mt-4 p-3 bg-green-50 rounded border border-green-200">
                       <p className="text-sm">
-                        📊 Điểm/câu: <strong>{pointsPerQuestion.toFixed(2)}</strong> | 
-                        Tổng điểm: <strong>{TOTAL_QUIZ_POINTS}</strong>
+                        📊 Điểm/câu:{" "}
+                        <strong>{pointsPerQuestion.toFixed(2)}</strong> | Tổng
+                        điểm: <strong>{TOTAL_QUIZ_POINTS}</strong>
                       </p>
                     </div>
                   </div>
                 ) : (
                   <div className="text-center py-10 bg-gray-50 rounded">
-                    <p className="text-gray-500">Chưa có câu hỏi nào được chọn</p>
+                    <p className="text-gray-500">
+                      Chưa có câu hỏi nào được chọn
+                    </p>
                     <p className="text-sm text-gray-400 mt-1">
                       Nhấn &quot;Thêm Câu Hỏi Từ Kho&quot; để bắt đầu
                     </p>
@@ -607,7 +651,7 @@ export default function CreateQuizModal({ visible, onClose, onSuccess }: CreateQ
                       className="mb-4"
                       allowClear
                     />
-                    
+
                     <div className="max-h-[400px] overflow-y-auto space-y-2">
                       {filteredQuestions.map((question) => (
                         <div
@@ -621,13 +665,17 @@ export default function CreateQuizModal({ visible, onClose, onSuccess }: CreateQ
                         >
                           <div className="flex items-start gap-3">
                             <Checkbox
-                              checked={modalState.selectedQuestionIds.includes(question.id)}
+                              checked={modalState.selectedQuestionIds.includes(
+                                question.id
+                              )}
                               onChange={() => handleQuestionSelect(question.id)}
                             />
                             <div className="flex-1">
                               <p className="font-medium">{question.text}</p>
                               {question.description && (
-                                <p className="text-sm text-gray-500 mt-1">{question.description}</p>
+                                <p className="text-sm text-gray-500 mt-1">
+                                  {question.description}
+                                </p>
                               )}
                             </div>
                           </div>
@@ -645,13 +693,27 @@ export default function CreateQuizModal({ visible, onClose, onSuccess }: CreateQ
                 <div className="bg-gray-50 p-4 rounded">
                   <h3 className="font-semibold mb-3">Thông Tin Bài Thi</h3>
                   <div className="grid grid-cols-2 gap-2 text-sm">
-                    <p><strong>Tên:</strong> {payload.title}</p>
-                    <p><strong>Thời gian:</strong> {payload.time_limit_minutes || "Unlimited"} phút</p>
-                    <p><strong>Điểm đạt:</strong> {payload.passing_score}%</p>
-                    <p><strong>Số lần làm:</strong> {payload.max_attempts === 999 ? "Không giới hạn" : payload.max_attempts}</p>
+                    <p>
+                      <strong>Tên:</strong> {payload.title}
+                    </p>
+                    <p>
+                      <strong>Thời gian:</strong>{" "}
+                      {payload.time_limit_minutes || "Unlimited"} phút
+                    </p>
+                    <p>
+                      <strong>Điểm đạt:</strong> {payload.passing_score}%
+                    </p>
+                    <p>
+                      <strong>Số lần làm:</strong>{" "}
+                      {payload.max_attempts === 999
+                        ? "Không giới hạn"
+                        : payload.max_attempts}
+                    </p>
                   </div>
                   {payload.description && (
-                    <p className="mt-2 text-sm"><strong>Mô tả:</strong> {payload.description}</p>
+                    <p className="mt-2 text-sm">
+                      <strong>Mô tả:</strong> {payload.description}
+                    </p>
                   )}
                 </div>
 
@@ -660,7 +722,8 @@ export default function CreateQuizModal({ visible, onClose, onSuccess }: CreateQ
                     Câu Hỏi ({payload.questions?.length || 0} câu)
                   </h3>
                   <p className="text-sm text-gray-600">
-                    Điểm mỗi câu: {pointsPerQuestion.toFixed(2)} | Tổng điểm: {TOTAL_QUIZ_POINTS}
+                    Điểm mỗi câu: {pointsPerQuestion.toFixed(2)} | Tổng điểm:{" "}
+                    {TOTAL_QUIZ_POINTS}
                   </p>
                 </div>
 
@@ -694,7 +757,9 @@ export default function CreateQuizModal({ visible, onClose, onSuccess }: CreateQ
                 type="primary"
                 onClick={handleNext}
                 icon={<ArrowRightOutlined />}
-                disabled={current === 1 ? (payload.questions?.length || 0) < 10 : false}
+                disabled={
+                  current === 1 ? (payload.questions?.length || 0) < 10 : false
+                }
               >
                 Tiếp Theo
               </Button>

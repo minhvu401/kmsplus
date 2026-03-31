@@ -149,14 +149,9 @@ export async function createQuiz(formData: FormData) {
       validationResult.error.issues.map((e) => e.message).join(", ")
     )
   }
-  console.log("[createQuiz] Starting...")
-  await requireAuth()
-  console.log("[createQuiz] Auth verified")
 
   // Parse and validate FormData
   const parsedData = parseAndValidateQuizFormData(formData)
-
-  console.log("[createQuiz] Data validated, calling createQuizAction...")
 
   await createQuizAction({
     course_id: parsedData.course_id,
@@ -169,9 +164,6 @@ export async function createQuiz(formData: FormData) {
     questionIds: parsedData.questionIds,
   })
 
-  console.log(
-    "[createQuiz] Quiz created successfully, revalidating and redirecting..."
-  )
   revalidatePath("/quizzes")
   redirect("/quizzes")
 }

@@ -7,8 +7,6 @@ export async function POST(request: Request) {
     // Require authentication
     await requireAuth()
 
-    console.log("🔧 Starting chat schema migration...")
-
     // Create conversations table
     const createConversationsTable = await sql`
       CREATE TABLE IF NOT EXISTS conversations (
@@ -24,8 +22,6 @@ export async function POST(request: Request) {
       CREATE INDEX IF NOT EXISTS idx_conversations_created_at ON conversations(created_at);
     `
 
-    console.log("✅ Conversations table created/verified")
-
     // Create messages table
     const createMessagesTable = await sql`
       CREATE TABLE IF NOT EXISTS messages (
@@ -40,8 +36,6 @@ export async function POST(request: Request) {
       CREATE INDEX IF NOT EXISTS idx_messages_conversation_id ON messages(conversation_id);
       CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(created_at);
     `
-
-    console.log("✅ Messages table created/verified")
 
     // Create trigger to auto-update conversations.updated_at
     const createTrigger = await sql`
@@ -62,8 +56,6 @@ export async function POST(request: Request) {
       FOR EACH ROW
       EXECUTE FUNCTION update_conversations_timestamp();
     `
-
-    console.log("✅ Trigger for auto-update created/verified")
 
     return NextResponse.json({
       success: true,

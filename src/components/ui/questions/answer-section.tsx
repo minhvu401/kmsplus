@@ -1,27 +1,22 @@
 'use client'
 
-import { useMemo, useState, useActionState, startTransition } from 'react';
-import { Flex, Typography, Divider, Avatar, Dropdown, Button, Modal, Spin } from "antd";
+import { useMemo, useState, useActionState, startTransition, useEffect } from 'react';
+import { Select, Spin } from 'antd';
+import { Flex, Typography, Divider, Avatar, Dropdown, Button, Modal } from "antd";
 import {
     EditOutlined,
     DeleteOutlined,
     EllipsisOutlined,
     LockOutlined,
     MessageOutlined,
-    CommentOutlined,
-    ArrowUpOutlined,
-    ArrowDownOutlined,
-    PlusSquareOutlined,
-    MinusSquareOutlined,
     UserOutlined
 } from '@ant-design/icons';
-import { updateAnswer, deleteAnswer, createReply, fetchFullDiscussionThread, State } from '@/action/question/questionActions';
+import { updateAnswer, deleteAnswer, createReply, State } from '@/action/question/questionActions';
 import CreateAnswerForm from "@/components/forms/create-answer-form";
 import { Answer, AnswerWithReplies } from "@/service/question.service";
 import Pagination from "@/components/ui/questions/pagination";
 import PageSizeSelector from "@/components/ui/questions/page-size-selector";
-import { useSearchParams } from 'next/navigation';
-import { formatDistanceToNowStrict } from 'date-fns/formatDistanceToNowStrict';
+import { useSearchParams, useRouter } from 'next/navigation';
 import RichTextEditor from "@/components/ui/RichTextEditor";
 
 const { Title, Text } = Typography;
@@ -45,11 +40,22 @@ export default function AnswerSection({
     totalPages?: number,
 }) {
     const userId = 1; // TEMP: Replace with actual user ID
-    const searchParams = useSearchParams()
-    const currentPage = Number(searchParams.get('page')) || 1
-    const pageSize = Number(searchParams.get('limit')) || 5
-    const totalItems = Number(answer_count) || 0
-    const totalPages = serverTotalPages || Math.max(1, Math.ceil(totalItems / pageSize))
+    const searchParams = useSearchParams();
+    const currentPage = Number(searchParams.get('page')) || 1;
+    const pageSize = Number(searchParams.get('limit')) || 5;
+    const sort = searchParams.get('sort') === 'oldest' ? 'oldest' : 'newest';
+    const totalItems = Number(answer_count) || 0;
+    const totalPages = serverTotalPages || Math.max(1, Math.ceil(totalItems / pageSize));
+
+    // For updating URL sort param
+    const updateSort = (value: string) => {
+        const params = new URLSearchParams(Array.from(searchParams.entries()));
+        params.set('sort', value);
+        params.set('page', '1'); // Reset to first page on sort change
+        window.history.replaceState(null, '', `?${params.toString()}`);
+        // Optionally, trigger a reload if needed (if SSR fetches on navigation)
+        window.location.reload();
+    };
 
     const initialState: State = { message: null, errors: {} };
     const [updateState, updateAnswerAction] = useActionState(updateAnswer, initialState);
@@ -63,12 +69,6 @@ export default function AnswerSection({
     const [replyingToId, setReplyingToId] = useState<number | null>(null);
     const [replyContent, setReplyContent] = useState('');
     const [replyCount, setReplyCount] = useState(0);
-
-    // Discussion Modal State
-    const [discussionModalOpen, setDiscussionModalOpen] = useState(false);
-    const [discussionThread, setDiscussionThread] = useState<AnswerWithReplies | null>(null);
-    const [discussionLoading, setDiscussionLoading] = useState(false);
-    const [discussionRootId, setDiscussionRootId] = useState<number | null>(null);
 
     // --- Actions ---
 
@@ -119,36 +119,8 @@ export default function AnswerSection({
 
         startTransition(async () => {
             await createReply(formData);
-            if (discussionModalOpen && discussionRootId) {
-                try {
-                    const updatedThread = await fetchFullDiscussionThread(discussionRootId);
-                    setDiscussionThread(updatedThread);
-                } catch (error) {
-                    console.error('Failed to refresh discussion thread:', error);
-                }
-            }
         });
         cancelReply();
-    };
-
-    const openDiscussionModal = async (answerId: number) => {
-        setDiscussionModalOpen(true);
-        setDiscussionLoading(true);
-        setDiscussionRootId(answerId);
-        try {
-            const thread = await fetchFullDiscussionThread(answerId);
-            setDiscussionThread(thread);
-        } catch (error) {
-            console.error('Failed to fetch discussion thread:', error);
-        } finally {
-            setDiscussionLoading(false);
-        }
-    };
-
-    const closeDiscussionModal = () => {
-        setDiscussionModalOpen(false);
-        setDiscussionThread(null);
-        setDiscussionRootId(null);
     };
 
     const contentError = updateState?.errors?.content?.[0];
@@ -180,17 +152,28 @@ export default function AnswerSection({
             const plainText = val.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
             setReplyCount(plainText.length);
         },
-        onViewDiscussion: openDiscussionModal,
     };
 
     return (
-        <div className="w-full max-w-5xl mx-auto p-4" style={{ color: '#374151' }}>
+        <div className="w-full max-w-[980px] mx-auto px-2 md:px-3 mt-6" style={{ color: '#374151' }}>
             {/* Header Section */}
-            <Flex vertical align="left" gap={12} style={{ marginBottom: 24 }}>
-                <Title level={4} style={{ color: "#111827", margin: 0 }}>
-                    {answer_count} Answers
-                </Title>
-
+            <Flex vertical align="left" gap={10} style={{ marginBottom: 18 }}>
+                <div className="flex items-center gap-3">
+                    <Title level={4} style={{ color: "#111827", margin: 0 }}>
+                        Answers ({answer_count})
+                    </Title>
+                    <Select
+                        size="small"
+                        value={sort}
+                        style={{ width: 120 }}
+                        onChange={updateSort}
+                        options={[
+                            { value: 'newest', label: 'Newest' },
+                            { value: 'oldest', label: 'Oldest' },
+                        ]}
+                        aria-label="Sort answers"
+                    />
+                </div>
                 <div className="w-full">
                     {is_closed ? (
                         <LockedAnswerBox message='This question is archived. No new comments can be posted.' />
@@ -203,59 +186,33 @@ export default function AnswerSection({
                 </div>
             </Flex>
 
-            {/* Comments Feed */}
-            <div className="flex flex-col gap-4">
-                {paginatedAnswers.length === 0 && (
-                    <div className="py-10 text-center text-gray-500">
-                        No answers yet. Be the first to share your thoughts!
-                    </div>
-                )}
+            <Divider style={{ margin: '0 0 14px 0' }} />
 
-                {paginatedAnswers.map((answer) => (
-                    <RedditComment
-                        key={answer.id}
-                        node={answer}
-                        depth={0}
-                        {...commentActions}
-                    />
-                ))}
+            {/* Comments Feed */}
+            <div className="flex flex-col gap-2">
+                {paginatedAnswers.length === 0 ? (
+                    <div className="py-7 text-center text-gray-500">
+                        No answers yet. Be the first to comment.
+                    </div>
+                ) : (
+                    paginatedAnswers.map((answer) => (
+                        <RedditComment
+                            key={answer.id}
+                            node={answer}
+                            depth={0}
+                            {...commentActions}
+                        />
+                    ))
+                )}
             </div>
 
             {/* Pagination */}
             {paginatedAnswers.length > 0 && (
-                <div className="flex flex-col items-center gap-4 mt-8 pb-8">
+                <div className="flex flex-col items-center gap-3 mt-6 pb-6">
                     <PageSizeSelector currentPageSize={pageSize} />
                     <Pagination totalPages={totalPages} />
                 </div>
             )}
-
-            {/* Full Thread Modal */}
-            <Modal
-                title={<Text style={{ color: '#374151', fontWeight: 600 }}>Single Discussion Thread</Text>}
-                open={discussionModalOpen}
-                onCancel={closeDiscussionModal}
-                footer={null}
-                width={800}
-                className="reddit-modal"
-                styles={{ body: { maxHeight: '70vh', overflowY: 'auto', padding: '16px 0' } }}
-            >
-                {discussionLoading ? (
-                    <div className="flex items-center justify-center min-h-[240px] animate-fadeIn">
-                        <Spin size="large" />
-                    </div>
-                ) : discussionThread ? (
-                    <div className="px-4">
-                        <RedditComment
-                            node={discussionThread}
-                            depth={0}
-                            isModalContext={true}
-                            {...commentActions}
-                        />
-                    </div>
-                ) : (
-                    <Text type="secondary">Failed to load thread.</Text>
-                )}
-            </Modal>
         </div>
     );
 }
@@ -285,84 +242,47 @@ interface RedditCommentProps {
     onCancelReply: () => void;
     onSubmitReply: (parentId: number) => void;
     onSetReplyContent: (val: string) => void;
-    onViewDiscussion: (id: number) => void;
 }
 
 function RedditComment(props: RedditCommentProps) {
     const {
         node, depth, userId, is_closed,
         editingAnswerId, replyingToId,
-        onBeginReply, onViewDiscussion
+        onBeginReply
     } = props;
-
-    const [collapsed, setCollapsed] = useState(false);
 
     const isEditing = editingAnswerId === node.id;
     const isReplying = replyingToId === node.id;
     const isOwner = Number(node.user_id) === userId;
     const hasChildren = node.replies && node.replies.length > 0;
 
-    // Reddit indent logic: First level has no line, children have lines
-    // We strictly manage indentation via padding-left on the container
-
-    const handleCollapse = () => setCollapsed(!collapsed);
-
-    if (collapsed) {
-        return (
-            <div className="py-2 pl-2">
-                <div className="flex items-center gap-2 cursor-pointer text-gray-600 hover:bg-gray-100 p-1 rounded w-fit" onClick={handleCollapse}>
-                    <PlusSquareOutlined />
-                    <span className="text-sm font-semibold text-gray-700">{node.user_name}</span>
-                    <span className="text-sm text-gray-600">
-                        {formatDistanceToNowStrict(new Date(node.created_at))} ago
-                    </span>
-                    <span className="text-sm text-gray-600">
-                        {(() => {
-                            const replyCount = (node.replies?.length || 0) + 1;
-                            return `(${replyCount} ${replyCount === 1 ? 'reply' : 'replies'})`;
-                        })()}
-                    </span>
-                </div>
-            </div>
-        );
-    }
-
     return (
-        <div className={`relative flex flex-col ${depth > 0 ? 'mt-3' : 'mt-4'}`}>
-            <div className="flex flex-row">
-                {/* Left Column: Avatar + Thread Line */}
-                <div className="flex flex-col items-center mr-2 md:mr-3 flex-shrink-0">
-                    <Avatar
-                        size={28}
-                        src={node.user_avatar || undefined}
-                        icon={!node.user_avatar ? <UserOutlined /> : undefined}
-                        className="mb-2 cursor-pointer hover:opacity-80 transition-opacity bg-slate-300"
-                    />
+        <div className={`flex items-start gap-3 ${depth > 0 ? 'pl-3 ml-3 mt-2 pt-1' : 'mt-1'}`}>
+            <Avatar
+                size={34}
+                src={node.user_avatar || undefined}
+                icon={!node.user_avatar ? <UserOutlined /> : undefined}
+                className="bg-gray-300 flex-shrink-0"
+            />
 
-                    {/* The Thread Line: Clickable to collapse */}
-                    <div
-                        className="group w-4 h-full flex justify-center cursor-pointer"
-                        onClick={handleCollapse}
-                    >
-                        <div className="w-[2px] h-full bg-gray-200 group-hover:bg-blue-400 transition-colors rounded-sm"></div>
-                    </div>
-                </div>
-
-                {/* Right Column: Content */}
-                <div className="flex-1 min-w-0 pb-2">
+            <div className="flex-1 min-w-0 pb-1">
                     {/* Meta Header */}
-                    <div className="flex items-center gap-2 mb-1 text-sm text-gray-600 font-medium">
-                        <span className="font-semibold text-gray-900 hover:underline cursor-pointer">
-                            {node.user_name}
-                        </span>
-                        <span>•</span>
-                        <span>{formatDistanceToNowStrict(new Date(node.created_at))} ago</span>
+                    <div className="flex items-center justify-between mb-0.5 text-xs text-gray-500 font-medium">
+                        <span className="font-semibold text-gray-900">{node.user_name}</span>
+
+                        {isOwner && !isEditing && (
+                            <AnswerMenu
+                                answer={node}
+                                onEdit={() => props.onBeginEdit(node)}
+                                isEditing={isEditing}
+                            />
+                        )}
                     </div>
 
                     {/* Content Body */}
-                    <div className="pr-4">
+                    <div className="bg-gray-100 rounded-lg px-3 py-1.5 md:px-3.5 md:py-2">
                         {isEditing ? (
-                            <div onClick={e => e.stopPropagation()}>
+                            <div onClick={e => e.stopPropagation()} className="bg-white rounded-md p-2">
                                 <EditBox {...props} node={node} />
                             </div>
                         ) : (
@@ -376,13 +296,13 @@ function RedditComment(props: RedditCommentProps) {
 
                     {/* Action Bar (Footer) */}
                     {!isEditing && (
-                        <div className="flex items-center gap-1 mt-2 select-none">
-                            {/* Vote Buttons (Visual only based on prompt) */}
-                            {/* <div className="flex items-center gap-1 mr-4 bg-gray-50 rounded p-0.5">
-                                <Button type="text" size="small" icon={<ArrowUpOutlined className="text-gray-500" />} className="!px-1 !h-6" />
-                                <span className="text-xs font-bold text-gray-600">vote</span>
-                                <Button type="text" size="small" icon={<ArrowDownOutlined className="text-gray-500" />} className="!px-1 !h-6" />
-                            </div> */}
+                        <div className="flex items-center justify-between mt-0.5">
+                            <Text type="secondary" className="text-xs">
+                                {new Date(node.created_at).toLocaleString('vi-VN', {
+                                    timeZone: 'Asia/Ho_Chi_Minh',
+                                    hour12: false,
+                                })}
+                            </Text>
 
                             {!is_closed && (
                                 <ActionButton
@@ -391,37 +311,19 @@ function RedditComment(props: RedditCommentProps) {
                                     onClick={() => onBeginReply(node.id)}
                                 />
                             )}
-
-                            {/* Logic for "View Full Discussion" vs "Show Replies" */}
-                            {node.has_deep_replies && !props.isModalContext && (
-                                <ActionButton
-                                    icon={<CommentOutlined />}
-                                    text="Continue Thread"
-                                    onClick={() => onViewDiscussion(node.id)}
-                                    className="text-blue-600 hover:bg-blue-50"
-                                />
-                            )}
-
-                            {isOwner && (
-                                <AnswerMenu
-                                    answer={node}
-                                    onEdit={() => props.onBeginEdit(node)}
-                                    isEditing={isEditing}
-                                />
-                            )}
                         </div>
                     )}
 
                     {/* Reply Input Box */}
                     {isReplying && (
-                        <div className="mt-4 mb-2 ml-1 border-l-2 border-gray-300 pl-4">
+                        <div className="mt-3 mb-1 ml-1 pl-3">
                             <ReplyBox {...props} node={node} />
                         </div>
                     )}
 
                     {/* Recursive Children Rendering */}
                     {hasChildren && (
-                        <div className="flex flex-col">
+                        <div className="flex flex-col mt-2 gap-1">
                             {node.replies!.map((child) => (
                                 <RedditComment
                                     key={child.id}
@@ -432,7 +334,6 @@ function RedditComment(props: RedditCommentProps) {
                             ))}
                         </div>
                     )}
-                </div>
             </div>
         </div>
     );
@@ -462,6 +363,7 @@ function EditBox(props: RedditCommentProps) {
                 value={editingContent}
                 onChange={onSetEditingContent}
                 placeholder="Edit your comment..."
+                size="compact"
             />
             <div className="flex justify-between items-center bg-gray-50 p-2 rounded-b border-t border-gray-200">
                 <Text type={contentError ? 'danger' : 'secondary'} className="text-sm">
@@ -492,6 +394,7 @@ function ReplyBox(props: RedditCommentProps) {
                 value={replyContent}
                 onChange={onSetReplyContent}
                 placeholder={`Reply to ${node.user_name}...`}
+                size="compact"
             />
             <div className="flex justify-between items-center mt-2">
                 <Text type="secondary" className="text-sm">{replyCount}/600</Text>

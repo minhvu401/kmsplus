@@ -161,8 +161,6 @@ export async function deleteCourseAPI(courseId: number) {
     const user = await requireAuth()
     if (!user) throw new Error("Unauthorized")
 
-    console.log("🔥 [API] Deleting course (Soft Delete):", courseId)
-
     const result = await deleteCourseAction(courseId)
 
     if (result.success) {

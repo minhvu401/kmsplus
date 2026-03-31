@@ -157,7 +157,6 @@ const createContributorSidebarItems = (
       label: "Contributions",
       title: "Contributions - Track your contributions",
       disabled: true, // UI chưa làm
-      onClick: () => console.log("Contributions - ref #"),
     },
     {
       type: "divider",
@@ -264,7 +263,7 @@ const createTrainingManagerSidebarItems = (
         marginBottom: "8px",
       },
     } as MenuItem,
-     // Q&A Management
+    // Q&A Management
     {
       key: PageRoute.QA_MANAGEMENT,
       icon: <MessageOutlined />,
@@ -423,7 +422,7 @@ const createSystemAdminSidebarItems = (
         marginBottom: "8px",
       },
     } as MenuItem,
-     // Q&A Management
+    // Q&A Management
     {
       key: PageRoute.QA_MANAGEMENT,
       icon: <MessageOutlined />,

@@ -476,9 +476,10 @@ export async function fetchFilteredAnswers (
   currentPage: number,
   questionId: number,
   limit?: number,
+  sort?: 'newest' | 'oldest',
 ){
   //await requireAuth()
-  return service.fetchFilteredAnswersAction(currentPage, questionId, limit);
+  return service.fetchFilteredAnswersAction(currentPage, questionId, limit, sort);
 }
 
 export async function fetchAnswerPages(

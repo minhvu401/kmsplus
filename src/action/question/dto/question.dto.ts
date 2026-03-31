@@ -58,7 +58,7 @@ export type UpdateQuestionDtoType = z.infer<typeof UpdateQuestionDto>
 export const CreateAnswerDto = z.object({
   content: z.preprocess(
     normalizeNewlines,
-    contentLength(15, 600, "Content must be at least 15 characters", "Content must be under 600 characters")
+    contentLength(15, 600, "Answer must be at least 15 characters", "Answer must be under 600 characters")
   ),
   user_id: z.coerce.number().int(),
   question_id: z.coerce.number().int(),
@@ -70,7 +70,7 @@ export type CreateAnswerDtoType = z.infer<typeof CreateAnswerDto>
 export const UpdateAnswerDto = z.object({
   content: z.preprocess(
     normalizeNewlines,
-    contentLength(15, 600, "Content must be at least 15 characters", "Content must be under 600 characters")
+    contentLength(15, 600, "Answer must be at least 15 characters", "Answer must be under 600 characters")
   ),
   answer_id: z.coerce.number().int(),
   question_id: z.coerce.number().int(),

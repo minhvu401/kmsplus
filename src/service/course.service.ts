@@ -199,7 +199,7 @@ export async function getAllCoursesAction({
       break
   }
 
-  //
+  // ✅ Xử lý Filter Category (Multiple Categories)
   const categoryCondition =
     categories && categories.length > 0
       ? sql`AND category_id = ANY(${categories.map((c) => parseInt(c, 10))})`
@@ -218,15 +218,17 @@ export async function getAllCoursesAction({
           ? sql`
       AND (
         c.creator_id = ${userId}
-        ${managedDepartmentId !== null
-          ? sql`
+        ${
+          managedDepartmentId !== null
+            ? sql`
         OR c.creator_id IN (
           SELECT u2.id
           FROM users u2
           WHERE u2.department_id = ${managedDepartmentId}
         )
         `
-          : sql``}
+            : sql``
+        }
       )
     `
           : sql`AND c.creator_id = ${userId}`
@@ -375,8 +377,6 @@ export async function getCourseByIdAction(id: number) {
 // --- COURSE MUTATION ACTIONS ---
 
 export async function createCourseAction(courseData: CreateCoursePayload) {
-  console.log("🚀 [Service] Bắt đầu tạo khóa học:", courseData.title)
-
   try {
     const result = await sqlTransaction.begin(async (tx: any) => {
       const currentTimestamp = new Date().toLocaleString("en-US", {
@@ -403,17 +403,12 @@ export async function createCourseAction(courseData: CreateCoursePayload) {
         RETURNING *;
       `
       const courseId = newCourseResult[0].id
-      console.log("✅ [Service] Tạo Course thành công, ID:", courseId)
 
       // 2. Insert Assignment Rules (NẾU CÓ)
       if (
         courseData.assignment_rules &&
         courseData.assignment_rules.length > 0
       ) {
-        console.log(
-          `📦 [Service] Đang lưu ${courseData.assignment_rules.length} Assignment Rules...`
-        )
-
         for (const rule of courseData.assignment_rules) {
           await tx`
             INSERT INTO assignment_rules (
@@ -431,7 +426,6 @@ export async function createCourseAction(courseData: CreateCoursePayload) {
             )
           `
         }
-        console.log("✅ [Service] Đã lưu Assignment Rules.")
       }
 
       // 3. Insert Sections & Items (Curriculum)
@@ -490,9 +484,6 @@ export async function updateFullCourseAction(id: number, data: any) {
 
       if (isPublished) {
         // 🔥 KỊCH BẢN A: KHÓA HỌC ĐÃ XUẤT BẢN -> CHỈ CẬP NHẬT VISIBILITY & RULES
-        console.log(
-          "🔒 [Update] Khóa học đã Xuất bản. Chỉ cập nhật Quy tắc & Hiển thị."
-        )
 
         await tx`
           UPDATE courses
@@ -518,7 +509,6 @@ export async function updateFullCourseAction(id: number, data: any) {
         }
       } else {
         // 🟢 KỊCH BẢN B: KHÓA HỌC ĐANG LÀ NHÁP (DRAFT/PENDING) -> UPDATE TOÀN BỘ NHƯ CŨ
-        console.log("🟢 [Update] Khóa học là Nháp. Cập nhật toàn bộ dữ liệu.")
 
         await tx`
           UPDATE courses
@@ -669,8 +659,6 @@ export async function getPublishedCoursesService({
   userId = 0,
 }: GetAllCoursesParams & { userId?: number }) {
   try {
-    console.log(`\n=============================================`)
-    console.log(`📡 [Catalog API] TÌM KIẾM KHÓA HỌC CHO USER: ${userId}`)
     const offset = (page - 1) * limit
     let orderBy = "c.created_at DESC"
 
@@ -692,14 +680,6 @@ export async function getPublishedCoursesService({
       categories && categories.length > 0
         ? sql`AND category_id = ANY(${categories.map((c) => parseInt(c, 10))})`
         : sql``
-
-    // ✅ DEBUG 1: In ra toàn bộ khóa học Published (Bỏ qua Visibility)
-    const rawCourses = await sql`
-      SELECT id, title, status, visibility 
-      FROM courses 
-      WHERE deleted_at IS NULL AND status = 'published'
-    `
-    console.log("🔍 TOÀN BỘ KHÓA HỌC PUBLISHED TRONG DB:", rawCourses)
 
     // ✅ LOGIC CỐT LÕI: Tách nhỏ ra để dễ debug
     const rows = await sql`
@@ -756,9 +736,6 @@ export async function getPublishedCoursesService({
           )
         )
     `
-
-    console.log(`✅ [Catalog API] ĐÃ TÌM THẤY: ${rows.length} khóa học.`)
-    console.log(`=============================================\n`)
 
     return {
       courses: rows as Course[],

@@ -94,7 +94,7 @@ export async function loginAction(
     maxAge: 60 * 60 * 24, // 1 day
   })
 
-  // console.log("User logged in:", token)
+  // ("User logged in:", token)
 
   return {
     success: true,
@@ -112,10 +112,10 @@ export async function loginAction(
 export async function logoutAction() {
   try {
     const cookieStore = await cookies()
-    
+
     // Delete custom JWT token
     cookieStore.delete("token")
-    
+
     // Delete NextAuth session cookies (multiple possible names for v5)
     cookieStore.delete("next-auth.session-token")
     cookieStore.delete("authjs.session-token")

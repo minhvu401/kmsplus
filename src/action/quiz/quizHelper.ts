@@ -61,8 +61,6 @@ export interface ParsedQuizData {
  * Dùng cho cả API route và server action
  */
 export function parseAndValidateQuizFormData(formData: FormData): ParsedQuizData {
-  console.log("[parseAndValidateQuizFormData] Starting...")
-
   const course_id = Number(formData.get("course_id"))
   const title = (formData.get("title") as string) || ""
   const description = (formData.get("description") as string) || ""
@@ -77,15 +75,6 @@ export function parseAndValidateQuizFormData(formData: FormData): ParsedQuizData
     ? Number(formData.get("max_attempts"))
     : 3
 
-  console.log("[parseAndValidateQuizFormData] FormData extracted:", {
-    course_id,
-    title,
-    status,
-    time_limit_minutes,
-    passing_score,
-    max_attempts,
-  })
-
   // Extract question IDs from FormData
   let questionIds: number[] = []
   const questionIdsStr = formData.get("question_ids")
@@ -93,7 +82,6 @@ export function parseAndValidateQuizFormData(formData: FormData): ParsedQuizData
     try {
       const parsed = JSON.parse(questionIdsStr as string)
       questionIds = Array.isArray(parsed) ? parsed.map((id) => Number(id)) : []
-      console.log("[parseAndValidateQuizFormData] Question IDs parsed:", questionIds)
     } catch (error) {
       console.error("Failed to parse question_ids:", error)
       throw new Error("Invalid question_ids format")
@@ -108,8 +96,6 @@ export function parseAndValidateQuizFormData(formData: FormData): ParsedQuizData
   const sanitizedTitle = sanitizeTitle(title)
   const sanitizedDescription = sanitizeDescription(description)
 
-  console.log("[parseAndValidateQuizFormData] Inputs sanitized")
-
   // Validate với Zod
   const validationResult = QuizCreateDto.safeParse({
     title: sanitizedTitle,
@@ -122,11 +108,8 @@ export function parseAndValidateQuizFormData(formData: FormData): ParsedQuizData
   })
 
   if (!validationResult.success) {
-    console.error("[parseAndValidateQuizFormData] Validation failed:", validationResult.error.issues)
     throw new Error(validationResult.error.issues.map((e) => e.message).join(", "))
   }
-
-  console.log("[parseAndValidateQuizFormData] Validation passed")
 
   return {
     course_id: validationResult.data.course_id,

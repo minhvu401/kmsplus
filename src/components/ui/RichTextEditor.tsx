@@ -21,12 +21,14 @@ interface Props {
   value?: string
   onChange?: (value: string) => void
   placeholder?: string
+  size?: "default" | "compact"
 }
 
 export default function RichTextEditor({
   value,
   onChange,
   placeholder,
+  size = "default",
 }: Props) {
   const [isClient, setIsClient] = React.useState(false)
 
@@ -64,23 +66,27 @@ export default function RichTextEditor({
           value={value || ""}
           onChange={(e) => onChange?.(e.target.value)}
           placeholder={placeholder || "Start typing your content here..."}
-          className="w-full p-3 min-h-[150px] resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg"
+          className={`w-full p-3 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg ${
+            size === "compact" ? "min-h-[110px]" : "min-h-[150px]"
+          }`}
         />
       </div>
     )
   }
 
+  const isCompact = size === "compact"
+
   return (
-    <div className="rich-text-editor">
+    <div className={`rich-text-editor ${isCompact ? "compact-editor" : ""}`}>
       <ReactQuill
         theme="snow"
         value={value || ""}
         onChange={handleEditorChange}
         modules={modules}
         placeholder={placeholder}
-        className="h-60 mb-12"
+        className={isCompact ? "h-44 mb-12" : "h-60 mb-12"}
         style={{
-          minHeight: "200px",
+          minHeight: isCompact ? "140px" : "200px",
         }}
       />
       <style jsx global>{`
@@ -95,6 +101,9 @@ export default function RichTextEditor({
         }
         .rich-text-editor .ql-editor {
           min-height: 150px;
+        }
+        .rich-text-editor.compact-editor .ql-editor {
+          min-height: 100px;
         }
       `}</style>
     </div>
