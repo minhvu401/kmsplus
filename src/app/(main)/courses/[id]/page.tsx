@@ -29,11 +29,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params
   const courseId = Number(id)
   if (isNaN(courseId)) {
-    return { title: "Invalid Course" }
+    return { title: "Khóa học không hợp lệ" }
   }
   const course = await getCourseByIdAction(courseId)
   return {
-    title: course?.title || "Course Details",
+    title: course?.title || "Chi tiết Khóa học",
   }
 }
 
@@ -86,7 +86,9 @@ export default async function CourseDetailPage({ params }: Props) {
                     src={creator?.avatar_url || undefined}
                     icon={<UserOutlined />}
                   />
-                  <span>{creator?.full_name || "Unknown creator"}</span>
+                  <span>
+                    {creator?.full_name || "Người tạo không xác định"}
+                  </span>
                 </div>
                 <div>·</div>
                 <div>{course.enrollment_count} students</div>
@@ -204,10 +206,11 @@ export default async function CourseDetailPage({ params }: Props) {
                               />
                               <div>
                                 <p className="text-base font-semibold text-gray-800">
-                                  {creator?.full_name || "Unknown creator"}
+                                  {creator?.full_name ||
+                                    "Người tạo không xác định"}
                                 </p>
                                 <p className="text-sm text-gray-600">
-                                  {creator?.email || "No email available"}
+                                  {creator?.email || "Không có email"}
                                 </p>
                               </div>
                             </div>
@@ -222,10 +225,12 @@ export default async function CourseDetailPage({ params }: Props) {
           </div>
 
           <div className="lg:col-span-1">
-            <Card title="Related Courses">
+            <Card title="Các khóa học liên quan">
               <div className="mt-3 space-y-3">
                 {related.length === 0 && (
-                  <p className="text-gray-400 text-sm">No related courses.</p>
+                  <p className="text-gray-400 text-sm">
+                    Không có khóa học liên quan.
+                  </p>
                 )}
                 {related.map((r) => (
                   <Link

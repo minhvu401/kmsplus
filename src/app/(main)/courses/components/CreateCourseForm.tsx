@@ -191,20 +191,20 @@ function ContentBankItem({ icon, title, meta, onAdd, onEdit, onDelete }: any) {
         </button>
         <div className="opacity-0 group-hover:opacity-100 transition-opacity">
           <Popconfirm
-            title="Delete this item?"
-            description="Are you sure to delete this content?"
+            title="Xóa mục này?"
+            description="Bạn có chắc chắn muốn xóa nội dung này?"
             onConfirm={(e) => {
               e?.stopPropagation()
               if (onDelete) onDelete()
             }}
             onCancel={(e) => e?.stopPropagation()}
-            okText="Yes"
-            cancelText="No"
+            okText="Có"
+            cancelText="Không"
           >
             <button
               onClick={(e) => e.stopPropagation()}
               className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
-              title="Delete"
+              title="Xóa"
             >
               <Trash2 size={14} />
             </button>
@@ -216,7 +216,7 @@ function ContentBankItem({ icon, title, meta, onAdd, onEdit, onDelete }: any) {
             onAdd()
           }}
           className="text-blue-500 hover:text-blue-700 p-1 rounded-full hover:bg-blue-50 transition-colors ml-1"
-          title="Add to Curriculum"
+          title="Thêm vào Chương trình học"
         >
           <PlusCircle size={18} />
         </button>
@@ -401,9 +401,9 @@ export default function CreateCourseForm({
       setImageUrl(data.secure_url)
       update("thumbnail_url", data.secure_url)
       if (onUploadSuccess) onUploadSuccess("Ok")
-      message.success("Upload success!")
+      message.success("Tải lên thành công!")
     } catch (error: any) {
-      message.error("Upload failed")
+      message.error("Tải lên thất bại")
       if (onError) onError({ error })
     } finally {
       hide()
@@ -513,7 +513,7 @@ export default function CreateCourseForm({
     try {
       const finalPayload = {
         ...payload,
-        title: payload.title || "Untitled Course",
+        title: payload.title || "Khóa học chưa có tiêu đề",
         visibility: payload.visibility || "private",
         assignment_rules: payload.assignment_rules?.map((rule) => ({
           target_type: rule.target_type,
@@ -533,14 +533,14 @@ export default function CreateCourseForm({
       }
       const res = await createCourseAPI(finalPayload)
       if (res.success) {
-        message.success("Course created successfully! 🎉")
+        message.success("Khóa học được tạo thành công! 🎉")
         if (onSuccess) onSuccess()
         router.refresh()
       } else {
-        message.error(res.error || "Create failed")
+        message.error(res.error || "Tạo thất bại")
       }
     } catch (err) {
-      message.error("System error occurred.")
+      message.error("Đã xảy ra lỗi hệ thống.")
     } finally {
       setLoading(false)
     }
@@ -647,7 +647,7 @@ export default function CreateCourseForm({
                       <div className="relative group">
                         <img
                           src={imageUrl}
-                          alt="Thumbnail"
+                          title="Xem trước Cắt ảnh"
                           className="w-full h-48 object-cover rounded-md border"
                         />
                         <div className="absolute inset-0 bg-black bg-opacity-50 hidden group-hover:flex flex-col gap-2 items-center justify-center rounded-md">
@@ -1283,7 +1283,7 @@ function CurriculumContentBank({
     setContentType(cType)
     if (cType === "video" && lesson.content) setVideoUrl(lesson.content)
     if (cType === "pdf" && lesson.content)
-      setPdfFile({ name: "Existing File", url: lesson.content })
+      setPdfFile({ name: "Tệp hiện có", url: lesson.content })
   }
 
   const handleDeleteItemAction = async (
@@ -1740,7 +1740,7 @@ function CurriculumContentBank({
                       width="100%"
                       height="100%"
                       src={`https://www.youtube.com/embed/${getYoutubeEmbedId(videoUrl)}`}
-                      title="Video Preview"
+                      title="Xem trước Video"
                       frameBorder="0"
                       allowFullScreen
                       className="rounded shadow-sm"
