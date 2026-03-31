@@ -17,6 +17,7 @@ import {
   type CreateCoursePayload,
 } from "@/service/course.service"
 import { revalidatePath } from "next/cache"
+import { sql } from "@/lib/database"
 
 // --- TYPES ---
 type GetAllCoursesParams = {
@@ -35,15 +36,94 @@ type APIResponse =
 // Response type cho update operations
 type UpdateAPIResponse = { success: true } | { success: false; error: string }
 
+// ============================================================================
+// HÀM HỖ TRỢ: KIỂM TRA QUYỀN LỰA CHỌN DANH MỤC
+// ============================================================================
+async function validateCategoryPermission(
+  userId: number,
+  categoryId: number | null | undefined
+) {
+  if (!categoryId) return true // Bỏ qua nếu khóa học không chọn danh mục
+
+  const check = await sql`
+    SELECT 
+      u.department_id as user_dept,
+      (SELECT id FROM department WHERE head_of_department_id = ${userId} AND is_deleted = false LIMIT 1) as managed_dept,
+      EXISTS (
+        SELECT 1 FROM user_roles ur
+        JOIN roles r ON ur.role_id = r.id
+        WHERE ur.user_id = ${userId} AND r.name ILIKE '%admin%'
+      ) as is_admin,
+      (SELECT department_id FROM categories WHERE id = ${categoryId}) as target_cat_dept
+    FROM users u
+    WHERE u.id = ${userId}
+  `
+
+  if (check.length === 0) return false
+
+  const { is_admin, user_dept, managed_dept, target_cat_dept } = check[0]
+
+  // 1. Admin được quyền chọn mọi Category
+  if (is_admin) return true
+
+  // 2. Thuộc cùng phòng ban của User (Training Manager / Contributor / Others)
+  if (target_cat_dept === user_dept) return true
+
+  // 3. Thuộc phòng ban mà User làm Head of Department
+  if (managed_dept && target_cat_dept === managed_dept) return true
+
+  return false // Chặn nếu khác phòng ban
+}
+
 // --- CATEGORY ACTIONS (New) ---
 
 /**
- * Lấy danh sách Category cho Dropdown
+ * Lấy danh sách Category cho Dropdown (Đã áp dụng Phân quyền)
  */
 export async function getCategoriesAPI() {
   try {
-    // Nếu muốn bảo mật thì thêm await requireAuth() ở đây
-    return await getAllCategoriesAction()
+    const user = await requireAuth()
+    if (!user?.id) return []
+
+    const userId = parseInt(user.id)
+
+    // Lấy thông tin phòng ban & quyền Admin của user
+    const check = await sql`
+      SELECT 
+        u.department_id as user_dept,
+        (SELECT id FROM department WHERE head_of_department_id = ${userId} AND is_deleted = false LIMIT 1) as managed_dept,
+        EXISTS (
+          SELECT 1 FROM user_roles ur
+          JOIN roles r ON ur.role_id = r.id
+          WHERE ur.user_id = ${userId} AND r.name ILIKE '%admin%'
+        ) as is_admin
+      FROM users u
+      WHERE u.id = ${userId}
+    `
+
+    if (check.length === 0) return []
+    const { is_admin, user_dept, managed_dept } = check[0]
+
+    // NẾU LÀ ADMIN: Trả về tất cả Category
+    if (is_admin) {
+      const allCategories = await sql`
+        SELECT id, name FROM categories 
+        WHERE is_deleted = false ORDER BY name ASC
+      `
+      return allCategories.map((c: any) => ({ id: Number(c.id), name: c.name }))
+    }
+
+    // NẾU LÀ USER BÌNH THƯỜNG / HOD / MANAGER: Chỉ trả về Category của phòng ban họ
+    const departmentCategories = await sql`
+      SELECT id, name FROM categories 
+      WHERE is_deleted = false 
+        AND (department_id = ${user_dept} OR department_id = ${managed_dept})
+      ORDER BY name ASC
+    `
+    return departmentCategories.map((c: any) => ({
+      id: Number(c.id),
+      name: c.name,
+    }))
   } catch (error) {
     console.error("Failed to get categories:", error)
     return []
@@ -109,6 +189,22 @@ export async function createCourseAPI(
     const user = await requireAuth()
     if (!user?.id) throw new Error("Unauthorized")
 
+    // ✅ THÊM ĐOẠN NÀY: VALIDATE BẢO MẬT QUYỀN CHỌN CATEGORY
+    const isCategoryValid = await validateCategoryPermission(
+      parseInt(user.id),
+      data.category_id
+    )
+    if (!isCategoryValid) {
+      return {
+        success: false,
+        error:
+          "Bạn chỉ được phép đăng khóa học vào Danh mục thuộc phòng ban của mình!",
+      }
+    }
+    // ========================================================
+
+    console.log("🔥 [API] Creating course:", data.title)
+
     const courseData: CreateCoursePayload = {
       ...data,
       creator_id: parseInt(user.id),
@@ -149,7 +245,26 @@ export async function updateCourseAPI(
   data: Partial<CreateCoursePayload>
 ): Promise<UpdateAPIResponse> {
   try {
-    await requireAuth()
+    const user = await requireAuth()
+    if (!user?.id) throw new Error("Unauthorized")
+
+    // ✅ THÊM ĐOẠN NÀY: VALIDATE BẢO MẬT QUYỀN CHỌN CATEGORY KHI UPDATE
+    if (data.category_id !== undefined) {
+      const isCategoryValid = await validateCategoryPermission(
+        parseInt(user.id),
+        data.category_id
+      )
+      if (!isCategoryValid) {
+        return {
+          success: false,
+          error:
+            "Bạn chỉ được phép chuyển khóa học sang Danh mục thuộc phòng ban của mình!",
+        }
+      }
+    }
+    // ========================================================
+
+    console.log("🔥 [API] Updating course:", courseId)
 
     const result = await updateFullCourseAction(courseId, data as any)
 

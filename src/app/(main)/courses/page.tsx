@@ -17,7 +17,7 @@ export const dynamic = "force-dynamic"
 // Metadata (Tùy chọn)
 export const metadata: Metadata = {
   title: "KMS Plus Courses",
-  description: "Browse available courses.",
+  description: "Duyệt các khóa học có sẵn.",
 }
 
 // Định nghĩa kiểu cho các giá trị sort hợp lệ
@@ -95,14 +95,13 @@ export default async function CoursesPage({
       totalCount = result.totalCount || 0
     } else {
       console.warn("getPublishedCoursesService returned null or undefined")
-      fetchError = "Could not load course data."
+      fetchError = "Không thể tải dữ liệu khóa học."
     }
 
     categories = categoriesData || []
   } catch (error) {
     console.error("Error fetching courses:", error)
-    fetchError =
-      "An error occurred while loading courses. Please try again later."
+    fetchError = "Đã xảy ra lỗi khi tải khóa học. Vui lòng thử lại sau."
     courses = []
     totalCount = 0
     categories = []
