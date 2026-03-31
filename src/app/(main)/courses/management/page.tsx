@@ -45,16 +45,32 @@ export default async function ManagerCoursesPage({ searchParams }: Props) {
     currentUserId = null,
   } = coursesData || {}
 
-  // 👇 LOGIC AN TOÀN: Kiểm tra xem kết quả trả về là Mảng hay Object
-  const safeLessons = Array.isArray(lessonsRes)
-    ? lessonsRes
-    : (lessonsRes as any)?.data || []
-  const safeQuizzes = Array.isArray(quizzesRes)
-    ? quizzesRes
-    : (quizzesRes as any)?.data || (quizzesRes as any)?.quizzes || []
+  // Trích xuất categories hợp lệ (đã được lọc theo phòng ban ở API)
   const categories = Array.isArray(categoriesRes)
     ? categoriesRes
     : (categoriesRes as any)?.data || []
+
+  // ✅ LẤY DANH SÁCH ID DANH MỤC ĐƯỢC PHÉP XEM CỦA PHÒNG BAN NÀY
+  const allowedCategoryIds = categories.map((c: any) => Number(c.id))
+  const isAdmin = user.role?.toLowerCase().includes("admin")
+
+  // 👇 LOGIC AN TOÀN: Ép mảng VÀ LỌC THEO PHÒNG BAN
+  const rawLessons = Array.isArray(lessonsRes)
+    ? lessonsRes
+    : (lessonsRes as any)?.data || []
+  const safeLessons = rawLessons.filter((l: any) => {
+    if (isAdmin) return true // Admin thấy hết
+    // Chỉ lấy bài học thuộc các Category của phòng ban này
+    return l.category_id && allowedCategoryIds.includes(Number(l.category_id))
+  })
+
+  const rawQuizzes = Array.isArray(quizzesRes)
+    ? quizzesRes
+    : (quizzesRes as any)?.data || (quizzesRes as any)?.quizzes || []
+  const safeQuizzes = rawQuizzes.filter((q: any) => {
+    if (isAdmin) return true
+    return q.category_id && allowedCategoryIds.includes(Number(q.category_id))
+  })
 
   return (
     <main className="p-8 bg-gradient-to-r from-gray-50 via-blue-50 to-indigo-50 min-h-screen">
