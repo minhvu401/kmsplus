@@ -139,6 +139,7 @@ interface UpdateCourseFormProps {
   availableLessons: Lesson[]
   availableQuizzes: Quiz[]
   onSuccess: () => void
+  userRole?: string // ✅ THÊM DÒNG NÀY
 }
 
 function SortableItem({
@@ -295,6 +296,7 @@ export default function UpdateCourseForm({
   availableLessons: initialLessons = [],
   availableQuizzes: initialQuizzes = [],
   onSuccess,
+  userRole = "", // ✅ NHẬN PROP Ở ĐÂY
 }: UpdateCourseFormProps) {
   const [categories, setCategories] = useState<{ id: number; name: string }[]>(
     []
@@ -588,10 +590,10 @@ export default function UpdateCourseForm({
         if (onSuccess) onSuccess()
         router.refresh()
       } else {
-        message.error(res.error || "Update failed")
+        message.error(res.error || "Cập nhật thất bại")
       }
     } catch (err) {
-      message.error("System error occurred.")
+      message.error("Đã xảy ra lỗi hệ thống.")
     } finally {
       setLoading(false)
     }
@@ -1073,9 +1075,19 @@ export default function UpdateCourseForm({
                     value={payload.status}
                     onChange={(v) => update("status", v)}
                     className="w-full"
-                    options={Object.entries(COURSE_STATUS_LABELS).map(
-                      ([v, l]) => ({ value: v, label: l })
-                    )}
+                    // ✅ THAY ĐỔI OPTIONS THÀNH LOGIC LỌC
+                    options={Object.entries(COURSE_STATUS_LABELS)
+                      .filter(([v]) => {
+                        // Nếu là Training Manager, chỉ cho thấy Draft và Pending
+                        const isTM =
+                          userRole.toLowerCase().replace(/\s+/g, "") ===
+                          "trainingmanager"
+                        if (isTM)
+                          return v === "draft" || v === "pending_approval"
+                        // Nếu là Admin/HoD thì cho thấy hết
+                        return true
+                      })
+                      .map(([v, l]) => ({ value: v, label: l }))}
                   />
                 </div>
                 <div>
@@ -1453,7 +1465,7 @@ function CurriculumContentBank({
     setContentType(cType)
     if (cType === "video" && existingContent) setVideoUrl(existingContent)
     if (cType === "pdf" && existingContent)
-      setPdfFile({ name: "Existing File", url: existingContent })
+      setPdfFile({ name: "Tệp hiện có", url: existingContent })
   }
 
   const handleDeleteItemAction = async (
