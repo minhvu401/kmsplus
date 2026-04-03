@@ -1,5 +1,6 @@
-import { requireAuth } from "@/lib/auth"
+import { requirePermission } from "@/lib/requirePermission"
 import { NextRequest, NextResponse } from "next/server"
+import { Permission } from "@/enum/permission.enum"
 import { cookies } from "next/headers"
 import { verifyToken } from "@/lib/auth"
 import path from "path"
@@ -11,7 +12,7 @@ import { writeFile, mkdir } from "fs/promises"
  */
 export async function POST(req: NextRequest) {
   try {
-    await requireAuth()
+    await requirePermission(Permission.VIEW_PROFILE)
 
     const formData = await req.formData()
     const file = formData.get("avatar") as File
@@ -76,8 +77,18 @@ export async function POST(req: NextRequest) {
         avatarUrl,
       },
     })
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error uploading avatar:", error)
+    // Handle authorization errors
+    if (
+      error?.message?.includes("Unauthorized") ||
+      error?.message?.includes("Missing permission")
+    ) {
+      return NextResponse.json(
+        { success: false, message: error.message },
+        { status: 403 }
+      )
+    }
     return NextResponse.json(
       { success: false, message: "Failed to upload avatar" },
       { status: 500 }

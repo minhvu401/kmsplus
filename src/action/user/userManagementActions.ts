@@ -6,7 +6,7 @@ import { cookies } from "next/headers"
 import bcrypt from "bcryptjs"
 import { Role } from "@/enum/role.enum"
 import { Permission } from "@/enum/permission.enum"
-import { hasPermission } from "@/config/RolePermission.config"
+import { hasPermissionDynamic } from "@/service/rolePermission.service"
 
 export type UserManagementState = {
   success: boolean
@@ -33,8 +33,12 @@ async function verifyUserManagementPermission(): Promise<{
     const decoded = await verifyToken(token)
     const userRole = decoded.role as Role
 
-    // Check if user has permission to manage users
-    if (!hasPermission(userRole, Permission.MANAGE_USERS)) {
+    // Check if user has permission to manage users (using dynamic database-driven permissions)
+    const hasPermissionFlag = await hasPermissionDynamic(
+      userRole,
+      Permission.MANAGE_USERS
+    )
+    if (!hasPermissionFlag) {
       return { valid: false }
     }
 

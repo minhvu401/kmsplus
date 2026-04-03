@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
+import { hasPermissionDynamic } from "@/service/rolePermission.service"
 import { getCurrentUser } from "@/lib/auth"
+import { Role } from "@/enum/role.enum"
+import { Permission } from "@/enum/permission.enum"
 import * as service from "@/service/ai-suggestion.service"
 
 /**
@@ -11,6 +14,18 @@ export async function GET(request: NextRequest) {
     const user = await getCurrentUser()
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    // Check AI_RECOMMENDATION permission for reading suggestions
+    const hasPermission = await hasPermissionDynamic(
+      user.role as Role,
+      Permission.AI_RECOMMENDATION
+    )
+    if (!hasPermission) {
+      return NextResponse.json(
+        { error: "Forbidden - Permission denied" },
+        { status: 403 }
+      )
     }
 
     const searchParams = request.nextUrl.searchParams
@@ -32,8 +47,15 @@ export async function GET(request: NextRequest) {
       success: true,
       data: suggestion,
     })
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error in GET /api/ai-suggestion:", error)
+    // Handle authorization errors
+    if (
+      error?.message?.includes("Unauthorized") ||
+      error?.message?.includes("Missing permission")
+    ) {
+      return NextResponse.json({ error: error.message }, { status: 403 })
+    }
     return NextResponse.json(
       { error: "Failed to fetch suggestion" },
       { status: 500 }
@@ -43,14 +65,23 @@ export async function GET(request: NextRequest) {
 
 /**
  * POST /api/ai-suggestion
- * Create a new suggestion (admin only)
+ * Create a new suggestion (requires AI_RECOMMENDATION permission)
  */
 export async function POST(request: NextRequest) {
   try {
     const user = await getCurrentUser()
-    if (!user || user.role !== "admin") {
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    // Check AI_RECOMMENDATION permission
+    const hasPermission = await hasPermissionDynamic(
+      user.role as Role,
+      Permission.AI_RECOMMENDATION
+    )
+    if (!hasPermission) {
       return NextResponse.json(
-        { error: "Unauthorized - Admin only" },
+        { error: "Forbidden - Admin permission required" },
         { status: 403 }
       )
     }
@@ -88,8 +119,15 @@ export async function POST(request: NextRequest) {
       data: suggestion,
       message: `Created suggestion for topic: "${topTopic.topic}"`,
     })
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error in POST /api/ai-suggestion:", error)
+    // Handle authorization errors
+    if (
+      error?.message?.includes("Unauthorized") ||
+      error?.message?.includes("Missing permission")
+    ) {
+      return NextResponse.json({ error: error.message }, { status: 403 })
+    }
     return NextResponse.json(
       { error: "Failed to create suggestion" },
       { status: 500 }
@@ -99,14 +137,23 @@ export async function POST(request: NextRequest) {
 
 /**
  * PATCH /api/ai-suggestion/:id
- * Update suggestion status (admin only)
+ * Update suggestion status (requires AI_RECOMMENDATION permission)
  */
 export async function PATCH(request: NextRequest) {
   try {
     const user = await getCurrentUser()
-    if (!user || user.role !== "admin") {
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    // Check AI_RECOMMENDATION permission
+    const hasPermission = await hasPermissionDynamic(
+      user.role as Role,
+      Permission.AI_RECOMMENDATION
+    )
+    if (!hasPermission) {
       return NextResponse.json(
-        { error: "Unauthorized - Admin only" },
+        { error: "Forbidden - Permission denied" },
         { status: 403 }
       )
     }
@@ -131,8 +178,15 @@ export async function PATCH(request: NextRequest) {
       success: true,
       data: updated,
     })
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error in PATCH /api/ai-suggestion:", error)
+    // Handle authorization errors
+    if (
+      error?.message?.includes("Unauthorized") ||
+      error?.message?.includes("Missing permission")
+    ) {
+      return NextResponse.json({ error: error.message }, { status: 403 })
+    }
     return NextResponse.json(
       { error: "Failed to update suggestion" },
       { status: 500 }

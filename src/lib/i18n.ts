@@ -155,6 +155,78 @@ export const translations: Record<Language, Record<string, string>> = {
     "module.admin": "Quản trị",
     "module.settings": "Cài đặt",
 
+    // Dashboard Metrics - General
+    "dashboard.metrics.access_denied": "Truy cập bị từ chối",
+    "dashboard.metrics.access_denied_desc":
+      "Dashboard Metrics chỉ có sẵn cho các vai trò: Giám đốc, Người quản lý đào tạo, Quản trị viên hệ thống, hoặc Nhân viên.",
+    "dashboard.director.title": "🎯 Bảng điều khiển Giám đốc",
+    "dashboard.director.subtitle":
+      "Nhìn nhanh sức khỏe toàn hệ thống và hiệu quả đào tạo tổng thể (ROI). Theo dõi sự chấp nhận, tham gia và tác động đào tạo trên toàn tổ chức.",
+    "dashboard.metrics.active_users": "Người dùng hoạt động",
+    "dashboard.metrics.adoption_rate": "Tỷ lệ áp dụng",
+    "dashboard.metrics.completion_rate": "Tỷ lệ hoàn thành",
+    "dashboard.metrics.avg_rating": "Đánh giá trung bình",
+    "dashboard.metrics.active_users_chart": "Người dùng hoạt động (MAU/DAU)",
+    "dashboard.metrics.adoption_rate_chart": "Tỷ lệ áp dụng hệ thống",
+    "dashboard.metrics.completion_rate_chart": "Tỷ lệ hoàn thành khóa học",
+    "dashboard.metrics.top_categories": "Danh mục hàng đầu",
+    "dashboard.metrics.content_rating": "Đánh giá nội dung",
+
+    // Dashboard Metrics - Training Manager
+    "dashboard.training_manager.title": "📚 Bảng điều khiển Quản lý Đào tạo",
+    "dashboard.training_manager.subtitle":
+      "Phát hiện lỗ hổng kiến thức, quản lý kho học liệu, và theo dõi sức khỏe của ngân hàng câu hỏi.",
+    "dashboard.metrics.knowledge_gap":
+      "Lỗ hổng kiến thức (Zero-result Searches)",
+    "dashboard.metrics.trending_keywords": "Từ khóa xu hướng",
+    "dashboard.metrics.course_dropoff": "Tỷ lệ bỏ học",
+    "dashboard.metrics.unanswered_questions": "Tỷ lệ câu hỏi chưa được trả lời",
+    "dashboard.metrics.top_contributors":
+      "Top Người đóng góp & Người học (Leaderboard)",
+    "dashboard.metrics.question_bank_health": "Sức khỏe ngân hàng câu hỏi",
+    "dashboard.metrics.search_count": "Số lần tìm kiếm",
+    "dashboard.metrics.no_results": "❌ Không có kết quả",
+    "dashboard.metrics.answered": "Đã trả lời",
+    "dashboard.metrics.unanswered": "Chưa trả lời",
+    "dashboard.metrics.resolution_rate": "Tỷ lệ giải quyết",
+    "dashboard.metrics.contributors": "👥 Người đóng góp",
+    "dashboard.metrics.learners": "🎓 Người học xuất sắc",
+    "dashboard.metrics.contribution": "đóng góp",
+    "dashboard.metrics.courses_completed": "khóa hoàn",
+
+    // Dashboard Metrics - System Admin
+    "dashboard.admin.title": "⚙️ Bảng điều khiển Quản trị viên Hệ thống",
+    "dashboard.admin.subtitle":
+      "Xử lý các công việc đang chờ duyệt, quản lý người dùng, và theo dõi tăng trưởng hệ thống.",
+    "dashboard.metrics.pending_articles": "Bài viết đang chờ duyệt",
+    "dashboard.metrics.pending_courses": "Khóa học đang chờ duyệt",
+    "dashboard.metrics.new_users_growth": "Tốc độ tăng trưởng người dùng mới",
+    "dashboard.metrics.need_review": "Cần xem xét và phê duyệt",
+    "dashboard.metrics.view_details": "Xem chi tiết",
+    "dashboard.metrics.new_users": "Người dùng mới",
+
+    // Dashboard Metrics - Employee
+    "dashboard.employee.title": "👤 Bảng điều khiển Cá nhân",
+    "dashboard.employee.subtitle":
+      "Trả lời câu hỏi 'Tôi cần làm gì?' và 'Tôi đã đạt được gì?'. Theo dõi khóa học bắt buộc và tiến độ học tập của bạn.",
+    "dashboard.metrics.mandatory_courses": "Khóa học bắt buộc sắp hết hạn",
+    "dashboard.metrics.learning_progress": "Tiến độ học tập của tôi",
+    "dashboard.metrics.contribution_stats": "Thống kê đóng góp của tôi",
+    "dashboard.metrics.days_until_due": "Còn",
+    "dashboard.metrics.days_unit": "ngày",
+    "dashboard.metrics.days_overdue": "Quá hạn",
+    "dashboard.metrics.today_is_due": "Hôm nay là hạn",
+    "dashboard.metrics.not_started": "Chưa bắt đầu",
+    "dashboard.metrics.in_progress": "Đang học",
+    "dashboard.metrics.start_learning": "Đi học",
+    "dashboard.metrics.updated": "Cập nhật:",
+    "dashboard.metrics.articles": "Bài viết",
+    "dashboard.metrics.questions": "Câu hỏi",
+    "dashboard.metrics.answers": "Câu trả lời",
+    "dashboard.metrics.no_mandatory_courses":
+      "Không có khóa học bắt buộc sắp hết hạn",
+    "dashboard.metrics.no_courses": "Chưa có khóa học nào",
+
     // Common
     "common.save": "Lưu",
     "common.cancel": "Hủy",
@@ -312,6 +384,76 @@ export const translations: Record<Language, Record<string, string>> = {
     "module.category": "Categories",
     "module.admin": "Administration",
     "module.settings": "Settings",
+
+    // Dashboard Metrics - General
+    "dashboard.metrics.access_denied": "Access Denied",
+    "dashboard.metrics.access_denied_desc":
+      "Dashboard Metrics is only available for Director, Training Manager, System Admin, or Employee roles.",
+    "dashboard.director.title": "🎯 Director Dashboard",
+    "dashboard.director.subtitle":
+      "Get a quick overview of system health and overall training effectiveness (ROI). Monitor adoption, engagement, and training impact across your organization.",
+    "dashboard.metrics.active_users": "Active Users",
+    "dashboard.metrics.adoption_rate": "Adoption Rate",
+    "dashboard.metrics.completion_rate": "Completion Rate",
+    "dashboard.metrics.avg_rating": "Average Rating",
+    "dashboard.metrics.active_users_chart": "Active Users (MAU/DAU)",
+    "dashboard.metrics.adoption_rate_chart": "System Adoption Rate",
+    "dashboard.metrics.completion_rate_chart": "Course Completion Rate",
+    "dashboard.metrics.top_categories": "Top Categories",
+    "dashboard.metrics.content_rating": "Content Rating",
+
+    // Dashboard Metrics - Training Manager
+    "dashboard.training_manager.title": "📚 Training Manager Dashboard",
+    "dashboard.training_manager.subtitle":
+      "Identify knowledge gaps, manage learning resources, and monitor question bank health.",
+    "dashboard.metrics.knowledge_gap": "Knowledge Gap (Zero-result Searches)",
+    "dashboard.metrics.trending_keywords": "Trending Keywords",
+    "dashboard.metrics.course_dropoff": "Course Drop-off Rate",
+    "dashboard.metrics.unanswered_questions": "Unanswered Questions Rate",
+    "dashboard.metrics.top_contributors":
+      "Top Contributors & Learners (Leaderboard)",
+    "dashboard.metrics.question_bank_health": "Question Bank Health",
+    "dashboard.metrics.search_count": "Search Count",
+    "dashboard.metrics.no_results": "❌ No Results",
+    "dashboard.metrics.answered": "Answered",
+    "dashboard.metrics.unanswered": "Unanswered",
+    "dashboard.metrics.resolution_rate": "Resolution Rate",
+    "dashboard.metrics.contributors": "👥 Contributors",
+    "dashboard.metrics.learners": "🎓 Top Learners",
+    "dashboard.metrics.contribution": "contributions",
+    "dashboard.metrics.courses_completed": "courses completed",
+
+    // Dashboard Metrics - System Admin
+    "dashboard.admin.title": "⚙️ System Administrator Dashboard",
+    "dashboard.admin.subtitle":
+      "Handle pending tasks, manage users, and monitor system growth.",
+    "dashboard.metrics.pending_articles": "Pending Articles",
+    "dashboard.metrics.pending_courses": "Pending Courses",
+    "dashboard.metrics.new_users_growth": "New Users Growth Rate",
+    "dashboard.metrics.need_review": "Needs review and approval",
+    "dashboard.metrics.view_details": "View Details",
+    "dashboard.metrics.new_users": "New Users",
+
+    // Dashboard Metrics - Employee
+    "dashboard.employee.title": "👤 Personal Dashboard",
+    "dashboard.employee.subtitle":
+      "Answer 'What do I need to do?' and 'What have I achieved?'. Track mandatory courses and your learning progress.",
+    "dashboard.metrics.mandatory_courses": "Mandatory Courses Due Soon",
+    "dashboard.metrics.learning_progress": "My Learning Progress",
+    "dashboard.metrics.contribution_stats": "My Contribution Stats",
+    "dashboard.metrics.days_until_due": "Only",
+    "dashboard.metrics.days_unit": "days left",
+    "dashboard.metrics.days_overdue": "Overdue by",
+    "dashboard.metrics.today_is_due": "Due today",
+    "dashboard.metrics.not_started": "Not Started",
+    "dashboard.metrics.in_progress": "In Progress",
+    "dashboard.metrics.start_learning": "Start Learning",
+    "dashboard.metrics.updated": "Updated:",
+    "dashboard.metrics.articles": "Articles",
+    "dashboard.metrics.questions": "Questions",
+    "dashboard.metrics.answers": "Answers",
+    "dashboard.metrics.no_mandatory_courses": "No mandatory courses due soon",
+    "dashboard.metrics.no_courses": "No courses yet",
 
     // Common
     "common.save": "Save",

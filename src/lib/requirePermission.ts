@@ -1,14 +1,15 @@
 /**
  * Permission & Role validation utilities for Server Actions
+ * Now uses dynamic database-driven permissions instead of hardcoded config
  */
 import { requireAuth, getUserRole } from "@/lib/auth"
 import { Role } from "@/enum/role.enum"
 import { Permission } from "@/enum/permission.enum"
 import {
-  hasPermission,
-  hasAllPermissions,
-  hasAnyPermission,
-} from "@/config/RolePermission.config"
+  hasPermissionDynamic,
+  hasAllPermissionsDynamic,
+  hasAnyPermissionDynamic,
+} from "@/service/rolePermission.service"
 import { AuthUser } from "./auth"
 
 export async function requirePermission(
@@ -17,7 +18,8 @@ export async function requirePermission(
   const user = await requireAuth()
   const userRole = user.role as Role
 
-  if (!hasPermission(userRole, permission)) {
+  const hasPermissionFlag = await hasPermissionDynamic(userRole, permission)
+  if (!hasPermissionFlag) {
     throw new Error(`Unauthorized: Missing permission '${permission}'`)
   }
 
@@ -30,7 +32,11 @@ export async function requireAllPermissions(
   const user = await requireAuth()
   const userRole = user.role as Role
 
-  if (!hasAllPermissions(userRole, permissions)) {
+  const hasPermissionsFlag = await hasAllPermissionsDynamic(
+    userRole,
+    permissions
+  )
+  if (!hasPermissionsFlag) {
     throw new Error(
       `Unauthorized: Missing required permissions [${permissions.join(", ")}]`
     )
@@ -45,7 +51,8 @@ export async function requireAnyPermission(
   const user = await requireAuth()
   const userRole = user.role as Role
 
-  if (!hasAnyPermission(userRole, permissions)) {
+  const hasPermissionFlag = await hasAnyPermissionDynamic(userRole, permissions)
+  if (!hasPermissionFlag) {
     throw new Error(
       `Unauthorized: Must have at least one of these permissions [${permissions.join(", ")}]`
     )
