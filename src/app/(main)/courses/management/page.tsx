@@ -3,6 +3,8 @@ import ManageCoursesClient from "../components/ManageCoursesClient"
 import { getAllQuizzes } from "@/action/quiz/quizActions"
 import { getAllLessonsAction } from "@/service/lesson.service"
 import { requireAuth } from "@/lib/auth"
+import { sql } from "@/lib/database"
+import { redirect } from "next/navigation"
 
 type Props = {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>
@@ -11,6 +13,30 @@ type Props = {
 export default async function ManagerCoursesPage({ searchParams }: Props) {
   // Lấy thông tin user đang đăng nhập
   const user = await requireAuth()
+  const userId = Number(user.id)
+
+  const roleRows = await sql`
+    SELECT LOWER(r.name) AS name
+    FROM user_roles ur
+    JOIN roles r ON ur.role_id = r.id
+    WHERE ur.user_id = ${userId}
+  `
+
+  const roleNames = roleRows.map((row: any) => String(row.name || ""))
+  const isContributorOrEmployee = roleNames.some(
+    (role) => role.includes("contributor") || role.includes("employee")
+  )
+  const hasManagementRole = roleNames.some(
+    (role) =>
+      role.includes("admin") ||
+      role.includes("director") ||
+      role.includes("head of department") ||
+      role.includes("training manager")
+  )
+
+  if (isContributorOrEmployee && !hasManagementRole) {
+    redirect("/courses?flash=management-access-denied")
+  }
 
   const params = await searchParams
   const page = Number(params?.page || "1") || 1
