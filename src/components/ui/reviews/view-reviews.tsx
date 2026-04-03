@@ -79,7 +79,7 @@ export default function ViewReviewsTable({
       rowKey="id"
       pagination={false}
       scroll={{ x: 980 }}
-      locale={{ emptyText: "No reviews found" }}
+      locale={{ emptyText: "No feedback found" }}
     />
   )
 }
