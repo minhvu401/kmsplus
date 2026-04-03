@@ -35,7 +35,6 @@ import {
   CheckOutlined,
   CloseOutlined,
   ClearOutlined,
-  UserOutlined,
 } from "@ant-design/icons"
 import type { Course } from "@/service/course.service"
 import type { Category } from "@/service/question.service"
@@ -48,6 +47,7 @@ import {
 import { COURSE_STATUS_LABELS } from "@/enum/course-status.enum"
 import UpdateCourseForm, { CoursePayload } from "./UpdateCourseForm"
 import CreateCourseForm from "./CreateCourseForm"
+import useLanguageStore from "@/store/useLanguageStore"
 
 const { Text } = Typography
 
@@ -78,6 +78,8 @@ export default function ManageCoursesClient({
   availableQuizzes,
   userRole = "", // ✅ Nhận prop userRole
 }: ManageCoursesClientProps) {
+  const handledFlashRef = React.useRef<string | null>(null)
+  const { language } = useLanguageStore()
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -103,14 +105,19 @@ export default function ManageCoursesClient({
   const [filteredCourses, setFilteredCourses] = useState<Course[]>(courses)
 
   // Check if user is Training Manager (case-insensitive, handle spaces)
+  const normalizedRole = userRole?.toLowerCase().trim() || ""
+  const isHeadOfDepartmentView = enforceCreatorOnlyEdit
+
   const isTrainingManager =
-    userRole?.toLowerCase().replace(/\s+/g, "") === "trainingmanager"
+    !isHeadOfDepartmentView &&
+    normalizedRole.replace(/\s+/g, "") === "trainingmanager"
 
   // ✅ THÊM BIẾN NÀY: Kiểm tra xem User có phải Admin hoặc Trưởng phòng không
   const canApproveCourse =
-    userRole?.toLowerCase().includes("admin") ||
-    userRole?.toLowerCase().includes("head of department") ||
-    userRole?.toLowerCase().includes("director")
+    isHeadOfDepartmentView ||
+    normalizedRole.includes("admin") ||
+    normalizedRole.includes("head of department") ||
+    normalizedRole.includes("director")
 
   const canEditCourse = (course: Course) => {
     if (!enforceCreatorOnlyEdit) return true
@@ -123,6 +130,32 @@ export default function ManageCoursesClient({
     const active = selectedCategoryList.length > 0 || query !== ""
     setHasActiveFilters(active)
   }, [selectedCategoryList, query])
+
+  // Show redirect flash message once, then clean it from URL.
+  useEffect(() => {
+    const flash = searchParams.get("flash")
+    if (!flash) return
+    if (handledFlashRef.current === flash) return
+
+    handledFlashRef.current = flash
+
+    if (flash === "course-not-found") {
+      messageApi.error(
+        "We couldn't find that course. It may have been moved or deleted."
+      )
+    } else if (flash === "course-access-denied") {
+      messageApi.error(
+        "You do not have permission to manage this course."
+      )
+    } else {
+      return
+    }
+
+    const params = new URLSearchParams(searchParams.toString())
+    params.delete("flash")
+    const nextQuery = params.toString()
+    router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname)
+  }, [messageApi, pathname, router, searchParams])
 
   // Apply filters and sorting
   useEffect(() => {
@@ -167,6 +200,15 @@ export default function ManageCoursesClient({
   }
 
   const handleOpenUpdate = async (course: Course) => {
+    if (!canEditCourse(course)) {
+      messageApi.warning(
+        language === "vi"
+          ? "Bạn chỉ có thể chỉnh sửa khóa học do bạn tạo."
+          : "You can only edit courses that you created."
+      )
+      return
+    }
+
     const hide = messageApi.loading("Loading course details...", 0)
 
     try {
@@ -190,19 +232,19 @@ export default function ManageCoursesClient({
 
       const safeCurriculum = Array.isArray(rawCurriculum)
         ? rawCurriculum.map((section: any) => ({
-            ...section,
-            id: String(section.id), // ✅ Ép ID Section thành String
-            items: Array.isArray(section.items) // Hoặc section.curriculum_items
-              ? section.items.map((item: any) => ({
-                  ...item,
-                  id: String(item.id), // ✅ Ép ID Item thành String
-                  resource_id: Number(item.resource_id),
-                  type: item.type || "lesson",
-                  duration_minutes: item.duration_minutes || 0,
-                  question_count: item.question_count || 0,
-                }))
-              : [],
-          }))
+          ...section,
+          id: String(section.id), // ✅ Ép ID Section thành String
+          items: Array.isArray(section.items) // Hoặc section.curriculum_items
+            ? section.items.map((item: any) => ({
+              ...item,
+              id: String(item.id), // ✅ Ép ID Item thành String
+              resource_id: Number(item.resource_id),
+              type: item.type || "lesson",
+              duration_minutes: item.duration_minutes || 0,
+              question_count: item.question_count || 0,
+            }))
+            : [],
+        }))
         : []
 
       // 3. Tạo payload
@@ -218,7 +260,7 @@ export default function ManageCoursesClient({
       setIsUpdateModalOpen(true)
     } catch (error) {
       console.error(error)
-      messageApi.error("Không thể tải thông tin khóa học.")
+      messageApi.error(language === "vi" ? "Không thể tải thông tin khóa học." : "Unable to load course information.")
     } finally {
       hide()
     }
@@ -257,7 +299,7 @@ export default function ManageCoursesClient({
     messageApi.open({
       key: messageKey,
       type: "loading",
-      content: "Đang duyệt khóa học...",
+      content: language === "vi" ? "Đang duyệt khóa học..." : "Approving course...",
       duration: 0,
     })
 
@@ -267,7 +309,7 @@ export default function ManageCoursesClient({
         messageApi.open({
           key: messageKey,
           type: "success",
-          content: "Duyệt khóa học thành công",
+          content: language === "vi" ? "Duyệt khóa học thành công" : "Course approved successfully",
           duration: 2,
         })
 
@@ -276,7 +318,11 @@ export default function ManageCoursesClient({
         messageApi.open({
           key: messageKey,
           type: "error",
-          content: res.error || "Không thể duyệt khóa học",
+          content:
+            res.error ||
+            (language === "vi"
+              ? "Không thể duyệt khóa học"
+              : "Unable to approve course"),
           duration: 3,
         })
       }
@@ -284,7 +330,7 @@ export default function ManageCoursesClient({
       messageApi.open({
         key: messageKey,
         type: "error",
-        content: "System error occurred",
+        content: language === "vi" ? "Lỗi hệ thống" : "System error occurred",
         duration: 3,
       })
     } finally {
@@ -296,9 +342,11 @@ export default function ManageCoursesClient({
   // --- Reject ---
   const handleReject = (id: number, title: string) => {
     Modal.confirm({
-      title: "Từ chối Khóa học",
-      content: `Bạn có chắc chắn muốn từ chối "${title}"? Khóa học này sẽ được chuyển về trạng thái Nháp.`,
-      okText: "Từ chối",
+      title: language === "vi" ? "Từ chối Khóa học" : "Reject Course",
+      content: language === "vi"
+        ? `Bạn có chắc chắn muốn từ chối "${title}"? Khóa học này sẽ được chuyển về trạng thái Nháp.`
+        : `Are you sure you want to reject "${title}"? This course will be moved to the draft status.`,
+      okText: language === "vi" ? "Từ chối" : "Reject",
       okType: "danger",
       cancelText: "Hủy",
       centered: true,
@@ -306,11 +354,11 @@ export default function ManageCoursesClient({
         try {
           // Tại đây bạn sẽ gọi API để cập nhật status thành 'draft'
           messageApi.info(
-            "Khóa học đã bị từ chối và chuyển về trạng thái Nháp."
+            language === "vi" ? "Khóa học đã bị từ chối và chuyển về trạng thái Nháp." : "Course has been rejected and moved to draft status."
           )
           router.refresh()
         } catch (error) {
-          message.error("Lỗi hệ thống")
+          messageApi.error(language === "vi" ? "Lỗi hệ thống" : "System error occurred")
         }
       },
     })
@@ -319,10 +367,10 @@ export default function ManageCoursesClient({
   // --- Delete ---
   const handleDelete = (course: Course) => {
     if (course.status === "pending_approval") {
-      messageApi.warning("Bạn không thể xóa khóa học đang chờ duyệt.")
+      messageApi.warning(language === "vi" ? "Bạn không thể xóa khóa học đang chờ duyệt." : "You cannot delete a course that is pending approval.")
       return
     } else if (course.status === "published") {
-      messageApi.warning("Bạn không thể xóa khóa học đã được xuất bản.")
+      messageApi.warning(language === "vi" ? "Bạn không thể xóa khóa học đã được xuất bản." : "You cannot delete a published course.")
       return
     }
 
@@ -337,7 +385,7 @@ export default function ManageCoursesClient({
     messageApi.open({
       key: messageKey,
       type: "loading",
-      content: "Đang xóa khóa học...",
+      content: language === "vi" ? "Đang xóa khóa học..." : "Deleting course...",
       duration: 0,
     })
     try {
@@ -346,7 +394,7 @@ export default function ManageCoursesClient({
         messageApi.open({
           key: messageKey,
           type: "success",
-          content: "Khóa học đã được chuyển vào thùng rác",
+          content: language === "vi" ? "Khóa học đã được chuyển vào thùng rác" : "Course has been moved to trash",
           duration: 2,
         })
         router.refresh()
@@ -354,7 +402,9 @@ export default function ManageCoursesClient({
         messageApi.open({
           key: messageKey,
           type: "error",
-          content: res.error || "Không thể xóa",
+          content:
+            res.error ||
+            (language === "vi" ? "Không thể xóa" : "Unable to delete course"),
           duration: 3,
         })
       }
@@ -362,7 +412,7 @@ export default function ManageCoursesClient({
       messageApi.open({
         key: messageKey,
         type: "error",
-        content: "System error occurred",
+        content: language === "vi" ? "Lỗi hệ thống" : "System error occurred",
         duration: 3,
       })
     } finally {
@@ -381,25 +431,25 @@ export default function ManageCoursesClient({
 
   // Status color mapping
   const statusColors: Record<string, string> = {
-    published: "green",
-    draft: "blue",
-    pending_approval: "gold",
-    rejected: "red",
+    published: "success",
+    draft: "warning",
+    pending_approval: "processing",
+    rejected: "error",
   }
 
   // Status options for filter
   const statusOptions = [
-    { label: "Tất cả trạng thái", value: "All" },
-    { label: "Nháp", value: "draft" },
-    { label: "Chờ duyệt", value: "pending_approval" },
-    { label: "Đã xuất bản", value: "published" },
-    { label: "Đã từ chối", value: "rejected" },
+    { label: language === "vi" ? "Tất cả trạng thái" : "All Statuses", value: "All" },
+    { label: language === "vi" ? "Nháp" : "Draft", value: "draft" },
+    { label: language === "vi" ? "Chờ duyệt" : "Pending Approval", value: "pending_approval" },
+    { label: language === "vi" ? "Đã xuất bản" : "Published", value: "published" },
+    { label: language === "vi" ? "Đã từ chối" : "Rejected", value: "rejected" },
   ]
 
   // --- Columns ---
   const allColumns = [
     {
-      title: "Tên Khóa học",
+      title: language === "vi" ? "Tên Khóa học" : "Course Name",
       dataIndex: "title",
       key: "title",
       render: (text: string, record: Course) => (
@@ -418,7 +468,9 @@ export default function ManageCoursesClient({
             />
           ) : (
             <div className="w-20 h-14 rounded bg-gray-100 border border-gray-200 flex-shrink-0 flex items-center justify-center">
-              <span className="text-gray-400 text-xs">Không có hình ảnh</span>
+              <span className="text-gray-400 text-xs">
+                {language === "vi" ? "Không có hình ảnh" : "No image available"}
+              </span>
             </div>
           )}
           <div className="flex flex-col justify-center">
@@ -426,7 +478,7 @@ export default function ManageCoursesClient({
               {text}
             </div>
             <div className="text-sm text-gray-500 mt-0.5">
-              {record.category_name || "Chưa phân loại"}
+              {record.category_name || (language === "vi" ? "Chưa phân loại" : "Not categorized")}
             </div>
           </div>
         </Link>
@@ -434,7 +486,7 @@ export default function ManageCoursesClient({
     },
     // Chỉ hiển thị cột Creator nếu không phải Training Manager
     !isTrainingManager && {
-      title: "Người tạo",
+      title: language === "vi" ? "Người tạo" : "Creator",
       key: "creator",
       render: (_: any, record: Course) => {
         const creatorName =
@@ -461,8 +513,8 @@ export default function ManageCoursesClient({
           <div className="flex items-center gap-3">
             <Avatar
               src={creatorAvatar || undefined}
-              icon={!creatorAvatar ? <UserOutlined /> : undefined}
               size={32}
+              className="flex-shrink-0"
             >
               {!creatorAvatar ? getInitials(creatorName) : null}
             </Avatar>
@@ -472,7 +524,7 @@ export default function ManageCoursesClient({
       },
     },
     {
-      title: "Trạng thái",
+      title: language === "vi" ? "Trạng thái" : "Status",
       dataIndex: "status",
       key: "status",
       render: (status: string) => {
@@ -496,7 +548,7 @@ export default function ManageCoursesClient({
     },
     // Chỉ hiển thị cột Confirm Course cho Admin và Head of Department
     canApproveCourse && {
-      title: "Duyệt Khóa học",
+      title: language === "vi" ? "Duyệt Khóa học" : "Confirm Course",
       key: "confirm_course",
       align: "center" as const,
       render: (_: any, record: Course) => {
@@ -512,7 +564,7 @@ export default function ManageCoursesClient({
                   handleApprove(record)
                 }}
               >
-                Duyệt
+                {language === "vi" ? "Duyệt" : "Approve"}
               </Button>
               <Button
                 danger
@@ -522,18 +574,20 @@ export default function ManageCoursesClient({
                   handleReject(record.id, record.title)
                 }}
               >
-                Từ chối
+                {language === "vi" ? "Từ chối" : "Reject"}
               </Button>
             </div>
           )
         }
         return (
-          <span className="text-gray-500 text-sm">Không cần hành động</span>
+          <span className="text-gray-500 text-sm">
+            {language === "vi" ? "Không cần hành động" : "No action needed"}
+          </span>
         )
       },
     },
     {
-      title: "Ngày tạo",
+      title: language === "vi" ? "Ngày tạo" : "Created Date",
       dataIndex: "created_at",
       key: "created_at",
       render: (date: Date) => (
@@ -547,18 +601,33 @@ export default function ManageCoursesClient({
       ),
     },
     {
-      title: "Hành động",
+      title: language === "vi" ? "Hành động" : "Actions",
       key: "actions",
       align: "center" as const,
       render: (_: any, record: Course) => (
         <div className="flex gap-1 justify-end">
           {/* Nút Edit */}
-          <Tooltip title="Chỉnh sửa khóa học">
+          <Tooltip
+            title={
+              canEditCourse(record)
+                ? language === "vi"
+                  ? "Chỉnh sửa khóa học"
+                  : "Edit Course"
+                : language === "vi"
+                  ? "Bạn chỉ có thể chỉnh sửa khóa học do bạn tạo"
+                  : "You can only edit courses that you created"
+            }
+          >
             <Button
               type="text"
               icon={<EditOutlined />}
               size="middle"
-              className="text-blue-600 hover:!text-blue-700 hover:bg-blue-50 rounded-full"
+              disabled={!canEditCourse(record)}
+              className={
+                canEditCourse(record)
+                  ? "text-blue-600 hover:!text-blue-700 hover:bg-blue-50 rounded-full"
+                  : "!text-gray-400 cursor-not-allowed rounded-full"
+              }
               onClick={(e) => {
                 e.stopPropagation()
                 handleOpenUpdate(record)
@@ -570,10 +639,10 @@ export default function ManageCoursesClient({
           <Tooltip
             title={
               record.status === "published"
-                ? "Khóa học đã được xuất bản"
+                ? language === "vi" ? "Khóa học đã được xuất bản" : "Course published"
                 : record.status === "pending_approval"
-                  ? "Khóa học đang chờ duyệt"
-                  : "Xóa khóa học"
+                  ? language === "vi" ? "Khóa học đang chờ duyệt" : "Course pending approval"
+                  : language === "vi" ? "Xóa khóa học" : "Delete Course"
             }
           >
             <Button
@@ -587,7 +656,7 @@ export default function ManageCoursesClient({
               }
               className={
                 record.status === "published" ||
-                record.status === "pending_approval"
+                  record.status === "pending_approval"
                   ? "!text-gray-400 cursor-not-allowed rounded-full"
                   : "hover:bg-red-50 rounded-full"
               }
@@ -603,8 +672,8 @@ export default function ManageCoursesClient({
           <Tooltip
             title={
               record.status !== "published"
-                ? "Khóa học chưa được xuất bản"
-                : "Xem ghi danh"
+                ? language === "vi" ? "Khóa học chưa được xuất bản" : "Course not published"
+                : language === "vi" ? "Xem ghi danh" : "View Enrollments"
             }
           >
             <Button
@@ -630,8 +699,8 @@ export default function ManageCoursesClient({
           <Tooltip
             title={
               record.status !== "published"
-                ? "Khóa học chưa được xuất bản"
-                : "Xem phản hồi"
+                ? language === "vi" ? "Khóa học chưa được xuất bản" : "Course not published"
+                : language === "vi" ? "Xem phản hồi" : "View Feedback"
             }
           >
             <Button
@@ -639,22 +708,11 @@ export default function ManageCoursesClient({
               icon={<StarOutlined />}
               size="middle"
               disabled={record.status !== "published"}
-              style={
-                record.status === "published" ? { color: "#ca8a04" } : undefined
-              }
               className={
                 record.status !== "published"
                   ? "!text-gray-400 cursor-not-allowed rounded-full"
-                  : "hover:bg-yellow-50 rounded-full"
+                  : "!text-yellow-700 hover:!text-amber-700 hover:bg-yellow-50 rounded-full"
               }
-              onMouseEnter={(e) => {
-                if (record.status !== "published") return
-                e.currentTarget.style.color = "#b45309"
-              }}
-              onMouseLeave={(e) => {
-                if (record.status !== "published") return
-                e.currentTarget.style.color = "#ca8a04"
-              }}
               onClick={(e) => {
                 e.stopPropagation()
                 e.preventDefault()
@@ -678,47 +736,30 @@ export default function ManageCoursesClient({
       {/* Page Header */}
       <div className="mb-8">
         <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-blue-900 bg-clip-text text-transparent mb-4">
-          Quản lý Khóa học
+          {language === "vi" ? "Quản lý Khóa học" : "Manage Courses"}
         </h1>
         <div
           className="flex align-center justify-between gap-6"
           style={{ marginBottom: 16 }}
         >
           <p className="text-gray-600 max-w-2xl leading-relaxed">
-            Quản lý và tổ chức khóa học của bạn
+            {language === "vi" ? "Quản lý và tổ chức khóa học của bạn" : "Manage and organize your courses"}
           </p>
           <Button
             style={{
-              background: "#ffffff",
-              borderColor: "#1e40af",
               borderWidth: "1.5px",
-              borderRadius: "0.375rem",
-              color: "#1e40af",
               fontSize: "12px",
               fontWeight: 500,
               height: "36px",
               paddingInline: "14px",
-              boxShadow: "0 2px 8px rgba(30, 64, 175, 0.12)",
-              transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
               whiteSpace: "nowrap",
               flexShrink: 0,
             }}
+            className="bg-white !text-blue-800 border-blue-800 hover:!bg-slate-50 hover:!text-blue-900 hover:!border-blue-900 rounded-md shadow-[0_2px_8px_rgba(30,64,175,0.12)] hover:shadow-[0_8px_20px_rgba(30,64,175,0.2)] transition-all duration-300"
             icon={<PlusOutlined />}
             onClick={() => setIsCreateModalOpen(true)}
-            onMouseEnter={(e) => {
-              const button = e.currentTarget as HTMLButtonElement
-              button.style.background = "#f8fafc"
-              button.style.boxShadow = "0 8px 20px rgba(30, 64, 175, 0.2)"
-              button.style.borderColor = "#1e3a8a"
-            }}
-            onMouseLeave={(e) => {
-              const button = e.currentTarget as HTMLButtonElement
-              button.style.background = "#ffffff"
-              button.style.boxShadow = "0 2px 8px rgba(30, 64, 175, 0.12)"
-              button.style.borderColor = "#1e40af"
-            }}
           >
-            Tạo Khóa học
+            {language === "vi" ? "Tạo Khóa học" : "Create Course"}
           </Button>
         </div>
         <Divider
@@ -746,7 +787,7 @@ export default function ManageCoursesClient({
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
             <div className="flex flex-col">
               <Text type="secondary" className="text-sm font-medium mb-2">
-                Danh mục
+                {language === "vi" ? "Danh mục" : "Category"}
               </Text>
               <Select
                 mode="multiple"
@@ -765,7 +806,7 @@ export default function ManageCoursesClient({
 
             <div className="flex flex-col">
               <Text type="secondary" className="text-sm font-medium mb-2">
-                Trạng thái
+                {language === "vi" ? "Trạng thái" : "Status"}
               </Text>
               <Select
                 value={selectedStatus}
@@ -778,14 +819,14 @@ export default function ManageCoursesClient({
 
             <div className="flex flex-col">
               <Text type="secondary" className="text-sm font-medium mb-2">
-                Sắp xếp theo
+                {language === "vi" ? " Sắp xếp theo" : "Sort by"}
               </Text>
               <Select
                 value={sortOrder}
                 onChange={setSortOrder}
                 options={[
-                  { label: "Mới nhất", value: "newest" },
-                  { label: "Cũ nhất", value: "oldest" },
+                  { label: language === "vi" ? "Mới nhất" : "Newest", value: "newest" },
+                  { label: language === "vi" ? "Cũ nhất" : "Oldest", value: "oldest" },
                 ]}
                 size="middle"
                 className="w-full"
@@ -794,15 +835,15 @@ export default function ManageCoursesClient({
 
             <div className="flex flex-col justify-end">
               <Text type="secondary" className="text-sm font-medium mb-2">
-                Chế độ xem
+                {language === "vi" ? "Chế độ xem" : "View mode"}
               </Text>
               <Segmented
                 size="middle"
                 value={viewMode}
                 onChange={(value) => setViewMode(value as "list" | "grid")}
                 options={[
-                  { label: "Danh sách", value: "list" },
-                  { label: "Lưới", value: "grid" },
+                  { label: language === "vi" ? "Danh sách" : "List", value: "list" },
+                  { label: language === "vi" ? "Lưới" : "Grid", value: "grid" },
                 ]}
                 block
               />
@@ -819,7 +860,7 @@ export default function ManageCoursesClient({
                     onClick={handleClearFilters}
                     className="w-full"
                   >
-                    Xóa bộ lọc
+                    {language === "vi" ? "Xóa bộ lọc" : "Clear filters"}
                   </Button>
                 </Tooltip>
               </div>
@@ -841,7 +882,12 @@ export default function ManageCoursesClient({
                 pageSize: 10,
                 total: totalCount,
                 onChange: handlePageChange,
-                showTotal: (total) => `Tổng cộng ${total} khóa học`,
+                showTotal: (total) => (
+                  <span>
+                    {language === "vi" ? "Tổng cộng" : "Total"} {total}{" "}
+                    {language === "vi" ? "khóa học" : "courses"}
+                  </span>
+                ),
               }}
               bordered
               size="middle"
@@ -850,7 +896,9 @@ export default function ManageCoursesClient({
         ) : (
           <div className="p-6">
             {filteredCourses.length === 0 ? (
-              <div className="text-center py-8">Không tìm thấy khóa học</div>
+              <div className="text-center py-8">
+                {language === "vi" ? "Không tìm thấy khóa học" : "No courses found"}
+              </div>
             ) : (
               <Row gutter={[16, 16]}>
                 {filteredCourses.map((course) => (
@@ -864,14 +912,14 @@ export default function ManageCoursesClient({
                             alt={course.title}
                             className="h-40 w-full object-cover"
                             onError={(e) => {
-                              ;(e.target as HTMLImageElement).src =
+                              ; (e.target as HTMLImageElement).src =
                                 "https://via.placeholder.com/240x160?text=Không có hình ảnh"
                             }}
                           />
                         ) : (
                           <div className="h-40 w-full bg-gray-200 flex items-center justify-center">
                             <span className="text-gray-400">
-                              Không có hình ảnh
+                              {language === "vi" ? "Không có hình ảnh" : "No image available"}
                             </span>
                           </div>
                         )
@@ -906,6 +954,7 @@ export default function ManageCoursesClient({
                             <span className="text-xs">by</span>
                             <Avatar
                               size={22}
+                              className="flex-shrink-0"
                               src={
                                 (course as any).creator_avatar ||
                                 (course as any).creator_avatar_url ||
@@ -913,32 +962,22 @@ export default function ManageCoursesClient({
                                 (course as any).user_avatar ||
                                 undefined
                               }
-                              icon={
-                                !(
-                                  (course as any).creator_avatar ||
-                                  (course as any).creator_avatar_url ||
-                                  (course as any).avatar_url ||
-                                  (course as any).user_avatar
-                                ) ? (
-                                  <UserOutlined />
-                                ) : undefined
-                              }
                             >
                               {!(course as any).creator_avatar &&
-                              !(course as any).creator_avatar_url &&
-                              !(course as any).avatar_url &&
-                              !(course as any).user_avatar
+                                !(course as any).creator_avatar_url &&
+                                !(course as any).avatar_url &&
+                                !(course as any).user_avatar
                                 ? (
-                                    ((course as any).creator_name ||
-                                      (course as any).creator_full_name ||
-                                      (course as any).full_name ||
-                                      "Unknown user") as string
-                                  )
-                                    .split(" ")
-                                    .filter(Boolean)
-                                    .slice(0, 2)
-                                    .map((part) => part[0]?.toUpperCase())
-                                    .join("") || "U"
+                                  ((course as any).creator_name ||
+                                    (course as any).creator_full_name ||
+                                    (course as any).full_name ||
+                                    "Unknown user") as string
+                                )
+                                  .split(" ")
+                                  .filter(Boolean)
+                                  .slice(0, 2)
+                                  .map((part) => part[0]?.toUpperCase())
+                                  .join("") || "U"
                                 : null}
                             </Avatar>
                             <Text className="!mb-0 !text-gray-600 text-sm">
@@ -966,26 +1005,43 @@ export default function ManageCoursesClient({
                       </div>
                       <div className="mt-4 space-y-2">
                         <div className="flex gap-2">
-                          {canEditCourse(course) ? (
-                            <Button
-                              type="text"
-                              size="small"
-                              icon={<EditOutlined />}
-                              className="flex-1 text-blue-600 hover:!text-blue-700"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                handleOpenUpdate(course)
-                              }}
-                            >
-                              Chỉnh sửa
-                            </Button>
-                          ) : null}
+                          <Tooltip
+                            title={
+                              canEditCourse(course)
+                                ? language === "vi"
+                                  ? "Chỉnh sửa khóa học"
+                                  : "Edit Course"
+                                : language === "vi"
+                                  ? "Bạn chỉ có thể chỉnh sửa khóa học do bạn tạo"
+                                  : "You can only edit courses that you created"
+                            }
+                          >
+                            <span className="flex-1">
+                              <Button
+                                type="text"
+                                size="small"
+                                icon={<EditOutlined />}
+                                disabled={!canEditCourse(course)}
+                                className={
+                                  canEditCourse(course)
+                                    ? "w-full text-blue-600 hover:!text-blue-700"
+                                    : "w-full !text-gray-400 cursor-not-allowed"
+                                }
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleOpenUpdate(course)
+                                }}
+                              >
+                                {language === "vi" ? "Chỉnh sửa" : "Edit"}
+                              </Button>
+                            </span>
+                          </Tooltip>
                           <Tooltip
                             title={
                               course.status === "published"
-                                ? "Khóa học đã được xuất bản"
+                                ? language === "vi" ? "Khóa học đã được xuất bản" : "Course published"
                                 : course.status === "pending_approval"
-                                  ? "Khóa học đang chờ duyệt"
+                                  ? language === "vi" ? "Khóa học đang chờ duyệt" : "Course pending approval"
                                   : ""
                             }
                           >
@@ -1001,7 +1057,7 @@ export default function ManageCoursesClient({
                                 }
                                 className={
                                   course.status === "published" ||
-                                  course.status === "pending_approval"
+                                    course.status === "pending_approval"
                                     ? "w-full !text-gray-400 cursor-not-allowed"
                                     : "w-full hover:bg-red-50"
                                 }
@@ -1010,7 +1066,7 @@ export default function ManageCoursesClient({
                                   handleDelete(course)
                                 }}
                               >
-                                Xóa
+                                {language === "vi" ? "Xóa" : "Delete"}
                               </Button>
                             </span>
                           </Tooltip>
@@ -1019,7 +1075,7 @@ export default function ManageCoursesClient({
                           <Tooltip
                             title={
                               course.status !== "published"
-                                ? "Khóa học chưa được xuất bản"
+                                ? language === "vi" ? "Khóa học chưa được xuất bản" : "Course not published"
                                 : ""
                             }
                           >
@@ -1042,7 +1098,7 @@ export default function ManageCoursesClient({
                                   )
                                 }}
                               >
-                                Xem Ghi danh
+                                {language === "vi" ? "Xem Ghi danh" : "View Enrollments"}
                               </Button>
                             </span>
                           </Tooltip>
@@ -1051,7 +1107,7 @@ export default function ManageCoursesClient({
                           <Tooltip
                             title={
                               course.status !== "published"
-                                ? "Khóa học chưa được xuất bản"
+                                ? language === "vi" ? "Khóa học chưa được xuất bản" : "Course not published"
                                 : ""
                             }
                           >
@@ -1064,21 +1120,8 @@ export default function ManageCoursesClient({
                                 className={
                                   course.status !== "published"
                                     ? "w-full !text-gray-400 cursor-not-allowed"
-                                    : "w-full hover:bg-yellow-50"
+                                    : "w-full !text-yellow-700 hover:!text-amber-700 hover:bg-yellow-50"
                                 }
-                                style={
-                                  course.status === "published"
-                                    ? { color: "#ca8a04" }
-                                    : undefined
-                                }
-                                onMouseEnter={(e) => {
-                                  if (course.status !== "published") return
-                                  e.currentTarget.style.color = "#b45309"
-                                }}
-                                onMouseLeave={(e) => {
-                                  if (course.status !== "published") return
-                                  e.currentTarget.style.color = "#ca8a04"
-                                }}
                                 onClick={(e) => {
                                   e.stopPropagation()
                                   if (course.status !== "published") return
@@ -1087,7 +1130,7 @@ export default function ManageCoursesClient({
                                   )
                                 }}
                               >
-                                Xem Phản hồi
+                                {language === "vi" ? "Xem phản hồi" : "View Feedback"}
                               </Button>
                             </span>
                           </Tooltip>
@@ -1140,41 +1183,47 @@ export default function ManageCoursesClient({
 
       {/* Approve Confirmation Modal */}
       <Modal
-        title="Duyệt Khóa học"
+        title={language === "vi" ? "Duyệt Khóa học" : "Approve Course"}
         open={isApproveModalOpen}
         onOk={confirmApprove}
         onCancel={() => {
           setIsApproveModalOpen(false)
           setCourseToApprove(null)
         }}
-        okText="Duyệt"
-        cancelText="Hủy"
+        okText={language === "vi" ? "Duyệt" : "Approve"}
+        cancelText={language === "vi" ? "Hủy" : "Cancel"}
         okButtonProps={{ type: "primary" }}
         centered
       >
         <div>
-          Bạn có chắc chắn muốn duyệt <b>"{courseToApprove?.title}"</b>?
+          {language === "vi"
+            ? (<>Bạn có chắc chắn muốn duyệt <b>{courseToApprove?.title}</b>?</>)
+            : (<>Are you sure you want to approve <b>{courseToApprove?.title}</b>?</>)}
           <br />
           <span className="text-gray-500 text-sm">
-            Khóa học này sẽ được công bố và hiển thị cho sinh viên.
+            {language === "vi"
+              ? "Khóa học này sẽ được công bố và hiển thị cho sinh viên."
+              : "This course will be published and visible to students."}
           </span>
         </div>
       </Modal>
 
       {/* Delete Confirmation Modal */}
       <Modal
-        title="Xóa Khóa học"
+        title={language === "vi" ? "Xóa Khóa học" : "Delete Course"}
         open={isDeleteModalOpen}
         onOk={confirmDelete}
         onCancel={() => setIsDeleteModalOpen(false)}
-        okText="Xóa"
+        okText={language === "vi" ? "Xóa" : "Delete"}
         okType="danger"
-        cancelText="Hủy"
+        cancelText={language === "vi" ? "Hủy" : "Cancel"}
         centered
       >
         <p>
-          Bạn có chắc chắn muốn xóa "<b>{courseToDelete?.title}</b>"? Hành động
-          này sẽ chuyển khóa học vào thùng rác.
+          {language === "vi"
+            ? (<>Bạn có chắc chắn muốn xóa <b>{courseToDelete?.title}</b>? Hành động
+              này sẽ chuyển khóa học vào thùng rác.</>)
+            : (<>Are you sure you want to delete <b>{courseToDelete?.title}</b>? This action will move the course to the trash.</>)}
         </p>
       </Modal>
     </div>
