@@ -219,7 +219,7 @@ export default function ManageReviewsTable({
         rowKey="id"
         pagination={false}
         scroll={{ x: 1100 }}
-        locale={{ emptyText: "No reviews found" }}
+        locale={{ emptyText: "No feedback found" }}
       />
 
       <Modal

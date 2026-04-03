@@ -151,6 +151,163 @@ export async function getCourseById(id: number) {
   return getCourseByIdAction(id)
 }
 
+type CourseManagementAccessResult = {
+  allowed: boolean
+  redirectTo?: "/courses/management" | "/courses"
+  flash?: "course-not-found" | "course-access-denied" | "management-access-denied"
+}
+
+/**
+ * Check whether current user can access a specific course under management routes.
+ */
+export async function getCourseManagementAccess(
+  courseId: number
+): Promise<CourseManagementAccessResult> {
+  const user = await requireAuth()
+  const userId = Number(user.id)
+
+  if (!Number.isFinite(courseId) || courseId <= 0) {
+    return {
+      allowed: false,
+      redirectTo: "/courses/management",
+      flash: "course-not-found",
+    }
+  }
+
+  const courseRows = await sql`
+    SELECT
+      c.id,
+      c.creator_id,
+      creator.department_id AS creator_department_id
+    FROM courses c
+    LEFT JOIN users creator ON creator.id = c.creator_id
+    WHERE c.id = ${courseId} AND c.deleted_at IS NULL
+    LIMIT 1
+  `
+
+  if (courseRows.length === 0) {
+    return {
+      allowed: false,
+      redirectTo: "/courses/management",
+      flash: "course-not-found",
+    }
+  }
+
+  const course = courseRows[0] as {
+    creator_id: number
+    creator_department_id: number | null
+  }
+
+  const roleCheckRows = await sql`
+    SELECT
+      EXISTS (
+        SELECT 1
+        FROM user_roles ur
+        JOIN roles r ON ur.role_id = r.id
+        WHERE ur.user_id = ${userId}
+          AND r.name ILIKE '%admin%'
+      ) AS is_admin,
+      EXISTS (
+        SELECT 1
+        FROM user_roles ur
+        JOIN roles r ON ur.role_id = r.id
+        WHERE ur.user_id = ${userId}
+          AND r.name ILIKE '%director%'
+      ) AS is_director,
+      EXISTS (
+        SELECT 1
+        FROM user_roles ur
+        JOIN roles r ON ur.role_id = r.id
+        WHERE ur.user_id = ${userId}
+          AND r.name ILIKE '%training manager%'
+      ) AS is_training_manager,
+      EXISTS (
+        SELECT 1
+        FROM user_roles ur
+        JOIN roles r ON ur.role_id = r.id
+        WHERE ur.user_id = ${userId}
+          AND r.name ILIKE '%contributor%'
+      ) AS is_contributor,
+      EXISTS (
+        SELECT 1
+        FROM user_roles ur
+        JOIN roles r ON ur.role_id = r.id
+        WHERE ur.user_id = ${userId}
+          AND r.name ILIKE '%employee%'
+      ) AS is_employee,
+      (
+        SELECT d.id
+        FROM department d
+        WHERE d.head_of_department_id = ${userId}
+          AND d.is_deleted = FALSE
+        LIMIT 1
+      ) AS managed_department_id
+  `
+
+  const roleCheck = roleCheckRows[0] as {
+    is_admin: boolean
+    is_director: boolean
+    is_training_manager: boolean
+    is_contributor: boolean
+    is_employee: boolean
+    managed_department_id: number | null
+  }
+
+  if (roleCheck.is_admin || roleCheck.is_director) {
+    return { allowed: true }
+  }
+
+  if (roleCheck.is_contributor || roleCheck.is_employee) {
+    return {
+      allowed: false,
+      redirectTo: "/courses",
+      flash: "management-access-denied",
+    }
+  }
+
+  const managedDepartmentId =
+    roleCheck.managed_department_id !== null
+      ? Number(roleCheck.managed_department_id)
+      : null
+
+  if (roleCheck.is_training_manager) {
+    // Training Manager (Head of Department): can manage only courses in managed department.
+    if (managedDepartmentId !== null) {
+      const courseDepartmentId =
+        course.creator_department_id !== null
+          ? Number(course.creator_department_id)
+          : null
+
+      if (courseDepartmentId === managedDepartmentId) {
+        return { allowed: true }
+      }
+
+      return {
+        allowed: false,
+        redirectTo: "/courses/management",
+        flash: "course-access-denied",
+      }
+    }
+
+    // Training Manager (regular): can manage only own courses.
+    if (Number(course.creator_id) === userId) {
+      return { allowed: true }
+    }
+
+    return {
+      allowed: false,
+      redirectTo: "/courses/management",
+      flash: "course-access-denied",
+    }
+  }
+
+  return {
+    allowed: false,
+    redirectTo: "/courses",
+    flash: "management-access-denied",
+  }
+}
+
 // --- MUTATION ACTIONS ---
 
 /**

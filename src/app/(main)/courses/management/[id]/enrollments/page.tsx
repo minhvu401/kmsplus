@@ -4,9 +4,10 @@
 "use client"
 
 import React, { useEffect, useState } from "react"
-import { useParams, useSearchParams } from "next/navigation"
+import { useParams, useRouter, useSearchParams } from "next/navigation"
 import {
   Card,
+  message,
   Spin,
 } from "antd"
 import EnrollmentHeader from "@/components/ui/enrollments/enrollment-header"
@@ -14,7 +15,10 @@ import {
   getEnrollmentOverview,
   getCourseLearnerEnrollments,
 } from "@/action/enrollment/enrollmentAction"
-import { getCourseById } from "@/action/courses/courseAction"
+import {
+  getCourseById,
+  getCourseManagementAccess,
+} from "@/action/courses/courseAction"
 import { getActiveReviewsByCourse } from "@/action/reviews/reviewActions"
 import { getAllDepartments } from "@/action/department/departmentActions"
 import EnrollmentsSearchBar from "@/components/ui/enrollments/enrollments-search-bar"
@@ -27,7 +31,10 @@ import type { LearnerEnrollment } from "@/components/ui/enrollments/enrollment-t
 
 export default function CourseEnrollmentsPage() {
   const params = useParams()
+  const router = useRouter()
   const searchParams = useSearchParams()
+  const handledFlashRef = React.useRef<string | null>(null)
+  const [messageApi, contextHolder] = message.useMessage()
   const courseId = params?.id as string
   const query = (searchParams.get("query") || "").trim().toLowerCase()
   const statusFilter = searchParams.get("status") || "any"
@@ -47,9 +54,28 @@ export default function CourseEnrollmentsPage() {
     reviewCount: number
   } | null>(null)
   const [isLoadingLearners, setIsLoadingLearners] = useState(true)
+  const [isCheckingAccess, setIsCheckingAccess] = useState(true)
+  const [hasAccess, setHasAccess] = useState(false)
   const [learners, setLearners] = useState<LearnerEnrollment[]>([])
   const [departments, setDepartments] = useState<string[]>([])
   const [totalItems, setTotalItems] = useState(0)
+
+  useEffect(() => {
+    const flash = searchParams.get("flash")
+    if (flash !== "user-not-found") return
+    if (handledFlashRef.current === flash) return
+
+    handledFlashRef.current = flash
+
+    messageApi.error(
+      "We couldn't find that user. They may have not enrolled in this course."
+    )
+
+    const params = new URLSearchParams(searchParams.toString())
+    params.delete("flash")
+    const nextQuery = params.toString()
+    router.replace(nextQuery ? `?${nextQuery}` : "?", { scroll: false })
+  }, [messageApi, router, searchParams])
 
   useEffect(() => {
     const loadDepartments = async () => {
@@ -70,9 +96,47 @@ export default function CourseEnrollmentsPage() {
   }, [])
 
   useEffect(() => {
-    const loadLiveStats = async () => {
+    const checkAccess = async () => {
       const numericCourseId = Number(courseId)
-      if (!Number.isFinite(numericCourseId)) {
+
+      if (!Number.isFinite(numericCourseId) || numericCourseId <= 0) {
+        router.replace("/courses/management?flash=course-not-found")
+        return
+      }
+
+      try {
+        setIsCheckingAccess(true)
+        const access = await getCourseManagementAccess(numericCourseId)
+
+        if (!access.allowed) {
+          const target = access.redirectTo || "/courses/management"
+          const flash = access.flash ? `?flash=${access.flash}` : ""
+          router.replace(`${target}${flash}`)
+          return
+        }
+
+        setHasAccess(true)
+      } catch (error) {
+        console.error("Failed to verify course access:", error)
+        router.replace("/courses/management?flash=course-not-found")
+      } finally {
+        setIsCheckingAccess(false)
+      }
+    }
+
+    checkAccess()
+  }, [courseId, router])
+
+  useEffect(() => {
+    const loadLiveStats = async () => {
+      if (!hasAccess) {
+        setIsLoadingStats(false)
+        return
+      }
+
+      const numericCourseId = Number(courseId)
+      if (!Number.isFinite(numericCourseId) || numericCourseId <= 0) {
+        router.replace("/courses/management?flash=course-not-found")
         setIsLoadingStats(false)
         return
       }
@@ -89,6 +153,11 @@ export default function CourseEnrollmentsPage() {
             limit: 1,
           }).catch(() => null),
         ])
+
+        if (!course) {
+          router.replace("/courses/management?flash=course-not-found")
+          return
+        }
 
         const stats =
           overview && "stats" in overview && overview.success
@@ -126,18 +195,24 @@ export default function CourseEnrollmentsPage() {
         })
       } catch (error) {
         console.error("Failed to load live enrollment stats:", error)
+        router.replace("/courses/management?flash=course-not-found")
       } finally {
         setIsLoadingStats(false)
       }
     }
 
     loadLiveStats()
-  }, [courseId])
+  }, [courseId, hasAccess, router])
 
   useEffect(() => {
     const loadLearners = async () => {
+      if (!hasAccess) {
+        setIsLoadingLearners(false)
+        return
+      }
+
       const numericCourseId = Number(courseId)
-      if (!Number.isFinite(numericCourseId)) {
+      if (!Number.isFinite(numericCourseId) || numericCourseId <= 0) {
         setIsLoadingLearners(false)
         return
       }
@@ -178,6 +253,7 @@ export default function CourseEnrollmentsPage() {
     statusFilter,
     departmentFilter,
     sort,
+    hasAccess,
     safePage,
     safeLimit,
   ])
@@ -186,7 +262,8 @@ export default function CourseEnrollmentsPage() {
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen space-y-6 font-sans">
-      {isLoadingStats ? (
+      {contextHolder}
+      {isCheckingAccess || isLoadingStats ? (
         <div className="flex items-center justify-center min-h-[220px]">
           <Spin size="large" />
         </div>
