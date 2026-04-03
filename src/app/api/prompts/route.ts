@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { requireAuth } from "@/lib/auth"
 import { Permission } from "@/enum/permission.enum"
 import { Role } from "@/enum/role.enum"
-import { hasPermission } from "@/config/RolePermission.config"
+import { hasPermissionDynamic } from "@/service/rolePermission.service"
 import {
   getAllAIPrompts,
   getAIPromptByKey,
@@ -28,7 +28,11 @@ export async function GET() {
     const decoded = await verifyToken(token)
     const userRole = decoded.role as Role | undefined
 
-    if (!hasPermission(userRole, Permission.MANAGE_SYSTEM)) {
+    const hasPermissionFlag = await hasPermissionDynamic(
+      userRole,
+      Permission.MANAGE_SYSTEM
+    )
+    if (!hasPermissionFlag) {
       return NextResponse.json(
         { error: "Forbidden: You don't have permission to view prompts" },
         { status: 403 }
@@ -41,8 +45,15 @@ export async function GET() {
       success: true,
       data: prompts,
     })
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error fetching prompts:", error)
+    // Handle authorization errors
+    if (
+      error?.message?.includes("Unauthorized") ||
+      error?.message?.includes("Missing permission")
+    ) {
+      return NextResponse.json({ error: error.message }, { status: 403 })
+    }
     return NextResponse.json(
       { error: "Failed to fetch prompts" },
       { status: 500 }
@@ -67,7 +78,11 @@ export async function POST(request: Request) {
     const decoded = await verifyToken(token)
     const userRole = decoded.role as Role | undefined
 
-    if (!hasPermission(userRole, Permission.MANAGE_SYSTEM)) {
+    const hasPermissionFlag = await hasPermissionDynamic(
+      userRole,
+      Permission.MANAGE_SYSTEM
+    )
+    if (!hasPermissionFlag) {
       return NextResponse.json(
         { error: "Forbidden: You don't have permission to manage prompts" },
         { status: 403 }
@@ -100,8 +115,15 @@ export async function POST(request: Request) {
     } else {
       return NextResponse.json({ error: result.message }, { status: 500 })
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error saving prompt:", error)
+    // Handle authorization errors
+    if (
+      error?.message?.includes("Unauthorized") ||
+      error?.message?.includes("Missing permission")
+    ) {
+      return NextResponse.json({ error: error.message }, { status: 403 })
+    }
     return NextResponse.json(
       { error: "Failed to save prompt" },
       { status: 500 }

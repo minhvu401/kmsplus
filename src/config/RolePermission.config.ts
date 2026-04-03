@@ -259,6 +259,11 @@ export function hasRole(
   return userRole === requiredRole
 }
 
+/**
+ * @deprecated Use hasPermissionDynamic from rolePermission.service instead
+ * This is a synchronous fallback using hardcoded permissions
+ * For critical authorization checks, use the dynamic version from the service
+ */
 export function hasPermission(
   userRole: Role | undefined,
   requiredPermission: Permission
@@ -268,6 +273,10 @@ export function hasPermission(
   return permissions.includes(requiredPermission)
 }
 
+/**
+ * @deprecated Use hasAllPermissionsDynamic from rolePermission.service instead
+ * This is a synchronous fallback using hardcoded permissions
+ */
 export function hasAllPermissions(
   userRole: Role | undefined,
   requiredPermissions: Permission[]
@@ -279,6 +288,10 @@ export function hasAllPermissions(
   )
 }
 
+/**
+ * @deprecated Use hasAnyPermissionDynamic from rolePermission.service instead
+ * This is a synchronous fallback using hardcoded permissions
+ */
 export function hasAnyPermission(
   userRole: Role | undefined,
   requiredPermissions: Permission[]

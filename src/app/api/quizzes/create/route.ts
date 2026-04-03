@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
-import { requireAuth } from "@/lib/auth"
+import { requirePermission } from "@/lib/requirePermission"
+import { Permission } from "@/enum/permission.enum"
 import { createQuizAction } from "@/service/quiz.service"
 import { parseAndValidateQuizFormData } from "@/action/quiz/quizHelper"
 
@@ -19,8 +20,8 @@ import { parseAndValidateQuizFormData } from "@/action/quiz/quizHelper"
  */
 export async function POST(request: NextRequest) {
   try {
-    // Verify authentication
-    await requireAuth()
+    // Verify permission
+    await requirePermission(Permission.CREATE_QUIZ)
     console.log("[API] Authentication verified")
 
     const formData = await request.formData()
@@ -46,8 +47,18 @@ export async function POST(request: NextRequest) {
       { message: "Quiz created successfully" },
       { status: 201 }
     )
-  } catch (error) {
+  } catch (error: any) {
     console.error("[API] Error creating quiz:", error)
+    // Handle authorization errors
+    if (
+      error?.message?.includes("Unauthorized") ||
+      error?.message?.includes("Missing permission")
+    ) {
+      return NextResponse.json(
+        { success: false, message: error.message },
+        { status: 403 }
+      )
+    }
     const errorMessage =
       error instanceof Error ? error.message : "Failed to create quiz"
     return NextResponse.json({ error: errorMessage }, { status: 500 })

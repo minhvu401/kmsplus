@@ -1,17 +1,21 @@
 import { NextRequest, NextResponse } from "next/server"
-import { requireAuth } from "@/lib/auth"
+import { requirePermission } from "@/lib/requirePermission"
+import { Permission } from "@/enum/permission.enum"
 import { updateQuizAction } from "@/service/quiz.service"
 import { sanitizeTitle, sanitizeDescription } from "@/utils/sanitize"
 
 export async function PUT(request: NextRequest) {
   try {
-    await requireAuth()
+    await requirePermission(Permission.UPDATE_QUIZ)
 
     const formData = await request.formData()
 
     const id = Number(formData.get("id"))
     if (!id) {
-      return NextResponse.json({ error: "Quiz ID is required" }, { status: 400 })
+      return NextResponse.json(
+        { error: "Quiz ID is required" },
+        { status: 400 }
+      )
     }
 
     const title = formData.get("title") as string
@@ -62,8 +66,18 @@ export async function PUT(request: NextRequest) {
     const updatedQuiz = await updateQuizAction(id, updateData)
 
     return NextResponse.json({ success: true, quiz: updatedQuiz })
-  } catch (error) {
+  } catch (error: any) {
     console.error("Update quiz error:", error)
+    // Handle authorization errors
+    if (
+      error?.message?.includes("Unauthorized") ||
+      error?.message?.includes("Missing permission")
+    ) {
+      return NextResponse.json(
+        { success: false, message: error.message },
+        { status: 403 }
+      )
+    }
     const errorMsg = error instanceof Error ? error.message : "Unknown error"
     return NextResponse.json({ error: errorMsg }, { status: 500 })
   }

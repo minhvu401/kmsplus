@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server"
 import { verifyToken } from "@/lib/auth"
 import { PageRoute } from "@/enum/page-route.enum"
 import { Role } from "@/enum/role.enum"
-import { hasPermission } from "@/config/RolePermission.config"
+import { hasPermissionDynamic } from "@/service/rolePermission.service"
 import { Permission } from "@/enum/permission.enum"
 
 // Danh sách routes public (không cần login)
@@ -82,7 +82,11 @@ export async function middleware(request: NextRequest) {
       // Kiểm tra quyền truy cập user-management
       if (pathname.startsWith(PageRoute.USER_MANAGEMENT)) {
         const userRole = decoded.role as Role
-        if (!hasPermission(userRole, Permission.MANAGE_USERS)) {
+        const hasPermissionFlag = await hasPermissionDynamic(
+          userRole,
+          Permission.MANAGE_USERS
+        )
+        if (!hasPermissionFlag) {
           return NextResponse.redirect(
             new URL(PageRoute.DASHBOARD_METRICS, request.url)
           )
