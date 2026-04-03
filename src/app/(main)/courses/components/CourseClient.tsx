@@ -3,7 +3,8 @@
 
 import type { Course } from "@/service/course.service"
 import React, { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
+import { message } from "antd"
 import { CourseSearchHero } from "@/components/ui/courses/course-search-hero"
 import { CourseSection } from "@/components/ui/courses/course-section"
 import { TrendingCourses } from "@/components/ui/courses/trending-courses"
@@ -42,6 +43,10 @@ export default function CourseClient({
   currentSearchParams = {},
 }: CourseClientProps) {
   const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const [messageApi, contextHolder] = message.useMessage()
+  const handledFlashRef = React.useRef<string | null>(null)
 
   // State for each course section
   const [resumeCourses, setResumeCourses] = useState<Course[]>([])
@@ -175,6 +180,20 @@ export default function CourseClient({
     fetchNewCourses()
   }, [initialCourses])
 
+  useEffect(() => {
+    const flash = searchParams.get("flash")
+    if (flash !== "management-access-denied") return
+    if (handledFlashRef.current === flash) return
+
+    handledFlashRef.current = flash
+    messageApi.error("You do not have permission to access course management.")
+
+    const params = new URLSearchParams(searchParams.toString())
+    params.delete("flash")
+    const nextQuery = params.toString()
+    router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname)
+  }, [messageApi, pathname, router, searchParams])
+
   const handleSearch = (query: string) => {
     const params = new URLSearchParams()
     if (query.trim()) {
@@ -187,6 +206,7 @@ export default function CourseClient({
   // --- RENDER ---
   return (
     <div>
+      {contextHolder}
       {/* Hero Section with Search */}
       <CourseSearchHero onSearch={handleSearch} />
 
