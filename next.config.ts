@@ -4,6 +4,17 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   serverExternalPackages: ["bcryptjs", "jsonwebtoken"],
 
+  // OPTIMIZED: Image optimization
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "**",
+      },
+    ],
+    formats: ["image/avif", "image/webp"],
+  },
+
   // Optimize Ant Design compilation
   transpilePackages: [
     "antd",
@@ -14,12 +25,22 @@ const nextConfig: NextConfig = {
     "rc-picker",
   ],
 
-  // Speed up dev build
+  // OPTIMIZED: Enable SWC minification for faster builds
+  swcMinify: true,
+
+  // Compress static assets
+  compress: true,
+
+  // Speed up dev build & Experimental optimizations
   experimental: {
-    optimizePackageImports: ["antd", "@ant-design/icons"],
+    optimizePackageImports: [
+      "antd",
+      "@ant-design/icons",
+      "lucide-react",
+      "recharts",
+    ],
 
     serverActions: {
-      // 👇 THÊM ĐOẠN NÀY VÀO ĐÂY ĐỂ FIX LỖI 1MB LIMIT
       bodySizeLimit: "5mb",
     },
   },

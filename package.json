@@ -11,6 +11,7 @@
     "preinstall": "npx only-allow pnpm",
     "dev": "next dev",
     "build": "next build",
+    "analyze-build": "node scripts/analyze-bundle.mjs",
     "start": "next start",
     "lint": "next lint",
     "format": "prettier --write .",

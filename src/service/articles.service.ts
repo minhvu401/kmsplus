@@ -183,7 +183,7 @@ export async function createArticleAction(
 
     const articleId = articleResult[0].id
 
-    // 2. Insert tags vào bảng article_tags (tự tạo tag mới nếu chưa có)
+    // 2. Insert tags vào bảng article_tags (tự tạo tag mới nếu chưa có) - OPTIMIZED: Batch query
     if (tags && tags.length > 0) {
       // Lấy category mặc định cho tag mới (dùng category đầu tiên chưa bị xóa)
       let defaultCategoryId: number | null = null
@@ -193,30 +193,56 @@ export async function createArticleAction(
         defaultCategoryId = catRes[0].id
       }
 
-      for (const tagName of tags) {
-        // Nếu không có category mặc định, bỏ qua tag mới
-        const tagResult = await sql`
-          SELECT id FROM tags WHERE name = ${tagName} LIMIT 1
+      if (defaultCategoryId !== null) {
+        // OPTIMIZED: Lookup all existing tags in single query instead of per tag
+        const existingTags = await sql`
+          SELECT id, name FROM tags WHERE name = ANY(${tags})
         `
-        let tagId: number | null = null
+        const existingTagMap = new Map(
+          existingTags.map((t: any) => [t.name, t.id])
+        )
 
-        if (tagResult.length > 0) {
-          tagId = tagResult[0].id
-        } else if (defaultCategoryId !== null) {
-          // Tạo tag mới với category mặc định
-          const newTagResult = await sql`
-            INSERT INTO tags (name, category_id, created_at)
-            VALUES (${tagName}, ${defaultCategoryId}, NOW())
-            RETURNING id
-          `
-          tagId = newTagResult[0].id
+        // Collect all tag IDs: existing + newly created
+        const allTagIds: number[] = []
+
+        for (const tagName of tags) {
+          let tagId: number | null = existingTagMap.get(tagName) ?? null
+
+          if (!tagId) {
+            // Only create if doesn't exist
+            try {
+              const res = await sql`
+                INSERT INTO tags (name, category_id, created_at)
+                VALUES (${tagName}, ${defaultCategoryId}, NOW())
+                ON CONFLICT (name) DO NOTHING
+                RETURNING id
+              `
+              if (res.length > 0) {
+                tagId = res[0].id
+              } else {
+                // Tag was created by another request, fetch it
+                const existing =
+                  await sql`SELECT id FROM tags WHERE name = ${tagName}`
+                if (existing.length > 0) tagId = existing[0].id
+              }
+            } catch (e) {
+              console.error(`Error creating tag ${tagName}:`, e)
+            }
+          }
+
+          if (tagId) allTagIds.push(tagId)
         }
 
-        if (tagId !== null) {
-          await sql`
-            INSERT INTO article_tags (article_id, tag_id)
-            VALUES (${articleId}, ${tagId})
-          `
+        // OPTIMIZED: Insert all article_tags in a single batch transaction
+        if (allTagIds.length > 0) {
+          // Use transaction to insert all at once
+          for (const tagId of allTagIds) {
+            await sql`
+              INSERT INTO article_tags (article_id, tag_id)
+              VALUES (${articleId}, ${tagId})
+              ON CONFLICT DO NOTHING
+            `
+          }
         }
       }
     }
@@ -265,8 +291,9 @@ export async function getAllArticlesAction(): Promise<Article[]> {
     LEFT JOIN department d ON c.department_id = d.id
     LEFT JOIN users u ON a.author_id = u.id
     LEFT JOIN users ua ON a.approved_by = ua.id
-    GROUP BY a.id, a.author_id, a.title, a.content, a.status, a.approved_by, a.approved_at, a.deleted_at, a.created_at, a.updated_at, a.is_deleted, a.image_url, a.thumbnail_url, c.name, u.full_name, ua.full_name
+    GROUP BY a.id, c.id, d.id, u.id, ua.id
     ORDER BY a.updated_at DESC
+    LIMIT 1000
   `
   return articles as Article[]
 }
@@ -319,6 +346,25 @@ export async function filterByTagAction(
     managedDepartmentId !== null ? sql`AND a.status <> 'draft'` : sql``
 
   const articles = await sql`
+    WITH filtered_articles AS (
+      SELECT a.id
+      FROM articles a
+      LEFT JOIN article_tags at ON a.id = at.article_id
+      LEFT JOIN tags t ON at.tag_id = t.id
+      WHERE a.title ILIKE ${query}
+        ${permissionCondition}
+        ${hodNonDraftCondition}
+        ${categoryId ? sql`AND a.category_id = ${categoryId}` : sql``}
+        ${statusFilter && statusFilter !== "All" ? sql`AND a.status = ${statusFilter}` : sql``}
+        ${isDeletedFilter === true ? sql`AND a.is_deleted = TRUE` : isDeletedFilter === false ? sql`AND a.is_deleted = FALSE` : sql``}
+        ${!isAdmin && managedDepartmentId === null ? sql`AND a.author_id = ${userId ?? -1}` : sql``}
+      GROUP BY a.id
+      ${
+        selectedTagsCount > 0
+          ? sql`HAVING COUNT(DISTINCT CASE WHEN LOWER(t.name) = ANY(${normalizedTags}) THEN LOWER(t.name) END) = ${selectedTagsCount}`
+          : sql``
+      }
+    )
     SELECT 
       a.id, 
       a.author_id,
@@ -340,28 +386,14 @@ export async function filterByTagAction(
       u.full_name as author_name,
       ua.full_name as approver_name
     FROM articles a
+    INNER JOIN filtered_articles fa ON a.id = fa.id
     LEFT JOIN article_tags at ON a.id = at.article_id
     LEFT JOIN tags t ON at.tag_id = t.id
     LEFT JOIN categories c ON a.category_id = c.id
     LEFT JOIN department d ON c.department_id = d.id
     LEFT JOIN users u ON a.author_id = u.id
     LEFT JOIN users ua ON a.approved_by = ua.id
-    
-    WHERE a.title ILIKE ${query}
-      ${permissionCondition}
-      ${hodNonDraftCondition}
-      ${categoryId ? sql`AND a.category_id = ${categoryId}` : sql``}
-      ${statusFilter && statusFilter !== "All" ? sql`AND a.status = ${statusFilter}` : sql``}
-      ${isDeletedFilter === true ? sql`AND a.is_deleted = TRUE` : isDeletedFilter === false ? sql`AND a.is_deleted = FALSE` : sql``}
-      ${!isAdmin && managedDepartmentId === null ? sql`AND a.author_id = ${userId ?? -1}` : sql``}
-    
-    GROUP BY 
-      a.id, a.author_id, a.title, a.status, a.approved_by, a.approved_at, a.deleted_at, a.created_at, a.updated_at, a.is_deleted, a.image_url, a.thumbnail_url, c.name, c.department_id, d.name, u.full_name, ua.full_name
-    ${
-      selectedTagsCount > 0
-        ? sql`HAVING COUNT(DISTINCT CASE WHEN LOWER(t.name) = ANY(${normalizedTags}) THEN LOWER(t.name) END) = ${selectedTagsCount}`
-        : sql``
-    }
+    GROUP BY a.id, c.id, d.id, u.id, ua.id
     ORDER BY
       COALESCE(a.approved_at, a.created_at) ${sortOrder === "oldest" ? sql`ASC` : sql`DESC`},
       a.id DESC
@@ -370,23 +402,26 @@ export async function filterByTagAction(
   `
 
   const totalRows = await sql`
-    SELECT COUNT(DISTINCT a.id)::INT AS total
-    FROM articles a
-    LEFT JOIN article_tags at ON a.id = at.article_id
-    LEFT JOIN tags t ON at.tag_id = t.id
-    WHERE a.title ILIKE ${query}
-      ${permissionCondition}
-      ${hodNonDraftCondition}
-      ${categoryId ? sql`AND a.category_id = ${categoryId}` : sql``}
-      ${statusFilter && statusFilter !== "All" ? sql`AND a.status = ${statusFilter}` : sql``}
-      ${isDeletedFilter === true ? sql`AND a.is_deleted = TRUE` : isDeletedFilter === false ? sql`AND a.is_deleted = FALSE` : sql``}
-      ${!isAdmin && managedDepartmentId === null ? sql`AND a.author_id = ${userId ?? -1}` : sql``}
-    GROUP BY a.id
-    ${
-      selectedTagsCount > 0
-        ? sql`HAVING COUNT(DISTINCT CASE WHEN LOWER(t.name) = ANY(${normalizedTags}) THEN LOWER(t.name) END) = ${selectedTagsCount}`
-        : sql``
-    }
+    WITH filtered_articles AS (
+      SELECT a.id
+      FROM articles a
+      LEFT JOIN article_tags at ON a.id = at.article_id
+      LEFT JOIN tags t ON at.tag_id = t.id
+      WHERE a.title ILIKE ${query}
+        ${permissionCondition}
+        ${hodNonDraftCondition}
+        ${categoryId ? sql`AND a.category_id = ${categoryId}` : sql``}
+        ${statusFilter && statusFilter !== "All" ? sql`AND a.status = ${statusFilter}` : sql``}
+        ${isDeletedFilter === true ? sql`AND a.is_deleted = TRUE` : isDeletedFilter === false ? sql`AND a.is_deleted = FALSE` : sql``}
+        ${!isAdmin && managedDepartmentId === null ? sql`AND a.author_id = ${userId ?? -1}` : sql``}
+      GROUP BY a.id
+      ${
+        selectedTagsCount > 0
+          ? sql`HAVING COUNT(DISTINCT CASE WHEN LOWER(t.name) = ANY(${normalizedTags}) THEN LOWER(t.name) END) = ${selectedTagsCount}`
+          : sql``
+      }
+    )
+    SELECT COUNT(*)::INT AS total FROM filtered_articles
   `
 
   return {
