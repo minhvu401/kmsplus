@@ -6,6 +6,8 @@ import { sql } from "@/lib/database"
 import { getCurrentUser } from "@/lib/auth"
 import { revalidatePath } from "next/cache"
 import { requireAuth } from "@/lib/auth"
+import { requirePermission } from "@/lib/requirePermission"
+import { Permission } from "@/enum/permission.enum"
 import {
   getEnrollmentOverviewService,
   getCourseLearnerEnrollmentsService,
@@ -14,6 +16,7 @@ import {
 
 export async function enrollCourseAction(courseId: number) {
   try {
+    await requirePermission(Permission.ENROLL_COURSE)
     const user = await getCurrentUser()
     if (!user?.id) return { success: false, error: "Vui lòng đăng nhập" }
     const userId = Number(user.id)
@@ -111,7 +114,7 @@ export async function checkEnrollmentStatus(courseId: number, userId: number) {
 // 👇 HÀM MỚI
 export async function getEnrollmentOverview(courseId?: number) {
   try {
-    await requireAuth()
+    await requirePermission(Permission.VIEW_COURSE_STATISTICS)
     const result = await getEnrollmentOverviewService(courseId)
     return result
   } catch (error: any) {
@@ -133,7 +136,7 @@ export async function getCourseLearnerEnrollments(params: {
   limit?: number
 }) {
   try {
-    await requireAuth()
+    await requirePermission(Permission.VIEW_COURSE_STATISTICS)
     return await getCourseLearnerEnrollmentsService(params)
   } catch (error: any) {
     console.error("🔐 [SERVER] Error in getCourseLearnerEnrollments:", error)
@@ -154,6 +157,7 @@ export async function getCourseLearnerEnrollmentDetail(params: {
   userId: number
 }) {
   try {
+    await requirePermission(Permission.VIEW_COURSE_STATISTICS)
     await requireAuth()
     return await getCourseLearnerEnrollmentDetailService(params)
   } catch (error: any) {

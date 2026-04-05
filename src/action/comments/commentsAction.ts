@@ -1,6 +1,8 @@
 "use server"
 
 import { requireAuth } from "@/lib/auth"
+import { requirePermission } from "@/lib/requirePermission"
+import { Permission } from "@/enum/permission.enum"
 import {
   getCommentsByArticleId,
   createCommentAction,
@@ -9,12 +11,13 @@ import {
 } from "@/service/comments.service"
 
 export async function getComments(articleId: number) {
-  await requireAuth()
+  await requirePermission(Permission.READ_ARTICLE)
   return getCommentsByArticleId(articleId)
 }
 
 export async function createComment(formData: FormData) {
   try {
+    await requirePermission(Permission.COMMENT_ARTICLE)
     const currentUser = await requireAuth()
 
     const article_id = parseInt(formData.get("article_id") as string)
@@ -44,6 +47,7 @@ export async function createComment(formData: FormData) {
 
 export async function updateComment(formData: FormData) {
   try {
+    await requirePermission(Permission.EDIT_ARTICLE_COMMENT)
     const currentUser = await requireAuth()
 
     const id = parseInt(formData.get("id") as string)
@@ -71,6 +75,7 @@ export async function updateComment(formData: FormData) {
 
 export async function deleteComment(commentId: number) {
   try {
+    await requirePermission(Permission.DELETE_ARTICLE_COMMENT)
     const currentUser = await requireAuth()
     return await deleteCommentAction(commentId, parseInt(currentUser.id))
   } catch (error: any) {

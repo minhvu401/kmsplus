@@ -1,20 +1,22 @@
 "use server"
 
 import { requireAuth } from "@/lib/auth"
-import { 
-  getAllCategoriesAction, 
-  getCategoryByIdAction, 
-  createCategoryAction, 
-  updateCategoryAction, 
+import { requirePermission } from "@/lib/requirePermission"
+import { Permission } from "@/enum/permission.enum"
+import {
+  getAllCategoriesAction,
+  getCategoryByIdAction,
+  createCategoryAction,
+  updateCategoryAction,
   deleteCategoryAction,
-  restoreCategoryAction
+  restoreCategoryAction,
 } from "@/service/categories.service"
 
 /**
  * Get all categories
  */
 export async function getAllCategories() {
-  await requireAuth()
+  await requirePermission(Permission.VIEW_CATEGORY_LIST)
   return getAllCategoriesAction()
 }
 
@@ -23,13 +25,13 @@ export async function getAllCategories() {
  */
 export async function getCategoryById(id: number) {
   try {
-    await requireAuth()
+    await requirePermission(Permission.VIEW_CATEGORY_LIST)
     return await getCategoryByIdAction(id)
   } catch (error: any) {
-    console.error('Error fetching category:', error)
-    return { 
-      success: false, 
-      message: error?.message || 'Failed to fetch category' 
+    console.error("Error fetching category:", error)
+    return {
+      success: false,
+      message: error?.message || "Failed to fetch category",
     }
   }
 }
@@ -39,16 +41,16 @@ export async function getCategoryById(id: number) {
  */
 export async function createCategory(formData: FormData) {
   try {
-    await requireAuth()
-    
-    const name = formData.get('name') as string
-    const departmentIdRaw = formData.get('department_id') as string | null
+    await requirePermission(Permission.CREATE_CATEGORY)
+
+    const name = formData.get("name") as string
+    const departmentIdRaw = formData.get("department_id") as string | null
     const department_id = departmentIdRaw ? parseInt(departmentIdRaw, 10) : null
 
     if (!name) {
-      return { 
-        success: false, 
-        message: 'Category name is required' 
+      return {
+        success: false,
+        message: "Category name is required",
       }
     }
 
@@ -59,10 +61,10 @@ export async function createCategory(formData: FormData) {
 
     return result
   } catch (error: any) {
-    console.error('Error in createCategory action:', error)
-    return { 
-      success: false, 
-      message: error?.message || 'Failed to create category' 
+    console.error("Error in createCategory action:", error)
+    return {
+      success: false,
+      message: error?.message || "Failed to create category",
     }
   }
 }
@@ -72,17 +74,17 @@ export async function createCategory(formData: FormData) {
  */
 export async function updateCategory(formData: FormData) {
   try {
-    await requireAuth()
-    
-    const id = formData.get('id') as string
-    const name = formData.get('name') as string
-    const departmentIdRaw = formData.get('department_id') as string | null
+    await requirePermission(Permission.UPDATE_CATEGORY)
+
+    const id = formData.get("id") as string
+    const name = formData.get("name") as string
+    const departmentIdRaw = formData.get("department_id") as string | null
     const department_id = departmentIdRaw ? parseInt(departmentIdRaw, 10) : null
 
     if (!id || !name) {
-      return { 
-        success: false, 
-        message: 'Category ID and name are required' 
+      return {
+        success: false,
+        message: "Category ID and name are required",
       }
     }
 
@@ -94,10 +96,10 @@ export async function updateCategory(formData: FormData) {
 
     return result
   } catch (error: any) {
-    console.error('Error in updateCategory action:', error)
-    return { 
-      success: false, 
-      message: error?.message || 'Failed to update category' 
+    console.error("Error in updateCategory action:", error)
+    return {
+      success: false,
+      message: error?.message || "Failed to update category",
     }
   }
 }
@@ -106,7 +108,7 @@ export async function updateCategory(formData: FormData) {
  * Delete category (soft delete)
  */
 export async function deleteCategory(id: number) {
-  await requireAuth()
+  await requirePermission(Permission.DELETE_CATEGORY)
   return deleteCategoryAction(id)
 }
 
@@ -114,6 +116,6 @@ export async function deleteCategory(id: number) {
  * Restore deleted category
  */
 export async function restoreCategory(id: number) {
-  await requireAuth()
+  await requirePermission(Permission.DELETE_CATEGORY)
   return restoreCategoryAction(id)
 }

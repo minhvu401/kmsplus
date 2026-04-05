@@ -4,6 +4,8 @@
 "use server"
 
 import { requireAuth } from "@/lib/auth"
+import { requirePermission } from "@/lib/requirePermission"
+import { Permission } from "@/enum/permission.enum"
 import { CourseStatus } from "@/enum/course-status.enum"
 import {
   getAllCategoriesAction, // ✅ Import hàm từ service
@@ -83,6 +85,7 @@ async function validateCategoryPermission(
  */
 export async function getCategoriesAPI() {
   try {
+    await requirePermission(Permission.VIEW_COURSE_LIST)
     const user = await requireAuth()
     if (!user?.id) return []
 
@@ -134,6 +137,7 @@ export async function getCategoriesAPI() {
 // --- FETCH ACTIONS ---
 
 export async function getAllCourses(params: GetAllCoursesParams) {
+  await requirePermission(Permission.VIEW_COURSE_LIST)
   const user = await requireAuth() // Lấy thông tin user hiện tại
   console.log(`🔍 [ACTION DEBUG] User from requireAuth:`, user)
   console.log(
@@ -148,7 +152,7 @@ export async function getAllCourses(params: GetAllCoursesParams) {
 }
 
 export async function getCourseById(id: number) {
-  await requireAuth()
+  await requirePermission(Permission.READ_COURSE)
   return getCourseByIdAction(id)
 }
 
@@ -319,6 +323,7 @@ export async function getCourseManagementAccess(
  */
 export async function deleteCourseAPI(courseId: number) {
   try {
+    await requirePermission(Permission.DELETE_COURSE)
     const user = await requireAuth()
     if (!user) throw new Error("Unauthorized")
 
@@ -347,6 +352,7 @@ export async function createCourseAPI(
   data: Omit<CreateCoursePayload, "creator_id">
 ): Promise<APIResponse> {
   try {
+    await requirePermission(Permission.CREATE_COURSE)
     const user = await requireAuth()
     if (!user?.id) throw new Error("Unauthorized")
 
@@ -406,6 +412,7 @@ export async function updateCourseAPI(
   data: Partial<CreateCoursePayload>
 ): Promise<UpdateAPIResponse> {
   try {
+    await requirePermission(Permission.UPDATE_COURSE)
     const user = await requireAuth()
     if (!user?.id) throw new Error("Unauthorized")
 
@@ -448,6 +455,7 @@ export async function updateCourseAPI(
 
 export async function approveCourse(id: number) {
   try {
+    await requirePermission(Permission.APPROVE_COURSE)
     const user = await requireAuth()
     if (!user?.id) throw new Error("Unauthorized")
 
@@ -476,8 +484,7 @@ export async function approveCourse(id: number) {
 
 export async function rejectCourseAction(courseId: number, reason: string) {
   try {
-    // 1. Bảo mật: Chỉ Admin/Manager mới được reject (Tùy logic dự án của bạn)
-    await requireAuth()
+    await requirePermission(Permission.APPROVE_COURSE)
     const user = await requireAuth()
     if (!user) return { success: false, error: "Unauthorized" }
 
