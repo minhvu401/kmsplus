@@ -1,6 +1,8 @@
 "use server"
 
 import { requireAuth } from "@/lib/auth"
+import { requirePermission } from "@/lib/requirePermission"
+import { Permission } from "@/enum/permission.enum"
 import * as service from "@/service/ai-suggestion.service"
 import { revalidatePath } from "next/cache"
 
@@ -9,6 +11,7 @@ import { revalidatePath } from "next/cache"
  */
 export async function analyzeQATopics(days: number = 30) {
   try {
+    await requirePermission(Permission.VIEW_STATISTICS)
     const topics = await service.analyzeTopic(days)
     return {
       success: true,
@@ -29,6 +32,7 @@ export async function analyzeQATopics(days: number = 30) {
  */
 export async function getTopQATopic(days: number = 30) {
   try {
+    await requirePermission(Permission.VIEW_STATISTICS)
     const topic = await service.getTopTopic(days)
     return {
       success: true,
@@ -49,15 +53,7 @@ export async function getTopQATopic(days: number = 30) {
  */
 export async function createAISuggestion(days: number = 30) {
   try {
-    const user = await requireAuth()
-
-    // Check if user is admin
-    if (user.role !== "admin") {
-      return {
-        success: false,
-        error: "Only admins can create suggestions",
-      }
-    }
+    await requirePermission(Permission.MANAGE_SYSTEM)
 
     // Check if should create new suggestion
     const shouldCreate = await service.shouldCreateNewSuggestion(days)
@@ -107,14 +103,7 @@ export async function createAISuggestion(days: number = 30) {
  */
 export async function approveSuggestion(suggestionId: number) {
   try {
-    const user = await requireAuth()
-
-    if (user.role !== "admin") {
-      return {
-        success: false,
-        error: "Only admins can approve suggestions",
-      }
-    }
+    const user = await requirePermission(Permission.MANAGE_SYSTEM)
 
     const updated = await service.updateSuggestionStatus(
       suggestionId,
@@ -145,14 +134,7 @@ export async function approveSuggestion(suggestionId: number) {
  */
 export async function dismissSuggestion(suggestionId: number) {
   try {
-    const user = await requireAuth()
-
-    if (user.role !== "admin") {
-      return {
-        success: false,
-        error: "Only admins can dismiss suggestions",
-      }
-    }
+    const user = await requirePermission(Permission.MANAGE_SYSTEM)
 
     const updated = await service.updateSuggestionStatus(
       suggestionId,

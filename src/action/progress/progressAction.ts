@@ -2,6 +2,8 @@
 "use server"
 
 import { requireAuth, getCurrentUser } from "@/lib/auth"
+import { requirePermission } from "@/lib/requirePermission"
+import { Permission } from "@/enum/permission.enum"
 import { revalidatePath } from "next/cache"
 import {
   getPersonalHistoryService,
@@ -14,6 +16,7 @@ import {
  * US-01: View Personal History (Protected)
  */
 export async function getPersonalHistory() {
+  await requirePermission(Permission.VIEW_PERSONAL_PROGRESS)
   await requireAuth()
   const user = await getCurrentUser()
   if (!user) return { success: false, error: "User not found" }
@@ -30,6 +33,7 @@ export async function updateProgress(
   itemId: number,
   itemType: "lesson" | "quiz"
 ) {
+  await requirePermission(Permission.VIEW_PERSONAL_PROGRESS)
   await requireAuth()
   const user = await getCurrentUser()
   if (!user) return { success: false, error: "User not found" }

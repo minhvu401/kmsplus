@@ -4,6 +4,8 @@
 import { sql } from "@/lib/database"
 import { z } from "zod"
 import { requireAuth } from "@/lib/auth"
+import { requirePermission } from "@/lib/requirePermission"
+import { Permission } from "@/enum/permission.enum"
 import {
   getAllQuizzesAction,
   getQuizByIdAction,
@@ -62,7 +64,7 @@ async function requireAttemptOwner(attemptId: number, userId: number) {
  * - Yêu cầu xác thực (requireAuth)
  */
 export async function getAllQuizzes(params: GetAllQuizzesParams) {
-  await requireAuth()
+  await requirePermission(Permission.VIEW_QUIZ_LIST)
   return getAllQuizzesAction(params)
 }
 
@@ -73,18 +75,19 @@ export async function getAllQuizzes(params: GetAllQuizzesParams) {
  * - Yêu cầu xác thực (requireAuth)
  */
 export async function getQuizById(id: number) {
-  await requireAuth()
+  await requirePermission(Permission.VIEW_QUIZ)
   return getQuizByIdAction(id)
 }
 
 export async function getQuizByCurriculumItemId(curriculumItemId: number) {
-  await requireAuth()
+  await requirePermission(Permission.VIEW_QUIZ)
   return getQuizByCurriculumItemIdAction(curriculumItemId)
 }
 
 export async function getAttemptHistoryForCurriculumItem(
   curriculumItemId: number
 ) {
+  await requirePermission(Permission.VIEW_QUIZ_RESULT)
   const user = await requireAuth()
   return getAttemptHistoryForCurriculumItemAction(
     curriculumItemId,
@@ -112,6 +115,7 @@ export async function getAttemptHistoryForCurriculumItem(
  * - Yêu cầu xác thực (requireAuth) + quyền CREATE_COURSE
  */
 export async function createQuiz(formData: FormData) {
+  await requirePermission(Permission.CREATE_QUIZ)
   const course_id = Number(formData.get("course_id"))
   const title = (formData.get("title") as string) || ""
   const description = (formData.get("description") as string) || ""
@@ -178,6 +182,7 @@ export async function createQuiz(formData: FormData) {
  * - Yêu cầu xác thực (requireAuth)
  */
 export async function updateQuiz(formData: FormData) {
+  await requirePermission(Permission.UPDATE_QUIZ)
   await requireAuth()
 
   const id = Number(formData.get("id"))
@@ -222,6 +227,7 @@ export async function updateQuiz(formData: FormData) {
  * - Yêu cầu xác thực (requireAuth)
  */
 export async function deleteQuiz(id: number) {
+  await requirePermission(Permission.DELETE_QUIZ)
   await requireAuth()
   await deleteQuizAction(id)
   revalidatePath("/quizzes")
@@ -234,6 +240,7 @@ export async function deleteQuiz(id: number) {
  * - Yêu cầu xác thực (requireAuth)
  */
 export async function getQuizQuestions(quizId: number) {
+  await requirePermission(Permission.VIEW_QUIZ_QUESTION)
   await requireAuth()
   return getQuizQuestionsAction(quizId)
 }
@@ -247,6 +254,7 @@ export async function updateQuizQuestions(
   quizId: number,
   questionIds: number[]
 ) {
+  await requirePermission(Permission.EDIT_QUIZ_QUESTION)
   await requireAuth()
   await updateQuizQuestionsAction(quizId, questionIds)
   revalidatePath(`/quizzes/${quizId}`)
@@ -268,6 +276,7 @@ export async function updateQuizMetadata(
     max_attempts?: number
   }
 ) {
+  await requirePermission(Permission.UPDATE_QUIZ)
   await requireAuth()
 
   const sanitizedTitle = sanitizeTitle(data.title)
@@ -299,6 +308,7 @@ export async function updateQuizMetadata(
 }
 
 export async function startQuizAttempt(curriculumItemId: number) {
+  await requirePermission(Permission.PARTICIPATE_QUIZ)
   const user = await requireAuth()
 
   // totalQuestions should come from DB, not frontend
@@ -322,6 +332,7 @@ export async function startQuizAttempt(curriculumItemId: number) {
 export async function getInProgressAttemptForCurriculumItem(
   curriculumItemId: number
 ) {
+  await requirePermission(Permission.PARTICIPATE_QUIZ)
   const user = await requireAuth()
 
   const rows = await sql`
@@ -340,6 +351,7 @@ export async function getInProgressAttemptForCurriculumItem(
 }
 
 export async function submitQuizAttempt(attemptId: number) {
+  await requirePermission(Permission.PARTICIPATE_QUIZ)
   const user = await requireAuth()
   const result = await submitQuizAttemptAction(attemptId, Number(user.id))
 

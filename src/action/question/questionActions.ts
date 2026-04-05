@@ -1,6 +1,8 @@
 "use server"
 
 import { requireAuth } from "@/lib/auth"
+import { requirePermission } from "@/lib/requirePermission"
+import { Permission } from "@/enum/permission.enum"
 import * as service from "@/service/question.service"
 import { redirect } from "next/navigation"
 import { revalidatePath } from "next/cache"
@@ -12,17 +14,17 @@ import {
 } from "./dto/question.dto"
 
 export type State = {
-  message: string | null;
-  errors: Record<string, string[] | undefined>;
-};
+  message: string | null
+  errors: Record<string, string[] | undefined>
+}
 
 export async function getAllQuestions() {
-  // await requireAuth()
+  await requirePermission(Permission.VIEW_QUESTION_LIST)
   return service.getAllQuestionsAction()
 }
 
 export async function getQuestionDetails(id: string) {
-  // await requireAuth()
+  await requirePermission(Permission.READ_QUESTION)
   return service.getQuestionDetailsAction(id)
 }
 
@@ -30,6 +32,7 @@ export async function createQuestion(
   _prevState: State,
   formData: FormData
 ): Promise<State> {
+  await requirePermission(Permission.CREATE_QUESTION)
   const validated = CreateQuestionDto.safeParse({
     title: formData.get("title"),
     content: formData.get("content"),
@@ -44,7 +47,7 @@ export async function createQuestion(
     }
   }
 
-  const result = await service.createQuestionAction(validated.data);
+  const result = await service.createQuestionAction(validated.data)
 
   const returnToRaw = formData.get("returnTo")
   const returnTo =
@@ -57,7 +60,7 @@ export async function createQuestion(
     return {
       message: result.message ?? "Validation failed",
       errors: result.errors,
-    };
+    }
   }
 
   if (result?.success) {
@@ -65,12 +68,14 @@ export async function createQuestion(
     redirect(`${returnTo ?? "/questions"}?created=1`)
   }
 
-  return { message: null, errors: {} };
+  return { message: null, errors: {} }
 }
 
-export async function updateQuestion(_prevState: State,
+export async function updateQuestion(
+  _prevState: State,
   formData: FormData
 ): Promise<State> {
+  await requirePermission(Permission.UPDATE_QUESTION)
   const validated = UpdateQuestionDto.safeParse({
     title: formData.get("title"),
     content: formData.get("content"),
@@ -85,32 +90,31 @@ export async function updateQuestion(_prevState: State,
     }
   }
 
-  const result = await service.updateQuestionAction(validated.data);
-  const id = validated.data.id;
+  const result = await service.updateQuestionAction(validated.data)
+  const id = validated.data.id
 
   // If DB/service returned validation errors → show in form
   if (result?.errors && Object.keys(result.errors).length > 0) {
     return {
       message: result.message ?? "Validation failed",
       errors: result.errors,
-    };
+    }
   }
 
   if (result?.success) {
-    revalidatePath("/questions/" + id);
-    redirect("/questions/" + id + "?updated=1");
+    revalidatePath("/questions/" + id)
+    redirect("/questions/" + id + "?updated=1")
   }
 
-  return { message: null, errors: {} };
+  return { message: null, errors: {} }
 }
 
-export async function updateQuestionForManagement(
-  formData: FormData
-): Promise<{
+export async function updateQuestionForManagement(formData: FormData): Promise<{
   success: boolean
   message: string
   errors?: Record<string, string[] | undefined>
 }> {
+  await requirePermission(Permission.UPDATE_QUESTION)
   const validated = UpdateQuestionDto.safeParse({
     title: formData.get("title"),
     content: formData.get("content"),
@@ -153,28 +157,29 @@ export async function updateQuestionForManagement(
 }
 
 export async function deleteQuestion(id: string) {
-  //await requireAuth()
-  const result = await service.deleteQuestionAction(id);
+  await requirePermission(Permission.DELETE_QUESTION)
+  const result = await service.deleteQuestionAction(id)
 
   if (result?.errors && Object.keys(result.errors).length > 0) {
     return {
       message: result.message ?? "Validation failed",
       errors: result.errors,
-    };
+    }
   }
 
   if (result?.success) {
-    revalidatePath("/questions");
-    redirect("/questions?deleted=1");
+    revalidatePath("/questions")
+    redirect("/questions?deleted=1")
   }
 
-  return { message: null, errors: {} };
+  return { message: null, errors: {} }
 }
 
 export async function deleteQuestionForManagement(id: string): Promise<{
   success: boolean
   message: string
 }> {
+  await requirePermission(Permission.DELETE_QUESTION)
   const result = await service.deleteQuestionAction(id)
 
   if (result?.errors && Object.keys(result.errors).length > 0) {
@@ -200,28 +205,29 @@ export async function deleteQuestionForManagement(id: string): Promise<{
 }
 
 export async function closeQuestion(id: string) {
-  //await requireAuth()
-  const result = await service.closeQuestionAction(id);
+  await requirePermission(Permission.CLOSE_QUESTION)
+  const result = await service.closeQuestionAction(id)
 
   if (result?.errors && Object.keys(result.errors).length > 0) {
     return {
       message: result.message ?? "Validation failed",
       errors: result.errors,
-    };
+    }
   }
 
   if (result?.success) {
-    revalidatePath("/questions/" + id);
-    redirect("/questions/" + id + "?closed=1");
+    revalidatePath("/questions/" + id)
+    redirect("/questions/" + id + "?closed=1")
   }
 
-  return { message: null, errors: {} };
+  return { message: null, errors: {} }
 }
 
 export async function closeQuestionForManagement(id: string): Promise<{
   success: boolean
   message: string
 }> {
+  await requirePermission(Permission.CLOSE_QUESTION)
   const result = await service.closeQuestionAction(id)
 
   if (result?.errors && Object.keys(result.errors).length > 0) {
@@ -249,21 +255,21 @@ export async function closeQuestionForManagement(id: string): Promise<{
 
 export async function openQuestion(id: string) {
   //await requireAuth()
-  const result = await service.openQuestionAction(id);
+  const result = await service.openQuestionAction(id)
 
   if (result?.errors && Object.keys(result.errors).length > 0) {
     return {
       message: result.message ?? "Validation failed",
       errors: result.errors,
-    };
+    }
   }
 
   if (result?.success) {
-    revalidatePath("/questions/" + id);
-    redirect("/questions/" + id + "?opened=1");
+    revalidatePath("/questions/" + id)
+    redirect("/questions/" + id + "?opened=1")
   }
 
-  return { message: null, errors: {} };
+  return { message: null, errors: {} }
 }
 
 export async function openQuestionForManagement(id: string): Promise<{
@@ -331,12 +337,12 @@ export async function fetchFilteredQuestions(
 
 export async function getAnswersForQuestion(id: number) {
   // await requireAuth()
-  return service.getAnswersForQuestionAction(id);
+  return service.getAnswersForQuestionAction(id)
 }
 
-export async function getAnswerDetails (id: number) {
+export async function getAnswerDetails(id: number) {
   // await requireAuth()
-  return service.getAnswerDetailsAction(id);
+  return service.getAnswerDetailsAction(id)
 }
 
 export async function createAnswer(
@@ -357,34 +363,34 @@ export async function createAnswer(
     }
   }
 
-  const result = await service.createAnswerAction(validated.data);
-  const id = validated.data.question_id;
+  const result = await service.createAnswerAction(validated.data)
+  const id = validated.data.question_id
 
   // If DB/service returned validation errors → show in form
   if (result?.errors && Object.keys(result.errors).length > 0) {
     return {
       message: result.message ?? "Validation failed",
       errors: result.errors,
-    };
+    }
   }
 
   if (result?.success) {
-    revalidatePath("/questions/" + id);
-    redirect("/questions/" + id + "?answerCreated=1");
+    revalidatePath("/questions/" + id)
+    redirect("/questions/" + id + "?answerCreated=1")
   }
 
-  return { message: null, errors: {} };
+  return { message: null, errors: {} }
 }
 
 // Function for creating replies (nested answers with parent_id)
 export async function createReply(formData: FormData): Promise<State> {
-  const parentId = Number(formData.get("parent_id"));
+  const parentId = Number(formData.get("parent_id"))
 
   if (!parentId) {
     return {
       message: "parent_id is required for replies.",
       errors: { parent_id: ["parent_id is required"] },
-    };
+    }
   }
 
   const validated = CreateAnswerDto.safeParse({
@@ -401,40 +407,40 @@ export async function createReply(formData: FormData): Promise<State> {
     }
   }
 
-  const result = await service.createAnswerAction(validated.data);
-  const id = validated.data.question_id;
+  const result = await service.createAnswerAction(validated.data)
+  const id = validated.data.question_id
 
   if (result?.errors && Object.keys(result.errors).length > 0) {
     return {
       message: result.message ?? "Validation failed",
       errors: result.errors,
-    };
+    }
   }
 
   if (result?.success) {
-    revalidatePath("/questions/" + id);
+    revalidatePath("/questions/" + id)
   }
 
-  return { message: null, errors: {} };
+  return { message: null, errors: {} }
 }
 
 export async function deleteAnswer(asnwerId: number, questionId: number) {
   //await requireAuth()
-  const result = await service.deleteAnswerAction(asnwerId);
+  const result = await service.deleteAnswerAction(asnwerId)
 
   if (result?.errors && Object.keys(result.errors).length > 0) {
     return {
       message: result.message ?? "Validation failed",
       errors: result.errors,
-    };
+    }
   }
 
   if (result?.success) {
-    revalidatePath("/questions/" + questionId);
-    redirect("/questions/" + questionId + "?answerDeleted=1");
+    revalidatePath("/questions/" + questionId)
+    redirect("/questions/" + questionId + "?answerDeleted=1")
   }
 
-  return { message: null, errors: {} };
+  return { message: null, errors: {} }
 }
 
 export async function updateAnswer(
@@ -454,47 +460,49 @@ export async function updateAnswer(
     }
   }
 
-  const result = await service.updateAnswerAction(validated.data);
-  const questionId = validated.data.question_id;
+  const result = await service.updateAnswerAction(validated.data)
+  const questionId = validated.data.question_id
 
   if (result?.errors && Object.keys(result.errors).length > 0) {
     return {
       message: result.message ?? "Validation failed",
       errors: result.errors,
-    };
+    }
   }
 
   if (result?.success) {
-    revalidatePath("/questions/" + questionId);
-    redirect("/questions/" + questionId + "?answerUpdated=1");
+    revalidatePath("/questions/" + questionId)
+    redirect("/questions/" + questionId + "?answerUpdated=1")
   }
 
-  return { message: null, errors: {} };
+  return { message: null, errors: {} }
 }
 
-export async function fetchFilteredAnswers (
+export async function fetchFilteredAnswers(
   currentPage: number,
   questionId: number,
   limit?: number,
-  sort?: 'newest' | 'oldest',
-){
-  //await requireAuth()
-  return service.fetchFilteredAnswersAction(currentPage, questionId, limit, sort);
-}
-
-export async function fetchAnswerPages(
-  questionId: number,
-  limit?: number,
+  sort?: "newest" | "oldest"
 ) {
   //await requireAuth()
-  return service.fetchAnswerPagesAction(questionId, limit);
+  return service.fetchFilteredAnswersAction(
+    currentPage,
+    questionId,
+    limit,
+    sort
+  )
+}
+
+export async function fetchAnswerPages(questionId: number, limit?: number) {
+  //await requireAuth()
+  return service.fetchAnswerPagesAction(questionId, limit)
 }
 
 export async function fetchFullDiscussionThread(answerId: number) {
   //await requireAuth()
-  return service.fetchFullDiscussionThreadAction(answerId);
+  return service.fetchFullDiscussionThreadAction(answerId)
 }
 
 export async function getTopKnowledgeSharers(limit: number = 5) {
-  return service.getTopKnowledgeSharers(limit);
+  return service.getTopKnowledgeSharers(limit)
 }

@@ -1,6 +1,8 @@
 "use server"
 
 import { requireAuth } from "@/lib/auth"
+import { requirePermission } from "@/lib/requirePermission"
+import { Permission } from "@/enum/permission.enum"
 import { sql } from "@/lib/database"
 import {
   getAllArticlesAction,
@@ -85,7 +87,7 @@ export async function setupArticlesConstraint() {
 }
 
 export async function getAllArticles() {
-  await requireAuth()
+  await requirePermission(Permission.VIEW_ARTICLE_LIST)
   return getAllArticlesAction()
 }
 
@@ -95,7 +97,7 @@ export async function getAllTags() {
 }
 
 export async function filterByTag(searchQuery: string, tagFilters?: string[]) {
-  await requireAuth()
+  await requirePermission(Permission.SEARCH_ARTICLE)
   return filterByTagAction(searchQuery, tagFilters)
 }
 
@@ -150,21 +152,23 @@ export async function filterByTagAndCategory(
 }
 
 export async function deleteArticle(id: number) {
-  await requireAuth()
+  await requirePermission(Permission.DELETE_ARTICLE)
   return deleteArticleAction(id)
 }
 
 export async function restoreArticle(id: number) {
-  await requireAuth()
+  await requirePermission(Permission.DELETE_ARTICLE)
   return restoreArticleAction(id)
 }
 
 export async function approveArticle(id: number) {
+  await requirePermission(Permission.APPROVE_ARTICLE)
   const currentUser = await requireAuth()
   return approveArticleAction(id, Number(currentUser.id))
 }
 
 export async function rejectArticle(id: number, reason: string = "") {
+  await requirePermission(Permission.APPROVE_ARTICLE)
   const currentUser = await requireAuth()
   return rejectArticleAction(id, reason, Number(currentUser.id))
 }
@@ -179,7 +183,7 @@ export async function resubmitArticle(
   image_url?: string | null,
   thumbnail_url?: string | null
 ) {
-  await requireAuth()
+  await requirePermission(Permission.UPDATE_ARTICLE)
   return resubmitArticleAction(
     id,
     title,
@@ -199,6 +203,7 @@ export async function getAllCategories() {
 
 export async function createArticle(formData: FormData) {
   try {
+    await requirePermission(Permission.CREATE_ARTICLE)
     const currentUser = await getCurrentUserDetail()
     if (!currentUser) {
       return {
@@ -293,7 +298,7 @@ export async function createArticle(formData: FormData) {
 
 export async function getArticleById(id: number) {
   try {
-    await requireAuth()
+    await requirePermission(Permission.READ_ARTICLE)
     return await getArticleByIdAction(id)
   } catch (error: any) {
     console.error("Error fetching article:", error)
@@ -306,6 +311,7 @@ export async function getArticleById(id: number) {
 
 export async function updateArticle(formData: FormData) {
   try {
+    await requirePermission(Permission.UPDATE_ARTICLE)
     const currentUser = await getCurrentUserDetail()
     if (!currentUser) {
       return {
