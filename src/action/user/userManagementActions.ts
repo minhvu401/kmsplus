@@ -456,3 +456,161 @@ export async function banUserAction(
     }
   }
 }
+
+/**
+ * Get all roles for dropdown selection in user management
+ * Used to populate role selector when updating user role
+ */
+export async function getAllRolesAction(): Promise<UserManagementState> {
+  const { valid } = await verifyUserManagementPermission()
+
+  if (!valid) {
+    return {
+      success: false,
+      message: "Unauthorized: You do not have permission to view roles",
+    }
+  }
+
+  try {
+    const roles = await sql`
+      SELECT id, name FROM roles ORDER BY name ASC
+    `
+
+    if (!roles || roles.length === 0) {
+      return {
+        success: false,
+        message: "No roles available",
+      }
+    }
+
+    return {
+      success: true,
+      message: "Roles retrieved successfully",
+      data: roles,
+    }
+  } catch (error) {
+    console.error("Error fetching roles:", error)
+    return {
+      success: false,
+      message: "Failed to fetch roles",
+    }
+  }
+}
+
+/**
+ * Update user with role selection (combined: user info + role update)
+ * Allows admin to update user email, full_name, and role in one action
+ */
+export async function updateUserWithRoleAction(
+  prevState: UserManagementState,
+  formData: FormData
+): Promise<UserManagementState> {
+  const { valid } = await verifyUserManagementPermission()
+
+  if (!valid) {
+    return {
+      success: false,
+      message: "Unauthorized: You do not have permission to update users",
+    }
+  }
+
+  const userId = formData.get("userId") as string
+  const email = formData.get("email") as string
+  const fullName = formData.get("fullName") as string
+  const roleId = formData.get("roleId") as string
+
+  if (!userId) {
+    return {
+      success: false,
+      message: "User ID is required",
+    }
+  }
+
+  try {
+    // Check if user exists
+    const users = await sql`
+      SELECT id, email FROM users WHERE id = ${userId}
+    `
+
+    if (users.length === 0) {
+      return {
+        success: false,
+        message: "User not found",
+      }
+    }
+
+    // Check if email is already taken by another user
+    if (email && email !== users[0].email) {
+      const emailExists = await sql`
+        SELECT id FROM users WHERE email = ${email} AND id != ${userId}
+      `
+
+      if (emailExists.length > 0) {
+        return {
+          success: false,
+          errors: {
+            email: ["Email already in use"],
+          },
+          message: "Email already in use",
+        }
+      }
+    }
+
+    // Update user info (email, fullName)
+    if (email || fullName) {
+      await sql`
+        UPDATE users 
+        SET 
+          email = COALESCE(${email || null}, email),
+          full_name = COALESCE(${fullName || null}, full_name)
+        WHERE id = ${userId}
+      `
+    }
+
+    // Update user role if provided
+    if (roleId) {
+      // Check if role exists
+      const roleExists = await sql`
+        SELECT id FROM roles WHERE id = ${roleId}
+      `
+
+      if (roleExists.length === 0) {
+        return {
+          success: false,
+          message: "Invalid role selected",
+        }
+      }
+
+      // Check if user already has a role assigned
+      const existingRoles = await sql`
+        SELECT user_id FROM user_roles WHERE user_id = ${userId}
+      `
+
+      if (existingRoles.length > 0) {
+        // Update existing role
+        await sql`
+          UPDATE user_roles SET role_id = ${roleId}
+          WHERE user_id = ${userId}
+        `
+      } else {
+        // Insert new role
+        await sql`
+          INSERT INTO user_roles (user_id, role_id)
+          VALUES (${userId}, ${roleId})
+        `
+      }
+    }
+
+    return {
+      success: true,
+      message: "User updated successfully",
+      data: { userId, email, fullName, roleId },
+    }
+  } catch (error) {
+    console.error("Error updating user:", error)
+    return {
+      success: false,
+      message: "Failed to update user",
+    }
+  }
+}
