@@ -61,6 +61,14 @@ export default async function CourseDetailPage({ params }: Props) {
     notFound()
   }
 
+  // ✅ Authorization check: Only allow viewing if course is published OR user is the creator
+  const isCreator = user && Number(user.id) === course.creator_id
+  const isPublished = course.status === "published"
+
+  if (!isPublished && !isCreator) {
+    notFound() // Hide draft/pending/rejected courses from non-creators
+  }
+
   const creator = await getUserDetail(String(course.creator_id))
   const averageRating = Number(course.average_rating ?? 0).toFixed(1)
   const ratingsCount = reviewsMeta.totalCount
@@ -152,6 +160,7 @@ export default async function CourseDetailPage({ params }: Props) {
                     <EnrollButton
                       courseId={courseId}
                       courseTitle={course.title}
+                      courseStatus={course.status}
                     />
                   )}
                 </aside>

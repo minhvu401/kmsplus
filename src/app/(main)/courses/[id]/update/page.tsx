@@ -6,7 +6,8 @@
  */
 
 import type { Metadata } from "next"
-import { notFound } from "next/navigation"
+import { notFound, redirect } from "next/navigation"
+import { getCurrentUser } from "@/lib/auth"
 import { getCourseByIdAction } from "@/service/course.service"
 import UpdateCourseForm from "@/app/(main)/courses/components/UpdateCourseForm"
 import { getAllLessonsAction } from "@/service/lesson.service"
@@ -35,6 +36,13 @@ export default async function UpdateCoursePage({
   const { id } = await params
   const courseId = Number(id)
   if (isNaN(courseId)) notFound()
+
+  // ✅ Authorization: Only creator can update the course
+  const user = await getCurrentUser()
+  if (!user) {
+    redirect(`/login?next=/courses/${courseId}/update`)
+  }
+
   // 👇 2. FETCH DỮ LIỆU(Dùng Promise.all cho nhanh)
   const [course, lessonsRes, quizzesRes] = await Promise.all([
     getCourseByIdAction(courseId),
@@ -42,6 +50,11 @@ export default async function UpdateCoursePage({
     getAllQuizzes({}),
   ])
   if (!course) notFound()
+
+  // ✅ Verify user is the creator of this course
+  if (Number(user.id) !== course.creator_id) {
+    notFound() // Hide the page from non-creators
+  }
   // 👇 3. MAP DỮ LIỆU VỀ ĐÚNG ĐỊNH DẠNG CỦA UI
   const availableLessons: Lesson[] = (lessonsRes?.data || []).map((l: any) => ({
     id: l.id,

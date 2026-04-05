@@ -75,6 +75,7 @@ export default function ArticleDetailPage() {
   const [comments, setComments] = useState<Comment[]>([])
   const [loadingComments, setLoadingComments] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [currentUser, setCurrentUser] = useState<any>(null)
   const [commentText, setCommentText] = useState("")
   const [submitting, setSubmitting] = useState(false)
   const [approving, setApproving] = useState(false)
@@ -106,6 +107,7 @@ export default function ArticleDetailPage() {
     []
   )
   const [loadingCategories, setLoadingCategories] = useState(false)
+  const [showAllComments, setShowAllComments] = useState(true)
   const titleEditorRef = useRef<HTMLDivElement>(null)
 
   const renderedContent = useMemo(() => {
@@ -142,6 +144,20 @@ export default function ArticleDetailPage() {
   useEffect(() => {
     loadArticle()
   }, [articleId])
+
+  useEffect(() => {
+    const loadCurrentUser = async () => {
+      try {
+        const { getCurrentUserDetail } =
+          await import("@/action/articles/articlesManagementAction")
+        const user = await getCurrentUserDetail()
+        setCurrentUser(user)
+      } catch (err) {
+        console.error("Error loading current user:", err)
+      }
+    }
+    loadCurrentUser()
+  }, [])
 
   useEffect(() => {
     if (!showResubmitModal || categories.length > 0) return
@@ -213,7 +229,7 @@ export default function ArticleDetailPage() {
 
   const handleSubmitComment = async () => {
     if (!commentText.trim()) {
-      message.warning("Please enter a comment")
+      message.error("Comment content is required")
       return
     }
 
@@ -251,7 +267,7 @@ export default function ArticleDetailPage() {
   const handleSubmitReply = async () => {
     if (!replyToId) return
     if (!replyText.trim()) {
-      message.warning("Please enter a reply")
+      message.error("Reply content is required")
       return
     }
 
@@ -290,7 +306,7 @@ export default function ArticleDetailPage() {
 
   const handleUpdateComment = async (commentId: string) => {
     if (!editingCommentText.trim()) {
-      message.warning("Comment cannot be empty")
+      message.error("Comment content is required")
       return
     }
 
@@ -514,7 +530,12 @@ export default function ArticleDetailPage() {
         key={comment.id}
         className={`flex items-start space-x-3 ${depth > 0 ? "pl-4 border-l border-gray-200" : ""}`}
       >
-        <Avatar icon={<UserOutlined />} className="bg-gray-400 flex-shrink-0" />
+        <Avatar
+          src={(comment as any).user_avatar_url}
+          icon={<UserOutlined />}
+          className="bg-gray-400 flex-shrink-0"
+          size={40}
+        />
         <div className="flex-1">
           {isEditing ? (
             <div className="space-y-2">
@@ -547,41 +568,50 @@ export default function ArticleDetailPage() {
                     </Text>
                     <Text>{comment.content}</Text>
                   </div>
-                  <Dropdown
-                    menu={{
-                      items: [
-                        {
-                          key: "edit",
-                          label: "Edit",
-                          icon: <EditOutlined />,
-                          onClick: () =>
-                            handleEditComment(comment.id, comment.content),
-                        },
-                        {
-                          key: "delete",
-                          label: "Delete",
-                          icon: <DeleteOutlined />,
-                          danger: true,
-                          onClick: () => handleDeleteComment(comment.id),
-                        },
-                      ],
-                    }}
-                    trigger={["click"]}
-                  >
-                    <Button
-                      type="text"
-                      size="small"
-                      icon={<MoreOutlined />}
-                      className="ml-2"
-                    />
-                  </Dropdown>
+                  {currentUser &&
+                    comment.user_id === String(currentUser.id) && (
+                      <Dropdown
+                        menu={{
+                          items: [
+                            {
+                              key: "edit",
+                              label: "Edit",
+                              icon: <EditOutlined />,
+                              onClick: () =>
+                                handleEditComment(comment.id, comment.content),
+                            },
+                            {
+                              key: "delete",
+                              label: "Delete",
+                              icon: <DeleteOutlined />,
+                              danger: true,
+                              onClick: () => handleDeleteComment(comment.id),
+                            },
+                          ],
+                        }}
+                        trigger={["click"]}
+                      >
+                        <Button
+                          type="text"
+                          size="small"
+                          icon={<MoreOutlined />}
+                          className="ml-2"
+                        />
+                      </Dropdown>
+                    )}
                 </div>
               </div>
               <div className="mt-1 flex items-center justify-between">
                 <Text type="secondary" className="text-xs">
-                  {new Date(comment.created_at).toLocaleString("vi-VN", {
-                    timeZone: "Asia/Ho_Chi_Minh",
+                  {new Date(
+                    new Date(comment.created_at).getTime()
+                  ).toLocaleString("vi-VN", {
                     hour12: false,
+                    year: "numeric",
+                    month: "2-digit",
+                    day: "2-digit",
+                    hour: "2-digit",
+                    minute: "2-digit",
                   })}
                 </Text>
                 <Button
@@ -809,29 +839,42 @@ export default function ArticleDetailPage() {
 
                 <Divider />
 
-                {/* Show 1 comment text */}
+                {/* Show comments toggle button */}
                 {comments.length > 0 && (
-                  <Button type="link" className="!px-0 mb-4">
-                    Show {comments.length} comment
+                  <Button
+                    type="link"
+                    className="!px-0 mb-4"
+                    onClick={() => setShowAllComments(!showAllComments)}
+                  >
+                    {showAllComments ? "Hide" : "Show"} {comments.length}{" "}
+                    comment
                     {comments.length > 1 ? "s" : ""}
                   </Button>
                 )}
 
                 {/* Comments List */}
-                {loadingComments ? (
-                  <div className="py-4">
-                    <Spin size="small" />
-                  </div>
-                ) : (
-                  <Space direction="vertical" size="large" className="w-full">
-                    {threadedComments.roots.map((comment) =>
-                      renderCommentItem(comment)
+                {showAllComments && (
+                  <>
+                    {loadingComments ? (
+                      <div className="py-4">
+                        <Spin size="small" />
+                      </div>
+                    ) : (
+                      <Space
+                        direction="vertical"
+                        size="large"
+                        className="w-full"
+                      >
+                        {threadedComments.roots.map((comment) =>
+                          renderCommentItem(comment)
+                        )}
+                      </Space>
                     )}
-                  </Space>
-                )}
 
-                {!loadingComments && comments.length === 0 && (
-                  <Empty description="No comments yet. Be the first to comment!" />
+                    {!loadingComments && comments.length === 0 && (
+                      <Empty description="No comments yet. Be the first to comment!" />
+                    )}
+                  </>
                 )}
               </Card>
             )}
@@ -848,6 +891,7 @@ export default function ArticleDetailPage() {
               </Text>
               <div className="flex items-start space-x-4">
                 <Avatar
+                  src={article.author_avatar_url}
                   size={56}
                   icon={<UserOutlined />}
                   className="bg-blue-500"

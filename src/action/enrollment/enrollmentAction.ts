@@ -57,6 +57,13 @@ export async function enrollCourseAction(courseId: number) {
       VALUES (${courseId}, ${userId}, 'in_progress', 0.00, NOW(), ${finalDeadline})
     `
 
+    // 4. Update enrollment_count in courses table
+    await sql`
+      UPDATE courses 
+      SET enrollment_count = enrollment_count + 1 
+      WHERE id = ${courseId}
+    `
+
     revalidatePath(`/courses/${courseId}`)
     revalidatePath("/history") // Load lại tab My Courses
     return { success: true }

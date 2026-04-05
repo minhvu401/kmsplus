@@ -70,13 +70,12 @@ export default function CourseClient({
     // Returns courses user is currently taking with progress & due dates
     const fetchResumeCourses = async () => {
       try {
-        // TODO: Replace with actual API call once endpoint is ready
-        // const response = await fetch('/api/enrollments/in-progress?userId=currentUserId')
-        // const data = await response.json()
-        // setResumeCourses(data.data)
-
-        // For now, show first 4 courses as resume courses
-        setResumeCourses(initialCourses.slice(0, 4))
+        const response = await fetch("/api/courses/resume", {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+        })
+        const data = await response.json()
+        setResumeCourses(data.courses || [])
       } catch (error) {
         console.error("Error fetching resume courses:", error)
         setResumeCourses([])
@@ -86,18 +85,16 @@ export default function CourseClient({
     // ========================================
     // 2. FETCH TRENDING COURSES
     // ========================================
-    // GET /api/courses/trending?limit=12
-    // Returns courses by enrollment count in last 7 days
+    // Returns courses by enrollment count
     const fetchTrendingCourses = async () => {
       setLoadingTrending(true)
       try {
-        // TODO: Replace with actual API call once endpoint is ready
-        // const response = await fetch('/api/courses/trending?limit=12')
-        // const data = await response.json()
-        // setTrendingCourses(data.data)
-
-        // Simulating API with generalPublishedCourses (trending section)
-        setTrendingCourses(initialCourses.slice(0, 12))
+        const response = await fetch("/api/courses/trending", {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+        })
+        const data = await response.json()
+        setTrendingCourses(data.courses || [])
       } catch (error) {
         console.error("Error fetching trending courses:", error)
         setTrendingCourses([])
@@ -109,17 +106,16 @@ export default function CourseClient({
     // ========================================
     // 3. FETCH POPULAR BY CATEGORY
     // ========================================
-    // GET /api/courses/popular-by-category?limit=3
-    // Returns top courses grouped by 3 main categories
+    // Returns top courses per category
     const fetchPopularByCategory = async () => {
       setLoadingPopular(true)
       try {
-        // TODO: Replace with actual API call once endpoint is ready
-        // const response = await fetch('/api/courses/popular-by-category?limit=3')
-        // const data = await response.json()
-        // setPopularByCategory(data.data)
-
-        setPopularByCategory(initialCourses.slice(0, 12))
+        const response = await fetch("/api/courses/popular-by-category", {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+        })
+        const data = await response.json()
+        setPopularByCategory(data.courses || [])
       } catch (error) {
         console.error("Error fetching popular courses:", error)
         setPopularByCategory([])
@@ -131,17 +127,16 @@ export default function CourseClient({
     // ========================================
     // 4. FETCH RELEVANT COURSES (Department)
     // ========================================
-    // GET /api/courses/relevant?userId={userId}&departmentId={deptId}&limit=8
-    // Returns personalized courses based on user's department and role
+    // Returns personalized courses based on user's department
     const fetchRelevantCourses = async () => {
       setLoadingRelevant(true)
       try {
-        // TODO: Replace with actual API call once endpoint is ready
-        // const response = await fetch('/api/courses/relevant?userId=currentUserId&departmentId=currentDeptId&limit=8')
-        // const data = await response.json()
-        // setRelevantCourses(data.data)
-
-        setRelevantCourses(initialCourses.slice(0, 8))
+        const response = await fetch("/api/courses/personalized", {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+        })
+        const data = await response.json()
+        setRelevantCourses(data.courses || [])
       } catch (error) {
         console.error("Error fetching relevant courses:", error)
         setRelevantCourses([])
@@ -153,17 +148,16 @@ export default function CourseClient({
     // ========================================
     // 5. FETCH NEW COURSES
     // ========================================
-    // GET /api/courses/newest?limit=12
     // Returns recently published courses
     const fetchNewCourses = async () => {
       setLoadingNew(true)
       try {
-        // TODO: Replace with actual API call once endpoint is ready
-        // const response = await fetch('/api/courses/newest?limit=12&sort=newest')
-        // const data = await response.json()
-        // setNewCourses(data.data)
-
-        setNewCourses(initialCourses.slice(0, 12))
+        const response = await fetch("/api/courses/newest", {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+        })
+        const data = await response.json()
+        setNewCourses(data.courses || [])
       } catch (error) {
         console.error("Error fetching new courses:", error)
         setNewCourses([])
@@ -178,7 +172,7 @@ export default function CourseClient({
     fetchPopularByCategory()
     fetchRelevantCourses()
     fetchNewCourses()
-  }, [initialCourses])
+  }, [])
 
   useEffect(() => {
     const flash = searchParams.get("flash")

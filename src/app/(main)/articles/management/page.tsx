@@ -54,6 +54,8 @@ import {
   updateArticle,
   restoreArticle,
   getCurrentUserDetail,
+  approveArticle,
+  rejectArticle,
   type CurrentUserInfo,
 } from "@/action/articles/articlesManagementAction"
 import { getAllDepartments } from "@/action/department/departmentActions"
@@ -143,12 +145,13 @@ const applyQuote = (
 
 export default function ArticleManagement() {
   const PAGE_SIZE = 10
+  const MAX_TAGS = 5
   const THUMBNAIL_MAX_SIZE_MB = 10
   const THUMBNAIL_MAX_SIZE_BYTES = THUMBNAIL_MAX_SIZE_MB * 1024 * 1024
   const THUMBNAIL_ASPECT_RATIO = 4 / 3
   const [searchQuery, setSearchQuery] = useState("")
   const debouncedSearchQuery = useDebounce(searchQuery, 300)
-  const [selectedTag, setSelectedTag] = useState("All Tags")
+  const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [selectedCategory, setSelectedCategory] = useState<number | "All">(
     "All"
   )
@@ -179,6 +182,7 @@ export default function ArticleManagement() {
     number | undefined
   >(undefined)
   const titleEditorRef = useRef<HTMLDivElement>(null)
+  const editTitleEditorRef = useRef<HTMLDivElement>(null)
 
   const [articles, setArticles] = useState<Article[]>([])
   const [totalArticles, setTotalArticles] = useState(0)
@@ -219,6 +223,17 @@ export default function ArticleManagement() {
   const [uploadingEditThumbnail, setUploadingEditThumbnail] = useState(false) // New
   const [editCategoryId, setEditCategoryId] = useState<number | undefined>(
     undefined
+  )
+
+  // Reject modal states
+  const [isRejectModalOpen, setIsRejectModalOpen] = useState(false)
+  const [rejectingArticleId, setRejectingArticleId] = useState<number | null>(
+    null
+  )
+  const [rejectReason, setRejectReason] = useState("")
+  const [isRejectingArticle, setIsRejectingArticle] = useState(false)
+  const [approvingArticleId, setApprovingArticleId] = useState<number | null>(
+    null
   )
 
   const statusColors: Record<string, string> = {
@@ -268,7 +283,7 @@ export default function ArticleManagement() {
 
       const res = await filterByTagAndCategory(
         debouncedSearchQuery,
-        selectedTag,
+        selectedTags,
         catId,
         statusFilter,
         isDeletedFilter,
@@ -350,7 +365,7 @@ export default function ArticleManagement() {
   useEffect(() => {
     const nextFilterKey = [
       debouncedSearchQuery,
-      selectedTag,
+      selectedTags.join(","),
       String(selectedCategory),
       selectedStatus,
       sortOrder,
@@ -369,7 +384,7 @@ export default function ArticleManagement() {
     }
   }, [
     debouncedSearchQuery,
-    selectedTag,
+    selectedTags,
     selectedCategory,
     selectedStatus,
     sortOrder,
@@ -461,20 +476,21 @@ export default function ArticleManagement() {
     })()
   }, [isAdmin])
 
+  // Initialize edit title ref when edit modal opens with content
+  useEffect(() => {
+    if (isEditModalOpen && editTitleEditorRef.current && editTitleContent) {
+      editTitleEditorRef.current.innerText = editTitleContent
+    }
+  }, [isEditModalOpen, editTitleContent])
+
   const columns: ColumnsType<Article> = [
-    {
-      title: "ID",
-      dataIndex: "id",
-      key: "id",
-      width: 80,
-      fixed: "left",
-    },
     {
       title: "Article Title",
       dataIndex: "title",
       key: "title",
-      width: 280,
+      width: 300,
       ellipsis: true,
+      fixed: "left",
       render: (title: string, record: Article) => (
         <a
           href={`/articles/${record.id}`}
@@ -483,6 +499,13 @@ export default function ArticleManagement() {
           {title?.trim() || "(No title)"}
         </a>
       ),
+    },
+    {
+      title: "Author",
+      dataIndex: "author_name",
+      key: "author_name",
+      width: 150,
+      render: (author: string | null) => <Text>{author || "Unknown"}</Text>,
     },
     {
       title: "Tag",
@@ -563,13 +586,6 @@ export default function ArticleManagement() {
       },
     },
     {
-      title: "Approved At",
-      dataIndex: "approved_at",
-      key: "approved_at",
-      width: 170,
-      render: (date: Date | null) => <Text>{formatVietnamDateTime(date)}</Text>,
-    },
-    {
       title: "Created At",
       dataIndex: "created_at",
       key: "created_at",
@@ -577,35 +593,46 @@ export default function ArticleManagement() {
       render: (date: Date) => <Text>{formatVietnamDateTime(date)}</Text>,
     },
     {
-      title: "Deleted At",
-      dataIndex: "deleted_at",
-      key: "deleted_at",
-      width: 170,
-      render: (date: Date | null) => <Text>{formatVietnamDateTime(date)}</Text>,
-    },
-    {
-      title: "Last Updated",
-      dataIndex: "updated_at",
-      key: "updated_at",
-      width: 150,
-      render: (date: Date) => (
-        <Text type="warning">{formatVietnamDateTime(date)}</Text>
-      ),
-    },
-    {
       title: "Action",
       key: "action",
-      width: 100,
+      width: 150,
       fixed: "right",
       render: (_, record) => (
-        <Space size="small">
+        <Space size="small" wrap>
           {canEditArticle(record) && (
             <Button
               type="text"
               icon={<EditOutlined />}
               size="small"
               onClick={() => openEditModal(Number(record.id))}
+              title="Edit"
             />
+          )}
+          {record.status === "pending" && (
+            <>
+              <Button
+                type="text"
+                size="small"
+                style={{ color: "#52c41a" }}
+                onClick={() => handleApprove(Number(record.id))}
+                loading={approvingArticleId === Number(record.id)}
+                title="Approve"
+              >
+                ✓
+              </Button>
+              <Button
+                type="text"
+                size="small"
+                danger
+                onClick={() => {
+                  setRejectingArticleId(Number(record.id))
+                  setIsRejectModalOpen(true)
+                }}
+                title="Reject"
+              >
+                ✕
+              </Button>
+            </>
           )}
           <Button
             type="text"
@@ -616,16 +643,14 @@ export default function ArticleManagement() {
             onClick={() =>
               handleArchiveClick(Number(record.id), !!record.is_deleted)
             }
+            title={record.is_deleted ? "Restore" : "Delete"}
           />
         </Space>
       ),
     },
   ]
 
-  const tagOptions = [
-    { label: "All Tags", value: "All Tags" },
-    ...tags.map((tag) => ({ label: tag.name, value: tag.name })),
-  ]
+  const tagOptions = tags.map((tag) => ({ label: tag.name, value: tag.name }))
 
   const filteredCategoriesByDepartment =
     isAdmin && selectedDepartment !== "All"
@@ -669,25 +694,42 @@ export default function ArticleManagement() {
   const editFormCategoriesByDepartment = scopedCategoriesByUserDepartment
 
   const handleArchiveClick = async (articleId: number, isDeleted: boolean) => {
-    const confirmText = isDeleted
-      ? "Restore this article?"
-      : "Archive this article? (This will mark it as archived)"
-    const ok = window.confirm(confirmText)
-    if (!ok) return
-    try {
-      setDeletingId(articleId)
-      const res = isDeleted
-        ? await restoreArticle(articleId)
-        : await deleteArticle(articleId)
-      if (!res.success) {
-        throw new Error(res.message || "Failed to update")
-      }
-      await refreshCurrentArticles(false)
-    } catch (err: any) {
-      setArticlesError(err?.message || "Failed to update")
-    } finally {
-      setDeletingId(null)
-    }
+    const title = isDeleted ? "Restore Article" : "Delete Article"
+    const content = isDeleted
+      ? "Are you sure you want to restore this article?"
+      : "Are you sure you want to delete this article? This action marks it as archived and excludes it from active views."
+    const okText = isDeleted ? "Restore" : "Delete"
+    const okButtonDanger = !isDeleted
+
+    Modal.confirm({
+      title,
+      content,
+      okText,
+      okButtonProps: { danger: okButtonDanger },
+      cancelText: "Cancel",
+      onOk: async () => {
+        try {
+          setDeletingId(articleId)
+          const res = isDeleted
+            ? await restoreArticle(articleId)
+            : await deleteArticle(articleId)
+          if (!res.success) {
+            throw new Error(res.message || "Failed to update")
+          }
+          message.success(
+            isDeleted
+              ? "Article restored successfully"
+              : "Article deleted successfully"
+          )
+          await refreshCurrentArticles(false)
+        } catch (err: any) {
+          message.error(err?.message || "Failed to update")
+          setArticlesError(err?.message || "Failed to update")
+        } finally {
+          setDeletingId(null)
+        }
+      },
+    })
   }
 
   const openEditModal = async (articleId: number) => {
@@ -782,6 +824,53 @@ export default function ArticleManagement() {
       message.error(error?.message || "An error occurred")
     } finally {
       setEditingArticle(false)
+    }
+  }
+
+  const handleApprove = async (articleId: number) => {
+    Modal.confirm({
+      title: "Approve Article",
+      content: "Are you sure you want to approve this article?",
+      okText: "Approve",
+      okButtonProps: { type: "primary" },
+      cancelText: "Cancel",
+      onOk: async () => {
+        try {
+          setApprovingArticleId(articleId)
+          const result = await approveArticle(articleId)
+          if (result.success) {
+            message.success("Article approved successfully")
+            await refreshCurrentArticles(false)
+          } else {
+            message.error(result.message || "Failed to approve article")
+          }
+        } catch (err: any) {
+          message.error(err?.message || "An error occurred")
+        } finally {
+          setApprovingArticleId(null)
+        }
+      },
+    })
+  }
+
+  const handleRejectSubmit = async () => {
+    if (!rejectingArticleId) return
+    try {
+      setIsRejectingArticle(true)
+      const result = await rejectArticle(rejectingArticleId, rejectReason)
+      if (result.success) {
+        message.success("Article rejected successfully")
+        setIsRejectModalOpen(false)
+        setRejectReason("")
+        setRejectingArticleId(null)
+        await refreshCurrentArticles(false)
+      } else {
+        message.error(result.message || "Failed to reject article")
+      }
+    } catch (err: any) {
+      message.error(err?.message || "An error occurred")
+    } finally {
+      setIsRejectingArticle(false)
     }
   }
 
@@ -883,12 +972,19 @@ export default function ArticleManagement() {
                 Tags
               </Text>
               <Select
-                value={selectedTag}
-                onChange={setSelectedTag}
+                mode="multiple"
+                allowClear
+                value={selectedTags}
+                onChange={(values) => {
+                  setSelectedTags(values)
+                  setCurrentPage(1)
+                }}
                 options={tagOptions}
                 loading={loadingTags}
                 size="middle"
                 className="w-full"
+                placeholder="Select tags"
+                maxTagCount="responsive"
               />
             </div>
 
@@ -966,6 +1062,39 @@ export default function ArticleManagement() {
                 block
               />
             </div>
+
+            {/* Clear Filters Button */}
+            <div className="flex flex-col justify-end">
+              <Text type="secondary" className="text-sm font-medium mb-2">
+                Actions
+              </Text>
+              <Tooltip title="Clear all filters">
+                <Button
+                  onClick={() => {
+                    setSearchQuery("")
+                    setSelectedTags([])
+                    setSelectedCategory("All")
+                    setSelectedDepartment("All")
+                    setSelectedStatus("All")
+                    setSortOrder("newest")
+                    setCurrentPage(1)
+                  }}
+                  disabled={
+                    searchQuery === "" &&
+                    selectedTags.length === 0 &&
+                    selectedCategory === "All" &&
+                    selectedDepartment === "All" &&
+                    selectedStatus === "All" &&
+                    sortOrder === "newest"
+                  }
+                  danger
+                  size="middle"
+                  block
+                >
+                  Clear Filters
+                </Button>
+              </Tooltip>
+            </div>
           </div>
         </div>
       </div>
@@ -984,8 +1113,8 @@ export default function ArticleManagement() {
                 scroll={{ x: 1800 }}
                 pagination={{
                   current: currentPage,
-                  pageSize: 10,
-                  total: articles.length,
+                  pageSize: PAGE_SIZE,
+                  total: totalArticles,
                   onChange: setCurrentPage,
                   showSizeChanger: false,
                 }}
@@ -1407,6 +1536,16 @@ export default function ArticleManagement() {
               </Text>
             }
             name="tags"
+            rules={[
+              {
+                validator: () => {
+                  if (selectedTagsForCreate.length > MAX_TAGS) {
+                    return Promise.reject(`Tối đa ${MAX_TAGS} thẻ`)
+                  }
+                  return Promise.resolve()
+                },
+              },
+            ]}
           >
             <Select
               mode="tags"
@@ -1416,9 +1555,15 @@ export default function ArticleManagement() {
               }))}
               size="large"
               loading={loadingTags}
-              placeholder="Type to search or add new tags"
+              placeholder="Thêm hoặc chọn thẻ (tối đa 5)"
               value={selectedTagsForCreate}
-              onChange={setSelectedTagsForCreate}
+              onChange={(values) => {
+                if (values.length <= MAX_TAGS) {
+                  setSelectedTagsForCreate(values)
+                } else {
+                  message.warning(`Tối đa ${MAX_TAGS} thẻ`)
+                }
+              }}
               maxTagCount="responsive"
               showSearch
               tokenSeparators={[","]}
@@ -1429,6 +1574,20 @@ export default function ArticleManagement() {
               }
             />
           </Form.Item>
+
+          <Flex justify="flex-end" align="center" className="mb-4">
+            <span
+              style={{
+                fontSize: "11px",
+                color:
+                  selectedTagsForCreate.length > MAX_TAGS
+                    ? "#dc2626"
+                    : "#6b7280",
+              }}
+            >
+              {selectedTagsForCreate.length} / {MAX_TAGS}
+            </span>
+          </Flex>
 
           <Form.Item className="!mb-0">
             <Flex justify="flex-end" gap="middle" className="pt-4">
@@ -1540,13 +1699,11 @@ export default function ArticleManagement() {
               ]}
             >
               <div
+                ref={editTitleEditorRef}
                 contentEditable
                 onInput={() => {
-                  const div = document.querySelector(
-                    "[contentEditable]"
-                  ) as HTMLDivElement
-                  if (div) {
-                    setEditTitleContent(div.innerText)
+                  if (editTitleEditorRef.current) {
+                    setEditTitleContent(editTitleEditorRef.current.innerText)
                   }
                 }}
                 onKeyDown={(e: KeyboardEvent<HTMLDivElement>) => {
@@ -1565,9 +1722,7 @@ export default function ArticleManagement() {
                 className="border border-gray-300 rounded p-3 min-h-[60px] focus:outline-none focus:border-blue-500 text-lg font-medium"
                 style={{ backgroundColor: "white" }}
                 suppressContentEditableWarning
-              >
-                {editTitleContent}
-              </div>
+              />
             </Form.Item>
 
             <Flex justify="flex-end" align="center" className="mt-2 mb-4">
@@ -1717,6 +1872,16 @@ export default function ArticleManagement() {
                 </Text>
               }
               name="tags"
+              rules={[
+                {
+                  validator: () => {
+                    if (editSelectedTags.length > MAX_TAGS) {
+                      return Promise.reject(`Tối đa ${MAX_TAGS} thẻ`)
+                    }
+                    return Promise.resolve()
+                  },
+                },
+              ]}
             >
               <Select
                 mode="tags"
@@ -1726,9 +1891,15 @@ export default function ArticleManagement() {
                 }))}
                 size="large"
                 loading={loadingTags}
-                placeholder="Type to search or add new tags"
+                placeholder="Thêm hoặc chọn thẻ (tối đa 5)"
                 value={editSelectedTags}
-                onChange={setEditSelectedTags}
+                onChange={(values) => {
+                  if (values.length <= MAX_TAGS) {
+                    setEditSelectedTags(values)
+                  } else {
+                    message.warning(`Tối đa ${MAX_TAGS} thẻ`)
+                  }
+                }}
                 maxTagCount="responsive"
                 showSearch
                 tokenSeparators={[","]}
@@ -1739,6 +1910,18 @@ export default function ArticleManagement() {
                 }
               />
             </Form.Item>
+
+            <Flex justify="flex-end" align="center" className="mb-4">
+              <span
+                style={{
+                  fontSize: "11px",
+                  color:
+                    editSelectedTags.length > MAX_TAGS ? "#dc2626" : "#6b7280",
+                }}
+              >
+                {editSelectedTags.length} / {MAX_TAGS}
+              </span>
+            </Flex>
 
             <Form.Item className="!mb-0">
               <Flex justify="flex-end" gap="middle" className="pt-4">
@@ -1774,6 +1957,59 @@ export default function ArticleManagement() {
             </Form.Item>
           </Form>
         </Spin>
+      </Modal>
+
+      {/* Reject Modal */}
+      <Modal
+        title="Reject Article"
+        open={isRejectModalOpen}
+        onCancel={() => {
+          setIsRejectModalOpen(false)
+          setRejectReason("")
+          setRejectingArticleId(null)
+        }}
+        footer={[
+          <Button
+            key="cancel"
+            onClick={() => {
+              setIsRejectModalOpen(false)
+              setRejectReason("")
+              setRejectingArticleId(null)
+            }}
+            disabled={isRejectingArticle}
+          >
+            Cancel
+          </Button>,
+          <Button
+            key="reject"
+            danger
+            htmlType="submit"
+            loading={isRejectingArticle}
+            onClick={handleRejectSubmit}
+          >
+            Reject Article
+          </Button>,
+        ]}
+        width={600}
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Reason for Rejection
+            </label>
+            <textarea
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              placeholder="Enter reason for rejection (optional)"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500"
+              rows={4}
+              disabled={isRejectingArticle}
+            />
+            <Text type="secondary" className="text-xs">
+              The reason will be sent to the article author
+            </Text>
+          </div>
+        </div>
       </Modal>
     </div>
   )

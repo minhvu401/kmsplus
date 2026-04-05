@@ -26,6 +26,7 @@ type GetAllCoursesParams = {
   limit?: number
   sort?: "trending" | "popular" | "newest"
   categories?: string[] // ✅ Changed to array for multi-select
+  status?: string // ✅ ĐỘC LẬP THÊM: Filter by course status
 }
 
 // Định nghĩa kiểu trả về chuẩn cho API
@@ -154,7 +155,10 @@ export async function getCourseById(id: number) {
 type CourseManagementAccessResult = {
   allowed: boolean
   redirectTo?: "/courses/management" | "/courses"
-  flash?: "course-not-found" | "course-access-denied" | "management-access-denied"
+  flash?:
+    | "course-not-found"
+    | "course-access-denied"
+    | "management-access-denied"
 }
 
 /**

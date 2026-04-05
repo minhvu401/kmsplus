@@ -1,27 +1,27 @@
-import QuizForm from '@/components/forms/quiz-form'
-import PageWrapper from '@/components/ui/questions/page-wrapper'
+import QuizForm from "@/components/forms/quiz-form"
+import PageWrapper from "@/components/ui/questions/page-wrapper"
 import {
   getQuestionsForAttempt,
   getTimeLimitForAttempt,
   getSavedAnswers,
   getAttemptMeta,
   getAttemptRouteInfo,
-} from '@/action/quiz/quizActions'
-import { notFound, redirect } from 'next/navigation'
+} from "@/action/quiz/quizActions"
+import { notFound, redirect } from "next/navigation"
 
 const normalizeSelectedOptionId = (value: unknown): string | string[] => {
   if (Array.isArray(value)) return value.map(String)
-  if (typeof value === 'string') {
+  if (typeof value === "string") {
     try {
       const parsed = JSON.parse(value)
       if (Array.isArray(parsed)) return parsed.map(String)
-      if (typeof parsed === 'string') return parsed
+      if (typeof parsed === "string") return parsed
       return String(parsed)
     } catch {
       return value
     }
   }
-  if (value == null) return ''
+  if (value == null) return ""
   return String(value)
 }
 
@@ -38,17 +38,30 @@ export default async function Page({
     notFound()
   }
 
-  const routeInfo = await getAttemptRouteInfo(parsedAttemptId)
-  if (routeInfo.course_id !== parsedCourseId) {
-    redirect(`/courses/${routeInfo.course_id}/learning/attempt/${parsedAttemptId}`)
+  let routeInfo
+  try {
+    routeInfo = await getAttemptRouteInfo(parsedAttemptId)
+  } catch (error) {
+    notFound()
   }
 
-  const [questions, timeLimit, savedAnswers, attemptMeta] = await Promise.all([
-    getQuestionsForAttempt(parsedAttemptId),
-    getTimeLimitForAttempt(parsedAttemptId),
-    getSavedAnswers(parsedAttemptId),
-    getAttemptMeta(parsedAttemptId),
-  ])
+  if (routeInfo.course_id !== parsedCourseId) {
+    redirect(
+      `/courses/${routeInfo.course_id}/learning/attempt/${parsedAttemptId}`
+    )
+  }
+
+  let questions, timeLimit, savedAnswers, attemptMeta
+  try {
+    ;[questions, timeLimit, savedAnswers, attemptMeta] = await Promise.all([
+      getQuestionsForAttempt(parsedAttemptId),
+      getTimeLimitForAttempt(parsedAttemptId),
+      getSavedAnswers(parsedAttemptId),
+      getAttemptMeta(parsedAttemptId),
+    ])
+  } catch (error) {
+    notFound()
+  }
 
   const initialAnswers = Object.fromEntries(
     savedAnswers.map((a) => [
@@ -64,7 +77,7 @@ export default async function Page({
         courseId={parsedCourseId}
         attemptNumber={attemptMeta.attempt_number}
         questions={questions}
-        durationSeconds={timeLimit ? timeLimit * 60 : null}
+        durationSeconds={timeLimit}
         initialAnswers={initialAnswers}
       />
     </PageWrapper>

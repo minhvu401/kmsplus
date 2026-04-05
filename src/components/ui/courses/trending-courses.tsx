@@ -1,10 +1,10 @@
-'use client'
+"use client"
 
-import React from 'react'
-import { Empty, Spin } from 'antd'
-import { FireOutlined } from '@ant-design/icons'
-import { CourseCard } from './course-card'
-import type { Course } from '@/service/course.service'
+import React from "react"
+import { Empty, Spin } from "antd"
+import { FireOutlined } from "@ant-design/icons"
+import { CourseCard } from "./course-card"
+import type { Course } from "@/service/course.service"
 
 interface TrendingCoursesProps {
   courses: Course[]
@@ -19,7 +19,7 @@ export const TrendingCourses: React.FC<TrendingCoursesProps> = ({
 }) => {
   if (isLoading) {
     return (
-      <div style={{ textAlign: 'center', padding: '60px 20px' }}>
+      <div style={{ textAlign: "center", padding: "60px 20px" }}>
         <Spin size="large" />
       </div>
     )
@@ -27,29 +27,29 @@ export const TrendingCourses: React.FC<TrendingCoursesProps> = ({
 
   if (courses.length === 0) {
     return (
-      <div style={{ textAlign: 'center', padding: '60px 20px' }}>
+      <div style={{ textAlign: "center", padding: "60px 20px" }}>
         <Empty description="Không có khóa học phổ biến nào" />
       </div>
     )
   }
 
   return (
-    <section style={{ marginBottom: '80px' }}>
+    <section style={{ marginBottom: "80px" }}>
       {/* Section Header with Trending Badge */}
       <div
         style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '12px',
-          marginBottom: '32px',
+          display: "flex",
+          alignItems: "center",
+          gap: "12px",
+          marginBottom: "32px",
         }}
       >
         <div>
           <h2
             style={{
-              fontSize: '32px',
+              fontSize: "32px",
               fontWeight: 700,
-              color: '#3366CC',
+              color: "#3366CC",
               margin: 0,
             }}
           >
@@ -57,9 +57,9 @@ export const TrendingCourses: React.FC<TrendingCoursesProps> = ({
           </h2>
           <p
             style={{
-              fontSize: '14px',
-              color: '#6b7280',
-              margin: '4px 0 0 0',
+              fontSize: "14px",
+              color: "#6b7280",
+              margin: "4px 0 0 0",
             }}
           >
             Những khóa học được nhiều người đăng ký trong 7 ngày qua
@@ -70,37 +70,37 @@ export const TrendingCourses: React.FC<TrendingCoursesProps> = ({
       {/* Trending Courses Grid */}
       <div
         style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(4, 1fr)',
-          gap: '16px',
+          display: "grid",
+          gridTemplateColumns: "repeat(4, 1fr)",
+          gap: "16px",
         }}
       >
         {courses.map((course) => (
           <div
             key={course.id}
             style={{
-              position: 'relative',
+              position: "relative",
             }}
           >
             {/* Trending Badge */}
             <div
               style={{
-                position: 'absolute',
-                top: '-12px',
-                left: '0',
-                backgroundColor: '#fa7501',
-                color: '#ffffff',
-                padding: '4px 12px',
-                borderRadius: '20px',
-                fontSize: '11px',
+                position: "absolute",
+                top: "-12px",
+                left: "0",
+                backgroundColor: "#fa7501",
+                color: "#ffffff",
+                padding: "4px 12px",
+                borderRadius: "20px",
+                fontSize: "11px",
                 fontWeight: 700,
                 zIndex: 10,
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px',
+                display: "flex",
+                alignItems: "center",
+                gap: "4px",
               }}
             >
-              <FireOutlined style={{ fontSize: '10px' }} />
+              <FireOutlined style={{ fontSize: "10px" }} />
               Trending
             </div>
             <CourseCard
@@ -108,15 +108,13 @@ export const TrendingCourses: React.FC<TrendingCoursesProps> = ({
               enrollmentStatus="not-enrolled"
               progress={0}
               skillTags={[]}
-              description={course.description || ''}
-              rating={4.8}
-              students={course.enrollment_count}
+              description={course.description || ""}
+              rating={course.average_rating || 0}
+              students={course.rating_count || course.enrollment_count}
             />
           </div>
         ))}
       </div>
-
-
     </section>
   )
 }

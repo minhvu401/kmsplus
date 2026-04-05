@@ -1,7 +1,12 @@
 "use server"
 
 import { requireAuth } from "@/lib/auth"
-import { getCommentsByArticleId, createCommentAction, updateCommentAction, deleteCommentAction } from "@/service/comments.service"
+import {
+  getCommentsByArticleId,
+  createCommentAction,
+  updateCommentAction,
+  deleteCommentAction,
+} from "@/service/comments.service"
 
 export async function getComments(articleId: number) {
   await requireAuth()
@@ -11,7 +16,7 @@ export async function getComments(articleId: number) {
 export async function createComment(formData: FormData) {
   try {
     const currentUser = await requireAuth()
-    
+
     const article_id = parseInt(formData.get("article_id") as string)
     const content = formData.get("content") as string
     const parent_id = formData.get("parent_id") as string
@@ -39,8 +44,8 @@ export async function createComment(formData: FormData) {
 
 export async function updateComment(formData: FormData) {
   try {
-    await requireAuth()
-    
+    const currentUser = await requireAuth()
+
     const id = parseInt(formData.get("id") as string)
     const content = formData.get("content") as string
 
@@ -50,6 +55,7 @@ export async function updateComment(formData: FormData) {
 
     const result = await updateCommentAction({
       id,
+      user_id: parseInt(currentUser.id),
       content: content.trim(),
     })
 
@@ -65,8 +71,8 @@ export async function updateComment(formData: FormData) {
 
 export async function deleteComment(commentId: number) {
   try {
-    await requireAuth()
-    return await deleteCommentAction(commentId)
+    const currentUser = await requireAuth()
+    return await deleteCommentAction(commentId, parseInt(currentUser.id))
   } catch (error: any) {
     console.error("Error in deleteComment action:", error)
     return {

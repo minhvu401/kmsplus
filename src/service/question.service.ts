@@ -93,7 +93,7 @@ export async function createQuestionAction(
   const { title, content, category_id, user_id } = input
 
   // Timestamp
-  const createdAt = new Date().toLocaleString()
+  const createdAt = new Date().toISOString()
 
   try {
     // Insert question into DB
@@ -126,7 +126,7 @@ export async function updateQuestionAction(
 ): Promise<ActionResult> {
   const { title, content, category_id, id } = input
 
-  const updatedAt = new Date().toLocaleString()
+  const updatedAt = new Date().toISOString()
 
   try {
     await sql`
@@ -154,7 +154,7 @@ export async function updateQuestionAction(
 
 // DELETE QUESTIONS
 export async function deleteQuestionAction(id: string): Promise<ActionResult> {
-  const deletedAt = new Date().toLocaleString()
+  const deletedAt = new Date().toISOString()
 
   try {
     await sql`
@@ -179,7 +179,7 @@ export async function deleteQuestionAction(id: string): Promise<ActionResult> {
 
 // CLOSE QUESTIONS
 export async function closeQuestionAction(id: string): Promise<ActionResult> {
-  const closedAt = new Date().toLocaleString()
+  const closedAt = new Date().toISOString()
 
   try {
     await sql`
@@ -205,7 +205,7 @@ export async function closeQuestionAction(id: string): Promise<ActionResult> {
 
 // OPEN QUESTIONS
 export async function openQuestionAction(id: string): Promise<ActionResult> {
-  const openedAt = new Date().toLocaleString()
+  const openedAt = new Date().toISOString()
 
   try {
     await sql`
@@ -309,18 +309,17 @@ export async function fetchQuestionPagesAction(
 ) {
   try {
     const searchCondition = buildQuestionSearchCondition(query)
-    let sqlQuery = sql`
-      WHERE ${searchCondition}
-      AND questions.deleted_at IS NULL
-    `
 
-    // Add optional filters dynamically
-    // Only filter by category if it's a valid numeric ID
+    // Build WHERE conditions array
+    const whereConditions: string[] = [`questions.deleted_at IS NULL`]
+
+    // Add category filter
     const categoryId = parseInt(category, 10)
     if (category !== "any" && !isNaN(categoryId)) {
-      sqlQuery = sql`${sqlQuery} AND categories.id = ${categoryId}`
+      whereConditions.push(`categories.id = ${categoryId}`)
     }
 
+    // Add status filter
     if (status !== "any") {
       let isClosed
       if (status === "closed") {
@@ -328,7 +327,14 @@ export async function fetchQuestionPagesAction(
       } else if (status === "open") {
         isClosed = false
       }
-      sqlQuery = sql`${sqlQuery} AND questions.is_closed = ${isClosed}`
+      whereConditions.push(`questions.is_closed = ${isClosed}`)
+    }
+
+    // Build full WHERE clause with search condition
+    let whereClause = sql`WHERE ${searchCondition}`
+
+    for (const condition of whereConditions) {
+      whereClause = sql`${whereClause} AND ${sql.unsafe(condition)}`
     }
 
     // Final query
@@ -337,7 +343,7 @@ export async function fetchQuestionPagesAction(
       FROM questions
       JOIN users ON questions.user_id = users.id
       JOIN categories ON questions.category_id = categories.id
-      ${sqlQuery};
+      ${whereClause};
     `
 
     const totalItems = Number(data[0].count)
@@ -364,32 +370,34 @@ export async function fetchFilteredQuestionsAction(
 
   try {
     const searchCondition = buildQuestionSearchCondition(query)
-    let sqlQuery = sql`
-      WHERE ${searchCondition}
-      AND questions.deleted_at IS NULL
-    `
 
-    // Add category filter if it's a valid numeric ID
+    // Build WHERE conditions array
+    const whereConditions: string[] = [`questions.deleted_at IS NULL`]
+
+    // Add category filter
     const categoryId = parseInt(category, 10)
     if (category !== "any" && !isNaN(categoryId)) {
-      sqlQuery = sql`
-        ${sqlQuery} 
-        AND categories.id = ${categoryId}
-      `
+      whereConditions.push(`categories.id = ${categoryId}`)
     }
 
     // Add status filter
     if (status !== "any") {
       const isClosed = status === "closed"
-      sqlQuery = sql`${sqlQuery} AND questions.is_closed = ${isClosed}`
+      whereConditions.push(`questions.is_closed = ${isClosed}`)
+    }
+
+    // Build full WHERE clause with search condition
+    let whereClause = sql`WHERE ${searchCondition}`
+
+    for (const condition of whereConditions) {
+      whereClause = sql`${whereClause} AND ${sql.unsafe(condition)}`
     }
 
     // Add sort order
-    if (sort !== "newest") {
-      sqlQuery = sql`${sqlQuery} ORDER BY questions.answer_count DESC`
-    } else {
-      sqlQuery = sql`${sqlQuery} ORDER BY questions.created_at DESC`
-    }
+    const orderClause =
+      sort !== "newest"
+        ? "ORDER BY questions.answer_count DESC"
+        : "ORDER BY questions.created_at DESC"
 
     // Final query
     const result = (await sql`
@@ -398,7 +406,8 @@ export async function fetchFilteredQuestionsAction(
       FROM questions
       JOIN users ON questions.user_id = users.id
       JOIN categories ON questions.category_id = categories.id
-      ${sqlQuery}
+      ${whereClause}
+      ${sql.unsafe(orderClause)}
       LIMIT ${pageSize} OFFSET ${offset};
     `) as Question[]
 
@@ -449,7 +458,7 @@ export async function createAnswerAction(
   input: CreateAnswerDtoType
 ): Promise<ActionResult> {
   const { content, user_id, question_id, parent_id } = input
-  const createdAt = new Date().toLocaleString()
+  const createdAt = new Date().toISOString()
 
   try {
     await sql`
@@ -485,7 +494,7 @@ export async function updateAnswerAction(
 ): Promise<ActionResult> {
   const { content, answer_id } = input
 
-  const updatedAt = new Date().toLocaleString()
+  const updatedAt = new Date().toISOString()
 
   try {
     await sql`
@@ -625,7 +634,7 @@ export async function fetchFilteredAnswersAction(
 
     const topLevelIds = topLevelAnswers.map((a) => a.id)
 
-    // Fetch all replies up to 4 levels deep using recursive CTE
+    // Fetch all replies up to 10 levels deep using recursive CTE
     const allReplies = (await sql`
       WITH RECURSIVE reply_tree AS (
         SELECT 
@@ -647,36 +656,36 @@ export async function fetchFilteredAnswersAction(
         FROM answers a
         JOIN users u ON a.user_id = u.id
         JOIN reply_tree rt ON a.parent_id = rt.id
-        WHERE rt.depth < 4
+        WHERE rt.depth < 10
       )
       SELECT * FROM reply_tree
       ORDER BY created_at ASC;
     `) as (Answer & { depth: number })[]
 
-    // Get IDs of level 4 replies to check for deeper replies
-    const level4Ids = allReplies.filter((a) => a.depth === 4).map((a) => a.id)
+    // Get IDs of level 10 replies to check for deeper replies
+    const level10Ids = allReplies.filter((a) => a.depth === 10).map((a) => a.id)
 
-    // Count deeper replies (level 5+) for each top-level answer
+    // Count deeper replies (level 11+) for each top-level answer
     let hasDeepReplies: Map<number, boolean> = new Map()
-    if (level4Ids.length > 0) {
-      // Check if any level 4 replies have children
+    if (level10Ids.length > 0) {
+      // Check if any level 10 replies have children
       const deeperExists = await sql`
         SELECT DISTINCT parent_id
         FROM answers
-        WHERE parent_id = ANY(${level4Ids})
+        WHERE parent_id = ANY(${level10Ids})
       `
 
       if (deeperExists.length > 0) {
         // Find which top-level answers have deep replies by tracing back
-        const level4WithChildren = new Set(
+        const level10WithChildren = new Set(
           deeperExists.map((r: any) => r.parent_id)
         )
 
-        // For each top-level answer, check if any of its descendants at level 4 have children
+        // For each top-level answer, check if any of its descendants at level 10 have children
         for (const topAnswer of topLevelAnswers) {
           const hasDeep = allReplies.some((reply) => {
-            if (reply.depth !== 4) return false
-            if (!level4WithChildren.has(reply.id)) return false
+            if (reply.depth !== 10) return false
+            if (!level10WithChildren.has(reply.id)) return false
             // Check if this reply is a descendant of topAnswer
             let current = reply
             while (current.depth > 1) {
@@ -849,8 +858,10 @@ export async function getTopKnowledgeSharers(
         users.avatar_url AS avatar_url,
         COUNT(answers.id) AS score
       FROM users
-      LEFT JOIN answers ON users.id = answers.user_id
+      LEFT JOIN answers ON users.id = answers.user_id AND answers.deleted_at IS NULL
+      WHERE users.deleted_at IS NULL
       GROUP BY users.id, users.full_name, users.avatar_url
+      HAVING COUNT(answers.id) > 0
       ORDER BY score DESC
       LIMIT ${limit}
     `

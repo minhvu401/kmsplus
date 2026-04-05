@@ -94,6 +94,11 @@ export type CurriculumItem = {
   title: string
   duration_minutes?: number | null
   question_count?: number
+  // ✅ ĐLCS THÊM: lesson details for editing
+  lesson_type?: string
+  video_url?: string | null
+  file_path?: string | null
+  lesson_content?: string | null
 }
 export type Section = {
   id: string
@@ -1273,17 +1278,32 @@ function CurriculumContentBank({
     const lesson = item as Lesson
     setEditingLessonId(Number(lesson.id))
     setIsCreateModalOpen(true)
+
+    // ✅ ĐLCS CẬP NHẬT: Use lesson_content, lesson_type, video_url, file_path from curriculum item if available
+    const lessonType =
+      (lesson as any).lesson_type || lesson.type || "text_media"
+
+    // Determine content based on type
+    let existingContent = ""
+    if (lessonType === "video") {
+      existingContent = (lesson as any).video_url || ""
+    } else if (lessonType === "pdf") {
+      existingContent = (lesson as any).file_path || ""
+    } else {
+      existingContent = (lesson as any).lesson_content || lesson.content || ""
+    }
+
     form.setFieldsValue({
       title: lesson.title,
-      type: lesson.type || "text_media",
-      content: lesson.content,
+      type: lessonType,
+      content: existingContent,
       category_id: lesson.category_id ? String(lesson.category_id) : undefined,
     })
-    const cType = lesson.type || "text_media"
-    setContentType(cType)
-    if (cType === "video" && lesson.content) setVideoUrl(lesson.content)
-    if (cType === "pdf" && lesson.content)
-      setPdfFile({ name: "Tệp hiện có", url: lesson.content })
+
+    setContentType(lessonType)
+    if (lessonType === "video" && existingContent) setVideoUrl(existingContent)
+    if (lessonType === "pdf" && existingContent)
+      setPdfFile({ name: "Tệp hiện có", url: existingContent })
   }
 
   const handleDeleteItemAction = async (

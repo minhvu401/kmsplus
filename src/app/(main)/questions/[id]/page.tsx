@@ -50,11 +50,12 @@ export default async function Page({
     Number(id),
     pageSize
   )
-  const { totalItems: topLevelAnswerCount, totalPages } = await fetchAnswerPages(Number(id), pageSize)
+  const { totalItems: topLevelAnswerCount, totalPages } =
+    await fetchAnswerPages(Number(id), pageSize)
   const categories = await getActiveCategories()
 
   if (!question) {
-    return notFound();
+    return notFound()
   }
 
   return (
@@ -83,7 +84,11 @@ export default async function Page({
         </Link>
       </div>
       <QuestionsMessage scroll={false} />
-      <QuestionDetails userId={Number(user.id)} question={question} categories={categories} />
+      <QuestionDetails
+        userId={Number(user.id)}
+        question={question}
+        categories={categories}
+      />
       <AnswerSection
         questionId={Number(id)}
         answer_count={topLevelAnswerCount}
@@ -91,8 +96,8 @@ export default async function Page({
         answers={answers}
         paginatedAnswers={paginatedAnswers}
         totalPages={totalPages}
+        userId={Number(user.id)}
       />
     </PageWrapper>
-  );
+  )
 }
-
