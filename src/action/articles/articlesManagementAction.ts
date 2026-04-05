@@ -94,14 +94,14 @@ export async function getAllTags() {
   return getAllTagsAction()
 }
 
-export async function filterByTag(searchQuery: string, tagFilter?: string) {
+export async function filterByTag(searchQuery: string, tagFilters?: string[]) {
   await requireAuth()
-  return filterByTagAction(searchQuery, tagFilter)
+  return filterByTagAction(searchQuery, tagFilters)
 }
 
 export async function filterByTagAndCategory(
   searchQuery: string,
-  tagFilter?: string,
+  tagFilters?: string[],
   categoryId?: number,
   statusFilter?: string,
   isDeletedFilter?: boolean | "all",
@@ -127,7 +127,7 @@ export async function filterByTagAndCategory(
 
   const result = await filterByTagAction(
     searchQuery,
-    tagFilter,
+    tagFilters,
     categoryId,
     statusFilter,
     isDeletedFilter,
@@ -164,9 +164,9 @@ export async function approveArticle(id: number) {
   return approveArticleAction(id, Number(currentUser.id))
 }
 
-export async function rejectArticle(id: number) {
+export async function rejectArticle(id: number, reason: string = "") {
   const currentUser = await requireAuth()
-  return rejectArticleAction(id, "", Number(currentUser.id))
+  return rejectArticleAction(id, reason, Number(currentUser.id))
 }
 
 export async function resubmitArticle(

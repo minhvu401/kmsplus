@@ -1,14 +1,25 @@
-import { getAttemptRouteInfo } from "@/action/quiz/quizActions";
-import { redirect } from "next/navigation";
+import { getAttemptRouteInfo } from "@/action/quiz/quizActions"
+import { redirect, notFound } from "next/navigation"
 
 export default async function Page({
-    params
+  params,
 }: {
-    params: Promise<{ id: string }>;
+  params: Promise<{ id: string }>
 }) {
+  const attemptId = Number((await params).id)
 
-    const attemptId = Number((await params).id);
-    const attemptRoute = await getAttemptRouteInfo(attemptId)
+  if (!Number.isInteger(attemptId)) {
+    notFound()
+  }
 
-    redirect(`/courses/${attemptRoute.course_id}/learning/attempt/${attemptId}/result`)
+  let attemptRoute
+  try {
+    attemptRoute = await getAttemptRouteInfo(attemptId)
+  } catch (error) {
+    notFound()
+  }
+
+  redirect(
+    `/courses/${attemptRoute.course_id}/learning/attempt/${attemptId}/result`
+  )
 }

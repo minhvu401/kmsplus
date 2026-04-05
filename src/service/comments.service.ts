@@ -15,9 +15,12 @@ export type Comment = {
   updated_at: Date
   user_name: string
   user_email: string
+  user_avatar_url?: string | null
 }
 
-export async function getCommentsByArticleId(articleId: number): Promise<Comment[]> {
+export async function getCommentsByArticleId(
+  articleId: number
+): Promise<Comment[]> {
   try {
     const comments = await sql`
       SELECT 
@@ -29,7 +32,8 @@ export async function getCommentsByArticleId(articleId: number): Promise<Comment
         c.created_at,
         c.updated_at,
         u.full_name as user_name,
-        u.email as user_email
+        u.email as user_email,
+        u.avatar_url as user_avatar_url
       FROM comments c
       LEFT JOIN users u ON c.user_id = u.id
       WHERE c.article_id = ${articleId}
@@ -38,7 +42,7 @@ export async function getCommentsByArticleId(articleId: number): Promise<Comment
     `
     return comments as Comment[]
   } catch (error: any) {
-    console.error('Error fetching comments:', error)
+    console.error("Error fetching comments:", error)
     return []
   }
 }
@@ -59,7 +63,7 @@ export async function createCommentAction(input: {
     `
 
     if (result.length === 0) {
-      return { success: false, message: 'Failed to create comment' }
+      return { success: false, message: "Failed to create comment" }
     }
 
     const commentId = String(result[0].id)
@@ -84,7 +88,7 @@ export async function createCommentAction(input: {
             LIMIT 1
           `
 
-          const commenterName = commenterResult[0]?.full_name || 'Có người'
+          const commenterName = commenterResult[0]?.full_name || "Có người"
 
           const unreadCountResult = await sql`
             SELECT COUNT(*)::INT AS total
@@ -95,11 +99,13 @@ export async function createCommentAction(input: {
               AND is_read = FALSE
           `
 
-          const unreadCommentsForArticle = (unreadCountResult[0]?.total || 0) + 1
-          const normalizedComment = content.replace(/\s+/g, ' ').trim()
-          const commentPreview = normalizedComment.length > 120
-            ? `${normalizedComment.slice(0, 120)}...`
-            : normalizedComment
+          const unreadCommentsForArticle =
+            (unreadCountResult[0]?.total || 0) + 1
+          const normalizedComment = content.replace(/\s+/g, " ").trim()
+          const commentPreview =
+            normalizedComment.length > 120
+              ? `${normalizedComment.slice(0, 120)}...`
+              : normalizedComment
 
           await sql`
             INSERT INTO notifications (
@@ -120,12 +126,12 @@ export async function createCommentAction(input: {
               ${`Bài viết "${article.title}" có bình luận mới`},
               ${`${commenterName} vừa bình luận: "${commentPreview}". Hiện có ${unreadCommentsForArticle} bình luận mới chưa đọc cho bài viết này.`},
               ${article.thumbnail_url ?? null},
-              ${'article_comment'},
+              ${"article_comment"},
               ${`/articles/${article_id}#comment-${commentId}`},
-              FALSE,
+              ${false},
               ${VIETNAM_NOW},
               ${article_id},
-              ${commentId},
+              ${parseInt(commentId)},
               ${null}
             )
           `
@@ -141,26 +147,47 @@ export async function createCommentAction(input: {
         }
       }
     } catch (notificationError: any) {
-      console.error('Error creating comment notification:', notificationError)
+      console.error("Error creating comment notification:", notificationError)
     }
 
     return {
       success: true,
-      message: 'Comment created successfully',
+      message: "Comment created successfully",
       commentId,
     }
   } catch (error: any) {
-    console.error('Error creating comment:', error)
-    return { success: false, message: error?.message || 'Failed to create comment' }
+    console.error("Error creating comment:", error)
+    return {
+      success: false,
+      message: error?.message || "Failed to create comment",
+    }
   }
 }
 
 export async function updateCommentAction(input: {
   id: number
+  user_id: number
   content: string
 }): Promise<{ success: boolean; message: string }> {
   try {
-    const { id, content } = input
+    const { id, user_id, content } = input
+
+    // Check if comment exists and belongs to user
+    const commentCheck = await sql`
+      SELECT user_id FROM comments WHERE id = ${id} AND deleted_at IS NULL
+    `
+
+    if (commentCheck.length === 0) {
+      return { success: false, message: "Comment not found or already deleted" }
+    }
+
+    const comment = commentCheck[0]
+    if (comment.user_id !== user_id) {
+      return {
+        success: false,
+        message: "You don't have permission to edit this comment",
+      }
+    }
 
     const result = await sql`
       UPDATE comments
@@ -170,31 +197,58 @@ export async function updateCommentAction(input: {
     `
 
     if (result.length === 0) {
-      return { success: false, message: 'Comment not found or already deleted' }
+      return { success: false, message: "Comment not found or already deleted" }
     }
 
-    return { success: true, message: 'Comment updated successfully' }
+    return { success: true, message: "Comment updated successfully" }
   } catch (error: any) {
-    console.error('Error updating comment:', error)
-    return { success: false, message: error?.message || 'Failed to update comment' }
+    console.error("Error updating comment:", error)
+    return {
+      success: false,
+      message: error?.message || "Failed to update comment",
+    }
   }
 }
 
-export async function deleteCommentAction(commentId: number): Promise<{ success: boolean; message: string }> {
+export async function deleteCommentAction(
+  commentId: number,
+  userId: number
+): Promise<{ success: boolean; message: string }> {
   try {
+    // Check if comment exists and belongs to user
+    const commentCheck = await sql`
+      SELECT user_id FROM comments WHERE id = ${commentId} AND deleted_at IS NULL
+    `
+
+    if (commentCheck.length === 0) {
+      return { success: false, message: "Comment not found" }
+    }
+
+    const comment = commentCheck[0]
+    if (comment.user_id !== userId) {
+      return {
+        success: false,
+        message: "You don't have permission to delete this comment",
+      }
+    }
+
     const result = await sql`
-      DELETE FROM comments
-      WHERE id = ${commentId}
+      UPDATE comments
+      SET deleted_at = ${VIETNAM_NOW}
+      WHERE id = ${commentId} AND deleted_at IS NULL
       RETURNING id
     `
 
     if (result.length === 0) {
-      return { success: false, message: 'Comment not found' }
+      return { success: false, message: "Comment not found" }
     }
 
-    return { success: true, message: 'Comment deleted successfully' }
+    return { success: true, message: "Comment deleted successfully" }
   } catch (error: any) {
-    console.error('Error deleting comment:', error)
-    return { success: false, message: error?.message || 'Failed to delete comment' }
+    console.error("Error deleting comment:", error)
+    return {
+      success: false,
+      message: error?.message || "Failed to delete comment",
+    }
   }
 }

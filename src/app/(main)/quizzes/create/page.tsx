@@ -11,6 +11,7 @@ import {
   Select,
   Modal,
   Checkbox,
+  InputNumber,
 } from "antd"
 import {
   ArrowLeftOutlined,
@@ -268,23 +269,11 @@ export default function CreateQuizPage() {
     }
   }
 
-  const handlePassingScoreChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value
-
-    if (value === "") {
-      setPayload((prev) => ({
-        ...prev,
-        passing_score: 80,
-      }))
-    } else {
-      const numValue = parseInt(value, 10)
-      if (!isNaN(numValue) && numValue > 0 && numValue <= 100) {
-        setPayload((prev) => ({
-          ...prev,
-          passing_score: numValue,
-        }))
-      }
-    }
+  const handlePassingScoreChange = (value: number | null) => {
+    setPayload((prev) => ({
+      ...prev,
+      passing_score: value === null ? 80 : value,
+    }))
 
     if (errors.passing_score) {
       validateStep1()
@@ -431,53 +420,74 @@ export default function CreateQuizPage() {
 
   // State để tracking drag
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
 
   /**
-   * [US-08] Drag & Drop handlers
+   * [US-08] Drag & Drop handlers - Enhanced with drop zone highlighting
    */
   const handleDragStart = (e: React.DragEvent, index: number) => {
     setDraggedIndex(index)
-    e.dataTransfer.effectAllowed = "move"
+    e.dataTransfer!.effectAllowed = "move"
+    e.dataTransfer!.setData("text/html", e.currentTarget.innerHTML)
   }
 
-  const handleDragOver = (e: React.DragEvent) => {
+  const handleDragOver = (e: React.DragEvent, index: number) => {
     e.preventDefault()
-    e.dataTransfer.dropEffect = "move"
+    e.dataTransfer!.dropEffect = "move"
+    setDragOverIndex(index)
   }
 
   const handleDragEnter = (e: React.DragEvent) => {
     e.preventDefault()
   }
 
+  const handleDragLeave = (e: React.DragEvent, index: number) => {
+    // Only clear dragOverIndex if leaving the specific item
+    if (dragOverIndex === index) {
+      setDragOverIndex(null)
+    }
+  }
+
   const handleDrop = (e: React.DragEvent, dropIndex: number) => {
     e.preventDefault()
+    e.stopPropagation()
+
+    setDragOverIndex(null)
 
     if (draggedIndex === null || draggedIndex === dropIndex) {
       setDraggedIndex(null)
       return
     }
 
+    // Reorder questions
     setPayload((prev) => {
       const newQuestions = [...(prev.questions || [])]
-      const draggedQuestion = newQuestions[draggedIndex]
+      if (
+        draggedIndex < newQuestions.length &&
+        dropIndex <= newQuestions.length
+      ) {
+        const draggedQuestion = newQuestions[draggedIndex]
 
-      // Remove from old position
-      newQuestions.splice(draggedIndex, 1)
-      // Insert at new position
-      newQuestions.splice(dropIndex, 0, draggedQuestion)
+        // Remove from old position
+        newQuestions.splice(draggedIndex, 1)
+        // Insert at new position
+        newQuestions.splice(dropIndex, 0, draggedQuestion)
 
-      return {
-        ...prev,
-        questions: newQuestions,
+        return {
+          ...prev,
+          questions: newQuestions,
+        }
       }
+      return prev
     })
 
     setDraggedIndex(null)
-    message.success("Thay đổi thứ tự thành công")
+    message.success("Thay đổi thứ tự câu hỏi thành công")
   }
 
   const handleDragEnd = () => {
     setDraggedIndex(null)
+    setDragOverIndex(null)
   }
 
   /**
@@ -763,10 +773,9 @@ export default function CreateQuizPage() {
                   help={errors.passing_score}
                 >
                   <div className="flex gap-3 items-center">
-                    <Input
-                      type="number"
+                    <InputNumber
                       placeholder="VD: 50"
-                      value={payload.passing_score || ""}
+                      value={payload.passing_score || 80}
                       onChange={handlePassingScoreChange}
                       onBlur={handleBlur}
                       min={1}
@@ -774,6 +783,8 @@ export default function CreateQuizPage() {
                       size="large"
                       status={errors.passing_score ? "error" : ""}
                       style={{ flex: 1 }}
+                      stringMode={false}
+                      precision={0}
                     />
                     <span className="text-blue-600 font-medium whitespace-nowrap text-sm bg-blue-50 px-3 py-2 rounded">
                       📊 {payload.passing_score || 80}%
@@ -897,36 +908,54 @@ export default function CreateQuizPage() {
                       key={question.id}
                       draggable
                       onDragStart={(e) => handleDragStart(e, index)}
-                      onDragOver={handleDragOver}
+                      onDragOver={(e) => handleDragOver(e, index)}
                       onDragEnter={handleDragEnter}
+                      onDragLeave={(e) => handleDragLeave(e, index)}
                       onDrop={(e) => handleDrop(e, index)}
                       onDragEnd={handleDragEnd}
-                      className={`flex items-center justify-between p-3 rounded border-2 transition-all cursor-move ${
+                      className={`flex items-start justify-between p-4 rounded-lg border-2 transition-all cursor-move gap-3 ${
                         draggedIndex === index
-                          ? "bg-gray-100 border-gray-400 opacity-50"
-                          : "bg-blue-50 border-blue-200 hover:border-blue-400"
+                          ? "bg-blue-100 border-blue-500 opacity-60 shadow-md"
+                          : dragOverIndex === index
+                            ? "bg-blue-100 border-blue-500 shadow-lg ring-2 ring-blue-300"
+                            : "bg-white border-gray-300 hover:border-blue-400 hover:shadow-sm"
                       }`}
                     >
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium">
-                          {index + 1}. {question.text}
-                        </p>
-                        {question.description && (
-                          <p className="text-sm text-gray-600">
-                            {question.description}
-                          </p>
-                        )}
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-gray-600 text-lg min-w-fit">
+                            {index + 1}.
+                          </span>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-gray-900 break-words">
+                              {question.text}
+                            </p>
+                            {question.description && (
+                              <p className="text-sm text-gray-600 mt-1 break-words">
+                                {question.description}
+                              </p>
+                            )}
+                          </div>
+                        </div>
                         {draggedIndex === index && (
-                          <p className="text-xs text-gray-500 mt-1">
-                            🖱️ Kéo để sắp xếp lại...
+                          <p className="text-xs text-blue-600 mt-2 font-medium">
+                            ⬆️ Kéo để sắp xếp, thả lên vị trí muốn di chuyển tới
                           </p>
                         )}
+                        {dragOverIndex === index &&
+                          draggedIndex !== null &&
+                          draggedIndex !== index && (
+                            <p className="text-xs text-green-600 mt-2 font-medium">
+                              ✓ Thả ở đây để đặt câu hỏi vào vị trí này
+                            </p>
+                          )}
                       </div>
                       <Button
                         type="text"
                         danger
                         icon={<DeleteOutlined />}
                         onClick={() => handleRemoveQuestion(question.id)}
+                        className="shrink-0"
                       />
                     </div>
                   ))}

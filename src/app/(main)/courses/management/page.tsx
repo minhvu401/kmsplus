@@ -52,12 +52,28 @@ export default async function ManagerCoursesPage({ searchParams }: Props) {
       ? [categoriesParam as string]
       : []
 
+  // ✅ ĐLCS THÊM: Extract status filter from URL
+  const status = Array.isArray(params?.status)
+    ? params?.status[0]
+    : (params?.status as string) || "All"
+
+  // ✅ ĐLCS THÊM: Extract sort order from URL (though sorting is done client-side)
+  const sortOrder = Array.isArray(params?.sort)
+    ? params?.sort[0]
+    : (params?.sort as string) || "newest"
+
   const limit = 10
 
   // 1. Fetch dữ liệu song song
   const [coursesData, lessonsRes, quizzesRes, categoriesRes] =
     await Promise.all([
-      getAllCourses({ query, page, limit, categories: selectedCategories }),
+      getAllCourses({
+        query,
+        page,
+        limit,
+        categories: selectedCategories,
+        status,
+      }),
       getAllLessonsAction(),
       getAllQuizzes({}),
       getCategoriesAPI(),

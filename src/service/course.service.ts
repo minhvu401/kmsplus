@@ -33,6 +33,7 @@ export type Course = {
   thumbnail_url: string | null
   status: CourseStatus
   average_rating: number | null
+  rating_count?: number // ✅ Number of ratings/feedback count
   duration_hours: number | null
   enrollment_count: number
   approved_by: number | null
@@ -88,6 +89,7 @@ type GetAllCoursesParams = {
   userId?: number // ✅ Added userId for role-based filtering
   userRole?: string // ✅ Added userRole for permission checking
   creatorId?: number // ✅ Added creator filter
+  status?: string // ✅ đLC THÊM: Filter by course status (draft, pending_approval, published, rejected)
 }
 
 // --- CATEGORY ACTIONS ---
@@ -119,6 +121,7 @@ export async function getAllCoursesAction({
   rating = "all",
   userId,
   userRole,
+  status = "All", // ✅ ĐLCS THÊM: Nhận tham số status
 }: GetAllCoursesParams) {
   const offset = (page - 1) * limit
 
@@ -205,6 +208,10 @@ export async function getAllCoursesAction({
       ? sql`AND category_id = ANY(${categories.map((c) => parseInt(c, 10))})`
       : sql``
 
+  // ✅ ĐLCS THÊM: Xử lý Filter Status
+  const statusCondition =
+    status && status !== "All" ? sql`AND c.status = ${status}` : sql``
+
   //
   console.log(` [DEBUG] Đang check quyền cho User ID: ${userId}`)
 
@@ -250,7 +257,8 @@ export async function getAllCoursesAction({
     WHERE c.deleted_at IS NULL
       AND c.title ILIKE ${"%" + query + "%"}
       ${hodNonDraftCondition}
-      ${categoryCondition} 
+      ${categoryCondition}
+      ${statusCondition}
       ${permissionCondition}
     ORDER BY ${sql.unsafe(orderBy)}
     LIMIT ${limit}
@@ -266,6 +274,7 @@ export async function getAllCoursesAction({
       AND c.title ILIKE ${"%" + query + "%"}
       ${hodNonDraftCondition}
       ${categoryCondition}
+      ${statusCondition}
       ${permissionCondition}
   `
 
@@ -335,6 +344,10 @@ export async function getCourseByIdAction(id: number) {
         ci.quiz_id,
         l.title as lesson_title,
         l.duration_minutes as lesson_duration,
+        l.type as lesson_type,
+        l.video_url,
+        l.file_path,
+        l.content as lesson_content,
         q.title as quiz_title,
         0 as quiz_question_count
       FROM curriculum_items ci
@@ -357,6 +370,11 @@ export async function getCourseByIdAction(id: number) {
         title: item.type === "lesson" ? item.lesson_title : item.quiz_title,
         duration_minutes: item.lesson_duration || 0,
         question_count: item.quiz_question_count || 0,
+        // ✅ ĐLCS THÊM: Preserve lesson details for editing
+        lesson_type: item.lesson_type,
+        video_url: item.video_url,
+        file_path: item.file_path,
+        lesson_content: item.lesson_content,
       }))
 
     return {
@@ -683,8 +701,12 @@ export async function getPublishedCoursesService({
 
     // ✅ LOGIC CỐT LÕI: Tách nhỏ ra để dễ debug
     const rows = await sql`
-      SELECT c.*
+      SELECT 
+        c.*,
+        COALESCE(ROUND(AVG(f.rating))::smallint, 0) AS average_rating,
+        COALESCE(COUNT(f.id), 0)::int AS rating_count
       FROM courses c
+      LEFT JOIN feedback f ON f.course_id = c.id AND f.deleted_at IS NULL
       WHERE c.deleted_at IS NULL
         AND c.status = 'published'
         AND c.title ILIKE ${"%" + query + "%"}
@@ -708,6 +730,7 @@ export async function getPublishedCoursesService({
             )
           )
         )
+      GROUP BY c.id
       ORDER BY ${sql.unsafe(orderBy)}
       LIMIT ${limit} OFFSET ${offset}
     `
@@ -744,5 +767,263 @@ export async function getPublishedCoursesService({
   } catch (error) {
     console.error("❌ [Catalog API] LỖI CÂU LỆNH SQL:", error)
     return { courses: [], totalCount: 0 }
+  }
+}
+
+// =====SECTION SPECIFIC SERVICES=====
+
+/**
+ * Get user's enrolled courses that are in progress (not completed)
+ * Used for "Tiếp tục học" (Continue) section
+ */
+export async function getUserEnrolledCoursesService(
+  userId: number,
+  limit: number = 4
+) {
+  try {
+    if (!userId || userId === 0) {
+      return { courses: [] }
+    }
+
+    const rows = await sql`
+      SELECT 
+        c.*,
+        COALESCE(ROUND(AVG(f.rating))::smallint, 0) AS average_rating,
+        COALESCE(COUNT(f.id), 0)::int AS rating_count
+      FROM courses c
+      LEFT JOIN feedback f ON f.course_id = c.id AND f.deleted_at IS NULL
+      INNER JOIN enrollments e ON e.course_id = c.id
+      WHERE c.deleted_at IS NULL
+        AND c.status = 'published'
+        AND e.user_id = ${userId}
+        AND e.status != 'completed'
+        AND (
+          c.visibility = 'public' 
+          OR c.visibility IS NULL
+          OR (
+            c.visibility = 'private' AND EXISTS (
+              SELECT 1 FROM assignment_rules ar
+              WHERE ar.course_id = c.id
+              AND (
+                ar.target_type = 'all_employees'
+                OR (ar.target_type = 'department' AND ar.department_id = (SELECT department_id FROM users WHERE id = ${userId}))
+                OR (ar.target_type = 'role' AND ar.role_id IN (SELECT role_id FROM user_roles WHERE user_id = ${userId}))
+                OR (ar.target_type = 'user' AND ar.user_id = ${userId})
+              )
+            )
+          )
+        )
+      GROUP BY c.id
+      ORDER BY e.enrolled_at DESC, c.created_at DESC
+      LIMIT ${limit}
+    `
+
+    return { courses: rows as Course[] }
+  } catch (error) {
+    console.error("Error fetching enrolled courses:", error)
+    return { courses: [] }
+  }
+}
+
+/**
+ * Get newest published courses
+ * Used for "Mới nhất từ KMS Plus" (Newest) section
+ */
+export async function getNewestCoursesService(
+  userId: number = 0,
+  limit: number = 12
+) {
+  try {
+    const rows = await sql`
+      SELECT 
+        c.*,
+        COALESCE(ROUND(AVG(f.rating))::smallint, 0) AS average_rating,
+        COALESCE(COUNT(f.id), 0)::int AS rating_count
+      FROM courses c
+      LEFT JOIN feedback f ON f.course_id = c.id AND f.deleted_at IS NULL
+      WHERE c.deleted_at IS NULL
+        AND c.status = 'published'
+        AND (
+          c.visibility = 'public' 
+          OR c.visibility IS NULL
+          OR (
+            c.visibility = 'private' AND ${userId} != 0 AND EXISTS (
+              SELECT 1 FROM assignment_rules ar
+              WHERE ar.course_id = c.id
+              AND (
+                ar.target_type = 'all_employees'
+                OR (ar.target_type = 'department' AND ar.department_id = (SELECT department_id FROM users WHERE id = ${userId}))
+                OR (ar.target_type = 'role' AND ar.role_id IN (SELECT role_id FROM user_roles WHERE user_id = ${userId}))
+                OR (ar.target_type = 'user' AND ar.user_id = ${userId})
+              )
+            )
+          )
+        )
+      GROUP BY c.id
+      ORDER BY c.created_at DESC, c.enrollment_count DESC
+      LIMIT ${limit}
+    `
+
+    return { courses: rows as Course[] }
+  } catch (error) {
+    console.error("Error fetching newest courses:", error)
+    return { courses: [] }
+  }
+}
+
+/**
+ * Get trending courses based on recent enrollment activity
+ * Used for "Xu hướng" (Trending) section
+ */
+export async function getTrendingCoursesService(
+  userId: number = 0,
+  limit: number = 12
+) {
+  try {
+    const rows = await sql`
+      SELECT 
+        c.*,
+        COALESCE(ROUND(AVG(f.rating))::smallint, 0) AS average_rating,
+        COALESCE(COUNT(f.id), 0)::int AS rating_count
+      FROM courses c
+      LEFT JOIN feedback f ON f.course_id = c.id AND f.deleted_at IS NULL
+      WHERE c.deleted_at IS NULL
+        AND c.status = 'published'
+        AND (
+          c.visibility = 'public' 
+          OR c.visibility IS NULL
+          OR (
+            c.visibility = 'private' AND ${userId} != 0 AND EXISTS (
+              SELECT 1 FROM assignment_rules ar
+              WHERE ar.course_id = c.id
+              AND (
+                ar.target_type = 'all_employees'
+                OR (ar.target_type = 'department' AND ar.department_id = (SELECT department_id FROM users WHERE id = ${userId}))
+                OR (ar.target_type = 'role' AND ar.role_id IN (SELECT role_id FROM user_roles WHERE user_id = ${userId}))
+                OR (ar.target_type = 'user' AND ar.user_id = ${userId})
+              )
+            )
+          )
+        )
+      GROUP BY c.id
+      ORDER BY c.enrollment_count DESC, c.created_at DESC
+      LIMIT ${limit}
+    `
+
+    return { courses: rows as Course[] }
+  } catch (error) {
+    console.error("Error fetching trending courses:", error)
+    return { courses: [] }
+  }
+}
+
+/**
+ * Get personalized courses for user based on department
+ * Used for "Khóa học theo yên cầu" (Personalized/Relevant) section
+ */
+export async function getPersonalizedCoursesService(
+  userId: number = 0,
+  limit: number = 8
+) {
+  try {
+    if (!userId || userId === 0) {
+      return { courses: [] }
+    }
+
+    // Get user's department
+    const userDept = await sql`
+      SELECT department_id FROM users WHERE id = ${userId}
+    `
+
+    if (userDept.length === 0) {
+      return { courses: [] }
+    }
+
+    const departmentId = userDept[0].department_id
+
+    const rows = await sql`
+      SELECT 
+        c.*,
+        COALESCE(ROUND(AVG(f.rating))::smallint, 0) AS average_rating,
+        COALESCE(COUNT(f.id), 0)::int AS rating_count
+      FROM courses c
+      LEFT JOIN feedback f ON f.course_id = c.id AND f.deleted_at IS NULL
+      LEFT JOIN assignment_rules ar ON ar.course_id = c.id
+      WHERE c.deleted_at IS NULL
+        AND c.status = 'published'
+        AND (
+          c.visibility = 'public' 
+          OR c.visibility IS NULL
+          OR (
+            c.visibility = 'private' 
+            AND (
+              ar.target_type = 'all_employees'
+              OR (ar.target_type = 'department' AND ar.department_id = ${departmentId})
+              OR (ar.target_type = 'role' AND ar.role_id IN (SELECT role_id FROM user_roles WHERE user_id = ${userId}))
+              OR (ar.target_type = 'user' AND ar.user_id = ${userId})
+            )
+          )
+        )
+      GROUP BY c.id
+      ORDER BY c.created_at DESC, c.enrollment_count DESC
+      LIMIT ${limit}
+    `
+
+    return { courses: rows as Course[] }
+  } catch (error) {
+    console.error("Error fetching personalized courses:", error)
+    return { courses: [] }
+  }
+}
+
+/**
+ * Get popular courses grouped by category
+ * Used for "Phổ biến theo danh mục" (Popular by Category) section
+ */
+export async function getPopularCoursesByCategoryService(
+  userId: number = 0,
+  limit: number = 12,
+  topPerCategory: number = 3
+) {
+  try {
+    const rows = await sql`
+      SELECT 
+        c.*,
+        COALESCE(ROUND(AVG(f.rating))::smallint, 0) AS average_rating,
+        COALESCE(COUNT(f.id), 0)::int AS rating_count,
+        ROW_NUMBER() OVER (PARTITION BY c.category_id ORDER BY c.enrollment_count DESC, c.created_at DESC) as category_rank
+      FROM courses c
+      LEFT JOIN feedback f ON f.course_id = c.id AND f.deleted_at IS NULL
+      WHERE c.deleted_at IS NULL
+        AND c.status = 'published'
+        AND category_id IS NOT NULL
+        AND (
+          c.visibility = 'public' 
+          OR c.visibility IS NULL
+          OR (
+            c.visibility = 'private' AND ${userId} != 0 AND EXISTS (
+              SELECT 1 FROM assignment_rules ar
+              WHERE ar.course_id = c.id
+              AND (
+                ar.target_type = 'all_employees'
+                OR (ar.target_type = 'department' AND ar.department_id = (SELECT department_id FROM users WHERE id = ${userId}))
+                OR (ar.target_type = 'role' AND ar.role_id IN (SELECT role_id FROM user_roles WHERE user_id = ${userId}))
+                OR (ar.target_type = 'user' AND ar.user_id = ${userId})
+              )
+            )
+          )
+        )
+      GROUP BY c.id
+    `
+
+    // Filter to top courses per category
+    const filtered = rows
+      .filter((r) => Number(r.category_rank) <= topPerCategory)
+      .slice(0, limit)
+
+    return { courses: filtered as Course[] }
+  } catch (error) {
+    console.error("Error fetching popular courses by category:", error)
+    return { courses: [] }
   }
 }

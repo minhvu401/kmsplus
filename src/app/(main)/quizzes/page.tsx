@@ -49,12 +49,16 @@ export default function QuizzesPage() {
   const [loading, setLoading] = useState(true)
   const [searchText, setSearchText] = useState("")
   const [filteredQuizzes, setFilteredQuizzes] = useState<Quiz[]>([])
-  const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest')
-  const [categories, setCategories] = useState<{ id: number; name: string }[]>([])
-  const [selectedCategory, setSelectedCategory] = useState<number | 'All'>('All')
+  const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest")
+  const [categories, setCategories] = useState<{ id: number; name: string }[]>(
+    []
+  )
+  const [selectedCategory, setSelectedCategory] = useState<number | "All">(
+    "All"
+  )
   const [loadingCategories, setLoadingCategories] = useState(false)
   const [isCreateModalVisible, setIsCreateModalVisible] = useState(false)
-  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list')
+  const [viewMode, setViewMode] = useState<"list" | "grid">("list")
   const [hasActiveFilters, setHasActiveFilters] = useState(false)
 
   useEffect(() => {
@@ -72,8 +76,13 @@ export default function QuizzesPage() {
   }, [sortOrder])
 
   useEffect(() => {
-    const active = searchText !== '' || selectedCategory !== 'All'
+    const active = searchText !== "" || selectedCategory !== "All"
     setHasActiveFilters(active)
+  }, [searchText, selectedCategory])
+
+  // Reload quizzes when search text or category changes
+  useEffect(() => {
+    loadQuizzes()
   }, [searchText, selectedCategory])
 
   const loadCategories = async () => {
@@ -96,6 +105,8 @@ export default function QuizzesPage() {
         query: searchText,
         page: 1,
         limit: 100,
+        category_id:
+          selectedCategory === "All" ? undefined : (selectedCategory as number),
       })
       setQuizzes(data.data || [])
       applySorting(data.data || [])
@@ -119,7 +130,7 @@ export default function QuizzesPage() {
     const sorted = [...itemsToSort].sort((a, b) => {
       const dateA = new Date(a.created_at).getTime()
       const dateB = new Date(b.created_at).getTime()
-      return sortOrder === 'newest' ? dateB - dateA : dateA - dateB
+      return sortOrder === "newest" ? dateB - dateA : dateA - dateB
     })
     setFilteredQuizzes(sorted)
   }
@@ -136,8 +147,8 @@ export default function QuizzesPage() {
   }
 
   const handleClearFilters = () => {
-    setSearchText('')
-    setSelectedCategory('All')
+    setSearchText("")
+    setSelectedCategory("All")
   }
 
   const columns = [
@@ -206,45 +217,50 @@ export default function QuizzesPage() {
         <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-blue-900 bg-clip-text text-transparent mb-4">
           Quiz Management
         </h1>
-        <div className="flex align-center justify-between gap-6" style={{ marginBottom: 16 }}>
+        <div
+          className="flex align-center justify-between gap-6"
+          style={{ marginBottom: 16 }}
+        >
           <p className="text-gray-600 max-w-2xl leading-relaxed">
             Manage and organize your quizzes
           </p>
           <Button
             style={{
-              background: '#ffffff',
-              borderColor: '#1e40af',
-              borderWidth: '1.5px',
-              borderRadius: '0.375rem',
-              color: '#1e40af',
-              fontSize: '12px',
+              background: "#ffffff",
+              borderColor: "#1e40af",
+              borderWidth: "1.5px",
+              borderRadius: "0.375rem",
+              color: "#1e40af",
+              fontSize: "12px",
               fontWeight: 500,
-              height: '36px',
-              paddingInline: '14px',
-              boxShadow: '0 2px 8px rgba(30, 64, 175, 0.12)',
-              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-              whiteSpace: 'nowrap',
+              height: "36px",
+              paddingInline: "14px",
+              boxShadow: "0 2px 8px rgba(30, 64, 175, 0.12)",
+              transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+              whiteSpace: "nowrap",
               flexShrink: 0,
             }}
             icon={<EditOutlined />}
             onClick={() => setIsCreateModalVisible(true)}
             onMouseEnter={(e) => {
-              const button = e.currentTarget as HTMLButtonElement;
-              button.style.background = '#f8fafc';
-              button.style.boxShadow = '0 8px 20px rgba(30, 64, 175, 0.2)';
-              button.style.borderColor = '#1e3a8a';
+              const button = e.currentTarget as HTMLButtonElement
+              button.style.background = "#f8fafc"
+              button.style.boxShadow = "0 8px 20px rgba(30, 64, 175, 0.2)"
+              button.style.borderColor = "#1e3a8a"
             }}
             onMouseLeave={(e) => {
-              const button = e.currentTarget as HTMLButtonElement;
-              button.style.background = '#ffffff';
-              button.style.boxShadow = '0 2px 8px rgba(30, 64, 175, 0.12)';
-              button.style.borderColor = '#1e40af';
+              const button = e.currentTarget as HTMLButtonElement
+              button.style.background = "#ffffff"
+              button.style.boxShadow = "0 2px 8px rgba(30, 64, 175, 0.12)"
+              button.style.borderColor = "#1e40af"
             }}
           >
             Create Quiz
           </Button>
         </div>
-        <Divider style={{ borderColor: 'rgba(37, 99, 235, 0.15)', margin: '16px 0' }} />
+        <Divider
+          style={{ borderColor: "rgba(37, 99, 235, 0.15)", margin: "16px 0" }}
+        />
       </div>
 
       {/* Controls Widget - White Card (Compact) */}
@@ -265,15 +281,21 @@ export default function QuizzesPage() {
           {/* Filters Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
             <div className="flex flex-col">
-              <Typography.Text type="secondary" className="text-sm font-medium mb-2">
+              <Typography.Text
+                type="secondary"
+                className="text-sm font-medium mb-2"
+              >
                 Category
               </Typography.Text>
               <Select
                 value={selectedCategory}
                 onChange={setSelectedCategory}
                 options={[
-                  { label: 'All Categories', value: 'All' },
-                  ...categories.map((cat) => ({ label: cat.name, value: cat.id })),
+                  { label: "All Categories", value: "All" },
+                  ...categories.map((cat) => ({
+                    label: cat.name,
+                    value: cat.id,
+                  })),
                 ]}
                 loading={loadingCategories}
                 size="middle"
@@ -282,15 +304,18 @@ export default function QuizzesPage() {
             </div>
 
             <div className="flex flex-col">
-              <Typography.Text type="secondary" className="text-sm font-medium mb-2">
+              <Typography.Text
+                type="secondary"
+                className="text-sm font-medium mb-2"
+              >
                 Sort By
               </Typography.Text>
               <Select
                 value={sortOrder}
                 onChange={setSortOrder}
                 options={[
-                  { label: 'Newest First', value: 'newest' },
-                  { label: 'Oldest First', value: 'oldest' },
+                  { label: "Newest First", value: "newest" },
+                  { label: "Oldest First", value: "oldest" },
                 ]}
                 size="middle"
                 className="w-full"
@@ -298,16 +323,19 @@ export default function QuizzesPage() {
             </div>
 
             <div className="flex flex-col">
-              <Typography.Text type="secondary" className="text-sm font-medium mb-2">
+              <Typography.Text
+                type="secondary"
+                className="text-sm font-medium mb-2"
+              >
                 View Mode
               </Typography.Text>
               <Segmented
                 size="middle"
                 value={viewMode}
-                onChange={(value) => setViewMode(value as 'list' | 'grid')}
+                onChange={(value) => setViewMode(value as "list" | "grid")}
                 options={[
-                  { label: 'List', value: 'list' },
-                  { label: 'Grid', value: 'grid' },
+                  { label: "List", value: "list" },
+                  { label: "Grid", value: "grid" },
                 ]}
                 block
               />
@@ -338,7 +366,7 @@ export default function QuizzesPage() {
         <div className="p-6">
           <Spin spinning={loading}>
             {filteredQuizzes.length > 0 ? (
-              viewMode === 'list' ? (
+              viewMode === "list" ? (
                 <Table
                   columns={columns}
                   dataSource={filteredQuizzes.map((quiz) => ({
@@ -369,31 +397,45 @@ export default function QuizzesPage() {
                           }
                           description={
                             <span className="text-gray-600 line-clamp-2">
-                              {quiz.description || 'Không có mô tả'}
+                              {quiz.description || "Không có mô tả"}
                             </span>
                           }
                         />
                         <div className="mt-4 space-y-2 text-sm">
                           <div className="flex justify-between">
-                            <Typography.Text type="secondary">Time Limit:</Typography.Text>
+                            <Typography.Text type="secondary">
+                              Time Limit:
+                            </Typography.Text>
                             <Typography.Text strong>
-                              {quiz.time_limit_minutes ? `${quiz.time_limit_minutes} min` : 'Unlimited'}
+                              {quiz.time_limit_minutes
+                                ? `${quiz.time_limit_minutes} min`
+                                : "Unlimited"}
                             </Typography.Text>
                           </div>
                           <div className="flex justify-between">
-                            <Typography.Text type="secondary">Passing Score:</Typography.Text>
+                            <Typography.Text type="secondary">
+                              Passing Score:
+                            </Typography.Text>
                             <Typography.Text strong>
                               <Tag color="blue">{quiz.passing_score}%</Tag>
                             </Typography.Text>
                           </div>
                           <div className="flex justify-between">
-                            <Typography.Text type="secondary">Max Attempts:</Typography.Text>
-                            <Typography.Text strong>{quiz.max_attempts}</Typography.Text>
+                            <Typography.Text type="secondary">
+                              Max Attempts:
+                            </Typography.Text>
+                            <Typography.Text strong>
+                              {quiz.max_attempts}
+                            </Typography.Text>
                           </div>
                           <div className="flex justify-between">
-                            <Typography.Text type="secondary">Created:</Typography.Text>
+                            <Typography.Text type="secondary">
+                              Created:
+                            </Typography.Text>
                             <Typography.Text strong>
-                              {new Date(quiz.created_at).toLocaleDateString('vi-VN')}
+                              {new Date(quiz.created_at).toLocaleDateString(
+                                "vi-VN"
+                              )}
                             </Typography.Text>
                           </div>
                         </div>

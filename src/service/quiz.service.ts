@@ -90,6 +90,8 @@ export type AttemptHistorySummary = {
 export type Quiz = {
   id: number
   course_id: number
+  category_id?: number | null // Category from associated course
+  category_name?: string | null // Category name from associated course
   title: string
   description: string | null
   time_limit_minutes: number | null
@@ -109,6 +111,7 @@ type GetAllQuizzesParams = {
   page?: number
   limit?: number
   course_id?: number
+  category_id?: number | "All" // Filter by category
 }
 
 // Định nghĩa kết quả trả về cho hàm get all
@@ -334,6 +337,73 @@ export async function startQuizAttemptAction(
       `
     if (existingAttempt.length > 0) {
       return existingAttempt[0] as QuizAttempt
+    }
+
+    // Validate: User must complete all lessons before this quiz
+    // Get the course and section of this quiz
+    const quizItemInfo = await sql`
+      SELECT ci.section_id, s.course_id
+      FROM curriculum_items ci
+      JOIN sections s ON s.id = ci.section_id
+      WHERE ci.id = ${curriculum_item_id}
+      LIMIT 1
+    `
+
+    if (quizItemInfo.length === 0) {
+      throw new Error("Quiz not found")
+    }
+
+    const { section_id: sectionId, course_id: courseId } = quizItemInfo[0]
+
+    // Get all lesson items in the same course (before this quiz)
+    const allLessons = await sql`
+      SELECT DISTINCT ci.id
+      FROM curriculum_items ci
+      JOIN sections s ON s.id = ci.section_id
+      WHERE s.course_id = ${courseId} 
+        AND ci.type = 'lesson'
+        AND ci.is_deleted = false
+    `
+
+    if (allLessons.length > 0) {
+      // Check if user has completed all lessons
+      const userEnrollment = await sql`
+        SELECT completed_item_ids
+        FROM enrollments
+        WHERE user_id = ${user_id} AND course_id = ${courseId}
+        LIMIT 1
+      `
+
+      if (userEnrollment.length > 0) {
+        let completedIds: number[] = []
+        const completedData = userEnrollment[0].completed_item_ids
+
+        // Parse completed_item_ids
+        if (Array.isArray(completedData)) {
+          completedIds = completedData.map((id) => Number(id))
+        } else if (typeof completedData === "string") {
+          try {
+            const parsed = JSON.parse(completedData)
+            completedIds = Array.isArray(parsed)
+              ? parsed.map((id) => Number(id))
+              : []
+          } catch {
+            completedIds = []
+          }
+        }
+
+        // Check if all lessons are completed
+        const allLessonIds = allLessons.map((l) => Number(l.id))
+        const allCompleted = allLessonIds.every((id) =>
+          completedIds.includes(id)
+        )
+
+        if (!allCompleted) {
+          throw new Error(
+            "You must complete all lessons before taking this quiz"
+          )
+        }
+      }
     }
 
     const quizResult = await sql`
@@ -679,13 +749,23 @@ export async function getAttemptMetaAction(
 export async function getTimeLimitForAttemptAction(attemptId: number) {
   try {
     const rows = await sql`
-        SELECT q.time_limit_minutes
+        SELECT 
+          q.time_limit_minutes,
+          COALESCE(qa.time_spent_seconds, 0) as time_spent_seconds
         FROM quizzes q
         JOIN curriculum_items ci ON ci.quiz_id = q.id
         JOIN quiz_attempts qa ON qa.curriculum_item_id = ci.id
         WHERE qa.id = ${attemptId}
     `
-    return rows[0]?.time_limit_minutes || null
+
+    if (!rows[0]) return null
+
+    const totalSeconds = (rows[0]?.time_limit_minutes || 0) * 60
+    const spentSeconds = rows[0]?.time_spent_seconds || 0
+    const remainingSeconds = Math.max(0, totalSeconds - spentSeconds)
+
+    // Return remaining seconds, not minutes
+    return remainingSeconds
   } catch (error) {
     console.error("getTimeLimitForAttemptAction error:", error)
     throw new Error("Failed to fetch time limit for attempt")
@@ -955,6 +1035,8 @@ export async function getQuizQuestionsAction(quizId: number) {
 
 /**
  * Cập nhật danh sách câu hỏi của một quiz.
+ * - Xóa tất cả câu hỏi cũ
+ * - Insert lại danh sách mới với ON CONFLICT DO UPDATE
  */
 export async function updateQuizQuestionsAction(
   quizId: number,
@@ -971,7 +1053,7 @@ export async function updateQuizQuestionsAction(
       return true
     }
 
-    // Insert từng câu một (chậm hơn nhưng ổn định hơn)
+    // Insert từng câu hỏi với ON CONFLICT DO UPDATE
     for (let i = 0; i < questionIds.length; i++) {
       const questionId = questionIds[i]
       const order = i + 1

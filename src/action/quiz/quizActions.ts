@@ -40,6 +40,7 @@ type GetAllQuizzesParams = {
   page?: number
   limit?: number
   course_id?: number
+  category_id?: number | "All"
 }
 
 async function requireAttemptOwner(attemptId: number, userId: number) {

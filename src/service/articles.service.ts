@@ -19,6 +19,7 @@ export type Article = {
   department_id?: number | null
   department_name?: string | null
   author_name?: string | null
+  author_avatar_url?: string | null
   approver_name?: string | null
   status: string
   approved_by?: number | null
@@ -46,7 +47,7 @@ export type PublishedArticlesQuery = {
   searchQuery?: string
   selectedTags?: string[]
   categoryId?: number | null
-  sortOrder?: 'newest' | 'oldest'
+  sortOrder?: "newest" | "oldest"
   page?: number
   pageSize?: number
 }
@@ -56,7 +57,7 @@ export type CreateArticleInput = {
   content: string
   tags: string[]
   author_id: number
-  status: 'draft' | 'pending' | 'published'
+  status: "draft" | "pending" | "published"
   category_id?: number | null
   department_id?: number | null
   image_url?: string | null
@@ -80,7 +81,7 @@ async function createArticleStatusNotification(params: {
   articleTitle: string
   articleContent: string
   thumbnailUrl?: string | null
-  type: 'article_approved' | 'article_rejected'
+  type: "article_approved" | "article_rejected"
   reason?: string
 }) {
   const {
@@ -94,20 +95,22 @@ async function createArticleStatusNotification(params: {
   } = params
 
   const notificationTitle =
-    type === 'article_approved'
+    type === "article_approved"
       ? `Article approved: ${articleTitle}`
       : `Article rejected: ${articleTitle}`
 
   const baseContent =
-    type === 'article_approved'
+    type === "article_approved"
       ? `Your article "${articleTitle}" has been approved and published.`
-      : `Your article "${articleTitle}" has been rejected.${reason ? ` Reason: ${reason}` : ''}`
+      : `Your article "${articleTitle}" has been rejected.${reason ? ` Reason: ${reason}` : ""}`
 
   const maxContentLength = 400
-  const trimmedArticleContent = (articleContent || '').replace(/\s+/g, ' ').trim()
+  const trimmedArticleContent = (articleContent || "")
+    .replace(/\s+/g, " ")
+    .trim()
   const articlePreview = trimmedArticleContent
-    ? ` Preview: ${trimmedArticleContent.slice(0, maxContentLength)}${trimmedArticleContent.length > maxContentLength ? '...' : ''}`
-    : ''
+    ? ` Preview: ${trimmedArticleContent.slice(0, maxContentLength)}${trimmedArticleContent.length > maxContentLength ? "..." : ""}`
+    : ""
 
   try {
     await sql`
@@ -133,21 +136,33 @@ async function createArticleStatusNotification(params: {
       )
     `
   } catch (error: any) {
-    console.error('Error creating article status notification:', error)
+    console.error("Error creating article status notification:", error)
   }
 }
 
-export async function createArticleAction(input: CreateArticleInput): Promise<{ success: boolean; message: string; articleId?: string }> {
+export async function createArticleAction(
+  input: CreateArticleInput
+): Promise<{ success: boolean; message: string; articleId?: string }> {
   try {
-    const { title, content, tags, author_id, status, category_id, image_url, thumbnail_url } = input
+    const {
+      title,
+      content,
+      tags,
+      author_id,
+      status,
+      category_id,
+      image_url,
+      thumbnail_url,
+    } = input
 
     // Only allow known statuses to avoid invalid DB values
-    const normalizedStatus = status === 'draft' || status === 'pending' || status === 'published'
-      ? status
-      : 'draft'
+    const normalizedStatus =
+      status === "draft" || status === "pending" || status === "published"
+        ? status
+        : "draft"
 
     // 1. Insert article mới
-    const shouldSetApproval = normalizedStatus === 'published'
+    const shouldSetApproval = normalizedStatus === "published"
     const articleResult = await sql`
       INSERT INTO articles (title, content, author_id, status, category_id, image_url, thumbnail_url, approved_by, approved_at, created_at, updated_at)
       VALUES (
@@ -165,14 +180,15 @@ export async function createArticleAction(input: CreateArticleInput): Promise<{ 
       )
       RETURNING id
     `
-    
+
     const articleId = articleResult[0].id
 
     // 2. Insert tags vào bảng article_tags (tự tạo tag mới nếu chưa có)
     if (tags && tags.length > 0) {
       // Lấy category mặc định cho tag mới (dùng category đầu tiên chưa bị xóa)
       let defaultCategoryId: number | null = null
-      const catRes = await sql`SELECT id FROM categories WHERE is_deleted = false ORDER BY id ASC LIMIT 1`
+      const catRes =
+        await sql`SELECT id FROM categories WHERE is_deleted = false ORDER BY id ASC LIMIT 1`
       if (catRes.length > 0) {
         defaultCategoryId = catRes[0].id
       }
@@ -205,16 +221,16 @@ export async function createArticleAction(input: CreateArticleInput): Promise<{ 
       }
     }
 
-    return { 
-      success: true, 
-      message: 'Article created successfully',
-      articleId 
+    return {
+      success: true,
+      message: "Article created successfully",
+      articleId,
     }
   } catch (error: any) {
-    console.error('Error in createArticleAction:', error)
-    return { 
-      success: false, 
-      message: error?.message || 'Failed to create article' 
+    console.error("Error in createArticleAction:", error)
+    return {
+      success: false,
+      message: error?.message || "Failed to create article",
     }
   }
 }
@@ -266,11 +282,11 @@ export async function getAllTagsAction(): Promise<Tag[]> {
 
 export async function filterByTagAction(
   searchQuery: string,
-  tagFilter?: string,
+  tagFilters?: string[],
   categoryId?: number,
   statusFilter?: string,
-  isDeletedFilter?: boolean | 'all',
-  sortOrder: 'newest' | 'oldest' = 'newest',
+  isDeletedFilter?: boolean | "all",
+  sortOrder: "newest" | "oldest" = "newest",
   page: number = 1,
   pageSize: number = 12,
   accessContext?: {
@@ -278,13 +294,19 @@ export async function filterByTagAction(
     managedDepartmentId?: number | null
   },
   userId?: number,
-  isAdmin: boolean = false,
+  isAdmin: boolean = false
 ): Promise<PaginatedArticlesResult> {
-  const normalizedPage = Number.isFinite(page) && page > 0 ? Math.floor(page) : 1
-  const normalizedPageSize = Number.isFinite(pageSize) && pageSize > 0 ? Math.floor(pageSize) : 12
+  const normalizedPage =
+    Number.isFinite(page) && page > 0 ? Math.floor(page) : 1
+  const normalizedPageSize =
+    Number.isFinite(pageSize) && pageSize > 0 ? Math.floor(pageSize) : 12
   const offset = (normalizedPage - 1) * normalizedPageSize
   const query = `%${searchQuery}%`
   const managedDepartmentId = accessContext?.managedDepartmentId ?? null
+  const normalizedTags = (tagFilters || [])
+    .map((tag) => tag.trim().toLowerCase())
+    .filter(Boolean)
+  const selectedTagsCount = normalizedTags.length
   const permissionCondition =
     managedDepartmentId !== null
       ? sql`AND a.author_id IN (
@@ -329,47 +351,42 @@ export async function filterByTagAction(
       ${permissionCondition}
       ${hodNonDraftCondition}
       ${categoryId ? sql`AND a.category_id = ${categoryId}` : sql``}
-      ${statusFilter && statusFilter !== 'All' ? sql`AND a.status = ${statusFilter}` : sql``}
+      ${statusFilter && statusFilter !== "All" ? sql`AND a.status = ${statusFilter}` : sql``}
       ${isDeletedFilter === true ? sql`AND a.is_deleted = TRUE` : isDeletedFilter === false ? sql`AND a.is_deleted = FALSE` : sql``}
-      ${tagFilter && tagFilter !== 'All Tags'
-        ? sql`AND EXISTS (
-            SELECT 1
-            FROM article_tags at_filter
-            JOIN tags t_filter ON t_filter.id = at_filter.tag_id
-            WHERE at_filter.article_id = a.id
-              AND LOWER(t_filter.name) = LOWER(${tagFilter})
-          )`
-        : sql``}
       ${!isAdmin && managedDepartmentId === null ? sql`AND a.author_id = ${userId ?? -1}` : sql``}
     
     GROUP BY 
       a.id, a.author_id, a.title, a.status, a.approved_by, a.approved_at, a.deleted_at, a.created_at, a.updated_at, a.is_deleted, a.image_url, a.thumbnail_url, c.name, c.department_id, d.name, u.full_name, ua.full_name
+    ${
+      selectedTagsCount > 0
+        ? sql`HAVING COUNT(DISTINCT CASE WHEN LOWER(t.name) = ANY(${normalizedTags}) THEN LOWER(t.name) END) = ${selectedTagsCount}`
+        : sql``
+    }
     ORDER BY
-      COALESCE(a.approved_at, a.created_at) ${sortOrder === 'oldest' ? sql`ASC` : sql`DESC`},
+      COALESCE(a.approved_at, a.created_at) ${sortOrder === "oldest" ? sql`ASC` : sql`DESC`},
       a.id DESC
     LIMIT ${normalizedPageSize}
     OFFSET ${offset}
   `
 
   const totalRows = await sql`
-    SELECT COUNT(*)::INT AS total
+    SELECT COUNT(DISTINCT a.id)::INT AS total
     FROM articles a
+    LEFT JOIN article_tags at ON a.id = at.article_id
+    LEFT JOIN tags t ON at.tag_id = t.id
     WHERE a.title ILIKE ${query}
       ${permissionCondition}
       ${hodNonDraftCondition}
       ${categoryId ? sql`AND a.category_id = ${categoryId}` : sql``}
-      ${statusFilter && statusFilter !== 'All' ? sql`AND a.status = ${statusFilter}` : sql``}
+      ${statusFilter && statusFilter !== "All" ? sql`AND a.status = ${statusFilter}` : sql``}
       ${isDeletedFilter === true ? sql`AND a.is_deleted = TRUE` : isDeletedFilter === false ? sql`AND a.is_deleted = FALSE` : sql``}
-      ${tagFilter && tagFilter !== 'All Tags'
-        ? sql`AND EXISTS (
-            SELECT 1
-            FROM article_tags at_filter
-            JOIN tags t_filter ON t_filter.id = at_filter.tag_id
-            WHERE at_filter.article_id = a.id
-              AND LOWER(t_filter.name) = LOWER(${tagFilter})
-          )`
-        : sql``}
-      ${!isAdmin ? sql`AND a.author_id = ${userId ?? -1}` : sql``}
+      ${!isAdmin && managedDepartmentId === null ? sql`AND a.author_id = ${userId ?? -1}` : sql``}
+    GROUP BY a.id
+    ${
+      selectedTagsCount > 0
+        ? sql`HAVING COUNT(DISTINCT CASE WHEN LOWER(t.name) = ANY(${normalizedTags}) THEN LOWER(t.name) END) = ${selectedTagsCount}`
+        : sql``
+    }
   `
 
   return {
@@ -378,7 +395,14 @@ export async function filterByTagAction(
   }
 }
 
-export async function getAllCategoriesAction(): Promise<{ id: number; name: string; department_id?: number | null; department_name?: string | null }[]> {
+export async function getAllCategoriesAction(): Promise<
+  {
+    id: number
+    name: string
+    department_id?: number | null
+    department_name?: string | null
+  }[]
+> {
   const categories = await sql`
     SELECT 
       c.id, 
@@ -390,23 +414,30 @@ export async function getAllCategoriesAction(): Promise<{ id: number; name: stri
     WHERE c.is_deleted = false
     ORDER BY d.name ASC NULLS LAST, c.name ASC
   `
-  return categories as { id: number; name: string; department_id?: number | null; department_name?: string | null }[]
+  return categories as {
+    id: number
+    name: string
+    department_id?: number | null
+    department_name?: string | null
+  }[]
 }
 
 export async function getPublishedArticlesAction(
   params: PublishedArticlesQuery
 ): Promise<PaginatedArticlesResult> {
   const {
-    searchQuery = '',
+    searchQuery = "",
     selectedTags = [],
     categoryId,
-    sortOrder = 'newest',
+    sortOrder = "newest",
     page = 1,
     pageSize = 10,
   } = params
 
-  const normalizedPage = Number.isFinite(page) && page > 0 ? Math.floor(page) : 1
-  const normalizedPageSize = Number.isFinite(pageSize) && pageSize > 0 ? Math.floor(pageSize) : 10
+  const normalizedPage =
+    Number.isFinite(page) && page > 0 ? Math.floor(page) : 1
+  const normalizedPageSize =
+    Number.isFinite(pageSize) && pageSize > 0 ? Math.floor(pageSize) : 10
   const offset = (normalizedPage - 1) * normalizedPageSize
   const query = `%${searchQuery.trim()}%`
   const normalizedTags = selectedTags
@@ -430,10 +461,12 @@ export async function getPublishedArticlesAction(
         )
         ${categoryId ? sql`AND a.category_id = ${categoryId}` : sql``}
       GROUP BY a.id, COALESCE(a.approved_at, a.created_at)
-      ${selectedTagsCount > 0
-        ? sql`HAVING COUNT(DISTINCT CASE WHEN LOWER(t_filter.name) = ANY(${normalizedTags}) THEN LOWER(t_filter.name) END) = ${selectedTagsCount}`
-        : sql``}
-      ORDER BY sort_time ${sortOrder === 'oldest' ? sql`ASC` : sql`DESC`}, a.id DESC
+      ${
+        selectedTagsCount > 0
+          ? sql`HAVING COUNT(DISTINCT CASE WHEN LOWER(t_filter.name) = ANY(${normalizedTags}) THEN LOWER(t_filter.name) END) = ${selectedTagsCount}`
+          : sql``
+      }
+      ORDER BY sort_time ${sortOrder === "oldest" ? sql`ASC` : sql`DESC`}, a.id DESC
       LIMIT ${normalizedPageSize}
       OFFSET ${offset}
     )
@@ -453,6 +486,7 @@ export async function getPublishedArticlesAction(
       STRING_AGG(DISTINCT t.name, ', ') AS article_tags,
       c.name AS category_name,
       u.full_name AS author_name,
+      u.avatar_url AS author_avatar_url,
       ua.full_name AS approver_name,
       COALESCE(cc.comment_count, 0)::INT AS comment_count,
       fi.sort_time
@@ -484,10 +518,11 @@ export async function getPublishedArticlesAction(
       a.thumbnail_url,
       c.name,
       u.full_name,
+      u.avatar_url,
       ua.full_name,
       cc.comment_count,
       fi.sort_time
-    ORDER BY fi.sort_time ${sortOrder === 'oldest' ? sql`ASC` : sql`DESC`}, a.id DESC
+    ORDER BY fi.sort_time ${sortOrder === "oldest" ? sql`ASC` : sql`DESC`}, a.id DESC
   `
 
   const totalRows = await sql`
@@ -505,9 +540,11 @@ export async function getPublishedArticlesAction(
         )
         ${categoryId ? sql`AND a.category_id = ${categoryId}` : sql``}
       GROUP BY a.id
-      ${selectedTagsCount > 0
-        ? sql`HAVING COUNT(DISTINCT CASE WHEN LOWER(t_filter.name) = ANY(${normalizedTags}) THEN LOWER(t_filter.name) END) = ${selectedTagsCount}`
-        : sql``}
+      ${
+        selectedTagsCount > 0
+          ? sql`HAVING COUNT(DISTINCT CASE WHEN LOWER(t_filter.name) = ANY(${normalizedTags}) THEN LOWER(t_filter.name) END) = ${selectedTagsCount}`
+          : sql``
+      }
     ) base
   `
 
@@ -517,7 +554,9 @@ export async function getPublishedArticlesAction(
   }
 }
 
-export async function deleteArticleAction(articleId: number): Promise<{ success: boolean; message: string }> {
+export async function deleteArticleAction(
+  articleId: number
+): Promise<{ success: boolean; message: string }> {
   try {
     const result = await sql`
       UPDATE articles
@@ -527,17 +566,22 @@ export async function deleteArticleAction(articleId: number): Promise<{ success:
     `
 
     if (result.length === 0) {
-      return { success: false, message: 'Article not found' }
+      return { success: false, message: "Article not found" }
     }
 
-    return { success: true, message: 'Article deleted successfully' }
+    return { success: true, message: "Article deleted successfully" }
   } catch (error: any) {
-    console.error('Error deleting article:', error)
-    return { success: false, message: error?.message || 'Failed to delete article' }
+    console.error("Error deleting article:", error)
+    return {
+      success: false,
+      message: error?.message || "Failed to delete article",
+    }
   }
 }
 
-export async function restoreArticleAction(articleId: number): Promise<{ success: boolean; message: string }> {
+export async function restoreArticleAction(
+  articleId: number
+): Promise<{ success: boolean; message: string }> {
   try {
     const result = await sql`
       UPDATE articles
@@ -547,13 +591,16 @@ export async function restoreArticleAction(articleId: number): Promise<{ success
     `
 
     if (result.length === 0) {
-      return { success: false, message: 'Article not found' }
+      return { success: false, message: "Article not found" }
     }
 
-    return { success: true, message: 'Article restored successfully' }
+    return { success: true, message: "Article restored successfully" }
   } catch (error: any) {
-    console.error('Error restoring article:', error)
-    return { success: false, message: error?.message || 'Failed to restore article' }
+    console.error("Error restoring article:", error)
+    return {
+      success: false,
+      message: error?.message || "Failed to restore article",
+    }
   }
 }
 
@@ -574,40 +621,45 @@ export async function approveArticleAction(
     `
 
     if (result.length === 0) {
-      return { success: false, message: 'Article not found' }
+      return { success: false, message: "Article not found" }
     }
 
     const updatedArticle = result[0]
     await createArticleStatusNotification({
       userId: Number(updatedArticle.author_id),
       articleId: Number(updatedArticle.id),
-      articleTitle: updatedArticle.title || 'Untitled article',
-      articleContent: updatedArticle.content || '',
-      thumbnailUrl: updatedArticle.thumbnail_url || updatedArticle.image_url || null,
-      type: 'article_approved',
+      articleTitle: updatedArticle.title || "Untitled article",
+      articleContent: updatedArticle.content || "",
+      thumbnailUrl:
+        updatedArticle.thumbnail_url || updatedArticle.image_url || null,
+      type: "article_approved",
     })
 
     if (actorUserId && actorUserId !== Number(updatedArticle.author_id)) {
       await createArticleStatusNotification({
         userId: actorUserId,
         articleId: Number(updatedArticle.id),
-        articleTitle: updatedArticle.title || 'Untitled article',
-        articleContent: updatedArticle.content || '',
-        thumbnailUrl: updatedArticle.thumbnail_url || updatedArticle.image_url || null,
-        type: 'article_approved',
+        articleTitle: updatedArticle.title || "Untitled article",
+        articleContent: updatedArticle.content || "",
+        thumbnailUrl:
+          updatedArticle.thumbnail_url || updatedArticle.image_url || null,
+        type: "article_approved",
       })
     }
 
-    return { success: true, message: 'Article approved successfully' }
+    return { success: true, message: "Article approved successfully" }
   } catch (error: any) {
-    console.error('Error approving article:', error)
-    return { success: false, message: error?.message || 'Failed to approve article' }
+    console.error("Error approving article:", error)
+    return {
+      success: false,
+      message: error?.message || "Failed to approve article",
+    }
   }
 }
 
 export async function rejectArticleAction(
   articleId: number,
-  reason: string = '',
+  reason: string = "",
   actorUserId?: number
 ): Promise<{ success: boolean; message: string }> {
   try {
@@ -624,17 +676,18 @@ export async function rejectArticleAction(
     `
 
     if (result.length === 0) {
-      return { success: false, message: 'Article not found' }
+      return { success: false, message: "Article not found" }
     }
 
     const updatedArticle = result[0]
     await createArticleStatusNotification({
       userId: Number(updatedArticle.author_id),
       articleId: Number(updatedArticle.id),
-      articleTitle: updatedArticle.title || 'Untitled article',
-      articleContent: updatedArticle.content || '',
-      thumbnailUrl: updatedArticle.thumbnail_url || updatedArticle.image_url || null,
-      type: 'article_rejected',
+      articleTitle: updatedArticle.title || "Untitled article",
+      articleContent: updatedArticle.content || "",
+      thumbnailUrl:
+        updatedArticle.thumbnail_url || updatedArticle.image_url || null,
+      type: "article_rejected",
       reason,
     })
 
@@ -642,18 +695,22 @@ export async function rejectArticleAction(
       await createArticleStatusNotification({
         userId: actorUserId,
         articleId: Number(updatedArticle.id),
-        articleTitle: updatedArticle.title || 'Untitled article',
-        articleContent: updatedArticle.content || '',
-        thumbnailUrl: updatedArticle.thumbnail_url || updatedArticle.image_url || null,
-        type: 'article_rejected',
+        articleTitle: updatedArticle.title || "Untitled article",
+        articleContent: updatedArticle.content || "",
+        thumbnailUrl:
+          updatedArticle.thumbnail_url || updatedArticle.image_url || null,
+        type: "article_rejected",
         reason,
       })
     }
 
-    return { success: true, message: 'Article rejected successfully' }
+    return { success: true, message: "Article rejected successfully" }
   } catch (error: any) {
-    console.error('Error rejecting article:', error)
-    return { success: false, message: error?.message || 'Failed to reject article' }
+    console.error("Error rejecting article:", error)
+    return {
+      success: false,
+      message: error?.message || "Failed to reject article",
+    }
   }
 }
 
@@ -663,7 +720,7 @@ export async function resubmitArticleAction(
   content: string,
   tags?: string[],
   category_id?: number | null,
-    department_id?: number | null,
+  department_id?: number | null,
   image_url?: string | null,
   thumbnail_url?: string | null
 ): Promise<{ success: boolean; message: string }> {
@@ -687,7 +744,7 @@ export async function resubmitArticleAction(
     `
 
     if (result.length === 0) {
-      return { success: false, message: 'Article not found' }
+      return { success: false, message: "Article not found" }
     }
 
     // Delete existing tags
@@ -698,7 +755,8 @@ export async function resubmitArticleAction(
     // Insert new tags
     if (tags && tags.length > 0) {
       let defaultCategoryId: number | null = null
-      const catRes = await sql`SELECT id FROM categories WHERE is_deleted = false ORDER BY id ASC LIMIT 1`
+      const catRes =
+        await sql`SELECT id FROM categories WHERE is_deleted = false ORDER BY id ASC LIMIT 1`
       if (catRes.length > 0) {
         defaultCategoryId = catRes[0].id
       }
@@ -729,14 +787,19 @@ export async function resubmitArticleAction(
       }
     }
 
-    return { success: true, message: 'Article resubmitted successfully' }
+    return { success: true, message: "Article resubmitted successfully" }
   } catch (error: any) {
-    console.error('Error resubmitting article:', error)
-    return { success: false, message: error?.message || 'Failed to resubmit article' }
+    console.error("Error resubmitting article:", error)
+    return {
+      success: false,
+      message: error?.message || "Failed to resubmit article",
+    }
   }
 }
 
-export async function getArticleByIdAction(articleId: number): Promise<{ success: boolean; data?: any; message?: string }> {
+export async function getArticleByIdAction(
+  articleId: number
+): Promise<{ success: boolean; data?: any; message?: string }> {
   try {
     const articles = await sql`
       SELECT 
@@ -760,6 +823,7 @@ export async function getArticleByIdAction(articleId: number): Promise<{ success
         d.name as department_name,
         u.full_name as author_name,
         u.email as author_email,
+        u.avatar_url as author_avatar_url,
         ua.full_name as approver_name
       FROM articles a
       LEFT JOIN article_tags at ON a.id = at.article_id
@@ -769,16 +833,21 @@ export async function getArticleByIdAction(articleId: number): Promise<{ success
       LEFT JOIN users u ON a.author_id = u.id
       LEFT JOIN users ua ON a.approved_by = ua.id
       WHERE a.id = ${articleId}
-      GROUP BY a.id, a.title, a.content, a.status, a.approved_by, a.approved_at, a.deleted_at, a.reason, a.category_id, c.department_id, a.author_id, a.image_url, a.thumbnail_url, a.created_at, a.updated_at, c.name, d.name, u.full_name, u.email, ua.full_name
+      GROUP BY a.id, a.title, a.content, a.status, a.approved_by, a.approved_at, a.deleted_at, a.reason, a.category_id, c.department_id, a.author_id, a.image_url, a.thumbnail_url, a.created_at, a.updated_at, c.name, d.name, u.full_name, u.email, u.avatar_url, ua.full_name
       LIMIT 1
     `
 
     if (articles.length === 0) {
-      return { success: false, message: 'Article not found' }
+      return { success: false, message: "Article not found" }
     }
 
     const article = articles[0]
-    const tags = article.tags ? article.tags.split(',').map((t: string) => t.trim()).filter(Boolean) : []
+    const tags = article.tags
+      ? article.tags
+          .split(",")
+          .map((t: string) => t.trim())
+          .filter(Boolean)
+      : []
 
     return {
       success: true,
@@ -804,17 +873,23 @@ export async function getArticleByIdAction(articleId: number): Promise<{ success
         tags,
         created_at: article.created_at,
         updated_at: article.updated_at,
-      }
+      },
     }
   } catch (error: any) {
-    console.error('Error fetching article:', error)
-    return { success: false, message: error?.message || 'Failed to fetch article' }
+    console.error("Error fetching article:", error)
+    return {
+      success: false,
+      message: error?.message || "Failed to fetch article",
+    }
   }
 }
 
-export async function updateArticleAction(input: UpdateArticleInput): Promise<{ success: boolean; message: string }> {
+export async function updateArticleAction(
+  input: UpdateArticleInput
+): Promise<{ success: boolean; message: string }> {
   try {
-    const { id, title, content, tags, category_id, image_url, thumbnail_url } = input
+    const { id, title, content, tags, category_id, image_url, thumbnail_url } =
+      input
 
     // Update article
     const result = await sql`
@@ -831,7 +906,7 @@ export async function updateArticleAction(input: UpdateArticleInput): Promise<{ 
     `
 
     if (result.length === 0) {
-      return { success: false, message: 'Article not found' }
+      return { success: false, message: "Article not found" }
     }
 
     // Delete existing tags
@@ -842,7 +917,8 @@ export async function updateArticleAction(input: UpdateArticleInput): Promise<{ 
     // Insert new tags
     if (tags && tags.length > 0) {
       let defaultCategoryId: number | null = null
-      const catRes = await sql`SELECT id FROM categories WHERE is_deleted = false ORDER BY id ASC LIMIT 1`
+      const catRes =
+        await sql`SELECT id FROM categories WHERE is_deleted = false ORDER BY id ASC LIMIT 1`
       if (catRes.length > 0) {
         defaultCategoryId = catRes[0].id
       }
@@ -873,10 +949,13 @@ export async function updateArticleAction(input: UpdateArticleInput): Promise<{ 
       }
     }
 
-    return { success: true, message: 'Article updated successfully' }
+    return { success: true, message: "Article updated successfully" }
   } catch (error: any) {
-    console.error('Error in updateArticleAction:', error)
-    return { success: false, message: error?.message || 'Failed to update article' }
+    console.error("Error in updateArticleAction:", error)
+    return {
+      success: false,
+      message: error?.message || "Failed to update article",
+    }
   }
 }
 
@@ -884,22 +963,31 @@ export async function updateArticleAction(input: UpdateArticleInput): Promise<{ 
  * Update articles table constraint to allow 'rejected' status
  * This function modifies the CHECK constraint on the status column
  */
-export async function updateArticlesStatusConstraint(): Promise<{ success: boolean; message: string }> {
+export async function updateArticlesStatusConstraint(): Promise<{
+  success: boolean
+  message: string
+}> {
   try {
     // Drop existing constraint
     await sql`
       ALTER TABLE articles DROP CONSTRAINT IF EXISTS articles_status_check
     `
-    
+
     // Add new constraint with 'rejected' status
     await sql`
       ALTER TABLE articles ADD CONSTRAINT articles_status_check CHECK (status IN ('draft', 'pending', 'published', 'rejected'))
     `
-    
-    return { success: true, message: 'Articles status constraint updated successfully' }
+
+    return {
+      success: true,
+      message: "Articles status constraint updated successfully",
+    }
   } catch (error: any) {
-    console.error('Error updating articles status constraint:', error)
-    return { success: false, message: error?.message || 'Failed to update constraint' }
+    console.error("Error updating articles status constraint:", error)
+    return {
+      success: false,
+      message: error?.message || "Failed to update constraint",
+    }
   }
 }
 
@@ -912,7 +1000,9 @@ export type TopAuthor = {
 /**
  * Get top authors by published article count
  */
-export async function getTopAuthorsAction(limit: number = 5): Promise<TopAuthor[]> {
+export async function getTopAuthorsAction(
+  limit: number = 5
+): Promise<TopAuthor[]> {
   try {
     const result = await sql`
       SELECT 
@@ -926,14 +1016,14 @@ export async function getTopAuthorsAction(limit: number = 5): Promise<TopAuthor[
       ORDER BY COUNT(a.id) DESC
       LIMIT ${limit}
     `
-    
+
     return result.map((row: any) => ({
       id: row.id,
       name: row.name,
       articleCount: parseInt(row.article_count, 10),
     }))
   } catch (error: any) {
-    console.error('Error fetching top authors:', error)
+    console.error("Error fetching top authors:", error)
     return []
   }
 }

@@ -95,7 +95,8 @@ export async function updateProgressService(
         : Number(itemId)
 
     // B. Thêm bài mới vào mảng
-    if (!completedIds.includes(normalizedItemId)) {
+    const isNewCompletion = !completedIds.includes(normalizedItemId)
+    if (isNewCompletion) {
       completedIds.push(normalizedItemId)
     } else {
       console.warn(
@@ -124,6 +125,16 @@ export async function updateProgressService(
         completed_at = ${completedAtValue}
       WHERE id = ${enrollment.id}
     `
+
+    // F. Nếu đây là lần đầu tiên item hoàn thành, cập nhật curriculum_items
+    if (isNewCompletion) {
+      await sql`
+        UPDATE curriculum_items
+        SET completed_at = CURRENT_TIMESTAMP
+        WHERE id = ${normalizedItemId}
+      `
+    }
+
     return { success: true, progressPercentage: newProgressPercentage }
   } catch (error) {
     console.error("❌ [UPDATE] Lỗi Database:", error)

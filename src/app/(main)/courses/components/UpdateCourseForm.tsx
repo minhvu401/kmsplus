@@ -98,6 +98,11 @@ export type CurriculumItem = {
   title: string
   duration_minutes?: number | null
   question_count?: number
+  // ✅ ĐLCS THÊM: lessondetails for editing
+  lesson_type?: string
+  video_url?: string | null
+  file_path?: string | null
+  lesson_content?: string | null
 }
 export type Section = {
   id: string
@@ -1446,25 +1451,30 @@ function CurriculumContentBank({
     setEditingLessonId(Number(lesson.id))
     setIsCreateModalOpen(true)
 
-    // ✅ Đổ dữ liệu chuẩn xác cho mọi type
-    const existingContent =
-      lesson.type === "video"
-        ? lesson.video_url
-        : lesson.type === "pdf"
-          ? lesson.file_path
-          : lesson.content
+    // ✅ ĐLCS CẬP NHẬT: Use lesson_content, lesson_type, video_url, file_path from curriculum item if available
+    const lessonType =
+      (lesson as any).lesson_type || lesson.type || "text_media"
+
+    // Determine content based on type
+    let existingContent = ""
+    if (lessonType === "video") {
+      existingContent = (lesson as any).video_url || ""
+    } else if (lessonType === "pdf") {
+      existingContent = (lesson as any).file_path || ""
+    } else {
+      existingContent = (lesson as any).lesson_content || lesson.content || ""
+    }
 
     form.setFieldsValue({
       title: lesson.title,
-      type: lesson.type || "text_media",
+      type: lessonType,
       content: existingContent,
       category_id: lesson.category_id ? String(lesson.category_id) : undefined,
-      duration_minutes: lesson.duration_minutes,
     })
-    const cType = lesson.type || "text_media"
-    setContentType(cType)
-    if (cType === "video" && existingContent) setVideoUrl(existingContent)
-    if (cType === "pdf" && existingContent)
+
+    setContentType(lessonType)
+    if (lessonType === "video" && existingContent) setVideoUrl(existingContent)
+    if (lessonType === "pdf" && existingContent)
       setPdfFile({ name: "Tệp hiện có", url: existingContent })
   }
 
@@ -1490,7 +1500,6 @@ function CurriculumContentBank({
           type: values.type,
           content: values.content,
           category_id: values.category_id ? Number(values.category_id) : null,
-          duration_minutes: values.duration_minutes || null,
         })
         onLessonUpdated(updated as unknown as Lesson)
         message.success("Đã cập nhật bài học!")
@@ -1502,7 +1511,6 @@ function CurriculumContentBank({
           type: values.type,
           content: values.content,
           category_id: values.category_id ? Number(values.category_id) : null,
-          duration_minutes: values.duration_minutes || null,
         })
         if (onLessonCreated)
           onLessonCreated(newLessonResponse as unknown as Lesson)
@@ -1804,7 +1812,7 @@ function CurriculumContentBank({
           initialValues={{ type: "text_media" }}
           className="mt-4"
         >
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Form.Item
               className="md:col-span-2"
               name="title"
@@ -1816,18 +1824,6 @@ function CurriculumContentBank({
               rules={[{ required: true, message: "Vui lòng nhập tiêu đề" }]}
             >
               <Input placeholder="ví dụ: Giới thiệu chung" size="large" />
-            </Form.Item>
-            {/* ✅ TRƯỜNG THỜI LƯỢNG MỚI THÊM VÀO */}
-            <Form.Item
-              name="duration_minutes"
-              label={<span className="font-semibold">Thời lượng (phút)</span>}
-            >
-              <InputNumber
-                className="w-full"
-                size="large"
-                min={0}
-                placeholder="VD: 15"
-              />
             </Form.Item>
           </div>
           <Form.Item

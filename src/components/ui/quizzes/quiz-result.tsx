@@ -1,10 +1,12 @@
 "use client"
 
 import { useState } from "react"
-import { Card, Row, Col, Typography, Space, Button, Tag } from "antd"
+import { Card, Row, Col, Typography, Space, Button, Tag, message } from "antd"
 const { Title, Text, Paragraph } = Typography
 import type { AttemptResult, QuestionResult } from "@/service/quiz.service"
 import AIExplanationButton from "./AIExplanationButton"
+import { useRouter } from "next/navigation"
+import { startQuizAttempt } from "@/action/quiz/quizActions"
 import {
   CheckCircleFilled,
   CloseCircleFilled,
@@ -16,6 +18,7 @@ import {
   SafetyCertificateOutlined,
   ClockCircleOutlined,
   PercentageOutlined,
+  ReloadOutlined,
 } from "@ant-design/icons"
 
 const normalizeArray = (v: unknown): string[] => {
@@ -66,8 +69,22 @@ const isQuestionCorrect = (q: QuestionResult) => {
   return JSON.stringify(selected) === JSON.stringify(correct)
 }
 
-export default function QuizResult({ result }: { result: AttemptResult }) {
+export default function QuizResult({
+  result,
+  curriculumItemId,
+  courseId,
+  attemptsLeft,
+  maxAttempts,
+}: {
+  result: AttemptResult
+  curriculumItemId?: number
+  courseId?: number
+  attemptsLeft?: number | null
+  maxAttempts?: number | null
+}) {
   const [showDetails, setShowDetails] = useState(false)
+  const [isRetrying, setIsRetrying] = useState(false)
+  const router = useRouter()
 
   const displayScore = Number.isInteger(result.score)
     ? String(result.score)
@@ -86,6 +103,40 @@ export default function QuizResult({ result }: { result: AttemptResult }) {
     const m = Math.floor(seconds / 60)
     const s = seconds % 60
     return s > 0 ? `${m}m ${s}s` : `${m}m`
+  }
+
+  // Handler retry quiz
+  const handleRetryQuiz = async () => {
+    if (!curriculumItemId) {
+      message.error("Cannot retry quiz: Invalid quiz ID")
+      return
+    }
+
+    if (
+      attemptsLeft !== null &&
+      attemptsLeft !== undefined &&
+      attemptsLeft <= 0
+    ) {
+      message.error(
+        "You have reached the maximum number of attempts for this quiz"
+      )
+      return
+    }
+
+    setIsRetrying(true)
+    try {
+      const newAttempt = await startQuizAttempt(curriculumItemId)
+      if (newAttempt?.id && courseId) {
+        router.push(`/courses/${courseId}/learning/attempt/${newAttempt.id}`)
+      } else {
+        message.error("Failed to start quiz attempt")
+      }
+    } catch (error) {
+      console.error(error)
+      message.error((error as Error).message || "Failed to start quiz attempt")
+    } finally {
+      setIsRetrying(false)
+    }
   }
 
   if (showDetails) {
@@ -207,6 +258,32 @@ export default function QuizResult({ result }: { result: AttemptResult }) {
             >
               Review Detailed Answers
             </Button>
+            {curriculumItemId &&
+              (attemptsLeft === null ||
+                (attemptsLeft !== undefined && attemptsLeft > 0)) && (
+                <Button
+                  size="large"
+                  loading={isRetrying}
+                  style={{
+                    height: 48,
+                    borderRadius: 24,
+                    paddingLeft: 32,
+                    paddingRight: 32,
+                    border: "none",
+                    fontWeight: 600,
+                    marginLeft: 12,
+                    background: "#52c41a",
+                    color: "white",
+                  }}
+                  icon={<ReloadOutlined />}
+                  onClick={handleRetryQuiz}
+                >
+                  Retry Quiz
+                  {attemptsLeft !== null && attemptsLeft !== undefined && (
+                    <span> ({attemptsLeft} left)</span>
+                  )}
+                </Button>
+              )}
           </div>
         </div>
 

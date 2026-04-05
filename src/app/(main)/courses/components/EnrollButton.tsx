@@ -12,15 +12,22 @@ import { useRouter } from "next/navigation"
 interface EnrollButtonProps {
   courseId: number
   courseTitle: string
+  courseStatus?: string
 }
 
 export default function EnrollButton({
   courseId,
   courseTitle,
+  courseStatus = "published",
 }: EnrollButtonProps) {
   const [loading, setLoading] = useState(false)
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false)
   const router = useRouter()
+
+  // Hide Enroll button if course is not published
+  if (courseStatus !== "published") {
+    return null
+  }
 
   const handleEnroll = async () => {
     setLoading(true)
@@ -69,7 +76,10 @@ export default function EnrollButton({
               type="primary"
               size="large"
               className="bg-blue-600 h-12 font-bold"
-              onClick={() => router.refresh()} // Reload để hiện giao diện Post-Enrollment
+              onClick={() => {
+                setIsSuccessModalOpen(false)
+                router.push(`/courses/${courseId}/learning`)
+              }}
             >
               Go to Learning →
             </Button>

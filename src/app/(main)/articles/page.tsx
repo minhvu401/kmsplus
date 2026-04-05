@@ -94,8 +94,10 @@ export default function ViewArticlePage() {
     "draft" | "published" | "pending"
   >("published")
   const [creatingArticle, setCreatingArticle] = useState(false)
+  const [currentUser, setCurrentUser] = useState<any>(null)
   const titleEditorRef = useRef<HTMLDivElement>(null)
   const pageSize = 10
+  const MAX_TAGS = 5
 
   const loadArticles = async () => {
     setLoading(true)
@@ -124,12 +126,18 @@ export default function ViewArticlePage() {
   const loadFilterData = async () => {
     setLoadingCategories(true)
     try {
-      const [tagsRes, categoriesRes] = await Promise.all([
+      const { getCurrentUserDetail } =
+        await import("@/action/articles/articlesManagementAction")
+      const [tagsRes, categoriesRes, userRes] = await Promise.all([
         getAllTags(),
         getAllCategories(),
+        getCurrentUserDetail(),
       ])
       const tagNames = (tagsRes || []).map((t: any) => t.name)
-      const normalizedCategories = Array.isArray(categoriesRes)
+      setCurrentUser(userRes)
+
+      // Filter categories based on user type
+      let normalizedCategories = Array.isArray(categoriesRes)
         ? categoriesRes
             .filter(
               (c: any) =>
@@ -137,15 +145,25 @@ export default function ViewArticlePage() {
                 typeof c?.name === "string" &&
                 c.name.trim().length > 0
             )
-            .map((c: any) => ({ id: Number(c.id), name: c.name.trim() }))
+            .map((c: any) => ({
+              id: Number(c.id),
+              name: c.name.trim(),
+              department_id: c.department_id,
+            }))
             .filter(
-              (
-                c: { id: number; name: string },
-                index: number,
-                arr: { id: number; name: string }[]
-              ) => arr.findIndex((x) => x.id === c.id) === index
+              (c: any, index: number, arr: any[]) =>
+                arr.findIndex((x) => x.id === c.id) === index
             )
         : []
+
+      // For non-admin users, filter by department
+      if (userRes && !userRes.isAdmin && userRes.department_id) {
+        normalizedCategories = normalizedCategories.filter(
+          (c) =>
+            c.department_id === null ||
+            c.department_id === userRes.department_id
+        )
+      }
 
       setTags(tagNames)
       setCategories(normalizedCategories)
@@ -285,34 +303,9 @@ export default function ViewArticlePage() {
         <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-blue-900 bg-clip-text text-transparent mb-4">
           Bài Viết
         </h1>
-        <Flex
-          align="center"
-          justify="space-between"
-          gap={24}
-          style={{ marginBottom: 16 }}
-        >
-          <p className="text-gray-600 max-w-2xl leading-relaxed">
-            Kho tàng tri thức & chia sẻ kinh nghiệm từ cộng đồng KMSPlus.
-          </p>
-          <Button
-            type="default"
-            icon={<EditOutlined />}
-            size="large"
-            onClick={() => {
-              resetCreateForm()
-              setIsModalOpen(true)
-            }}
-            className="border-blue-900 text-blue-900 !bg-white hover:!border-blue-900 hover:!text-blue-900"
-            style={{
-              borderWidth: "1.5px",
-              height: "36px",
-              fontSize: "12px",
-              flexShrink: 0,
-            }}
-          >
-            Tạo Bài Viết Mới
-          </Button>
-        </Flex>
+        <p className="text-gray-600 max-w-2xl leading-relaxed">
+          Kho tàng tri thức & chia sẻ kinh nghiệm từ cộng đồng KMSPlus.
+        </p>
         <Divider
           style={{ borderColor: "rgba(37, 99, 235, 0.15)", margin: "16px 0" }}
         />
@@ -343,7 +336,7 @@ export default function ViewArticlePage() {
 
               {/* Category Filter - Native Select like Q&A */}
               <select
-                value={selectedCategory || "any"}
+                value={String(selectedCategory || "any")}
                 onChange={(e) => {
                   const val =
                     e.target.value === "any" ? null : parseInt(e.target.value)
@@ -521,9 +514,12 @@ export default function ViewArticlePage() {
                         title={article.title}
                         snippet={snippet}
                         authorName={article.author_name || "Anonymous"}
+                        authorAvatar={
+                          (article as any).author_avatar_url || undefined
+                        }
                         thumbnailUrl={article.thumbnail_url || undefined}
                         publishedAt={article.created_at}
-                        viewCount={Math.floor(Math.random() * 500) + 50}
+                        viewCount={0}
                         readingTime={readingTime}
                         commentCount={Number(article.comment_count || 0)}
                         tags={tagList}
@@ -652,6 +648,11 @@ export default function ViewArticlePage() {
                 Ảnh bìa
               </span>
             }
+            extra={
+              <span style={{ fontSize: "11px", color: "#6b7280" }}>
+                Tối đa {THUMBNAIL_MAX_SIZE_MB}MB
+              </span>
+            }
           >
             <Flex vertical gap="middle">
               {thumbnailUrl && (
@@ -763,15 +764,24 @@ export default function ViewArticlePage() {
                   color: "#111827",
                 }}
               >
-                Danh mục
+                Danh mục <span style={{ color: "#dc2626" }}>*</span>
               </span>
             }
             rules={[{ required: true, message: "Vui lòng chọn danh mục" }]}
+            extra={
+              categories.length === 0 && !loadingCategories ? (
+                <span style={{ color: "#ef4444", fontSize: "11px" }}>
+                  Không có danh mục nào có sẵn
+                </span>
+              ) : null
+            }
           >
             <Select
               placeholder="Chọn danh mục"
               value={selectedCategoryForCreate}
               onChange={setSelectedCategoryForCreate}
+              loading={loadingCategories}
+              disabled={loadingCategories}
               options={categories.map((cat) => ({
                 label: cat.name,
                 value: cat.id,
@@ -795,17 +805,47 @@ export default function ViewArticlePage() {
                 Thẻ
               </span>
             }
+            rules={[
+              {
+                validator: () => {
+                  if (selectedTagsForCreate.length > MAX_TAGS) {
+                    return Promise.reject(`Tối đa ${MAX_TAGS} thẻ`)
+                  }
+                  return Promise.resolve()
+                },
+              },
+            ]}
           >
             <Select
               mode="tags"
-              placeholder="Thêm hoặc chọn thẻ"
+              placeholder="Thêm hoặc chọn thẻ (tối đa 5)"
               value={selectedTagsForCreate}
-              onChange={setSelectedTagsForCreate}
+              onChange={(values) => {
+                if (values.length <= MAX_TAGS) {
+                  setSelectedTagsForCreate(values)
+                } else {
+                  message.warning(`Tối đa ${MAX_TAGS} thẻ`)
+                }
+              }}
               options={tags.map((tag) => ({ label: tag, value: tag }))}
             />
           </Form.Item>
 
-          {/* Submit */}
+          <Flex justify="flex-end" align="center" className="mb-4">
+            <span
+              style={{
+                fontSize: "11px",
+                color:
+                  selectedTagsForCreate.length > MAX_TAGS
+                    ? "#dc2626"
+                    : "#6b7280",
+              }}
+            >
+              {selectedTagsForCreate.length} / {MAX_TAGS}
+            </span>
+          </Flex>
+
+          <Divider style={{ margin: "12px 0", borderColor: "#f3f4f6" }} />
           <Form.Item className="!mb-0">
             <Flex justify="flex-end" gap="middle" className="pt-4">
               <Button
