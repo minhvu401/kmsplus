@@ -64,7 +64,7 @@ import {
   uploadImageToCloudinary,
   getCloudinaryThumbnailUrl,
 } from "@/lib/cloudinary"
-import QuillEditor from "@/components/QuillEditor"
+import QuillEditor from "@/components/QuillEditorLazy"
 
 if (typeof window !== "undefined") {
   ;(window as any).React = React

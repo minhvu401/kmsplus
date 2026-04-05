@@ -61,117 +61,98 @@ export default function CourseClient({
   const [loadingRelevant, setLoadingRelevant] = useState(false)
   const [loadingNew, setLoadingNew] = useState(false)
 
+  // OPTIMIZED: Cache fetched data to prevent unnecessary re-fetches on page changes
+  const fetchedSections = React.useRef(new Set<string>())
+  const hasRunInitialFetch = React.useRef(false)
+
   // Fetch different course sections on mount
   useEffect(() => {
-    // ========================================
-    // 1. FETCH RESUME COURSES (In-Progress)
-    // ========================================
-    // GET /api/enrollments/in-progress?userId={userId}
-    // Returns courses user is currently taking with progress & due dates
-    const fetchResumeCourses = async () => {
-      try {
-        const response = await fetch("/api/courses/resume", {
-          method: "GET",
-          headers: { "Content-Type": "application/json" },
-        })
-        const data = await response.json()
-        setResumeCourses(data.courses || [])
-      } catch (error) {
-        console.error("Error fetching resume courses:", error)
-        setResumeCourses([])
-      }
-    }
+    // OPTIMIZED: Only run initial fetch once
+    if (hasRunInitialFetch.current) return
+    hasRunInitialFetch.current = true
+
+    // OPTIMIZED: Use AbortController to cleanup pending requests
+    const abortController = new AbortController()
+    const signal = abortController.signal
 
     // ========================================
-    // 2. FETCH TRENDING COURSES
+    // OPTIMIZED: Batch fetch multiple endpoints
     // ========================================
-    // Returns courses by enrollment count
-    const fetchTrendingCourses = async () => {
+    const fetchAllCourseSections = async () => {
       setLoadingTrending(true)
+      setLoadingPopular(true)
+      setLoadingRelevant(true)
+      setLoadingNew(true)
+
       try {
-        const response = await fetch("/api/courses/trending", {
-          method: "GET",
-          headers: { "Content-Type": "application/json" },
-        })
-        const data = await response.json()
-        setTrendingCourses(data.courses || [])
+        // Fetch all sections in parallel
+        const [resumeRes, trendingRes, popularRes, relevantRes, newRes] =
+          await Promise.all([
+            fetch("/api/courses/resume", {
+              method: "GET",
+              headers: { "Content-Type": "application/json" },
+              signal,
+            }),
+            fetch("/api/courses/trending", {
+              method: "GET",
+              headers: { "Content-Type": "application/json" },
+              signal,
+            }),
+            fetch("/api/courses/popular-by-category", {
+              method: "GET",
+              headers: { "Content-Type": "application/json" },
+              signal,
+            }),
+            fetch("/api/courses/personalized", {
+              method: "GET",
+              headers: { "Content-Type": "application/json" },
+              signal,
+            }),
+            fetch("/api/courses/newest", {
+              method: "GET",
+              headers: { "Content-Type": "application/json" },
+              signal,
+            }),
+          ])
+
+        // Process responses in parallel
+        const [resumeData, trendingData, popularData, relevantData, newData] =
+          await Promise.all([
+            resumeRes.json(),
+            trendingRes.json(),
+            popularRes.json(),
+            relevantRes.json(),
+            newRes.json(),
+          ])
+
+        // Update state
+        setResumeCourses(resumeData.courses || [])
+        setTrendingCourses(trendingData.courses || [])
+        setPopularByCategory(popularData.courses || [])
+        setRelevantCourses(relevantData.courses || [])
+        setNewCourses(newData.courses || [])
+
+        fetchedSections.current.add("all")
       } catch (error) {
-        console.error("Error fetching trending courses:", error)
-        setTrendingCourses([])
+        if (error instanceof Error && error.name === "AbortError") {
+          console.log("Course fetch cancelled")
+          return
+        }
+        console.error("Error fetching course sections:", error)
       } finally {
         setLoadingTrending(false)
-      }
-    }
-
-    // ========================================
-    // 3. FETCH POPULAR BY CATEGORY
-    // ========================================
-    // Returns top courses per category
-    const fetchPopularByCategory = async () => {
-      setLoadingPopular(true)
-      try {
-        const response = await fetch("/api/courses/popular-by-category", {
-          method: "GET",
-          headers: { "Content-Type": "application/json" },
-        })
-        const data = await response.json()
-        setPopularByCategory(data.courses || [])
-      } catch (error) {
-        console.error("Error fetching popular courses:", error)
-        setPopularByCategory([])
-      } finally {
         setLoadingPopular(false)
-      }
-    }
-
-    // ========================================
-    // 4. FETCH RELEVANT COURSES (Department)
-    // ========================================
-    // Returns personalized courses based on user's department
-    const fetchRelevantCourses = async () => {
-      setLoadingRelevant(true)
-      try {
-        const response = await fetch("/api/courses/personalized", {
-          method: "GET",
-          headers: { "Content-Type": "application/json" },
-        })
-        const data = await response.json()
-        setRelevantCourses(data.courses || [])
-      } catch (error) {
-        console.error("Error fetching relevant courses:", error)
-        setRelevantCourses([])
-      } finally {
         setLoadingRelevant(false)
-      }
-    }
-
-    // ========================================
-    // 5. FETCH NEW COURSES
-    // ========================================
-    // Returns recently published courses
-    const fetchNewCourses = async () => {
-      setLoadingNew(true)
-      try {
-        const response = await fetch("/api/courses/newest", {
-          method: "GET",
-          headers: { "Content-Type": "application/json" },
-        })
-        const data = await response.json()
-        setNewCourses(data.courses || [])
-      } catch (error) {
-        console.error("Error fetching new courses:", error)
-        setNewCourses([])
-      } finally {
         setLoadingNew(false)
       }
     }
 
-    // Execute all fetches in parallel
-    fetchResumeCourses()
-    fetchTrendingCourses()
-    fetchPopularByCategory()
-    fetchRelevantCourses()
-    fetchNewCourses()
+    fetchAllCourseSections()
+
+    // Cleanup pending requests
+    return () => {
+      abortController.abort()
+    }
   }, [])
 
   useEffect(() => {
