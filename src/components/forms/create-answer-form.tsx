@@ -3,6 +3,7 @@
 import { useState, useActionState, startTransition, useEffect } from 'react';
 import { Form, Input, Select, Button, Typography, Flex, message } from 'antd';
 import { State, createAnswer } from '@/action/question/questionActions';
+import { useRouter } from 'next/navigation';
 import RichTextEditor from "@/components/ui/RichTextEditor";
 
 const { Text } = Typography;
@@ -35,12 +36,23 @@ export default function CreateAnswerForm({
     const [form] = Form.useForm();
     const [contentCount, setContentCount] = useState(0);
     const [messageApi, contextHolder] = message.useMessage();
+    const router = useRouter();
 
     const initialState: State = { message: null, errors: {} };
-    const [state, createAnswerAction] = useActionState(createAnswer, initialState);
+    const [state, createAnswerAction, isCreatingAnswer] = useActionState(createAnswer, initialState);
 
     useEffect(() => {
         if (!state?.message) return;
+
+        if (state.message === 'Answer created successfully') {
+            form.resetFields();
+            setContentCount(0);
+            messageApi.success('Your answer has been posted successfully.');
+            startTransition(() => {
+                router.refresh();
+            });
+            return;
+        }
 
         const errorDetails = state.errors
             ? Object.values(state.errors)
@@ -59,7 +71,7 @@ export default function CreateAnswerForm({
         }
 
         messageApi.error(state.message);
-    }, [state, messageApi]);
+    }, [state, messageApi, form, router]);
 
     return (
         <>
@@ -116,7 +128,7 @@ export default function CreateAnswerForm({
 
                     <Flex justify="space-between" align="center">
                         <Text type="secondary">Character limit {contentCount} / 600</Text>
-                        <Button type="primary" size="large" htmlType="submit">
+                        <Button type="primary" size="large" htmlType="submit" loading={isCreatingAnswer}>
                             Send
                         </Button>
                     </Flex>
