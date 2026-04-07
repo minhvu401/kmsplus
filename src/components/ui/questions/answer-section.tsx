@@ -1,9 +1,9 @@
 "use client"
 
 import {
-  useMemo,
   useState,
   useActionState,
+  useTransition,
   startTransition,
   useEffect,
 } from "react"
@@ -16,6 +16,7 @@ import {
   Dropdown,
   Button,
   Modal,
+  message,
 } from "antd"
 import {
   EditOutlined,
@@ -39,6 +40,42 @@ import { useSearchParams, useRouter } from "next/navigation"
 import RichTextEditor from "@/components/ui/RichTextEditor"
 
 const { Title, Text } = Typography
+const HCM_TIME_ZONE = "Asia/Ho_Chi_Minh"
+
+const hasExplicitTimezone = (input: string) => {
+  return /(?:Z|[+-]\d{2}:?\d{2})$/i.test(input)
+}
+
+const rebaseDateAsUtc = (value: Date) => {
+  return new Date(
+    Date.UTC(
+      value.getFullYear(),
+      value.getMonth(),
+      value.getDate(),
+      value.getHours(),
+      value.getMinutes(),
+      value.getSeconds(),
+      value.getMilliseconds()
+    )
+  )
+}
+
+const parseUtcTimestamp = (value: Date | string) => {
+  if (value instanceof Date) {
+    return rebaseDateAsUtc(value)
+  }
+
+  const normalized = hasExplicitTimezone(value) ? value : `${value}Z`
+  return new Date(normalized)
+}
+
+const formatHcmDateTime = (value: Date | string) => {
+  const timestamp = parseUtcTimestamp(value)
+  return timestamp.toLocaleString("vi-VN", {
+    timeZone: HCM_TIME_ZONE,
+    hour12: false,
+  })
+}
 
 // Type for nested reply structure
 type NestedAnswer = Answer & {
@@ -55,6 +92,7 @@ export default function AnswerSection({
   paginatedAnswers,
   totalPages: serverTotalPages,
   userId,
+  isSystemAdmin,
 }: {
   questionId: number
   answer_count: number
@@ -63,8 +101,12 @@ export default function AnswerSection({
   paginatedAnswers: AnswerWithReplies[]
   totalPages?: number
   userId: number
+  isSystemAdmin: boolean
 }) {
+  const router = useRouter()
   const searchParams = useSearchParams()
+  const [messageApi, contextHolder] = message.useMessage()
+  const [isRefreshing, startRefreshTransition] = useTransition()
   const currentPage = Number(searchParams.get("page")) || 1
   const pageSize = Number(searchParams.get("limit")) || 5
   const sort = searchParams.get("sort") === "oldest" ? "oldest" : "newest"
@@ -92,11 +134,21 @@ export default function AnswerSection({
   const [editingAnswerId, setEditingAnswerId] = useState<number | null>(null)
   const [editingContent, setEditingContent] = useState("")
   const [editingCount, setEditingCount] = useState(0)
+  const [savingAnswerId, setSavingAnswerId] = useState<number | null>(null)
 
   // Reply State
   const [replyingToId, setReplyingToId] = useState<number | null>(null)
   const [replyContent, setReplyContent] = useState("")
   const [replyCount, setReplyCount] = useState(0)
+  const [replySubmittingParentId, setReplySubmittingParentId] = useState<
+    number | null
+  >(null)
+
+  const refreshAnswers = () => {
+    startRefreshTransition(() => {
+      router.refresh()
+    })
+  }
 
   // --- Actions ---
 
@@ -122,11 +174,11 @@ export default function AnswerSection({
     formData.append("content", editingContent)
     formData.append("answer_id", answerId.toString())
     formData.append("question_id", questionId.toString())
+    setSavingAnswerId(answerId)
 
     startTransition(() => {
       updateAnswerAction(formData)
     })
-    cancelEdit()
   }
 
   const beginReply = (answerId: number) => {
@@ -147,26 +199,57 @@ export default function AnswerSection({
     formData.append("user_id", userId.toString())
     formData.append("question_id", questionId.toString())
     formData.append("parent_id", parentId.toString())
+    setReplySubmittingParentId(parentId)
 
     startTransition(async () => {
-      await createReply(formData)
+      const result = await createReply(formData)
+      if (result?.message === "Reply created successfully") {
+        messageApi.success("Your reply has been posted successfully.")
+        cancelReply()
+        refreshAnswers()
+      } else if (result?.errors && Object.keys(result.errors).length > 0) {
+        const errorDetails = Object.values(result.errors)
+          .flat()
+          .filter(Boolean)
+          .join(" | ")
+        messageApi.error(errorDetails || "Failed to post reply.")
+      } else if (result?.message) {
+        messageApi.error(result.message)
+      }
+      setReplySubmittingParentId(null)
     })
-    cancelReply()
   }
+
+  useEffect(() => {
+    if (updateState?.message === "Answer updated successfully") {
+      messageApi.success("Your answer has been updated successfully.")
+      setSavingAnswerId(null)
+      cancelEdit()
+      refreshAnswers()
+      return
+    }
+
+    if (updateState?.errors && Object.keys(updateState.errors).length > 0) {
+      setSavingAnswerId(null)
+    }
+  }, [updateState?.message, updateState?.errors, messageApi])
 
   const contentError = updateState?.errors?.content?.[0]
 
   // Props bundle to pass down easily
   const commentActions = {
     userId,
+    isSystemAdmin,
     is_closed,
     editingAnswerId,
     editingContent,
     editingCount,
+    savingAnswerId,
     contentError,
     replyingToId,
     replyContent,
     replyCount,
+    replySubmittingParentId,
     onBeginEdit: beginEdit,
     onCancelEdit: cancelEdit,
     onSaveEdit: handleSaveEdit,
@@ -181,6 +264,10 @@ export default function AnswerSection({
     onBeginReply: beginReply,
     onCancelReply: cancelReply,
     onSubmitReply: handleSubmitReply,
+    onAnswerDeletedSuccess: () => {
+      messageApi.success("Your answer has been deleted successfully.")
+      refreshAnswers()
+    },
     onSetReplyContent: (val: string) => {
       setReplyContent(val)
       const plainText = val
@@ -192,10 +279,12 @@ export default function AnswerSection({
   }
 
   return (
-    <div
-      className="w-full max-w-[980px] mx-auto px-2 md:px-3 mt-6"
-      style={{ color: "#374151" }}
-    >
+    <>
+      {contextHolder}
+      <div
+        className="w-full max-w-[980px] mx-auto px-2 md:px-3 mt-6"
+        style={{ color: "#374151" }}
+      >
       {/* Header Section */}
       <Flex vertical align="left" gap={10} style={{ marginBottom: 18 }}>
         <div className="flex items-center gap-3">
@@ -226,21 +315,34 @@ export default function AnswerSection({
       <Divider style={{ margin: "0 0 14px 0" }} />
 
       {/* Comments Feed */}
-      <div className="flex flex-col gap-2">
-        {paginatedAnswers.length === 0 ? (
-          <div className="py-7 text-center text-gray-500">
-            No answers yet. Be the first to comment.
+      <div className="relative">
+        {isRefreshing && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center rounded-md bg-white/60">
+            <div className="flex items-center gap-2 text-gray-600">
+              <Spin size="large" />
+              <span className="text-sm font-medium">Refreshing answers...</span>
+            </div>
           </div>
-        ) : (
-          paginatedAnswers.map((answer) => (
-            <RedditComment
-              key={answer.id}
-              node={answer}
-              depth={0}
-              {...commentActions}
-            />
-          ))
         )}
+
+        <div
+          className={`flex flex-col gap-2 transition-opacity duration-200 ${isRefreshing ? "opacity-60" : "opacity-100"}`}
+        >
+          {paginatedAnswers.length === 0 ? (
+            <div className="py-7 text-center text-gray-500">
+              No answers yet. Be the first to comment.
+            </div>
+          ) : (
+            paginatedAnswers.map((answer) => (
+              <RedditComment
+                key={answer.id}
+                node={answer}
+                depth={0}
+                {...commentActions}
+              />
+            ))
+          )}
+        </div>
       </div>
 
       {/* Pagination */}
@@ -250,7 +352,8 @@ export default function AnswerSection({
           <Pagination totalPages={totalPages} />
         </div>
       )}
-    </div>
+      </div>
+    </>
   )
 }
 
@@ -262,14 +365,17 @@ interface RedditCommentProps {
   node: NestedAnswer
   depth: number
   userId: number
+  isSystemAdmin: boolean
   is_closed: boolean
   editingAnswerId: number | null
   editingContent: string
   editingCount: number
+  savingAnswerId: number | null
   contentError?: string
   replyingToId: number | null
   replyContent: string
   replyCount: number
+  replySubmittingParentId: number | null
   isModalContext?: boolean
   onBeginEdit: (answer: Answer) => void
   onCancelEdit: () => void
@@ -278,6 +384,7 @@ interface RedditCommentProps {
   onBeginReply: (id: number) => void
   onCancelReply: () => void
   onSubmitReply: (parentId: number) => void
+  onAnswerDeletedSuccess: () => void
   onSetReplyContent: (val: string) => void
 }
 
@@ -286,6 +393,7 @@ function RedditComment(props: RedditCommentProps) {
     node,
     depth,
     userId,
+    isSystemAdmin,
     is_closed,
     editingAnswerId,
     replyingToId,
@@ -295,6 +403,7 @@ function RedditComment(props: RedditCommentProps) {
   const isEditing = editingAnswerId === node.id
   const isReplying = replyingToId === node.id
   const isOwner = Number(node.user_id) === userId
+  const canManageAnswer = isOwner || isSystemAdmin
   const hasChildren = node.replies && node.replies.length > 0
 
   return (
@@ -313,11 +422,12 @@ function RedditComment(props: RedditCommentProps) {
         <div className="flex items-center justify-between mb-0.5 text-xs text-gray-500 font-medium">
           <span className="font-semibold text-gray-900">{node.user_name}</span>
 
-          {isOwner && !isEditing && (
+          {canManageAnswer && !isEditing && (
             <AnswerMenu
               answer={node}
               onEdit={() => props.onBeginEdit(node)}
               isEditing={isEditing}
+              onDeletedSuccess={props.onAnswerDeletedSuccess}
             />
           )}
         </div>
@@ -344,10 +454,7 @@ function RedditComment(props: RedditCommentProps) {
         {!isEditing && (
           <div className="flex items-center justify-between mt-0.5">
             <Text type="secondary" className="text-xs">
-              {new Date(node.created_at).toLocaleString("vi-VN", {
-                timeZone: "Asia/Ho_Chi_Minh",
-                hour12: false,
-              })}
+              {formatHcmDateTime(node.created_at)}
             </Text>
 
             {!is_closed && (
@@ -416,11 +523,13 @@ function EditBox(props: RedditCommentProps) {
     editingContent,
     onSetEditingContent,
     editingCount,
+    savingAnswerId,
     contentError,
     onCancelEdit,
     onSaveEdit,
     node,
   } = props
+  const isSaving = savingAnswerId === node.id
   return (
     <div className="w-full border border-gray-300 rounded bg-white mt-2">
       <RichTextEditor
@@ -434,14 +543,15 @@ function EditBox(props: RedditCommentProps) {
           {contentError ? contentError : `${editingCount}/600`}
         </Text>
         <div className="flex gap-2">
-          <Button size="small" onClick={onCancelEdit}>
+          <Button size="small" onClick={onCancelEdit} disabled={isSaving}>
             Cancel
           </Button>
           <Button
             size="small"
             type="primary"
             onClick={() => onSaveEdit(node.id)}
-            disabled={editingCount < 1}
+            loading={isSaving}
+            disabled={editingCount < 1 || isSaving}
             className="bg-blue-600"
           >
             Save Edits
@@ -457,10 +567,12 @@ function ReplyBox(props: RedditCommentProps) {
     replyContent,
     onSetReplyContent,
     replyCount,
+    replySubmittingParentId,
     onCancelReply,
     onSubmitReply,
     node,
   } = props
+  const isSubmittingReply = replySubmittingParentId === node.id
   return (
     <div className="w-full max-w-2xl">
       <RichTextEditor
@@ -474,14 +586,19 @@ function ReplyBox(props: RedditCommentProps) {
           {replyCount}/600
         </Text>
         <div className="flex gap-2">
-          <Button size="small" onClick={onCancelReply}>
+          <Button
+            size="small"
+            onClick={onCancelReply}
+            disabled={isSubmittingReply}
+          >
             Cancel
           </Button>
           <Button
             size="small"
             type="primary"
             onClick={() => onSubmitReply(node.id)}
-            disabled={replyCount < 1}
+            loading={isSubmittingReply}
+            disabled={replyCount < 1 || isSubmittingReply}
             className="bg-blue-600 rounded-full px-4"
           >
             Reply
@@ -496,13 +613,16 @@ export function AnswerMenu({
   answer,
   onEdit,
   isEditing,
+  onDeletedSuccess,
 }: {
   answer: Answer
   onEdit: () => void
   isEditing: boolean
+  onDeletedSuccess: () => void
 }) {
   const [open, setOpen] = useState(false)
   const [isDeleteVisible, setDeleteVisible] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   const items = [
     {
@@ -536,9 +656,18 @@ export function AnswerMenu({
   ]
 
   const handleDelete = () => {
-    setDeleteVisible(false)
+    setIsDeleting(true)
     startTransition(() => {
-      deleteAnswer(answer.id, answer.question_id)
+      deleteAnswer(answer.id, answer.question_id).then((result) => {
+        if (result?.message === "Answer deleted successfully") {
+          setDeleteVisible(false)
+          onDeletedSuccess()
+        }
+        if (result?.errors && Object.keys(result.errors).length > 0) {
+          setDeleteVisible(true)
+        }
+        setIsDeleting(false)
+      })
     })
   }
 
@@ -557,20 +686,30 @@ export function AnswerMenu({
       </Dropdown>
 
       <Modal
-        title="Delete Comment"
+        title="Delete Answer"
         centered
         open={isDeleteVisible}
-        onCancel={() => setDeleteVisible(false)}
+        onCancel={() => {
+          if (!isDeleting) {
+            setDeleteVisible(false)
+          }
+        }}
+        maskClosable={!isDeleting}
+        closable={!isDeleting}
         footer={[
-          <Button key="cancel" onClick={() => setDeleteVisible(false)}>
+          <Button
+            key="cancel"
+            onClick={() => setDeleteVisible(false)}
+            disabled={isDeleting}
+          >
             Cancel
           </Button>,
-          <Button key="delete" danger onClick={handleDelete}>
+          <Button key="delete" danger onClick={handleDelete} loading={isDeleting}>
             Delete
           </Button>,
         ]}
       >
-        <Text>Are you sure you want to delete this comment?</Text>
+        <Text>Are you sure you want to delete this answer?</Text>
       </Modal>
     </>
   )

@@ -15,9 +15,6 @@ const MESSAGE_QUERY_KEYS = [
   'closed',
   'opened',
   'updated',
-  'answerCreated',
-  'answerDeleted',
-  'answerUpdated',
 ] as const;
 
 export default function QuestionsMessage({
@@ -63,9 +60,6 @@ export default function QuestionsMessage({
     if (currentKey === 'closed') return showSuccess('Your question has been closed successfully.');
     if (currentKey === 'opened') return showSuccess('Your question has been opened successfully.');
     if (currentKey === 'updated') return showSuccess('Your question has been updated successfully.');
-    if (currentKey === 'answerCreated') return showSuccess('Your answer has been posted successfully.');
-    if (currentKey === 'answerDeleted') return showSuccess('Your answer has been deleted successfully.');
-    if (currentKey === 'answerUpdated') return showSuccess('Your answer has been updated successfully.');
   }, [searchParams, router, messageApi, returnTo, pathname, scroll]);
 
   return <>{contextHolder}</>;

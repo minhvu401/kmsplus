@@ -44,6 +44,14 @@ import { Category } from "@/service/question.service";
 import { deleteQuestion, closeQuestion, openQuestion, updateQuestion, State } from "@/action/question/questionActions";
 import Link from 'next/link';
 
+const HCM_TIME_ZONE = "Asia/Ho_Chi_Minh";
+
+const formatHcmDate = (date: Date) => {
+    return date.toLocaleDateString("vi-VN", {
+        timeZone: HCM_TIME_ZONE,
+    });
+};
+
 export default function QuestionDetails({ userId, question, categories }: { userId: number; question: Question; categories: Category[] }) {
     const createdAt = new Date(question.created_at);
     const updatedAt = new Date(question.updated_at);
@@ -107,11 +115,11 @@ export default function QuestionDetails({ userId, question, categories }: { user
                 wrap="wrap"
                 style={{ color: "#4b5563", fontWeight: 500, width: "100%" }}
             >
-                <Text>asked on {createdAt.toLocaleDateString()}</Text>
+                <Text>asked on {formatHcmDate(createdAt)}</Text>
                 {question.is_closed ? (
-                    <Text>closed on {updatedAt.toLocaleDateString()}</Text>
+                    <Text>closed on {formatHcmDate(updatedAt)}</Text>
                 ) : (
-                    <Text>last updated on {updatedAt.toLocaleDateString()}</Text>
+                    <Text>last updated on {formatHcmDate(updatedAt)}</Text>
                 )}
             </Flex>
 

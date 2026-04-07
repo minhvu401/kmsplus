@@ -11,6 +11,7 @@ import AnswerSection from "@/components/ui/questions/answer-section"
 import PageWrapper from "@/components/ui/questions/page-wrapper"
 import QuestionDetails from "@/components/ui/questions/question-details"
 import QuestionsMessage from "@/components/ui/questions/questions-message"
+import { Role } from "@/enum/role.enum"
 import { requireAuth } from "@/lib/auth"
 import Link from "next/link"
 import { notFound } from "next/navigation"
@@ -41,6 +42,7 @@ export default async function Page({
       ? backTargetRaw
       : "/questions"
   const user = await requireAuth()
+  const isSystemAdmin = user.role === Role.ADMIN
 
   // Fetch question details
   const question = await getQuestionDetails(id)
@@ -50,7 +52,7 @@ export default async function Page({
     Number(id),
     pageSize
   )
-  const { totalItems: topLevelAnswerCount, totalPages } =
+  const { totalAnswerItems, totalPages } =
     await fetchAnswerPages(Number(id), pageSize)
   const categories = await getActiveCategories()
 
@@ -91,12 +93,13 @@ export default async function Page({
       />
       <AnswerSection
         questionId={Number(id)}
-        answer_count={topLevelAnswerCount}
+        answer_count={totalAnswerItems}
         is_closed={question.is_closed}
         answers={answers}
         paginatedAnswers={paginatedAnswers}
         totalPages={totalPages}
         userId={Number(user.id)}
+        isSystemAdmin={isSystemAdmin}
       />
     </PageWrapper>
   )
