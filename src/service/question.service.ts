@@ -38,6 +38,7 @@ export type Answer = {
   user_id: number
   parent_id: number | null
   content: string
+  deleted_at?: Date | null
   created_at: Date
   updated_at: Date
   user_name: string
@@ -433,6 +434,7 @@ export async function getAnswersForQuestionAction(
     FROM answers
     JOIN users ON answers.user_id = users.id
     WHERE answers.question_id = ${id}
+      AND answers.deleted_at IS NULL
     ORDER BY answers.created_at ASC
   `
 
@@ -449,6 +451,7 @@ export async function getAnswerDetailsAction(id: number): Promise<Answer> {
     FROM answers
     JOIN users ON answers.user_id = users.id
     WHERE answers.id = ${id}
+      AND answers.deleted_at IS NULL
   `
   return result[0] as Answer
 }
@@ -520,11 +523,15 @@ export async function updateAnswerAction(
 
 // DELETE ANSWER
 export async function deleteAnswerAction(id: number): Promise<ActionResult> {
+  const deletedAt = new Date().toISOString()
+
   try {
     await sql`
       WITH deleted_answer AS (
-        DELETE FROM answers
+        UPDATE answers
+        SET deleted_at = ${deletedAt}
         WHERE id = ${id}
+          AND deleted_at IS NULL
         RETURNING question_id
       )
       UPDATE questions
@@ -532,14 +539,14 @@ export async function deleteAnswerAction(id: number): Promise<ActionResult> {
       WHERE id = (SELECT question_id FROM deleted_answer)
     `
   } catch (error) {
-    console.error("Error deleting question:", error)
+    console.error("Error deleting answer:", error)
     return {
-      message: "Database error. Failed to delete question.",
+      message: "Database error. Failed to delete answer.",
     }
   }
 
   return {
-    message: "Question deleted successfully",
+    message: "Answer deleted successfully",
     errors: {},
     success: true,
   }
@@ -558,21 +565,29 @@ export type AnswerWithReplies = Answer & {
   has_deep_replies?: boolean // True if there are replies beyond depth 4
 }
 
-// FETCH ANSWER PAGES (only counts top-level answers)
+// FETCH ANSWER PAGES (paginates top-level answers, also returns total answers including replies)
 export async function fetchAnswerPagesAction(
   questionId: number,
   limit: number = DEFAULT_ANSWERS_PER_PAGE
 ) {
   try {
     const data = await sql`
-      SELECT COUNT(*) AS count
+      SELECT
+        COUNT(*) FILTER (WHERE parent_id IS NULL) AS top_level_count,
+        COUNT(*) AS total_count
       FROM answers
-      WHERE question_id = ${questionId} AND parent_id IS NULL
+      WHERE question_id = ${questionId}
+        AND deleted_at IS NULL
     `
-    const totalItems = Number(data[0].count)
+    const totalItems = Number(data[0].top_level_count)
+    const totalAnswerItems = Number(data[0].total_count)
     const pageSize = Math.max(1, limit || DEFAULT_ANSWERS_PER_PAGE)
     const totalPages = Math.ceil(totalItems / pageSize)
-    return { totalItems, totalPages: Math.max(1, totalPages) }
+    return {
+      totalItems,
+      totalAnswerItems,
+      totalPages: Math.max(1, totalPages),
+    }
   } catch (error) {
     console.error("Database Error:", error)
     throw new Error("Failed to fetch total number of answers.")
@@ -604,7 +619,9 @@ export async function fetchFilteredAnswersAction(
           u.avatar_url AS user_avatar
         FROM answers a
         JOIN users u ON a.user_id = u.id
-        WHERE a.question_id = ${questionId} AND a.parent_id IS NULL
+        WHERE a.question_id = ${questionId}
+          AND a.parent_id IS NULL
+          AND a.deleted_at IS NULL
         ORDER BY a.created_at ASC
         LIMIT ${pageSize} OFFSET ${offset};
       `) as Answer[]
@@ -622,7 +639,9 @@ export async function fetchFilteredAnswersAction(
           u.avatar_url AS user_avatar
         FROM answers a
         JOIN users u ON a.user_id = u.id
-        WHERE a.question_id = ${questionId} AND a.parent_id IS NULL
+        WHERE a.question_id = ${questionId}
+          AND a.parent_id IS NULL
+          AND a.deleted_at IS NULL
         ORDER BY a.created_at DESC
         LIMIT ${pageSize} OFFSET ${offset};
       `) as Answer[]
@@ -645,6 +664,7 @@ export async function fetchFilteredAnswersAction(
         FROM answers a
         JOIN users u ON a.user_id = u.id
         WHERE a.parent_id = ANY(${topLevelIds})
+          AND a.deleted_at IS NULL
         
         UNION ALL
         
@@ -657,6 +677,7 @@ export async function fetchFilteredAnswersAction(
         JOIN users u ON a.user_id = u.id
         JOIN reply_tree rt ON a.parent_id = rt.id
         WHERE rt.depth < 10
+          AND a.deleted_at IS NULL
       )
       SELECT * FROM reply_tree
       ORDER BY created_at ASC;
@@ -673,6 +694,7 @@ export async function fetchFilteredAnswersAction(
         SELECT DISTINCT parent_id
         FROM answers
         WHERE parent_id = ANY(${level10Ids})
+          AND deleted_at IS NULL
       `
 
       if (deeperExists.length > 0) {
@@ -751,6 +773,7 @@ export async function fetchFullDiscussionThreadAction(
         SELECT id, parent_id, 0 as depth
         FROM answers
         WHERE id = ${answerId}
+          AND deleted_at IS NULL
         
         UNION ALL
         
@@ -758,6 +781,7 @@ export async function fetchFullDiscussionThreadAction(
         FROM answers a
         JOIN ancestor_tree at ON a.id = at.parent_id
         WHERE at.depth < 50
+          AND a.deleted_at IS NULL
       )
       SELECT id FROM ancestor_tree
       WHERE parent_id IS NULL
@@ -785,6 +809,7 @@ export async function fetchFullDiscussionThreadAction(
       FROM answers a
       JOIN users u ON a.user_id = u.id
       WHERE a.id = ${topLevelId}
+        AND a.deleted_at IS NULL
     `) as Answer[]
 
     if (rootAnswer.length === 0) {
@@ -802,6 +827,7 @@ export async function fetchFullDiscussionThreadAction(
         FROM answers a
         JOIN users u ON a.user_id = u.id
         WHERE a.parent_id = ${topLevelId}
+          AND a.deleted_at IS NULL
         
         UNION ALL
         
@@ -814,6 +840,7 @@ export async function fetchFullDiscussionThreadAction(
         JOIN users u ON a.user_id = u.id
         JOIN reply_tree rt ON a.parent_id = rt.id
         WHERE rt.depth < 50
+          AND a.deleted_at IS NULL
       )
       SELECT * FROM reply_tree
       ORDER BY created_at ASC;
