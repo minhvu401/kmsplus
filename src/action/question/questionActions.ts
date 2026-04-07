@@ -376,7 +376,10 @@ export async function createAnswer(
 
   if (result?.success) {
     revalidatePath("/questions/" + id)
-    redirect("/questions/" + id + "?answerCreated=1")
+    return {
+      message: "Answer created successfully",
+      errors: {},
+    }
   }
 
   return { message: null, errors: {} }
@@ -419,12 +422,19 @@ export async function createReply(formData: FormData): Promise<State> {
 
   if (result?.success) {
     revalidatePath("/questions/" + id)
+    return {
+      message: "Reply created successfully",
+      errors: {},
+    }
   }
 
   return { message: null, errors: {} }
 }
 
-export async function deleteAnswer(asnwerId: number, questionId: number) {
+export async function deleteAnswer(
+  asnwerId: number,
+  questionId: number
+): Promise<State> {
   //await requireAuth()
   const result = await service.deleteAnswerAction(asnwerId)
 
@@ -437,7 +447,10 @@ export async function deleteAnswer(asnwerId: number, questionId: number) {
 
   if (result?.success) {
     revalidatePath("/questions/" + questionId)
-    redirect("/questions/" + questionId + "?answerDeleted=1")
+    return {
+      message: "Answer deleted successfully",
+      errors: {},
+    }
   }
 
   return { message: null, errors: {} }
@@ -472,7 +485,10 @@ export async function updateAnswer(
 
   if (result?.success) {
     revalidatePath("/questions/" + questionId)
-    redirect("/questions/" + questionId + "?answerUpdated=1")
+    return {
+      message: "Answer updated successfully",
+      errors: {},
+    }
   }
 
   return { message: null, errors: {} }
