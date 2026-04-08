@@ -36,14 +36,10 @@ async function getQuestionsInRange(days: number): Promise<Question[]> {
     SELECT 
       q.id,
       q.title,
-      q.content,
       q.created_at,
-      q.user_id,
-      u.name AS user_name
+      q.user_id
     FROM questions q
-    JOIN users u ON q.user_id = u.id
-    WHERE q.deleted_at IS NULL
-      AND q.created_at >= CURRENT_DATE - INTERVAL '${days} days'
+    WHERE q.created_at >= CURRENT_DATE - (INTERVAL '1 day' * ${days})
     ORDER BY q.created_at DESC
   `
   return result as Question[]

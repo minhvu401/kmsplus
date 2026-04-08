@@ -1,8 +1,11 @@
 import { Tabs, Typography } from "antd"
 import SummaryTabContent from "./SummaryTabContent"
+import useLanguageStore from "@/store/useLanguageStore"
+import { t } from "@/lib/i18n"
 
 export default function ActivityTabContent() {
   const { Title, Text } = Typography
+  const language = useLanguageStore((state) => state.language)
 
   return (
     <Tabs
@@ -10,57 +13,57 @@ export default function ActivityTabContent() {
       defaultActiveKey="summary"
       items={[
         {
-          label: "Summary",
+          label: t("profile.tab_summary", language),
           key: "summary",
           children: <SummaryTabContent />,
         },
         {
-          label: "Answers",
+          label: t("profile.tab_answers", language),
           key: "answers",
           children: (
             <div>
-              <Title level={4}>Answers</Title>
-              <Text>Bạn chưa trả lời câu hỏi nào.</Text>
+              <Title level={4}>{t("profile.tab_answers", language)}</Title>
+              <Text>{t("profile.activity_answers_empty", language)}</Text>
             </div>
           ),
         },
         {
-          label: "Questions",
+          label: t("profile.tab_questions", language),
           key: "questions",
           children: (
             <div>
-              <Title level={4}>Questions</Title>
-              <Text>Bạn chưa đặt câu hỏi nào.</Text>
+              <Title level={4}>{t("profile.tab_questions", language)}</Title>
+              <Text>{t("profile.activity_questions_empty", language)}</Text>
             </div>
           ),
         },
         {
-          label: "Tags",
+          label: t("profile.tab_tags", language),
           key: "tags",
           children: (
             <div>
-              <Title level={4}>Tags</Title>
-              <Text>Nội dung thẻ (Tags).</Text>
+              <Title level={4}>{t("profile.tab_tags", language)}</Title>
+              <Text>{t("profile.activity_tags_placeholder", language)}</Text>
             </div>
           ),
         },
         {
-          label: "Badges",
+          label: t("profile.tab_badges", language),
           key: "badges",
           children: (
             <div>
-              <Title level={4}>Badges</Title>
-              <Text>Nội dung huy hiệu (Badges).</Text>
+              <Title level={4}>{t("profile.tab_badges", language)}</Title>
+              <Text>{t("profile.activity_badges_placeholder", language)}</Text>
             </div>
           ),
         },
         {
-          label: "Reputation",
+          label: t("profile.tab_reputation", language),
           key: "reputation",
           children: (
             <div>
-              <Title level={4}>Reputation</Title>
-              <Text>Nội dung điểm uy tín (Reputation).</Text>
+              <Title level={4}>{t("profile.tab_reputation", language)}</Title>
+              <Text>{t("profile.activity_reputation_placeholder", language)}</Text>
             </div>
           ),
         },
