@@ -88,7 +88,7 @@ const createEmployeeSidebarItems = (
     {
       key: "learning-history",
       icon: <HistoryOutlined />,
-      label: "Learning History",
+      label: t("sidebar.learning_history", language),
       title: "Learning History - Track your progress",
       route: "/history",
       onClick: () => navigate("/history"),
@@ -154,8 +154,8 @@ const createContributorSidebarItems = (
     {
       key: "contributions",
       icon: <BulbOutlined />,
-      label: "Contributions",
-      title: "Contributions - Track your contributions",
+      label: t("sidebar.contributions", language),
+      title: t("sidebar.contributions", language) + " - Track your contributions",
       disabled: true, // UI chưa làm
     },
     {
@@ -209,7 +209,7 @@ const createTrainingManagerSidebarItems = (
     // Knowledge Section Header
     {
       key: "knowledge-header",
-      label: "KNOWLEDGE",
+      label: t("nav.knowledge_header", language),
       disabled: true,
       style: {
         textAlign: "left",
@@ -482,7 +482,7 @@ const createSystemAdminSidebarItems = (
     // Settings Section Header
     {
       key: "settings-header",
-      label: "SETTINGS",
+      label: t("nav.settings_header", language),
       disabled: true,
       style: {
         textAlign: "left",

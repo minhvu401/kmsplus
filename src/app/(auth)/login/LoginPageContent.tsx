@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from "react"
 import { useSearchParams } from "next/navigation"
 import dynamic from "next/dynamic"
+import useLanguageStore from "@/store/useLanguageStore"
+import { t } from "@/lib/i18n"
 
 // Dynamic import to avoid hydration mismatch caused by browser extensions
 const LoginForm = dynamic(
@@ -18,6 +20,8 @@ export default function LoginPageContent() {
   const searchParams = useSearchParams()
   const [showForgot, setShowForgot] = useState(false)
   const [mounted, setMounted] = useState(false)
+  
+  const language = useLanguageStore((state) => state.language)
 
   useEffect(() => {
     setMounted(true)
@@ -72,26 +76,26 @@ export default function LoginPageContent() {
             KMSPlus
           </h1>
           <p className="text-lg text-white/90 text-center max-w-md animate-slide-up" style={{ animationDelay: "0.3s" }}>
-            Hệ thống Quản lý Tri thức Doanh nghiệp
+            {t("login.system_desc", language)}
           </p>
           <div className="mt-12 space-y-5 text-white/90">
             <div className="flex items-center gap-4 animate-slide-right" style={{ animationDelay: "0.4s" }}>
               <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center shadow-lg">
                 <span className="text-xl">📚</span>
               </div>
-              <span className="text-lg">Quản lý khóa học & tài liệu</span>
+              <span className="text-lg">{t("login.feature_1", language)}</span>
             </div>
             <div className="flex items-center gap-4 animate-slide-right" style={{ animationDelay: "0.5s" }}>
               <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center shadow-lg">
                 <span className="text-xl">💡</span>
               </div>
-              <span className="text-lg">Ngân hàng câu hỏi thông minh</span>
+              <span className="text-lg">{t("login.feature_2", language)}</span>
             </div>
             <div className="flex items-center gap-4 animate-slide-right" style={{ animationDelay: "0.6s" }}>
               <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center shadow-lg">
                 <span className="text-xl">📝</span>
               </div>
-              <span className="text-lg">Kiểm tra & đánh giá trực tuyến</span>
+              <span className="text-lg">{t("login.feature_3", language)}</span>
             </div>
           </div>
         </div>

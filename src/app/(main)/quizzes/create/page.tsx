@@ -23,12 +23,12 @@ import {
   WarningOutlined,
 } from "@ant-design/icons"
 import useUserStore from "@/store/useUserStore"
+import useLanguageStore from "@/store/useLanguageStore"
+import { t } from "@/lib/i18n"
 import { sanitizeTitle, sanitizeDescription } from "@/utils/sanitize"
 
 // Constants
 const TOTAL_QUIZ_POINTS = 100 // Tổng điểm quiz cố định
-
-const steps = ["Thông Tin Cơ Bản", "Thêm Câu Hỏi", "Xem Lại & Công Bố"]
 
 interface QuizPayload {
   course_id: number
@@ -81,6 +81,13 @@ interface AddQuestionsModalState {
 export default function CreateQuizPage() {
   const router = useRouter()
   const { user } = useUserStore()
+  const language = useLanguageStore((state) => state.language)
+
+  const steps = [
+    t("quiz.step_basic_info", language),
+    t("quiz.step_add_questions", language),
+    t("quiz.step_review_publish", language),
+  ]
 
   const [form] = Form.useForm()
   const [current, setCurrent] = useState(0)
@@ -128,29 +135,29 @@ export default function CreateQuizPage() {
     const newErrors: StepErrors = {}
 
     if (!payload.title || !payload.title.trim()) {
-      newErrors.title = "Vui lòng nhập tên bài thi"
+      newErrors.title = t("quiz.validation_title_required", language)
     } else if (payload.title.length < 10) {
-      newErrors.title = "Tên bài thi không được ít hơn 10 ký tự"
+      newErrors.title = t("quiz.validation_title_min", language)
     } else if (payload.title.length > 255) {
-      newErrors.title = "Tên bài thi không vượt quá 255 ký tự"
+      newErrors.title = t("quiz.validation_title_max", language)
     }
 
     if (payload.description && payload.description.length > 1000) {
-      newErrors.description = "Mô tả không vượt quá 1000 ký tự"
+      newErrors.description = t("quiz.validation_description_max", language)
     }
 
     if (
       payload.time_limit_minutes !== undefined &&
       (payload.time_limit_minutes < 0 || payload.time_limit_minutes > 1440)
     ) {
-      newErrors.time_limit_minutes = "Thời gian làm bài phải từ 0 đến 1440 phút"
+      newErrors.time_limit_minutes = t("quiz.validation_duration_range", language)
     }
 
     if (
       payload.passing_score !== undefined &&
       (payload.passing_score <= 0 || payload.passing_score > 100)
     ) {
-      newErrors.passing_score = "Điểm đạt phải từ 1 đến 100"
+      newErrors.passing_score = t("quiz.validation_passing_score_range", language)
     }
 
     setErrors(newErrors)
@@ -170,23 +177,23 @@ export default function CreateQuizPage() {
         setDepartments(deptData)
       } catch (error) {
         console.error("Failed to load departments:", error)
-        message.error("Không thể tải danh sách phòng ban")
+        message.error(t("quiz.load_dept_error", language))
       }
     }
 
     loadDepartments()
-  }, [])
+  }, [language])
 
   const validateStep2 = (): boolean => {
     // Require at least 10 questions
     if (!payload.questions || payload.questions.length === 0) {
-      message.error("Vui lòng thêm ít nhất 10 câu hỏi")
+      message.error(t("quiz.validation_no_questions", language))
       return false
     }
 
     if (payload.questions.length < 10) {
       message.error(
-        `Bạn cần thêm ít nhất 10 câu hỏi (hiện tại: ${payload.questions.length} câu)`
+        `${t("quiz.validation_questions_count", language)} (${t("common.current", language)}: ${payload.questions.length} ${t("quiz.questions_unit", language)})`
       )
       return false
     }
@@ -342,7 +349,7 @@ export default function CreateQuizPage() {
           loading: false,
         }))
       } else {
-        message.warning("Không có câu hỏi nào trong kho dữ liệu")
+        message.warning(t("quiz.no_questions_in_bank", language))
         setModalState((prev) => ({
           ...prev,
           loading: false,
@@ -350,7 +357,7 @@ export default function CreateQuizPage() {
       }
     } catch (error) {
       console.error("Failed to load questions:", error)
-      message.error("Không thể tải danh sách câu hỏi")
+      message.error(t("quiz.load_questions_error", language))
       setModalState((prev) => ({
         ...prev,
         loading: false,
@@ -482,7 +489,7 @@ export default function CreateQuizPage() {
     })
 
     setDraggedIndex(null)
-    message.success("Thay đổi thứ tự câu hỏi thành công")
+    message.success(t("quiz.reorder_success", language))
   }
 
   const handleDragEnd = () => {
@@ -519,7 +526,7 @@ export default function CreateQuizPage() {
       ...prev,
       questions: (prev.questions || []).filter((q) => q.id !== questionId),
     }))
-    message.success("Đã xóa câu hỏi")
+    message.success(t("quiz.delete_question_success", language))
   }
 
   // ============================================
@@ -530,7 +537,7 @@ export default function CreateQuizPage() {
     const isValid = validateCurrentStep()
 
     if (!isValid) {
-      message.error("Vui lòng hoàn thành các trường bắt buộc")
+      message.error(t("quiz.validation_incomplete_fields", language))
       return
     }
 
@@ -557,19 +564,19 @@ export default function CreateQuizPage() {
     // Only check step 0 and 1, step 2 is final review step
     if (!stepValid[0] || !stepValid[1]) {
       console.warn("[handleSubmit] Step validation failed:", stepValid)
-      message.error("Vui lòng hoàn thành tất cả các bước")
+      message.error(t("quiz.validation_incomplete_steps", language))
       return
     }
 
     if (!user?.id) {
       console.warn("[handleSubmit] User not found")
-      message.error("User ID not found")
+      message.error(t("quiz.user_not_found", language))
       return
     }
 
     if (!payload.course_id) {
       console.warn("[handleSubmit] Course ID not found")
-      message.error("Course ID is required")
+      message.error(t("quiz.course_required", language))
       return
     }
 
@@ -611,7 +618,7 @@ export default function CreateQuizPage() {
 
       const responseData = await response.json()
       console.log("[handleSubmit] Success:", responseData)
-      message.success("Tạo bài thi thành công!")
+      message.success(t("quiz.create_success", language))
       router.push("/quizzes")
     } catch (error) {
       console.error("[handleSubmit] Error:", error)
@@ -630,7 +637,7 @@ export default function CreateQuizPage() {
     <div className="max-w-4xl mx-auto py-6 px-4">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Tạo Bài Thi Mới</h1>
+        <h1 className="text-3xl font-bold mb-2">{t("quiz.create_title", language)}</h1>
         <p className="text-gray-600">
           Bước {current + 1} / {steps.length}
         </p>
@@ -693,14 +700,14 @@ export default function CreateQuizPage() {
           {current === 0 && (
             <div>
               <h2 className="text-2xl font-semibold mb-6">
-                Thông Tin Cơ Bản Bài Thi
+                {t("quiz.step_basic_info", language)}
               </h2>
 
               <Form form={form} layout="vertical" className="space-y-6">
                 <Form.Item
                   label={
                     <span>
-                      Tên Bài Thi{" "}
+                      {t("quiz.label_title", language)}{" "}
                       <span className="text-red-500 font-bold">*</span>
                     </span>
                   }
@@ -720,7 +727,7 @@ export default function CreateQuizPage() {
                 </Form.Item>
 
                 <Form.Item
-                  label="Mô Tả (Tùy Chọn)"
+                  label={t("quiz.label_description", language)}
                   validateStatus={errors.description ? "error" : ""}
                   help={errors.description}
                 >
@@ -737,7 +744,7 @@ export default function CreateQuizPage() {
                 </Form.Item>
 
                 <Form.Item
-                  label="Thời Gian Làm Bài (phút)"
+                  label={t("quiz.label_duration", language)}
                   validateStatus={errors.time_limit_minutes ? "error" : ""}
                   help={errors.time_limit_minutes}
                 >
@@ -768,7 +775,7 @@ export default function CreateQuizPage() {
                 </Form.Item>
 
                 <Form.Item
-                  label="Điểm Đạt (Passing Score)"
+                  label={t("quiz.label_passing_score", language)}
                   validateStatus={errors.passing_score ? "error" : ""}
                   help={errors.passing_score}
                 >
@@ -838,7 +845,7 @@ export default function CreateQuizPage() {
           {/* STEP 2: Thêm Câu Hỏi */}
           {current === 1 && (
             <div>
-              <h2 className="text-2xl font-semibold mb-6">Thêm Câu Hỏi</h2>
+              <h2 className="text-2xl font-semibold mb-6">{t("quiz.step_add_questions", language)}</h2>
 
               <Button
                 type="primary"
@@ -847,7 +854,7 @@ export default function CreateQuizPage() {
                 onClick={handleOpenAddQuestionsModal}
                 className="mb-6"
               >
-                Thêm Câu Hỏi Từ Kho
+                {t("quiz.btn_add_from_bank", language)}
               </Button>
 
               {/* Danh sách câu hỏi đã chọn */}
@@ -855,7 +862,7 @@ export default function CreateQuizPage() {
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <p className="font-medium">
-                      Câu hỏi đã chọn ({payload.questions.length}):
+                      {t("quiz.selected_questions_label", language)} ({payload.questions.length}):
                     </p>
                     {payload.questions.length < 10 && (
                       <p className="text-sm text-red-600 font-medium">
@@ -971,7 +978,7 @@ export default function CreateQuizPage() {
 
               {/* Add Questions Modal */}
               <Modal
-                title="Thêm Câu Hỏi Từ Kho Dữ Liệu"
+                title={t("quiz.modal_title_add_questions", language)}
                 open={modalState.visible}
                 onCancel={handleCloseAddQuestionsModal}
                 width={900}
@@ -1063,49 +1070,49 @@ export default function CreateQuizPage() {
           {/* STEP 3: Xem Lại & Công Bố */}
           {current === 2 && (
             <div>
-              <h2 className="text-2xl font-semibold mb-6">Xem Lại & Công Bố</h2>
+              <h2 className="text-2xl font-semibold mb-6">{t("quiz.step_review_publish", language)}</h2>
               <div className="space-y-4 bg-gray-50 p-4 rounded">
                 <div>
-                  <p className="text-sm text-gray-600">Tên bài thi:</p>
+                  <p className="text-sm text-gray-600">{t("quiz.review_label_title", language)}</p>
                   <p className="text-lg font-semibold">{payload.title}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">Mô tả:</p>
+                  <p className="text-sm text-gray-600">{t("quiz.review_label_description", language)}</p>
                   <p className="text-lg">
-                    {payload.description || "(Không có)"}
+                    {payload.description || t("quiz.empty_value", language)}
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">Thời gian làm bài:</p>
+                  <p className="text-sm text-gray-600">{t("quiz.review_label_time_limit", language)}</p>
                   <p className="text-lg">
                     {payload.time_limit_minutes === 0 ||
                     payload.time_limit_minutes === undefined
                       ? "Không giới hạn"
-                      : `${payload.time_limit_minutes} phút`}
+                      : `${payload.time_limit_minutes} ${t("common.minutes", language)}`}
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">Điểm đạt:</p>
+                  <p className="text-sm text-gray-600">{t("quiz.review_label_passing_score", language)}</p>
                   <p className="text-lg">{payload.passing_score || 80}%</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">Số lần làm bài:</p>
+                  <p className="text-sm text-gray-600">{t("quiz.review_label_max_attempts", language)}</p>
                   <p className="text-lg">
                     {payload.max_attempts === undefined
                       ? "Không giới hạn"
-                      : `${payload.max_attempts} lần`}
+                      : `${payload.max_attempts} ${t("common.times", language)}`}
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">Số câu hỏi:</p>
+                  <p className="text-sm text-gray-600">{t("quiz.review_label_questions_count", language)}</p>
                   <p className="text-lg">
-                    {payload.questions?.length || 0} câu
+                    {payload.questions?.length || 0} {t("quiz.questions_unit", language)}
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">Trạng thái:</p>
+                  <p className="text-sm text-gray-600">{t("quiz.review_label_status", language)}</p>
                   <p className="text-lg font-semibold capitalize">
-                    {payload.status === "draft" ? "Nháp" : payload.status}
+                    {payload.status === "draft" ? t("quiz.status_draft", language) : payload.status}
                   </p>
                 </div>
               </div>
@@ -1113,12 +1120,12 @@ export default function CreateQuizPage() {
               {/* Phân Phối Bài Thi */}
               <div className="mt-8">
                 <h3 className="text-lg font-semibold mb-4">
-                  Phân Phối Bài Thi
+                  {t("quiz.distribution_title", language)}
                 </h3>
                 <div className="space-y-4 bg-blue-50 p-4 rounded border border-blue-200">
                   {/* Radio Button: Public / Departments */}
                   <Form layout="vertical">
-                    <Form.Item label="Đối tượng">
+                    <Form.Item label={t("quiz.label_target_type", language)}>
                       <div className="space-y-3">
                         <label className="flex items-center cursor-pointer p-3 bg-white rounded border border-gray-200 hover:border-blue-400">
                           <input
@@ -1137,10 +1144,10 @@ export default function CreateQuizPage() {
                           />
                           <span className="ml-3">
                             <p className="font-medium">
-                              Công Khai (Toàn Công Ty)
+                              {t("quiz.target_public_company", language)}
                             </p>
                             <p className="text-sm text-gray-600">
-                              Tất cả nhân viên có thể thấy bài thi này
+                              {t("quiz.target_public_desc", language)}
                             </p>
                           </span>
                         </label>
@@ -1160,9 +1167,9 @@ export default function CreateQuizPage() {
                             className="w-4 h-4"
                           />
                           <span className="ml-3">
-                            <p className="font-medium">Phòng Ban Cụ Thể</p>
+                            <p className="font-medium">{t("quiz.target_specific_departments", language)}</p>
                             <p className="text-sm text-gray-600">
-                              Chỉ những phòng ban được chọn mới thấy
+                              {t("quiz.target_departments_desc", language)}
                             </p>
                           </span>
                         </label>
@@ -1171,10 +1178,10 @@ export default function CreateQuizPage() {
 
                     {/* Department Select - Show only when DEPARTMENTS is selected */}
                     {payload.targetType === "DEPARTMENTS" && (
-                      <Form.Item label="Chọn Phòng Ban" required>
+                      <Form.Item label={t("quiz.label_target_depts", language)} required>
                         <Select
                           mode="multiple"
-                          placeholder="Chọn phòng ban..."
+                          placeholder={t("quiz.placeholder_select_depts", language)}
                           value={payload.targetDeptIds || []}
                           onChange={(selectedIds) => {
                             setPayload((prev) => ({
@@ -1194,11 +1201,11 @@ export default function CreateQuizPage() {
                     <div className="mt-4 p-3 bg-white rounded border border-gray-200">
                       {payload.targetType === "PUBLIC" ? (
                         <p className="text-sm text-gray-700">
-                          ✓ <strong>Công Khai:</strong> Tất cả nhân viên công ty
+                          ✓ <strong>{t("quiz.distribution_public_label", language)}</strong> {t("quiz.distribution_public_all_employees", language)}
                         </p>
                       ) : (
                         <p className="text-sm text-gray-700">
-                          ✓ <strong>Phòng Ban:</strong>{" "}
+                          ✓ <strong>{t("quiz.label_target_depts", language)}:</strong>{" "}
                           {payload.targetDeptIds &&
                           payload.targetDeptIds.length > 0
                             ? departments
@@ -1207,7 +1214,7 @@ export default function CreateQuizPage() {
                                 )
                                 .map((d) => d.name)
                                 .join(", ")
-                            : "(Chưa chọn phòng ban)"}
+                            : t("quiz.no_depts_selected", language)}
                         </p>
                       )}
                     </div>
