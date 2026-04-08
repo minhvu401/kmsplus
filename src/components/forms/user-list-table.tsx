@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useActionState, useEffect } from "react"
+import { useState, useActionState, useEffect, startTransition } from "react"
 import {
   Table,
   Button,
@@ -17,9 +17,11 @@ import { SearchOutlined } from "@ant-design/icons"
 import {
   UserManagementState,
   banUserAction,
-  updateUserInfoAction,
+  updateUserWithRoleAction,
 } from "@/action/user/userManagementActions"
 import { RoleConfig } from "@/enum/role.enum"
+import useLanguageStore from "@/store/useLanguageStore"
+import { t } from "@/lib/i18n"
 
 interface User {
   id: string
@@ -28,22 +30,28 @@ interface User {
   avatar_url?: string
   created_at: Date
   department_name?: string
+  department_id?: number
   role_name?: string
   role_id?: string
-  is_active?: string | boolean
+  status?: string
 }
 
 interface UserListTableProps {
   users: User[]
   onRefresh?: () => void
   onSearch?: (query: string) => void
+  currentUserId?: string
+  departments?: { id: number; name: string }[]
 }
 
 export default function UserListTable({
   users,
   onRefresh,
   onSearch,
+  currentUserId,
+  departments = [],
 }: UserListTableProps) {
+  const language = useLanguageStore((state) => state.language)
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
   const [isEditModalVisible, setIsEditModalVisible] = useState(false)
   const [selectedRole, setSelectedRole] = useState<number | null>(null)
@@ -52,27 +60,18 @@ export default function UserListTable({
   const [editForm] = Form.useForm()
 
   // Helper function to check if user is active
-  const isUserActive = (status: string | boolean | undefined) => {
-    if (status === undefined || status === null) return false
-    if (typeof status === "boolean") return status
-    if (typeof status === "string") {
-      return (
-        status.toLowerCase() === "true" ||
-        status.toLowerCase() === "active" ||
-        status === "1"
-      )
-    }
-    return false
+  const isUserActive = (status: string | undefined) => {
+    return status?.toLowerCase() === "active"
   }
 
-  // Update info action
+  // Update user with role action
   const initialUpdateInfoState: UserManagementState = {
     success: false,
     message: "",
   }
 
-  const [updateInfoState, updateUserInfoActionDispatch] = useActionState(
-    updateUserInfoAction,
+  const [updateInfoState, updateUserActionDispatch] = useActionState(
+    updateUserWithRoleAction,
     initialUpdateInfoState
   )
 
@@ -90,15 +89,18 @@ export default function UserListTable({
   // Handle edit user
   const handleEditUser = (user: User) => {
     setSelectedUser(user)
+    setSelectedRole(user.role_id ? parseInt(user.role_id) : null)
     editForm.setFieldsValue({
       email: user.email,
       fullName: user.full_name,
+      roleId: user.role_id ? parseInt(user.role_id) : undefined,
+      departmentId: user.department_id ? parseInt(String(user.department_id)) : undefined,
     })
     setIsEditModalVisible(true)
   }
 
-  // Handle save user info
-  const handleSaveUserInfo = async (values: any) => {
+  // Handle save user info with role and department
+  const handleSaveUserInfo = (values: any) => {
     if (!selectedUser) return
 
     setIsLoading(true)
@@ -107,20 +109,28 @@ export default function UserListTable({
     formData.append("userId", selectedUser.id)
     formData.append("email", values.email)
     formData.append("fullName", values.fullName)
+    if (values.roleId) {
+      formData.append("roleId", values.roleId)
+    }
+    if (values.departmentId) {
+      formData.append("departmentId", values.departmentId)
+    }
 
-    await updateUserInfoActionDispatch(formData)
+    startTransition(() => {
+      updateUserActionDispatch(formData)
+    })
   }
 
   // Handle update info state - success
   useEffect(() => {
     if (updateInfoState.success) {
-      message.success(updateInfoState.message || "User updated successfully")
+      message.success(updateInfoState.message || t("user.updated_success", language))
       setIsEditModalVisible(false)
       editForm.resetFields()
       setIsLoading(false)
       onRefresh?.()
     }
-  }, [updateInfoState.success, updateInfoState.message])
+  }, [updateInfoState.success, updateInfoState.message, language])
 
   // Handle update info state - error
   useEffect(() => {
@@ -131,7 +141,7 @@ export default function UserListTable({
   }, [updateInfoState.message, updateInfoState.success])
 
   // Handle ban user
-  const handleBanUser = async (
+  const handleBanUser = (
     userId: string,
     currentStatus: string | boolean
   ) => {
@@ -146,7 +156,9 @@ export default function UserListTable({
 
     formData.append("currentStatus", statusString)
 
-    await banUserActionFunc(formData)
+    startTransition(() => {
+      banUserActionFunc(formData)
+    })
   }
 
   // Handle ban state - success
@@ -174,21 +186,21 @@ export default function UserListTable({
   // Table columns
   const columns = [
     {
-      title: "Email",
+      title: t("user.table_email", language),
       dataIndex: "email",
       key: "email",
       render: (text: string) => <span>{text}</span>,
       sorter: (a: User, b: User) => a.email.localeCompare(b.email),
     },
     {
-      title: "Full Name",
+      title: t("user.table_full_name", language),
       dataIndex: "full_name",
       key: "full_name",
       render: (text: string) => <span>{text}</span>,
       sorter: (a: User, b: User) => a.full_name.localeCompare(b.full_name),
     },
     {
-      title: "Role",
+      title: t("user.table_role", language),
       dataIndex: "role_name",
       key: "role_name",
       render: (text: string) => {
@@ -202,7 +214,7 @@ export default function UserListTable({
         (a.role_name || "").localeCompare(b.role_name || ""),
     },
     {
-      title: "Department",
+      title: t("user.table_department", language),
       dataIndex: "department_name",
       key: "department_name",
       render: (text: string | undefined) => <span>{text || "-"}</span>,
@@ -210,25 +222,27 @@ export default function UserListTable({
         (a.department_name || "").localeCompare(b.department_name || ""),
     },
     {
-      title: "Status",
-      dataIndex: "is_active",
-      key: "is_active",
-      render: (isActive: string | boolean) => {
-        const active = isUserActive(isActive)
+      title: t("user.table_status", language),
+      dataIndex: "status",
+      key: "status",
+      render: (status: string) => {
+        const active = isUserActive(status)
         return (
           <Tag color={active ? "green" : "red"}>
-            {active ? "Active" : "Inactive"}
+            {active
+              ? t("user.status_active", language)
+              : t("user.status_inactive", language)}
           </Tag>
         )
       },
       sorter: (a: User, b: User) => {
-        const aActive = isUserActive(a.is_active) ? 1 : 0
-        const bActive = isUserActive(b.is_active) ? 1 : 0
+        const aActive = isUserActive(a.status) ? 1 : 0
+        const bActive = isUserActive(b.status) ? 1 : 0
         return aActive - bActive
       },
     },
     {
-      title: "Created Date",
+      title: t("user.table_created_date", language),
       dataIndex: "created_at",
       key: "created_at",
       render: (text: string | Date) => {
@@ -242,35 +256,57 @@ export default function UserListTable({
       },
     },
     {
-      title: "Actions",
+      title: t("user.table_actions", language),
       key: "actions",
       render: (_: any, record: User) => {
-        const active = isUserActive(record.is_active)
+        const active = isUserActive(record.status)
+        const isCurrentUser = currentUserId === record.id
+        const isAdminUser = record.role_name === "Admin"
+        const isCurrentAdmin = isCurrentUser && isAdminUser
+
         return (
           <Space size="small">
             <Button
               type="primary"
               size="small"
               onClick={() => handleEditUser(record)}
+              disabled={isCurrentAdmin}
+              title={isCurrentAdmin ? t("user.cannot_edit_own", language) : ""}
             >
-              Edit
+              {t("user.btn_edit", language)}
             </Button>
             <Popconfirm
-              title={active ? "Deactivate Account" : "Activate Account"}
+              title={
+                active
+                  ? t("user.confirm_deactivate", language)
+                  : t("user.confirm_activate", language)
+              }
               description={
                 active
-                  ? "Are you sure you want to deactivate this account?"
-                  : "Are you sure you want to activate this account?"
+                  ? t("user.confirm_deactivate_msg", language)
+                  : t("user.confirm_activate_msg", language)
               }
               onConfirm={() =>
-                handleBanUser(record.id, record.is_active ?? "inactive")
+                handleBanUser(record.id, record.status ?? "inactive")
               }
-              okText="Yes"
-              cancelText="No"
+              okText={t("common.yes", language)}
+              cancelText={t("common.no", language)}
               okButtonProps={{ danger: active }}
+              disabled={isCurrentAdmin && active}
             >
-              <Button danger={active} size="small">
-                {active ? "Deactivate" : "Activate"}
+              <Button
+                danger={active}
+                size="small"
+                disabled={isCurrentAdmin && active}
+                title={
+                  isCurrentAdmin && active
+                    ? t("user.cannot_deactivate_admin", language)
+                    : ""
+                }
+              >
+                {active
+                  ? t("user.btn_deactivate", language)
+                  : t("user.btn_activate", language)}
               </Button>
             </Popconfirm>
           </Space>
@@ -282,7 +318,7 @@ export default function UserListTable({
   return (
     <>
       <Input
-        placeholder="Search by email or name..."
+        placeholder={t("user.search_placeholder", language)}
         prefix={<SearchOutlined />}
         style={{ marginBottom: 16 }}
         value={searchQuery}
@@ -300,32 +336,61 @@ export default function UserListTable({
 
       {/* Edit User Modal */}
       <Modal
-        title="Edit User Information"
+        title={t("user.modal_edit_title", language)}
         open={isEditModalVisible}
         onCancel={() => setIsEditModalVisible(false)}
         confirmLoading={isLoading}
-        okText="Save"
+        okText={t("common.save", language)}
+        cancelText={t("common.cancel", language)}
         onOk={() => editForm.submit()}
       >
         {selectedUser && (
           <Form form={editForm} layout="vertical" onFinish={handleSaveUserInfo}>
             <Form.Item
-              label="Email"
+              label={t("user.form_email", language)}
               name="email"
               rules={[
-                { required: true, message: "Please enter email" },
-                { type: "email", message: "Please enter a valid email" },
+                { required: true, message: t("form.please_enter", language) + " " + t("user.form_email", language) },
+                { type: "email", message: t("form.invalid_email", language) },
               ]}
             >
               <Input />
             </Form.Item>
 
             <Form.Item
-              label="Full Name"
+              label={t("user.form_full_name", language)}
               name="fullName"
-              rules={[{ required: true, message: "Please enter full name" }]}
+              rules={[{ required: true, message: t("form.please_enter", language) + " " + t("user.form_full_name", language) }]}
             >
               <Input />
+            </Form.Item>
+
+            <Form.Item
+              label={t("user.form_role", language)}
+              name="roleId"
+              rules={[{ required: true, message: t("form.please_select", language) + " " + t("user.form_role", language) }]}
+            >
+              <Select
+                placeholder={t("common.select_placeholder", language)}
+                options={Object.entries(RoleConfig).map(([_, config]) => ({
+                  label: config.label,
+                  value: config.id,
+                }))}
+              />
+            </Form.Item>
+
+            <Form.Item
+              label={t("user.form_department", language)}
+              name="departmentId"
+              rules={[{ required: true, message: t("form.please_select", language) + " " + t("user.form_department", language) }]}
+            >
+              <Select
+                placeholder={t("common.select_placeholder", language)}
+                options={departments.map((dept) => ({
+                  label: dept.name,
+                  value: dept.id,
+                }))}
+              />
             </Form.Item>
           </Form>
         )}

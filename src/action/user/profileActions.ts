@@ -6,6 +6,7 @@ import {
   updateUserProfileAction,
   updateUserPasswordAction,
 } from "@/service/user.service"
+import { isValidFullName } from "@/utils/validation"
 
 export type ProfileActionState = {
   success: boolean
@@ -58,6 +59,14 @@ export async function updateProfileAction(
       return {
         success: false,
         message: "Please provide at least one field to update",
+      }
+    }
+
+    // Validate full_name format if provided
+    if (full_name && !isValidFullName(full_name)) {
+      return {
+        success: false,
+        message: "Full name must contain only letters, spaces, hyphens, and apostrophes",
       }
     }
 

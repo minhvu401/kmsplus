@@ -34,6 +34,7 @@ import {
 } from "@/action/department/departmentActions"
 import { t } from "@/lib/i18n"
 import useLanguageStore from "@/store/useLanguageStore"
+import useUserStore from "@/store/useUserStore"
 
 interface User {
   id: string
@@ -41,8 +42,10 @@ interface User {
   full_name: string
   avatar_url?: string
   created_at: Date
+  department_name?: string
   role_name?: string
   role_id?: string
+  status?: string
 }
 
 interface DepartmentWithHead {
@@ -66,6 +69,7 @@ interface EligibleHeadOption {
 
 export default function UserManagementPageContent() {
   const { language } = useLanguageStore()
+  const { user: currentUser } = useUserStore()
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -285,7 +289,12 @@ export default function UserManagementPageContent() {
                 <Spin />
               </div>
             ) : (
-              <UserListTable users={users} onRefresh={fetchUsers} />
+              <UserListTable 
+                users={users} 
+                onRefresh={fetchUsers}
+                currentUserId={currentUser?.id}
+                departments={departments}
+              />
             )}
           </Flex>
         </div>
