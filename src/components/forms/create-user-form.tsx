@@ -91,118 +91,127 @@ export default function CreateUserForm({
       >
         {/* Email Field */}
         <Form.Item
-          label={<Text strong>{language === "vi" ? "Địa chỉ email" : "Email Address"}</Text>}
+          label={t("form.label_email", language)}
           name="email"
           rules={[
-            { required: true, message: language === "vi" ? "Vui lòng nhập email" : "Please enter email address" },
-            { type: "email", message: language === "vi" ? "Vui lòng nhập email hợp lệ" : "Please enter a valid email address" },
+            { required: true, message: t("form.validation_email_required", language) },
+            { type: "email", message: t("form.validation_email_invalid", language) },
           ]}
           help={state.errors?.email?.[0]}
           validateStatus={state.errors?.email ? "error" : ""}
         >
           <Input
-            placeholder="user@company.com"
+            size="middle"
+            placeholder={t("form.placeholder_email", language)}
             type="email"
             disabled={isLoading}
+            autoComplete="off"
+            className="rounded-md"
           />
         </Form.Item>
 
         {/* Password Field */}
         <Form.Item
-          label={<Text strong>{language === "vi" ? "Mật khẩu" : "Password"}</Text>}
+          label={t("form.label_password", language)}
           name="password"
           rules={[
-            { required: true, message: language === "vi" ? "Vui lòng nhập mật khẩu" : "Please enter password" },
-            { min: 6, message: language === "vi" ? "Mật khẩu phải có ít nhất 6 ký tự" : "Password must be at least 6 characters" },
+            { required: true, message: t("form.validation_password_required", language) },
+            { min: 6, message: t("form.validation_password_min", language) },
           ]}
           help={state.errors?.password?.[0]}
           validateStatus={state.errors?.password ? "error" : ""}
         >
           <Input.Password
-            placeholder={language === "vi" ? "Tối thiểu 6 ký tự" : "At least 6 characters"}
+            size="middle"
+            placeholder={t("form.placeholder_password", language)}
             disabled={isLoading}
+            autoComplete="new-password"
+            className="rounded-md"
           />
         </Form.Item>
 
         {/* Full Name Field */}
         <Form.Item
-          label={<Text strong>{language === "vi" ? "Họ và tên" : "Full Name"}</Text>}
+          label={t("form.label_full_name", language)}
           name="fullName"
           rules={[
-            { required: true, message: language === "vi" ? "Vui lòng nhập họ và tên" : "Please enter full name" },
-            { min: 2, message: language === "vi" ? "Họ và tên phải có ít nhất 2 ký tự" : "Full name must be at least 2 characters" },
+            { required: true, message: t("form.validation_fullname_required", language) },
+            { min: 2, message: t("form.validation_fullname_min", language) },
           ]}
           help={state.errors?.fullName?.[0]}
           validateStatus={state.errors?.fullName ? "error" : ""}
         >
           <Input
-            placeholder={language === "vi" ? "Ví dụ: Nguyễn Văn A" : "John Doe"}
+            size="middle"
+            placeholder={t("form.placeholder_full_name", language)}
             disabled={isLoading}
+            className="rounded-md"
           />
         </Form.Item>
 
-        {/* Role Field */}
-        <Form.Item
-          label={<Text strong>{language === "vi" ? "Vai trò" : "Role"}</Text>}
-          name="roleId"
-          rules={[
-            { required: true, message: language === "vi" ? "Vui lòng chọn vai trò" : "Please select a role" },
-          ]}
-          help={state.errors?.roleId?.[0]}
-          validateStatus={state.errors?.roleId ? "error" : ""}
-        >
-          <Select
-            placeholder={language === "vi" ? "Chọn vai trò cho người dùng" : "Select a role for the user"}
-            disabled={isLoading}
-            options={Object.entries(RoleConfig).map(([_, config]) => ({
-              label: config.label,
-              value: config.id,
-            }))}
-          />
-        </Form.Item>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Role Field */}
+          <Form.Item
+            label={t("form.label_role", language)}
+            name="roleId"
+            rules={[
+              { required: true, message: t("form.validation_role_required", language) },
+            ]}
+            help={state.errors?.roleId?.[0]}
+            validateStatus={state.errors?.roleId ? "error" : ""}
+          >
+            <Select
+              size="middle"
+              placeholder={t("form.placeholder_role", language)}
+              disabled={isLoading}
+              className="rounded-md"
+              options={Object.entries(RoleConfig).map(([_, config]) => ({
+                label: config.label,
+                value: config.id,
+              }))}
+            />
+          </Form.Item>
 
-        {/* Department Field */}
-        <Form.Item
-          label={<Text strong>{language === "vi" ? "Phòng ban" : "Department"}</Text>}
-          name="departmentId"
-          rules={[
-            {
-              required: true,
-              message:
-                language === "vi"
-                  ? "Vui lòng chọn phòng ban"
-                  : "Please select a department",
-            },
-          ]}
-          help={state.errors?.departmentId?.[0]}
-          validateStatus={state.errors?.departmentId ? "error" : ""}
-        >
-          <Select
-            placeholder={
-              language === "vi"
-                ? "Chọn phòng ban"
-                : "Select a department"
-            }
-            disabled={isLoading}
-            options={departments.map((department) => ({
-              label: department.name,
-              value: department.id,
-            }))}
-          />
-        </Form.Item>
+          {/* Department Field */}
+          <Form.Item
+            label={t("form.label_department", language)}
+            name="departmentId"
+            rules={[
+              {
+                required: true,
+                message: t("form.validation_department_required", language),
+              },
+            ]}
+            help={state.errors?.departmentId?.[0]}
+            validateStatus={state.errors?.departmentId ? "error" : ""}
+          >
+            <Select
+              size="middle"
+              placeholder={t("form.placeholder_department", language)}
+              disabled={isLoading}
+              className="rounded-md"
+              options={departments.map((department) => ({
+                label: department.name,
+                value: department.id,
+              }))}
+            />
+          </Form.Item>
+        </div>
 
         {/* Submit Buttons */}
-        <Form.Item>
-          <Space>
-            <Button onClick={() => form.resetFields()}>
-              {language === "vi" ? "Xóa" : "Reset"}
+        <Form.Item className="mt-4">
+          <Space className="w-full flex justify-end">
+            <Button size="middle" onClick={() => form.resetFields()}>
+              {t("form.btn_reset", language)}
             </Button>
             <Button
+              size="middle"
               type="primary"
               htmlType="submit"
               loading={isLoading}
+              className="px-8"
             >
-              {language === "vi" ? "Tạo người dùng" : "Create User"}
+              {t("form.btn_create_user", language)}
             </Button>
           </Space>
         </Form.Item>

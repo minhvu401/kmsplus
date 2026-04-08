@@ -207,8 +207,9 @@ export default function AISuggestionPanel() {
 
           {/* Topics List */}
           {loading ? (
-            <div className="flex justify-center py-8">
-              <Spin tip="Đang phân tích..." />
+            <div className="flex flex-col items-center justify-center py-8 gap-2">
+              <Spin />
+              <span className="text-gray-500 text-sm">Đang phân tích...</span>
             </div>
           ) : topics.length === 0 ? (
             <Empty description="Chưa có topics để phân tích" />
