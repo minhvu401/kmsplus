@@ -63,7 +63,7 @@ async function syncAverageRating(courseId: number): Promise<void> {
     SET
       average_rating = COALESCE(
         (
-          SELECT ROUND(AVG(rating))::smallint
+          SELECT ROUND(AVG(rating) * 2) / 2
           FROM feedback
           WHERE course_id = ${courseId}
             AND deleted_at IS NULL

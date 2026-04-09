@@ -1,26 +1,14 @@
-import { getCurrentUser } from "@/lib/auth"
-import { getPersonalizedCoursesService } from "@/service/course.service"
 import { NextResponse } from "next/server"
+
+export const dynamic = "force-dynamic"
+export const revalidate = 0
 
 /**
  * GET /api/courses/personalized
- * Returns personalized courses based on user's department
+ * Legacy endpoint kept for backward compatibility.
+ * Redirects to /api/courses/relevant.
  */
-export async function GET() {
-  try {
-    const user = await getCurrentUser()
-
-    if (!user) {
-      return NextResponse.json({ courses: [] }, { status: 200 })
-    }
-
-    const result = await getPersonalizedCoursesService(Number(user.id), 8)
-    return NextResponse.json(result, { status: 200 })
-  } catch (error) {
-    console.error("Error in GET /api/courses/personalized:", error)
-    return NextResponse.json(
-      { error: "Failed to fetch personalized courses" },
-      { status: 500 }
-    )
-  }
+export async function GET(request: Request) {
+  const target = new URL("/api/courses/relevant", request.url)
+  return NextResponse.redirect(target, 307)
 }

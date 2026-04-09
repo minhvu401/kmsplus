@@ -26,7 +26,7 @@ type GetAllCoursesParams = {
   query?: string
   page?: number
   limit?: number
-  sort?: "trending" | "popular" | "newest"
+  sort?: "trending" | "popular" | "newest" | "oldest"
   categories?: string[] // ✅ Changed to array for multi-select
   status?: string // ✅ ĐỘC LẬP THÊM: Filter by course status
 }
@@ -139,10 +139,6 @@ export async function getCategoriesAPI() {
 export async function getAllCourses(params: GetAllCoursesParams) {
   await requirePermission(Permission.VIEW_COURSE_LIST)
   const user = await requireAuth() // Lấy thông tin user hiện tại
-  console.log(`🔍 [ACTION DEBUG] User from requireAuth:`, user)
-  console.log(
-    `🔍 [ACTION DEBUG] Passing to service: userId=${user?.id ? parseInt(user.id) : undefined}, userRole=${user?.role || undefined}`
-  )
 
   return getAllCoursesAction({
     ...params,

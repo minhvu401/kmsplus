@@ -63,7 +63,7 @@ export default async function CoursesPage({
       ? (sortParam as SortOption)
       : undefined
 
-  const sortToUse: SortOption = validSort || "trending"
+  const sortToUse: SortOption = validSort || "newest"
 
   // --- KHAI BÁO BIẾN ---
   let courses: Course[] = []

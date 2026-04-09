@@ -20,6 +20,7 @@ import {
   PercentageOutlined,
   ReloadOutlined,
 } from "@ant-design/icons"
+import useLanguageStore from "@/store/useLanguageStore"
 
 const normalizeArray = (v: unknown): string[] => {
   if (Array.isArray(v)) return v.map(String)
@@ -82,6 +83,48 @@ export default function QuizResult({
   attemptsLeft?: number | null
   maxAttempts?: number | null
 }) {
+  const { language } = useLanguageStore()
+  const t = {
+    cannotRetry:
+      language === "vi"
+        ? "Không thể làm lại bài kiểm tra: ID không hợp lệ"
+        : "Cannot retry quiz: Invalid quiz ID",
+    reachedMaxAttempts:
+      language === "vi"
+        ? "Bạn đã đạt số lần làm tối đa cho bài kiểm tra này"
+        : "You have reached the maximum number of attempts for this quiz",
+    failedStartAttempt:
+      language === "vi"
+        ? "Không thể bắt đầu lần làm bài"
+        : "Failed to start quiz attempt",
+    backToSummary:
+      language === "vi" ? "Quay lại tổng quan" : "Back to Summary",
+    passed: language === "vi" ? "Đạt" : "Passed",
+    failed: language === "vi" ? "Không đạt" : "Failed",
+    score: language === "vi" ? "Điểm" : "Score",
+    congratulations: language === "vi" ? "Chúc mừng!" : "Congratulations!",
+    completedTitle:
+      language === "vi" ? "Đã hoàn thành bài kiểm tra" : "Quiz Completed",
+    completedSubtitle:
+      language === "vi"
+        ? "Bạn đã hoàn thành bài"
+        : "You have completed the",
+    reviewDetailed:
+      language === "vi"
+        ? "Xem chi tiết đáp án"
+        : "Review Detailed Answers",
+    retryQuiz: language === "vi" ? "Làm lại" : "Retry Quiz",
+    left: language === "vi" ? "còn lại" : "left",
+    status: language === "vi" ? "Trạng thái" : "Status",
+    passedCaps: language === "vi" ? "ĐẠT" : "PASSED",
+    failedCaps: language === "vi" ? "KHÔNG ĐẠT" : "FAILED",
+    totalScore: language === "vi" ? "Tổng điểm" : "Total Score",
+    performance: language === "vi" ? "Hiệu suất" : "Performance",
+    correct: language === "vi" ? "Đúng" : "Correct",
+    incorrect: language === "vi" ? "Sai" : "Incorrect",
+    timeTaken: language === "vi" ? "Thời gian làm bài" : "Time Taken",
+  }
+
   const [showDetails, setShowDetails] = useState(false)
   const [isRetrying, setIsRetrying] = useState(false)
   const router = useRouter()
@@ -99,16 +142,19 @@ export default function QuizResult({
 
   // Formatting time
   const formatTime = (seconds: number) => {
-    if (seconds < 60) return `${seconds}s`
+    if (seconds < 60) return language === "vi" ? `${seconds} giây` : `${seconds}s`
     const m = Math.floor(seconds / 60)
     const s = seconds % 60
+    if (language === "vi") {
+      return s > 0 ? `${m} phút ${s} giây` : `${m} phút`
+    }
     return s > 0 ? `${m}m ${s}s` : `${m}m`
   }
 
   // Handler retry quiz
   const handleRetryQuiz = async () => {
     if (!curriculumItemId) {
-      message.error("Cannot retry quiz: Invalid quiz ID")
+      message.error(t.cannotRetry)
       return
     }
 
@@ -118,7 +164,7 @@ export default function QuizResult({
       attemptsLeft <= 0
     ) {
       message.error(
-        "You have reached the maximum number of attempts for this quiz"
+        t.reachedMaxAttempts
       )
       return
     }
@@ -129,11 +175,11 @@ export default function QuizResult({
       if (newAttempt?.id && courseId) {
         router.push(`/courses/${courseId}/learning/attempt/${newAttempt.id}`)
       } else {
-        message.error("Failed to start quiz attempt")
+        message.error(t.failedStartAttempt)
       }
     } catch (error) {
       console.error(error)
-      message.error((error as Error).message || "Failed to start quiz attempt")
+      message.error((error as Error).message || t.failedStartAttempt)
     } finally {
       setIsRetrying(false)
     }
@@ -161,16 +207,16 @@ export default function QuizResult({
             </Title>
             <Space>
               <Tag color={isPassed ? "success" : "error"}>
-                {isPassed ? "Passed" : "Failed"}
+                {isPassed ? t.passed : t.failed}
               </Tag>
-              <Text type="secondary">Score: {displayScore}/100</Text>
+              <Text type="secondary">{t.score}: {displayScore}/100</Text>
             </Space>
           </Space>
           <Button
             icon={<ArrowLeftOutlined />}
             onClick={() => setShowDetails(false)}
           >
-            Back to Summary
+            {t.backToSummary}
           </Button>
         </div>
 
@@ -187,7 +233,7 @@ export default function QuizResult({
 
           <div style={{ textAlign: "center", marginTop: 16 }}>
             <Button size="large" onClick={() => setShowDetails(false)}>
-              Back to Summary
+              {t.backToSummary}
             </Button>
           </div>
         </Space>
@@ -234,10 +280,11 @@ export default function QuizResult({
                 level={1}
                 style={{ color: "white", margin: 0, fontSize: 32 }}
               >
-                {isPassed ? "Congratulations!" : "Quiz Completed"}
+                {isPassed ? t.congratulations : t.completedTitle}
               </Title>
               <Text style={{ color: "rgba(255,255,255,0.85)", fontSize: 16 }}>
-                You have completed the <strong>{result.title}</strong> quiz.
+                {t.completedSubtitle} <strong>{result.title}</strong>
+                {language === "vi" ? "." : " quiz."}
               </Text>
             </Space>
           </div>
@@ -256,7 +303,7 @@ export default function QuizResult({
               icon={<EyeOutlined />}
               onClick={() => setShowDetails(true)}
             >
-              Review Detailed Answers
+              {t.reviewDetailed}
             </Button>
             {curriculumItemId &&
               (attemptsLeft === null ||
@@ -278,9 +325,9 @@ export default function QuizResult({
                   icon={<ReloadOutlined />}
                   onClick={handleRetryQuiz}
                 >
-                  Retry Quiz
+                  {t.retryQuiz}
                   {attemptsLeft !== null && attemptsLeft !== undefined && (
-                    <span> ({attemptsLeft} left)</span>
+                    <span> ({attemptsLeft} {t.left})</span>
                   )}
                 </Button>
               )}
@@ -339,7 +386,7 @@ export default function QuizResult({
                   letterSpacing: "1px",
                 }}
               >
-                Status
+                {t.status}
               </Text>
               <Title
                 level={3}
@@ -348,7 +395,7 @@ export default function QuizResult({
                   color: isPassed ? "#52c41a" : "#ff4d4f",
                 }}
               >
-                {isPassed ? "PASSED" : "FAILED"}
+                {isPassed ? t.passedCaps : t.failedCaps}
               </Title>
             </div>
           </Card>
@@ -386,7 +433,7 @@ export default function QuizResult({
                   letterSpacing: "1px",
                 }}
               >
-                Total Score
+                {t.totalScore}
               </Text>
               <Space align="baseline" style={{ marginTop: 4 }}>
                 <Title level={3} style={{ margin: 0, color: "#1677ff" }}>
@@ -428,16 +475,16 @@ export default function QuizResult({
                   letterSpacing: "1px",
                 }}
               >
-                Performance
+                {t.performance}
               </Text>
               <Space align="baseline" style={{ marginTop: 4 }}>
                 <Title level={3} style={{ margin: 0, color: "#52c41a" }}>
                   {correctCount}
                 </Title>
-                <Text type="secondary">/ {totalQuestions} Correct</Text>
+                <Text type="secondary">/ {totalQuestions} {t.correct}</Text>
               </Space>
               <Text type="danger" style={{ fontSize: 12, marginTop: 4 }}>
-                {incorrectCount} Incorrect
+                {incorrectCount} {t.incorrect}
               </Text>
             </div>
           </Card>
@@ -473,7 +520,7 @@ export default function QuizResult({
                   letterSpacing: "1px",
                 }}
               >
-                Time Taken
+                {t.timeTaken}
               </Text>
               <Title level={3} style={{ margin: "4px 0 0" }}>
                 {formatTime(result.time_spent_seconds)}
@@ -497,6 +544,19 @@ function QuestionCard({
   total: number
   attemptId: number
 }) {
+  const { language } = useLanguageStore()
+  const t = {
+    question: language === "vi" ? "Câu" : "Question",
+    of: language === "vi" ? "trên" : "of",
+    correct: language === "vi" ? "Đúng" : "Correct",
+    incorrect: language === "vi" ? "Sai" : "Incorrect",
+    yourAnswer: language === "vi" ? "Đáp án của bạn" : "Your Answer",
+    instructorFeedback:
+      language === "vi" ? "Nhận xét giảng viên" : "Instructor Feedback",
+    correctAnswerPrefix:
+      language === "vi" ? "Đáp án đúng là" : "The correct answer is",
+  }
+
   const isCorrect = isQuestionCorrect(question)
   const optionsList = parseOptions(question.options)
   const selectedAnswers = normalizeArray(question.selectedAnswers)
@@ -529,13 +589,13 @@ function QuestionCard({
               letterSpacing: "1px",
             }}
           >
-            Question {index} of {total}
+            {t.question} {index} {t.of} {total}
           </Text>
           <Tag
             icon={isCorrect ? <CheckCircleFilled /> : <CloseCircleFilled />}
             color={isCorrect ? "success" : "error"}
           >
-            {isCorrect ? "Correct" : "Incorrect"}
+            {isCorrect ? t.correct : t.incorrect}
           </Tag>
         </div>
 
@@ -626,7 +686,7 @@ function QuestionCard({
                 <Text style={{ flex: 1, color: textColor }}>{text}</Text>
                 {isSelected && !isRightAnswer && (
                   <Text type="danger" style={{ fontSize: 12, fontWeight: 600 }}>
-                    Your Answer
+                    {t.yourAnswer}
                   </Text>
                 )}
                 {isSelected && isRightAnswer && (
@@ -634,7 +694,7 @@ function QuestionCard({
                     type="success"
                     style={{ fontSize: 12, fontWeight: 600 }}
                   >
-                    Your Answer
+                    {t.yourAnswer}
                   </Text>
                 )}
               </div>
@@ -664,7 +724,7 @@ function QuestionCard({
               <Space size={8} style={{ marginBottom: 8 }}>
                 <SafetyCertificateOutlined style={{ color: "#1677ff" }} />
                 <Text strong style={{ color: "#1677ff" }}>
-                  Instructor Feedback
+                  {t.instructorFeedback}
                 </Text>
               </Space>
               <Paragraph style={{ margin: 0, color: "#595959" }}>
@@ -672,7 +732,7 @@ function QuestionCard({
                   question.explanation
                 ) : (
                   <>
-                    The correct answer is{" "}
+                    {t.correctAnswerPrefix}{" "}
                     <strong>{correctAnswers.join(", ")}</strong>.
                   </>
                 )}
