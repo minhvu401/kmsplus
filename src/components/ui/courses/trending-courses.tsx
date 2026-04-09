@@ -110,7 +110,7 @@ export const TrendingCourses: React.FC<TrendingCoursesProps> = ({
               skillTags={[]}
               description={course.description || ""}
               rating={course.average_rating || 0}
-              students={course.rating_count || course.enrollment_count}
+              students={course.rating_count ?? 0}
             />
           </div>
         ))}

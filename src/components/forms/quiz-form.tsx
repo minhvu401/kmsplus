@@ -1,14 +1,19 @@
 "use client"
 
 import { useEffect, useRef, useState, useTransition } from "react"
-import { Card, Button, Typography, Space, Tag, Modal, message } from "antd"
-import { saveAttemptAnswer, submitQuizAttempt } from "@/action/quiz/quizActions"
+import { Card, Button, Typography, Space, Tag, Modal, Spin, message } from "antd"
+import {
+  saveAttemptAnswer,
+  saveAttemptHeartbeat,
+  submitQuizAttempt,
+} from "@/action/quiz/quizActions"
 import type { Question } from "@/service/quiz.service"
 import {
   CheckOutlined,
   ClockCircleOutlined,
   SendOutlined,
 } from "@ant-design/icons"
+import useLanguageStore from "@/store/useLanguageStore"
 
 const { Title, Text, Paragraph } = Typography
 
@@ -53,12 +58,85 @@ export default function QuizForm({
   durationSeconds: number | null
   initialAnswers: Record<number, string | string[]>
 }) {
+  const { language } = useLanguageStore()
+  const t = {
+    failedSaveAnswer:
+      language === "vi" ? "Không thể lưu câu trả lời" : "Failed to save answer",
+    failedSubmitQuiz:
+      language === "vi" ? "Nộp bài thất bại" : "Failed to submit quiz",
+    autoSubmitting:
+      language === "vi"
+        ? "Hết giờ! Hệ thống đang tự động nộp bài..."
+        : "Time is up! Your quiz is being submitted...",
+    autoSubmitted:
+      language === "vi"
+        ? "Hết giờ! Bài làm của bạn đã được tự động nộp."
+        : "Time is up! Your quiz was auto-submitted.",
+    attemptTag: language === "vi" ? "Lần làm" : "Attempt",
+    questionsTag: language === "vi" ? "Câu hỏi" : "Questions",
+    title: language === "vi" ? "Đang làm bài kiểm tra" : "Quiz In Progress",
+    subtitle:
+      language === "vi"
+        ? "Chọn đáp án cho từng câu hỏi, sau đó nộp bài khi bạn sẵn sàng."
+        : "Select your answer(s) for each question, then submit when you’re ready.",
+    submitQuiz: language === "vi" ? "Nộp bài" : "Submit Quiz",
+    confirmSubmitTitle:
+      language === "vi" ? "Xác nhận nộp bài?" : "Submit quiz?",
+    confirmSubmitBody:
+      language === "vi"
+        ? "Bạn có chắc chắn muốn nộp bài không?"
+        : "Are you sure you want to submit the quiz?",
+    submit: language === "vi" ? "Nộp" : "Submit",
+    cancel: language === "vi" ? "Hủy" : "Cancel",
+    autoSubmittingTitle:
+      language === "vi" ? "Đang tự động nộp bài" : "Auto-submitting quiz",
+    question: language === "vi" ? "Câu" : "Question",
+    of: language === "vi" ? "trên" : "of",
+  }
+
   const [answers, setAnswers] =
     useState<Record<number, string | string[]>>(initialAnswers)
   const [timeLeft, setTimeLeft] = useState<number | null>(durationSeconds)
   const [isPending, startTransition] = useTransition()
   const [open, setOpen] = useState(false)
+  const [isAutoSubmitting, setIsAutoSubmitting] = useState(false)
+  const [autoSubmitMessage, setAutoSubmitMessage] = useState(t.autoSubmitting)
   const submittedRef = useRef(false)
+  const heartbeatInFlightRef = useRef(false)
+
+  const resultUrl = `/courses/${courseId}/learning/attempt/${attemptId}/result`
+
+  const beginAutoSubmitUI = (content: string) => {
+    setAutoSubmitMessage(content)
+    setIsAutoSubmitting(true)
+    message.warning({
+      content,
+      duration: 2,
+    })
+  }
+
+  const isExpiryError = (error: unknown) => {
+    const errorMessage =
+      error instanceof Error ? error.message : String(error || "")
+    return (
+      errorMessage.includes("Time limit exceeded") ||
+      errorMessage.includes("Attempt already submitted")
+    )
+  }
+
+  const sendHeartbeat = () => {
+    if (submittedRef.current) return
+    if (heartbeatInFlightRef.current) return
+
+    heartbeatInFlightRef.current = true
+    void saveAttemptHeartbeat({ attemptId })
+      .catch(() => {
+        // Ignore transient heartbeat errors; next pulse will retry.
+      })
+      .finally(() => {
+        heartbeatInFlightRef.current = false
+      })
+  }
 
   /* ---------------- TIMER (ONLY IF TIMED) ---------------- */
   useEffect(() => {
@@ -83,13 +161,61 @@ export default function QuizForm({
     }))
 
     startTransition(() => {
-      saveAttemptAnswer({
+      void saveAttemptAnswer({
         attemptId,
         questionId,
         selectedAnswer: value,
       })
+        .catch(async (error) => {
+          if (!isExpiryError(error)) {
+            message.error(t.failedSaveAnswer)
+            return
+          }
+
+          if (submittedRef.current) return
+          submittedRef.current = true
+          beginAutoSubmitUI(t.autoSubmitted)
+
+          try {
+            await submitQuizAttempt(attemptId)
+          } catch {
+            // Already submitted by server expiry guard.
+          }
+
+          window.location.href = resultUrl
+        })
     })
+
+    sendHeartbeat()
   }
+
+  /* ---------------- HEARTBEAT (TIMED ONLY) ---------------- */
+  useEffect(() => {
+    if (timeLeft === null) return
+
+    const heartbeat = setInterval(() => {
+      sendHeartbeat()
+    }, 20_000)
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        sendHeartbeat()
+      }
+    }
+
+    const handleBeforeUnload = () => {
+      sendHeartbeat()
+    }
+
+    document.addEventListener("visibilitychange", handleVisibilityChange)
+    window.addEventListener("beforeunload", handleBeforeUnload)
+
+    return () => {
+      clearInterval(heartbeat)
+      document.removeEventListener("visibilitychange", handleVisibilityChange)
+      window.removeEventListener("beforeunload", handleBeforeUnload)
+    }
+  }, [attemptId, timeLeft])
 
   /* ---------------- FINAL SUBMIT ---------------- */
   async function submitAttempt() {
@@ -98,22 +224,18 @@ export default function QuizForm({
 
     try {
       await submitQuizAttempt(attemptId)
-      window.location.href = `/courses/${courseId}/learning/attempt/${attemptId}/result`
+      window.location.href = resultUrl
     } catch {
       submittedRef.current = false
-      message.error("Failed to submit quiz")
+      setIsAutoSubmitting(false)
+      message.error(t.failedSubmitQuiz)
     }
   }
 
   /* ---------------- AUTO SUBMIT (TIMED ONLY) ---------------- */
   function handleAutoSubmit() {
     if (submittedRef.current) return
-
-    // Show notification and submit immediately without waiting for user
-    message.warning({
-      content: "Time is up! Your quiz is being submitted...",
-      duration: 2,
-    })
+    beginAutoSubmitUI(t.autoSubmitting)
 
     // Auto-submit immediately
     submitAttempt()
@@ -153,13 +275,13 @@ export default function QuizForm({
                     color="rgba(255,255,255,0.2)"
                     style={{ color: "white", border: "none" }}
                   >
-                    Attempt #{attemptNumber}
+                    {t.attemptTag} #{attemptNumber}
                   </Tag>
                   <Tag
                     color="rgba(255,255,255,0.2)"
                     style={{ color: "white", border: "none" }}
                   >
-                    {questions.length} Questions
+                    {questions.length} {t.questionsTag}
                   </Tag>
                   {timeLeft !== null && (
                     <Tag
@@ -174,13 +296,12 @@ export default function QuizForm({
                   level={2}
                   style={{ color: "white", margin: 0, fontSize: 28 }}
                 >
-                  Quiz In Progress
+                  {t.title}
                 </Title>
                 <Paragraph
                   style={{ color: "rgba(255,255,255,0.85)", margin: 0 }}
                 >
-                  Select your answer(s) for each question, then submit when
-                  you’re ready.
+                  {t.subtitle}
                 </Paragraph>
               </Space>
             </div>
@@ -200,7 +321,7 @@ export default function QuizForm({
                 fontWeight: 600,
               }}
             >
-              Submit Quiz
+              {t.submitQuiz}
             </Button>
           </div>
 
@@ -227,6 +348,8 @@ export default function QuizForm({
               question={q}
               value={answers[q.id]}
               onChange={handleAnswerChange}
+              labelQuestion={t.question}
+              labelOf={t.of}
             />
           ))}
 
@@ -253,7 +376,7 @@ export default function QuizForm({
                 fontWeight: 600,
               }}
             >
-              Submit Quiz
+              {t.submitQuiz}
             </Button>
           </div>
         </Space>
@@ -261,14 +384,38 @@ export default function QuizForm({
 
       <Modal
         open={open}
-        title="Submit quiz?"
-        okText="Submit"
-        cancelText="Cancel"
+        title={t.confirmSubmitTitle}
+        okText={t.submit}
+        cancelText={t.cancel}
         confirmLoading={isPending}
         onOk={submitAttempt}
         onCancel={() => setOpen(false)}
       >
-        <p>Are you sure you want to submit the quiz?</p>
+        <p>{t.confirmSubmitBody}</p>
+      </Modal>
+
+      <Modal
+        open={isAutoSubmitting}
+        closable={false}
+        footer={null}
+        centered
+        maskClosable={false}
+        keyboard={false}
+        title={t.autoSubmittingTitle}
+      >
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "20px 0",
+            gap: 12,
+          }}
+        >
+          <Spin size="large" />
+          <Text>{autoSubmitMessage}</Text>
+        </div>
       </Modal>
     </>
   )
@@ -280,12 +427,16 @@ function QuestionCard({
   question,
   value,
   onChange,
+  labelQuestion,
+  labelOf,
 }: {
   index: number
   total: number
   question: any
   value?: string | string[]
   onChange: (id: number, value: string | string[]) => void
+  labelQuestion: string
+  labelOf: string
 }) {
   return (
     <Card
@@ -315,7 +466,7 @@ function QuestionCard({
               letterSpacing: "1px",
             }}
           >
-            Question {index} of {total}
+            {labelQuestion} {index} {labelOf} {total}
           </Text>
           <Tag
             color={

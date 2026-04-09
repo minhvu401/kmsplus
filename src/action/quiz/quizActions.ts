@@ -18,6 +18,7 @@ import {
   startQuizAttemptAction,
   submitQuizAttemptAction,
   saveAttemptAnswerAction,
+  saveAttemptHeartbeatAction,
   getQuestionsForAttemptAction,
   getSavedAnswersAction,
   getAttemptMetaAction,
@@ -424,6 +425,11 @@ const SaveAnswerSchema = z.object({
   questionId: z.coerce.number().int(),
   selectedAnswer: z.union([z.string(), z.array(z.string())]),
 })
+
+const SaveHeartbeatSchema = z.object({
+  attemptId: z.coerce.number().int(),
+})
+
 export async function saveAttemptAnswer(input: unknown) {
   // 1️⃣ Validate payload
   const parsed = SaveAnswerSchema.safeParse(input)
@@ -446,6 +452,19 @@ export async function saveAttemptAnswer(input: unknown) {
 
   // 4️⃣ Minimal response
   return { success: true }
+}
+
+export async function saveAttemptHeartbeat(input: unknown) {
+  const parsed = SaveHeartbeatSchema.safeParse(input)
+  if (!parsed.success) {
+    throw new Error("Invalid heartbeat payload")
+  }
+
+  const { attemptId } = parsed.data
+  const user = await requireAuth()
+  await requireAttemptOwner(attemptId, Number(user.id))
+
+  return saveAttemptHeartbeatAction(attemptId, Number(user.id))
 }
 
 // ============================================
