@@ -76,8 +76,12 @@ export async function getAllQuizzes(params: GetAllQuizzesParams) {
  * - Yêu cầu xác thực (requireAuth)
  */
 export async function getQuizById(id: number) {
+  console.log("🟦 [getQuizById] Fetching quiz with id:", id)
   await requirePermission(Permission.VIEW_QUIZ)
-  return getQuizByIdAction(id)
+  const quizData = await getQuizByIdAction(id)
+  console.log("🟦 [getQuizById] Quiz data returned:", quizData)
+  console.log("🟦 [getQuizById] Course ID:", quizData?.course_id)
+  return quizData
 }
 
 export async function getQuizByCurriculumItemId(curriculumItemId: number) {
@@ -241,9 +245,16 @@ export async function deleteQuiz(id: number) {
  * - Yêu cầu xác thực (requireAuth)
  */
 export async function getQuizQuestions(quizId: number) {
+  console.log("🟦 [getQuizQuestions] Fetching questions for quizId:", quizId)
   await requirePermission(Permission.VIEW_QUIZ_QUESTION)
   await requireAuth()
-  return getQuizQuestionsAction(quizId)
+  const questionsData = await getQuizQuestionsAction(quizId)
+  console.log("🟦 [getQuizQuestions] Questions data returned:", questionsData)
+  console.log(
+    "🟦 [getQuizQuestions] Question count:",
+    questionsData?.length || 0
+  )
+  return questionsData
 }
 
 /**
@@ -554,13 +565,13 @@ export async function getQuestionExplanation(input: unknown) {
     // 7️⃣ Get user's answer from attempt_answers
     let userAnswer = ""
     const answerRows = await sql`
-      SELECT selected_answer
+      SELECT selected_option_id
       FROM attempt_answers
       WHERE attempt_id = ${attemptId} AND question_id = ${questionId}
       LIMIT 1
     `
     if (answerRows.length > 0) {
-      userAnswer = String(answerRows[0].selected_answer)
+      userAnswer = String(answerRows[0].selected_option_id)
     }
 
     // 8️⃣ Parse options if it's JSON

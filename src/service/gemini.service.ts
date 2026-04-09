@@ -15,7 +15,11 @@ const CACHE_DURATION = 3600000 // 1 hour in milliseconds
 async function getSystemPrompt(promptKey: string): Promise<string> {
   // Check if cache is still valid
   const now = Date.now()
-  if (cacheTime > 0 && now - cacheTime < CACHE_DURATION && promptCache[promptKey]) {
+  if (
+    cacheTime > 0 &&
+    now - cacheTime < CACHE_DURATION &&
+    promptCache[promptKey]
+  ) {
     return promptCache[promptKey]
   }
 
@@ -162,7 +166,8 @@ export async function generateAIExplanation(
 ): Promise<string> {
   try {
     // Get system prompt from database or cache
-    const EXPLANATION_SYSTEM_PROMPT = await getSystemPrompt("answer_explanation")
+    const EXPLANATION_SYSTEM_PROMPT =
+      await getSystemPrompt("answer_explanation")
 
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" })
 
@@ -204,11 +209,30 @@ ${input.correctAnswer}`
   } catch (error: any) {
     console.error("❌ Error generating AI explanation:", error)
 
+    // Handle API rate limiting
     if (error?.status === 429) {
       console.warn(
         "⚠️ Gemini API quota exceeded. Please upgrade your API key or wait."
       )
-      return "I apologize, but I've temporarily reached my API quota limit. Please try again in a few moments."
+      throw new Error("API quota exceeded. Please try again in a few moments.")
+    }
+
+    // Handle service unavailable (high demand)
+    if (error?.status === 503) {
+      console.warn(
+        "⚠️ Gemini API is temporarily unavailable due to high demand."
+      )
+      throw new Error(
+        "AI service is temporarily unavailable. Please try again in a moment."
+      )
+    }
+
+    // Handle other HTTP errors
+    if (error?.status) {
+      console.warn(`⚠️ Gemini API error: ${error.status} ${error.statusText}`)
+      throw new Error(
+        `AI service error (${error.status}). Please try again later.`
+      )
     }
 
     throw new Error("Failed to generate AI explanation")

@@ -81,6 +81,10 @@ export async function getQuestionsAction(
  */
 export async function getQuestionsByCategoryAction(categoryId: number) {
   try {
+    console.log(
+      "🟦 [getQuestionsByCategoryAction] Querying for categoryId:",
+      categoryId
+    )
     const data = await sql`
       SELECT 
         qb.id,
@@ -96,9 +100,18 @@ export async function getQuestionsByCategoryAction(categoryId: number) {
         AND (qb.is_deleted = false OR qb.is_deleted IS NULL)
       ORDER BY qb.updated_at DESC
     `
+    console.log(
+      "🟦 [getQuestionsByCategoryAction] Query returned",
+      data?.length || 0,
+      "questions"
+    )
+    console.log("🟦 [getQuestionsByCategoryAction] Data:", data)
     return data
   } catch (error) {
-    console.error("Error fetching questions by category:", error)
+    console.error(
+      "🔴 [getQuestionsByCategoryAction] Error fetching questions by category:",
+      error
+    )
     throw new Error("Could not fetch questions by category")
   }
 }
