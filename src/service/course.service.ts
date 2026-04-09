@@ -45,6 +45,7 @@ export type Course = {
   global_due_type: "relative" | "fixed" | null
   global_due_days: number | null
   global_due_date: Date | null
+  rejection_reason?: string | null // ✅ Added rejection_reason for rejected courses
 }
 
 // Định nghĩa Type cho Assignment Rule nhận từ Form
