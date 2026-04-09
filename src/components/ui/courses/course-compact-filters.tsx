@@ -17,8 +17,8 @@ export interface FilterValues {
 }
 
 const SORT_OPTIONS = [
-  { value: 'trending', label: 'Trending' },
   { value: 'newest', label: 'Newest' },
+  { value: 'trending', label: 'Trending' },
   { value: 'popular', label: 'Most Popular' },
   { value: 'top-rated', label: 'Top Rated' },
 ]
@@ -40,12 +40,12 @@ export const CourseCompactFilters: React.FC<CourseCompactFiltersProps> = ({
 
   const [category, setCategory] = useState(searchParams.get('category') || 'all')
   const [rating, setRating] = useState(searchParams.get('rating') || 'all')
-  const [sort, setSort] = useState(searchParams.get('sort') || 'trending')
+  const [sort, setSort] = useState(searchParams.get('sort') || 'newest')
   const [hasActiveFilters, setHasActiveFilters] = useState(false)
 
   // Check if any filter is active
   useEffect(() => {
-    const active = category !== 'all' || rating !== 'all' || sort !== 'trending'
+    const active = category !== 'all' || rating !== 'all' || sort !== 'newest'
     setHasActiveFilters(active)
     
     if (onFiltersChange) {
@@ -95,10 +95,10 @@ export const CourseCompactFilters: React.FC<CourseCompactFiltersProps> = ({
 
   const handleClearFilters = () => {
     const params = new URLSearchParams()
-    params.set('sort', 'trending')
+    params.set('sort', 'newest')
     setCategory('all')
     setRating('all')
-    setSort('trending')
+    setSort('newest')
     replace(`${pathname}?${params.toString()}`)
   }
 

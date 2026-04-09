@@ -39,6 +39,7 @@ type AttemptRow = {
   curriculum_item_id: number
   course_id: number
   passing_score: number
+  time_limit_minutes: number | null
 }
 
 type AttemptStats = {
@@ -362,7 +363,6 @@ export async function startQuizAttemptAction(
       JOIN sections s ON s.id = ci.section_id
       WHERE s.course_id = ${courseId} 
         AND ci.type = 'lesson'
-        AND ci.is_deleted = false
     `
 
     if (allLessons.length > 0) {
@@ -482,7 +482,8 @@ export async function submitQuizAttemptAction(
           qa.total_questions,
           qa.curriculum_item_id,
           s.course_id,
-          q.passing_score
+          q.passing_score,
+          q.time_limit_minutes
         FROM quiz_attempts qa
         JOIN curriculum_items ci ON ci.id = qa.curriculum_item_id
         JOIN sections s ON s.id = ci.section_id
@@ -531,6 +532,11 @@ export async function submitQuizAttemptAction(
     const curriculumItemId = Number(attemptResult[0].curriculum_item_id)
     const passingScore = Number(attemptResult[0].passing_score ?? 0)
     const isPassed = score >= passingScore
+    const timeLimitMinutesRaw = attemptResult[0].time_limit_minutes
+    const timeLimitSeconds =
+      timeLimitMinutesRaw === null
+        ? null
+        : Math.max(0, Number(timeLimitMinutesRaw) * 60)
 
     // 4️⃣ Finalize attempt
     const updated = await sql`
@@ -540,9 +546,15 @@ export async function submitQuizAttemptAction(
             submitted_at = CURRENT_TIMESTAMP,
             correct_answers = ${correct_answers},
             score = ${score},
-            time_spent_seconds = EXTRACT(
-            EPOCH FROM (CURRENT_TIMESTAMP - started_at)
-            )::int
+            time_spent_seconds = CASE
+              WHEN ${timeLimitSeconds}::int IS NULL THEN
+                EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - started_at))::int
+              ELSE
+                LEAST(
+                  EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - started_at))::int,
+                  ${timeLimitSeconds}::int
+                )
+            END
             WHERE id = ${attemptId}
             RETURNING *;
         `
@@ -588,10 +600,17 @@ export async function saveAttemptAnswerAction(
   try {
     // 1️⃣ Verify attempt is valid and active
     const attempt = await sql`
-      SELECT id, status
+      SELECT 
+        qa.id,
+        qa.status,
+        q.time_limit_minutes,
+        EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - qa.started_at))::int AS elapsed_seconds
       FROM quiz_attempts
-      WHERE id = ${attemptId}
-          AND user_id = ${userId};
+      qa
+      JOIN curriculum_items ci ON ci.id = qa.curriculum_item_id
+      JOIN quizzes q ON q.id = ci.quiz_id
+      WHERE qa.id = ${attemptId}
+          AND qa.user_id = ${userId};
     `
 
     if (attempt.length === 0) {
@@ -600,6 +619,27 @@ export async function saveAttemptAnswerAction(
 
     if (attempt[0].status !== "in_progress") {
       throw new Error("Cannot answer a submitted attempt")
+    }
+
+    const timeLimitMinutes = attempt[0].time_limit_minutes
+    const elapsedSeconds = Number(attempt[0].elapsed_seconds || 0)
+    const isExpired =
+      timeLimitMinutes !== null &&
+      Number(timeLimitMinutes) > 0 &&
+      elapsedSeconds >= Number(timeLimitMinutes) * 60
+
+    if (isExpired) {
+      try {
+        await submitQuizAttemptAction(attemptId, userId)
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Failed to auto-submit"
+        if (!message.includes("Attempt already submitted")) {
+          throw error
+        }
+      }
+
+      throw new Error("Time limit exceeded. Attempt was auto-submitted")
     }
 
     // 2️⃣ Load question data
@@ -680,6 +720,30 @@ export async function saveAttemptAnswerAction(
 }
 
 /**
+ * Heartbeat cập nhật thời gian làm bài định kỳ cho attempt đang diễn ra.
+ */
+export async function saveAttemptHeartbeatAction(
+  attemptId: number,
+  userId: number
+) {
+  try {
+    const rows = await sql`
+      UPDATE quiz_attempts
+      SET time_spent_seconds = EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - started_at))::int
+      WHERE id = ${attemptId}
+        AND user_id = ${userId}
+        AND status = 'in_progress'
+      RETURNING id;
+    `
+
+    return { success: rows.length > 0 }
+  } catch (error) {
+    console.error("saveAttemptHeartbeatAction error:", error)
+    throw error
+  }
+}
+
+/**
  * Lấy danh sách câu hỏi cho một lần làm bài
  * NhatTT
  */
@@ -751,7 +815,13 @@ export async function getTimeLimitForAttemptAction(attemptId: number) {
     const rows = await sql`
         SELECT 
           q.time_limit_minutes,
-          COALESCE(qa.time_spent_seconds, 0) as time_spent_seconds
+          CASE
+            WHEN qa.status = 'submitted' THEN COALESCE(
+              qa.time_spent_seconds,
+              EXTRACT(EPOCH FROM (COALESCE(qa.submitted_at, CURRENT_TIMESTAMP) - qa.started_at))::int
+            )
+            ELSE EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - qa.started_at))::int
+          END as elapsed_seconds
         FROM quizzes q
         JOIN curriculum_items ci ON ci.quiz_id = q.id
         JOIN quiz_attempts qa ON qa.curriculum_item_id = ci.id
@@ -761,7 +831,7 @@ export async function getTimeLimitForAttemptAction(attemptId: number) {
     if (!rows[0]) return null
 
     const totalSeconds = (rows[0]?.time_limit_minutes || 0) * 60
-    const spentSeconds = rows[0]?.time_spent_seconds || 0
+    const spentSeconds = rows[0]?.elapsed_seconds || 0
     const remainingSeconds = Math.max(0, totalSeconds - spentSeconds)
 
     // Return remaining seconds, not minutes

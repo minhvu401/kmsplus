@@ -1,7 +1,7 @@
 // @/src/app/(main)/courses/components/ManageCoursesClient.tsx
 "use client"
 
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useTransition } from "react"
 import { useRouter, usePathname, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import {
@@ -83,6 +83,7 @@ export default function ManageCoursesClient({
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
+  const [isFilterPending, startFilterTransition] = useTransition()
   const [messageApi, contextHolder] = message.useMessage()
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [searchInput, setSearchInput] = useState(query)
@@ -109,7 +110,6 @@ export default function ManageCoursesClient({
     return urlStatus || "All"
   })
   const [viewMode, setViewMode] = useState<"list" | "grid">("list")
-  const [filteredCourses, setFilteredCourses] = useState<Course[]>(courses)
 
   // Check if user is Training Manager (case-insensitive, handle spaces)
   const normalizedRole = userRole?.toLowerCase().trim() || ""
@@ -167,25 +167,6 @@ export default function ManageCoursesClient({
     router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname)
   }, [messageApi, pathname, router, searchParams])
 
-  // Apply filters and sorting
-  useEffect(() => {
-    let filtered = [...courses]
-
-    // Filter by status
-    if (selectedStatus !== "All") {
-      filtered = filtered.filter((course) => course.status === selectedStatus)
-    }
-
-    // Sort courses
-    filtered.sort((a, b) => {
-      const dateA = new Date(a.created_at).getTime()
-      const dateB = new Date(b.created_at).getTime()
-      return sortOrder === "newest" ? dateB - dateA : dateA - dateB
-    })
-
-    setFilteredCourses(filtered)
-  }, [courses, selectedStatus, sortOrder])
-
   const handleCategoryChange = (values: string[]) => {
     const params = new URLSearchParams(searchParams)
     params.set("page", "1")
@@ -199,7 +180,9 @@ export default function ManageCoursesClient({
     }
 
     setSelectedCategoryList(values)
-    router.push(`${pathname}?${params.toString()}`)
+    startFilterTransition(() => {
+      router.push(`${pathname}?${params.toString()}`)
+    })
   }
 
   // ✅ ĐLCS THÊM: Handler cho status change - update URL
@@ -214,7 +197,9 @@ export default function ManageCoursesClient({
     }
 
     setSelectedStatus(newStatus)
-    router.push(`${pathname}?${params.toString()}`)
+    startFilterTransition(() => {
+      router.push(`${pathname}?${params.toString()}`)
+    })
   }
 
   // ✅ ĐLCS THÊM: Handler cho sort change - update URL
@@ -229,7 +214,9 @@ export default function ManageCoursesClient({
     }
 
     setSortOrder(newSort)
-    router.push(`${pathname}?${params.toString()}`)
+    startFilterTransition(() => {
+      router.push(`${pathname}?${params.toString()}`)
+    })
   }
 
   const handleClearFilters = () => {
@@ -238,7 +225,9 @@ export default function ManageCoursesClient({
     setSearchInput("")
     setSelectedStatus("All")
     setSortOrder("newest")
-    router.push(`${pathname}?${params.toString()}`)
+    startFilterTransition(() => {
+      router.push(`${pathname}?${params.toString()}`)
+    })
   }
 
   const handleOpenUpdate = async (course: Course) => {
@@ -315,11 +304,39 @@ export default function ManageCoursesClient({
   const handleUpdateSuccess = () => {
     setIsUpdateModalOpen(false)
     setSelectedCourse(null)
+    messageApi.success(
+      language === "vi"
+        ? "Cập nhật khóa học thành công"
+        : "Course updated successfully"
+    )
     router.refresh() // Tải lại dữ liệu bảng
   }
+  const handleUpdateError = (error?: string) => {
+    messageApi.error(
+      error ||
+        (language === "vi"
+          ? "Không thể cập nhật khóa học"
+          : "Unable to update course")
+    )
+  }
+
   const handleCreateSuccess = () => {
     setIsCreateModalOpen(false)
+    messageApi.success(
+      language === "vi"
+        ? "Tạo khóa học thành công"
+        : "Course created successfully"
+    )
     router.refresh()
+  }
+
+  const handleCreateError = (error?: string) => {
+    messageApi.error(
+      error ||
+        (language === "vi"
+          ? "Không thể tạo khóa học"
+          : "Unable to create course")
+    )
   }
   // --- Search ---
   const handleSearch = (value: string) => {
@@ -329,7 +346,9 @@ export default function ManageCoursesClient({
       selectedCategoryList.forEach((cat) => params.append("category", cat))
     }
     params.set("page", "1")
-    router.push(`/courses/management?${params.toString()}`)
+    startFilterTransition(() => {
+      router.push(`/courses/management?${params.toString()}`)
+    })
   }
 
   // --- Approve ---
@@ -501,7 +520,9 @@ export default function ManageCoursesClient({
     if (sortOrder !== "newest") params.set("sort", sortOrder)
 
     params.set("page", String(newPage))
-    router.push(`/courses/management?${params.toString()}`)
+    startFilterTransition(() => {
+      router.push(`/courses/management?${params.toString()}`)
+    })
   }
 
   // Status color mapping
@@ -895,6 +916,8 @@ export default function ManageCoursesClient({
                 placeholder="Select categories..."
                 value={selectedCategoryList}
                 onChange={handleCategoryChange}
+                showSearch
+                optionFilterProp="label"
                 options={categories.map((cat: any) => ({
                   label: cat.name,
                   value: String(cat.id),
@@ -985,7 +1008,8 @@ export default function ManageCoursesClient({
           <div className="p-6">
             <Table
               columns={columns}
-              dataSource={filteredCourses}
+              dataSource={courses}
+              loading={isFilterPending}
               rowKey="id"
               pagination={{
                 current: page,
@@ -1004,8 +1028,9 @@ export default function ManageCoursesClient({
             />
           </div>
         ) : (
-          <div className="p-6">
-            {filteredCourses.length === 0 ? (
+          <Spin spinning={isFilterPending}>
+            <div className="p-6">
+            {courses.length === 0 ? (
               <div className="text-center py-8">
                 {language === "vi"
                   ? "Không tìm thấy khóa học"
@@ -1013,7 +1038,7 @@ export default function ManageCoursesClient({
               </div>
             ) : (
               <Row gutter={[16, 16]}>
-                {filteredCourses.map((course) => (
+                {courses.map((course) => (
                   <Col xs={24} sm={12} lg={8} xl={6} key={course.id}>
                     <Card
                       hoverable
@@ -1267,7 +1292,8 @@ export default function ManageCoursesClient({
                 ))}
               </Row>
             )}
-          </div>
+            </div>
+          </Spin>
         )}
       </div>
 
@@ -1287,6 +1313,7 @@ export default function ManageCoursesClient({
             availableLessons={availableLessons}
             availableQuizzes={availableQuizzes}
             onSuccess={handleUpdateSuccess}
+            onError={handleUpdateError}
             userRole={userRole} // ✅ TRUYỀN THÊM PROP NÀY XUỐNG FORM UPDATE
           />
         )}
@@ -1304,6 +1331,7 @@ export default function ManageCoursesClient({
           availableLessons={availableLessons}
           availableQuizzes={availableQuizzes}
           onSuccess={handleCreateSuccess}
+          onError={handleCreateError}
         />
       </Modal>
 

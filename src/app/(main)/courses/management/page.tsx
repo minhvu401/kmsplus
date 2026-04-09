@@ -57,10 +57,11 @@ export default async function ManagerCoursesPage({ searchParams }: Props) {
     ? params?.status[0]
     : (params?.status as string) || "All"
 
-  // ✅ ĐLCS THÊM: Extract sort order from URL (though sorting is done client-side)
-  const sortOrder = Array.isArray(params?.sort)
+  // Extract sort order from URL and apply on server (before pagination)
+  const sortOrderParam = Array.isArray(params?.sort)
     ? params?.sort[0]
     : (params?.sort as string) || "newest"
+  const sortOrder = sortOrderParam === "oldest" ? "oldest" : "newest"
 
   const limit = 10
 
@@ -73,6 +74,7 @@ export default async function ManagerCoursesPage({ searchParams }: Props) {
         limit,
         categories: selectedCategories,
         status,
+        sort: sortOrder,
       }),
       getAllLessonsAction(),
       getAllQuizzes({}),

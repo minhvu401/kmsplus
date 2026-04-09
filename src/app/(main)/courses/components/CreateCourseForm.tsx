@@ -138,6 +138,7 @@ interface CreateCourseFormProps {
   availableLessons: Lesson[]
   availableQuizzes: Quiz[]
   onSuccess: () => void
+  onError?: (error?: string) => void
 }
 
 function SortableItem({
@@ -295,6 +296,7 @@ export default function CreateCourseForm({
   availableLessons: initialLessons = [],
   availableQuizzes: initialQuizzes = [],
   onSuccess,
+  onError,
 }: CreateCourseFormProps) {
   const [availableLessons, setAvailableLessons] =
     useState<Lesson[]>(initialLessons)
@@ -538,14 +540,13 @@ export default function CreateCourseForm({
       }
       const res = await createCourseAPI(finalPayload)
       if (res.success) {
-        message.success("Khóa học được tạo thành công! 🎉")
         if (onSuccess) onSuccess()
         router.refresh()
       } else {
-        message.error(res.error || "Tạo thất bại")
+        if (onError) onError(res.error || "Tạo thất bại")
       }
     } catch (err) {
-      message.error("Đã xảy ra lỗi hệ thống.")
+      if (onError) onError("Đã xảy ra lỗi hệ thống.")
     } finally {
       setLoading(false)
     }
@@ -1637,6 +1638,7 @@ function CurriculumContentBank({
           </span>
         }
         open={isCreateModalOpen}
+        forceRender
         onCancel={() => {
           setIsCreateModalOpen(false)
           form.resetFields()

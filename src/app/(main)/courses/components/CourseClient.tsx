@@ -50,10 +50,13 @@ export default function CourseClient({
 
   // State for each course section
   const [resumeCourses, setResumeCourses] = useState<Course[]>([])
+  const [assignedCourses, setAssignedCourses] = useState<Course[]>([])
   const [trendingCourses, setTrendingCourses] = useState<Course[]>([])
   const [popularByCategory, setPopularByCategory] = useState<Course[]>([])
   const [relevantCourses, setRelevantCourses] = useState<Course[]>([])
   const [newCourses, setNewCourses] = useState<Course[]>([])
+  const [relevantDepartmentName, setRelevantDepartmentName] =
+    useState<string>("Phòng ban của bạn")
 
   // Loading states for each section
   const [loadingTrending, setLoadingTrending] = useState(false)
@@ -63,14 +66,9 @@ export default function CourseClient({
 
   // OPTIMIZED: Cache fetched data to prevent unnecessary re-fetches on page changes
   const fetchedSections = React.useRef(new Set<string>())
-  const hasRunInitialFetch = React.useRef(false)
 
   // Fetch different course sections on mount
   useEffect(() => {
-    // OPTIMIZED: Only run initial fetch once
-    if (hasRunInitialFetch.current) return
-    hasRunInitialFetch.current = true
-
     // OPTIMIZED: Use AbortController to cleanup pending requests
     const abortController = new AbortController()
     const signal = abortController.signal
@@ -85,52 +83,138 @@ export default function CourseClient({
       setLoadingNew(true)
 
       try {
-        // Fetch all sections in parallel
-        const [resumeRes, trendingRes, popularRes, relevantRes, newRes] =
-          await Promise.all([
-            fetch("/api/courses/resume", {
-              method: "GET",
-              headers: { "Content-Type": "application/json" },
-              signal,
-            }),
-            fetch("/api/courses/trending", {
-              method: "GET",
-              headers: { "Content-Type": "application/json" },
-              signal,
-            }),
-            fetch("/api/courses/popular-by-category", {
-              method: "GET",
-              headers: { "Content-Type": "application/json" },
-              signal,
-            }),
-            fetch("/api/courses/personalized", {
-              method: "GET",
-              headers: { "Content-Type": "application/json" },
-              signal,
-            }),
-            fetch("/api/courses/newest", {
-              method: "GET",
-              headers: { "Content-Type": "application/json" },
-              signal,
-            }),
-          ])
+        const isAbortError = (reason: unknown) => {
+          if (!reason) return false
+          if (reason instanceof Error && reason.name === "AbortError") {
+            return true
+          }
+          if (
+            typeof reason === "object" &&
+            reason !== null &&
+            "name" in reason &&
+            (reason as { name?: string }).name === "AbortError"
+          ) {
+            return true
+          }
+          const reasonText = String(reason).toLowerCase()
+          return (
+            reasonText.includes("aborterror") ||
+            reasonText.includes("signal is aborted")
+          )
+        }
 
-        // Process responses in parallel
-        const [resumeData, trendingData, popularData, relevantData, newData] =
-          await Promise.all([
-            resumeRes.json(),
-            trendingRes.json(),
-            popularRes.json(),
-            relevantRes.json(),
-            newRes.json(),
-          ])
+        const fetchSectionCourses = async (url: string) => {
+          const res = await fetch(url, {
+            method: "GET",
+            headers: { "Content-Type": "application/json" },
+            credentials: "same-origin",
+            cache: "no-store",
+            signal,
+          })
 
-        // Update state
-        setResumeCourses(resumeData.courses || [])
-        setTrendingCourses(trendingData.courses || [])
-        setPopularByCategory(popularData.courses || [])
-        setRelevantCourses(relevantData.courses || [])
-        setNewCourses(newData.courses || [])
+          if (!res.ok) {
+            throw new Error(`Failed to fetch ${url}: ${res.status}`)
+          }
+
+          return res.json()
+        }
+
+        const [
+          resumeResult,
+          assignedResult,
+          trendingResult,
+          popularResult,
+          relevantResult,
+          newResult,
+        ] = await Promise.allSettled([
+          fetchSectionCourses("/api/courses/resume"),
+          fetchSectionCourses("/api/courses/assigned"),
+          fetchSectionCourses("/api/courses/trending"),
+          fetchSectionCourses("/api/courses/popular-by-category"),
+          fetchSectionCourses("/api/courses/relevant"),
+          fetchSectionCourses("/api/courses/newest"),
+        ])
+
+        if (signal.aborted) {
+          return
+        }
+
+        setResumeCourses(
+          resumeResult.status === "fulfilled"
+            ? (resumeResult.value?.courses ?? [])
+            : []
+        )
+        setAssignedCourses(
+          assignedResult.status === "fulfilled"
+            ? (assignedResult.value?.courses ?? [])
+            : []
+        )
+        setTrendingCourses(
+          trendingResult.status === "fulfilled"
+            ? (trendingResult.value?.courses ?? [])
+            : []
+        )
+        setPopularByCategory(
+          popularResult.status === "fulfilled"
+            ? (popularResult.value?.courses ?? [])
+            : []
+        )
+        setRelevantCourses(
+          relevantResult.status === "fulfilled"
+            ? (relevantResult.value?.courses ?? [])
+            : []
+        )
+        setRelevantDepartmentName(
+          relevantResult.status === "fulfilled"
+            ? (relevantResult.value?.departmentName ?? "Phòng ban của bạn")
+            : "Phòng ban của bạn"
+        )
+        setNewCourses(
+          newResult.status === "fulfilled" ? (newResult.value?.courses ?? []) : []
+        )
+
+        if (resumeResult.status === "rejected") {
+          if (!isAbortError(resumeResult.reason)) {
+            console.error("Failed to fetch resume courses:", resumeResult.reason)
+          }
+        }
+        if (assignedResult.status === "rejected") {
+          if (!isAbortError(assignedResult.reason)) {
+            console.error(
+              "Failed to fetch assigned courses:",
+              assignedResult.reason
+            )
+          }
+        }
+        if (trendingResult.status === "rejected") {
+          if (!isAbortError(trendingResult.reason)) {
+            console.error(
+              "Failed to fetch trending courses:",
+              trendingResult.reason
+            )
+          }
+        }
+        if (popularResult.status === "rejected") {
+          if (!isAbortError(popularResult.reason)) {
+            console.error(
+              "Failed to fetch popular-by-category courses:",
+              popularResult.reason
+            )
+          }
+        }
+        if (relevantResult.status === "rejected") {
+          if (!isAbortError(relevantResult.reason)) {
+            console.error(
+              "Failed to fetch relevant courses:",
+              relevantResult.reason
+            )
+          }
+        }
+        if (newResult.status === "rejected") {
+          if (!isAbortError(newResult.reason)) {
+            console.error("Failed to fetch newest courses:", newResult.reason)
+          }
+        }
 
         fetchedSections.current.add("all")
       } catch (error) {
@@ -214,12 +298,14 @@ export default function CourseClient({
           )}
         </FadeInOnScroll>
 
-        {/* Trending Courses Section */}
+        {/* Assigned Section - Private courses assigned to current user */}
         <FadeInOnScroll threshold={0.2} triggerOnce={true}>
-          {trendingCourses.length > 0 && (
-            <TrendingCourses
-              courses={trendingCourses}
-              isLoading={loadingTrending}
+          {assignedCourses.length > 0 && (
+            <CourseSection
+              title="Khóa học được giao"
+              subtitle="Các khóa học riêng tư được giao cho bạn"
+              courses={assignedCourses}
+              columns={4}
             />
           )}
         </FadeInOnScroll>
@@ -246,12 +332,22 @@ export default function CourseClient({
           />
         </FadeInOnScroll>
 
+        {/* Trending Courses Section */}
+        <FadeInOnScroll threshold={0.2} triggerOnce={true}>
+          {trendingCourses.length > 0 && (
+            <TrendingCourses
+              courses={trendingCourses}
+              isLoading={loadingTrending}
+            />
+          )}
+        </FadeInOnScroll>
+
         {/* Relevant Courses Section */}
         <FadeInOnScroll threshold={0.2} triggerOnce={true}>
           {relevantCourses.length > 0 && (
             <RelevantCoursesSection
               courses={relevantCourses}
-              departmentName="Công nghệ thông tin"
+              departmentName={relevantDepartmentName}
               isLoading={loadingRelevant}
             />
           )}
@@ -272,25 +368,14 @@ export default function CourseClient({
 
         {/* All Courses Section (Main catalog) */}
         <FadeInOnScroll threshold={0.2} triggerOnce={true}>
-          {!currentSearchParams?.query && initialCourses.length > 0 && (
+          {
             <CourseSection
               title="Tất cả khóa học"
               subtitle="Khám phá các khóa học có sẵn"
               courses={initialCourses}
               columns={4}
             />
-          )}
-        </FadeInOnScroll>
-
-        {/* Search Results Section */}
-        <FadeInOnScroll threshold={0.2} triggerOnce={true}>
-          {currentSearchParams?.query && initialCourses.length > 0 && (
-            <CourseSection
-              title={`Kết quả tìm kiếm cho "${currentSearchParams.query}"`}
-              courses={initialCourses}
-              columns={4}
-            />
-          )}
+          }
         </FadeInOnScroll>
 
         {/* Empty State */}
