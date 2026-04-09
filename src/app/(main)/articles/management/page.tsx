@@ -1989,18 +1989,27 @@ export default function ArticleManagement() {
             </label>
             <textarea
               value={rejectReason}
-              onChange={(e) => setRejectReason(e.target.value)}
+              onChange={(e) => {
+                if (e.target.value.length <= 500) {
+                  setRejectReason(e.target.value)
+                }
+              }}
               placeholder="Enter reason for rejection (optional)"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500"
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none ${
+                rejectReason.length === 500
+                  ? "border-red-500 focus:border-red-500"
+                  : "border-gray-300 focus:border-blue-500"
+              }`}
               rows={4}
               disabled={isRejectingArticle}
+              maxLength={500}
             />
             <Flex justify="space-between" align="center" className="mt-2">
               <Text type="secondary" className="text-xs">
                 The reason will be sent to the article author
               </Text>
-              <Text type="secondary" className="text-xs">
-                {rejectReason.length}
+              <Text type="secondary" className="text-sm">
+                {rejectReason.length}/500
               </Text>
             </Flex>
           </div>
