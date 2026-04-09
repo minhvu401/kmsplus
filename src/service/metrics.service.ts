@@ -318,13 +318,13 @@ export async function fetchKnowledgeGapMetrics(): Promise<KnowledgeGapData[]> {
   try {
     const result = await sql`
       SELECT 
-        keyword,
+        search_query as keyword,
         COUNT(*) as searchCount,
         SUM(CASE WHEN result_count = 0 THEN 1 ELSE 0 END) as zeroResultCount
       FROM search_logs
       WHERE created_at >= CURRENT_DATE - INTERVAL '30 days'
         AND result_count = 0
-      GROUP BY keyword
+      GROUP BY search_query
       ORDER BY searchCount DESC
       LIMIT 10
     `
@@ -462,8 +462,8 @@ export async function fetchTopContributorsMetrics(): Promise<
     const contributors = await sql`
       SELECT 
         u.id,
-        u.name,
-        u.avatar,
+        u.full_name,
+        u.avatar_url,
         (
           COALESCE((SELECT COUNT(*) FROM articles WHERE created_by = u.id), 0) +
           COALESCE((SELECT COUNT(*) FROM questions WHERE created_by = u.id), 0) +
@@ -478,8 +478,8 @@ export async function fetchTopContributorsMetrics(): Promise<
     return (
       contributors.map((row: any) => ({
         id: row.id,
-        name: row.name,
-        avatar: row.avatar,
+        name: row.full_name,
+        avatar: row.avatar_url,
         contributions: parseInt(row.total_contributions) || 0,
         type: "contributor",
       })) || []
@@ -498,13 +498,13 @@ export async function fetchTopLearnersMetrics(): Promise<ContributorData[]> {
     const result = await sql`
       SELECT 
         u.id,
-        u.name,
-        u.avatar,
+        u.full_name,
+        u.avatar_url,
         COUNT(DISTINCT e.id) as completed_courses
       FROM users u
       LEFT JOIN enrollments e ON u.id = e.user_id AND e.status = 'completed'
       WHERE u.status = 'active'
-      GROUP BY u.id, u.name, u.avatar
+      GROUP BY u.id, u.full_name, u.avatar_url
       ORDER BY completed_courses DESC
       LIMIT 5
     `
@@ -512,8 +512,8 @@ export async function fetchTopLearnersMetrics(): Promise<ContributorData[]> {
     return (
       result.map((row: any) => ({
         id: row.id,
-        name: row.name,
-        avatar: row.avatar,
+        name: row.full_name,
+        avatar: row.avatar_url,
         contributions: parseInt(row.completed_courses) || 0,
         type: "learner",
       })) || []
