@@ -58,7 +58,6 @@ import {
   rejectArticle,
   type CurrentUserInfo,
 } from "@/action/articles/articlesManagementAction"
-import { getAllDepartments } from "@/action/department/departmentActions"
 import type { Article, Tag } from "@/service/articles.service"
 import {
   uploadImageToCloudinary,
@@ -155,9 +154,6 @@ export default function ArticleManagement() {
   const [selectedCategory, setSelectedCategory] = useState<number | "All">(
     "All"
   )
-  const [selectedDepartment, setSelectedDepartment] = useState<number | "All">(
-    "All"
-  )
   const [selectedStatus, setSelectedStatus] = useState("All")
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest")
   const [currentPage, setCurrentPage] = useState(1)
@@ -198,10 +194,6 @@ export default function ArticleManagement() {
     { id: number; name: string; department_id?: number | null }[]
   >([])
   const [loadingCategories, setLoadingCategories] = useState(false)
-  const [departments, setDepartments] = useState<
-    { id: number; name: string }[]
-  >([])
-  const [loadingDepartments, setLoadingDepartments] = useState(false)
   const [userRoles, setUserRoles] = useState<string[]>([])
   const [isAdmin, setIsAdmin] = useState(false)
   const [currentUser, setCurrentUser] = useState<CurrentUserInfo | null>(null)
@@ -401,9 +393,6 @@ export default function ArticleManagement() {
           setCurrentUser(user)
           setUserRoles(user.roles || [])
           setIsAdmin(user.isAdmin || false)
-          if (!user.isAdmin && user.department_id) {
-            setSelectedDepartment(user.department_id)
-          }
         }
       } catch (err) {
         console.error("Error loading user info:", err)
@@ -454,27 +443,6 @@ export default function ArticleManagement() {
       }
     })()
   }, [isAdmin, currentUser?.department_id])
-
-  useEffect(() => {
-    ;(async () => {
-      if (!isAdmin) {
-        setDepartments([])
-        setLoadingDepartments(false)
-        return
-      }
-
-      setLoadingDepartments(true)
-      try {
-        const res = await getAllDepartments()
-        setDepartments(res || [])
-      } catch (err) {
-        console.error("Error loading departments:", err)
-        setDepartments([])
-      } finally {
-        setLoadingDepartments(false)
-      }
-    })()
-  }, [isAdmin])
 
   // Initialize edit title ref when edit modal opens with content
   useEffect(() => {
@@ -652,23 +620,9 @@ export default function ArticleManagement() {
 
   const tagOptions = tags.map((tag) => ({ label: tag.name, value: tag.name }))
 
-  const filteredCategoriesByDepartment =
-    isAdmin && selectedDepartment !== "All"
-      ? categories.filter((cat) => cat.department_id === selectedDepartment)
-      : categories
-
-  const departmentOptions = isAdmin
-    ? [
-        { label: "All Departments", value: "All" },
-        ...departments.map((dept) => ({ label: dept.name, value: dept.id })),
-      ]
-    : departments
-        .filter((dept) => dept.id === currentUser?.department_id)
-        .map((dept) => ({ label: dept.name, value: dept.id }))
-
   const categoryOptions = [
     { label: "All Categories", value: "All" },
-    ...filteredCategoriesByDepartment.map((cat) => ({
+    ...categories.map((cat) => ({
       label: cat.name,
       value: cat.id,
     })),
@@ -988,22 +942,6 @@ export default function ArticleManagement() {
               />
             </div>
 
-            {isAdmin && (
-              <div className="flex flex-col">
-                <Text type="secondary" className="text-sm font-medium mb-2">
-                  Department
-                </Text>
-                <Select
-                  value={selectedDepartment}
-                  onChange={setSelectedDepartment}
-                  options={departmentOptions}
-                  loading={loadingDepartments}
-                  size="middle"
-                  className="w-full"
-                />
-              </div>
-            )}
-
             <div className="flex flex-col">
               <Text type="secondary" className="text-sm font-medium mb-2">
                 Category
@@ -1074,7 +1012,6 @@ export default function ArticleManagement() {
                     setSearchQuery("")
                     setSelectedTags([])
                     setSelectedCategory("All")
-                    setSelectedDepartment("All")
                     setSelectedStatus("All")
                     setSortOrder("newest")
                     setCurrentPage(1)
@@ -1083,7 +1020,6 @@ export default function ArticleManagement() {
                     searchQuery === "" &&
                     selectedTags.length === 0 &&
                     selectedCategory === "All" &&
-                    selectedDepartment === "All" &&
                     selectedStatus === "All" &&
                     sortOrder === "newest"
                   }
