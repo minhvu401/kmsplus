@@ -45,6 +45,7 @@ export type Course = {
   global_due_type: "relative" | "fixed" | null
   global_due_days: number | null
   global_due_date: Date | null
+  rejection_reason?: string | null // ✅ Added rejection_reason for rejected courses
 }
 
 // Định nghĩa Type cho Assignment Rule nhận từ Form
@@ -83,7 +84,7 @@ type GetAllCoursesParams = {
   query?: string
   page?: number
   limit?: number
-  sort?: "trending" | "popular" | "newest" | "top-rated"
+  sort?: "trending" | "popular" | "newest" | "oldest" | "top-rated"
   categories?: string[] // ✅ Changed to array for multi-select
   rating?: string // ✅ Added rating filter (all, 4plus, 3plus, 2plus)
   userId?: number // ✅ Added userId for role-based filtering
@@ -191,6 +192,9 @@ export async function getAllCoursesAction({
     case "newest":
       orderBy = "created_at DESC, enrollment_count DESC"
       break
+    case "oldest":
+      orderBy = "created_at ASC, enrollment_count ASC"
+      break
     case "top-rated":
       // TODO: Add rating column to courses table when available
       // For now, order by enrollment_count as proxy for quality
@@ -212,10 +216,6 @@ export async function getAllCoursesAction({
   const statusCondition =
     status && status !== "All" ? sql`AND c.status = ${status}` : sql``
 
-  //
-  console.log(` [DEBUG] Đang check quyền cho User ID: ${userId}`)
-
-  //
   // (An toàn tuyệt đối, không sợ JWT bị thiếu Role)
   const permissionCondition =
     userId && userId !== 0
@@ -277,18 +277,6 @@ export async function getAllCoursesAction({
       ${statusCondition}
       ${permissionCondition}
   `
-
-  // ✅ DEBUG: Query để xem tổng số courses trong DB (bỏ qua filter)
-  const allCoursesResult = await sql`
-    SELECT COUNT(*) as total_all_courses
-    FROM courses c
-    WHERE c.deleted_at IS NULL
-  `
-
-  console.log(
-    ` [DEBUG] Total courses in DB: ${allCoursesResult[0].total_all_courses}`
-  )
-  console.log(` [DEBUG] Filtered courses count: ${totalResult[0].count}`)
 
   const totalCount = parseInt(totalResult[0].count as string, 10)
 
@@ -671,25 +659,36 @@ export async function getPublishedCoursesService({
   query = "",
   page = 1,
   limit = 12,
-  sort = "trending",
+  sort = "newest",
   categories = [],
   rating = "all",
   userId = 0,
 }: GetAllCoursesParams & { userId?: number }) {
   try {
     const offset = (page - 1) * limit
-    let orderBy = "c.created_at DESC"
+    let orderBy = "c.approved_at DESC NULLS LAST, c.created_at DESC"
+    const ratingThresholdMap: Record<string, number> = {
+      "4plus": 4,
+      "3plus": 3,
+      "2plus": 2,
+    }
+    const ratingThreshold = ratingThresholdMap[rating] ?? null
 
     switch (sort) {
+      case "trending":
+        orderBy = `(SELECT COUNT(*) FROM enrollments e_recent WHERE e_recent.course_id = c.id AND e_recent.enrolled_at >= (CURRENT_TIMESTAMP - INTERVAL '7 days')) DESC, c.enrollment_count DESC, c.approved_at DESC NULLS LAST, c.created_at DESC`
+        break
       case "popular":
-        orderBy = "c.enrollment_count DESC, c.created_at DESC"
+        orderBy = "c.enrollment_count DESC, c.approved_at DESC NULLS LAST, c.created_at DESC"
         break
       case "newest":
-        orderBy = "c.created_at DESC, c.enrollment_count DESC"
+        orderBy = "c.approved_at DESC NULLS LAST, c.created_at DESC"
         break
-      case "trending":
+      case "top-rated":
+        orderBy = "COALESCE(c.average_rating, 0) DESC, c.enrollment_count DESC, c.approved_at DESC NULLS LAST, c.created_at DESC"
+        break
       default:
-        orderBy = "c.created_at DESC"
+        orderBy = "c.approved_at DESC NULLS LAST, c.created_at DESC"
         break
     }
 
@@ -699,37 +698,28 @@ export async function getPublishedCoursesService({
         ? sql`AND category_id = ANY(${categories.map((c) => parseInt(c, 10))})`
         : sql``
 
+    // Apply rating filter using denormalized courses.average_rating (e.g. 4★ & up)
+    const ratingCondition =
+      ratingThreshold !== null
+        ? sql`AND COALESCE(c.average_rating, 0) >= ${ratingThreshold}`
+        : sql``
+
     // ✅ LOGIC CỐT LÕI: Tách nhỏ ra để dễ debug
     const rows = await sql`
       SELECT 
         c.*,
-        COALESCE(ROUND(AVG(f.rating))::smallint, 0) AS average_rating,
+        MAX(cat.name) AS category_name,
+        COALESCE(ROUND(AVG(f.rating) * 2) / 2, 0) AS average_rating,
         COALESCE(COUNT(f.id), 0)::int AS rating_count
       FROM courses c
+      LEFT JOIN categories cat ON c.category_id = cat.id
       LEFT JOIN feedback f ON f.course_id = c.id AND f.deleted_at IS NULL
       WHERE c.deleted_at IS NULL
         AND c.status = 'published'
+        AND c.visibility = 'public'
         AND c.title ILIKE ${"%" + query + "%"}
         ${categoryCondition}
-        AND (
-          -- Điều kiện 1: Khóa học Public hoặc chưa set (NULL)
-          c.visibility = 'public' 
-          OR c.visibility IS NULL
-          
-          -- Điều kiện 2: Khóa học Private nhưng được Assign
-          OR (
-            c.visibility = 'private' AND ${userId} != 0 AND EXISTS (
-              SELECT 1 FROM assignment_rules ar
-              WHERE ar.course_id = c.id
-              AND (
-                ar.target_type = 'all_employees'
-                OR (ar.target_type = 'department' AND ar.department_id = (SELECT department_id FROM users WHERE id = ${userId}))
-                OR (ar.target_type = 'role' AND ar.role_id IN (SELECT role_id FROM user_roles WHERE user_id = ${userId}))
-                OR (ar.target_type = 'user' AND ar.user_id = ${userId})
-              )
-            )
-          )
-        )
+        ${ratingCondition}
       GROUP BY c.id
       ORDER BY ${sql.unsafe(orderBy)}
       LIMIT ${limit} OFFSET ${offset}
@@ -740,24 +730,10 @@ export async function getPublishedCoursesService({
       FROM courses c
       WHERE c.deleted_at IS NULL
         AND c.status = 'published'
+        AND c.visibility = 'public'
         AND c.title ILIKE ${"%" + query + "%"}
         ${categoryCondition}
-        AND (
-          c.visibility = 'public' 
-          OR c.visibility IS NULL
-          OR (
-            c.visibility = 'private' AND ${userId} != 0 AND EXISTS (
-              SELECT 1 FROM assignment_rules ar
-              WHERE ar.course_id = c.id
-              AND (
-                ar.target_type = 'all_employees'
-                OR (ar.target_type = 'department' AND ar.department_id = (SELECT department_id FROM users WHERE id = ${userId}))
-                OR (ar.target_type = 'role' AND ar.role_id IN (SELECT role_id FROM user_roles WHERE user_id = ${userId}))
-                OR (ar.target_type = 'user' AND ar.user_id = ${userId})
-              )
-            )
-          )
-        )
+        ${ratingCondition}
     `
 
     return {
@@ -788,33 +764,20 @@ export async function getUserEnrolledCoursesService(
     const rows = await sql`
       SELECT 
         c.*,
-        COALESCE(ROUND(AVG(f.rating))::smallint, 0) AS average_rating,
-        COALESCE(COUNT(f.id), 0)::int AS rating_count
+        MAX(cat.name) AS category_name,
+        COALESCE(ROUND(AVG(f.rating) * 2) / 2, 0) AS average_rating,
+        COALESCE(COUNT(f.id), 0)::int AS rating_count,
+        MAX(e.enrolled_at) AS latest_enrolled_at
       FROM courses c
+      LEFT JOIN categories cat ON c.category_id = cat.id
       LEFT JOIN feedback f ON f.course_id = c.id AND f.deleted_at IS NULL
       INNER JOIN enrollments e ON e.course_id = c.id
       WHERE c.deleted_at IS NULL
         AND c.status = 'published'
         AND e.user_id = ${userId}
-        AND e.status != 'completed'
-        AND (
-          c.visibility = 'public' 
-          OR c.visibility IS NULL
-          OR (
-            c.visibility = 'private' AND EXISTS (
-              SELECT 1 FROM assignment_rules ar
-              WHERE ar.course_id = c.id
-              AND (
-                ar.target_type = 'all_employees'
-                OR (ar.target_type = 'department' AND ar.department_id = (SELECT department_id FROM users WHERE id = ${userId}))
-                OR (ar.target_type = 'role' AND ar.role_id IN (SELECT role_id FROM user_roles WHERE user_id = ${userId}))
-                OR (ar.target_type = 'user' AND ar.user_id = ${userId})
-              )
-            )
-          )
-        )
+        AND LOWER(TRIM(COALESCE(e.status, 'in_progress'))) != 'completed'
       GROUP BY c.id
-      ORDER BY e.enrolled_at DESC, c.created_at DESC
+      ORDER BY latest_enrolled_at DESC, c.created_at DESC
       LIMIT ${limit}
     `
 
@@ -830,37 +793,25 @@ export async function getUserEnrolledCoursesService(
  * Used for "Mới nhất từ KMS Plus" (Newest) section
  */
 export async function getNewestCoursesService(
-  userId: number = 0,
   limit: number = 12
 ) {
   try {
     const rows = await sql`
       SELECT 
         c.*,
-        COALESCE(ROUND(AVG(f.rating))::smallint, 0) AS average_rating,
+        MAX(cat.name) AS category_name,
+        COALESCE(ROUND(AVG(f.rating) * 2) / 2, 0) AS average_rating,
         COALESCE(COUNT(f.id), 0)::int AS rating_count
       FROM courses c
+      LEFT JOIN categories cat ON c.category_id = cat.id
       LEFT JOIN feedback f ON f.course_id = c.id AND f.deleted_at IS NULL
       WHERE c.deleted_at IS NULL
         AND c.status = 'published'
-        AND (
-          c.visibility = 'public' 
-          OR c.visibility IS NULL
-          OR (
-            c.visibility = 'private' AND ${userId} != 0 AND EXISTS (
-              SELECT 1 FROM assignment_rules ar
-              WHERE ar.course_id = c.id
-              AND (
-                ar.target_type = 'all_employees'
-                OR (ar.target_type = 'department' AND ar.department_id = (SELECT department_id FROM users WHERE id = ${userId}))
-                OR (ar.target_type = 'role' AND ar.role_id IN (SELECT role_id FROM user_roles WHERE user_id = ${userId}))
-                OR (ar.target_type = 'user' AND ar.user_id = ${userId})
-              )
-            )
-          )
-        )
+        AND c.visibility = 'public'
+        AND c.approved_at IS NOT NULL
+        AND c.approved_at >= (CURRENT_TIMESTAMP - INTERVAL '7 days')
       GROUP BY c.id
-      ORDER BY c.created_at DESC, c.enrollment_count DESC
+      ORDER BY c.approved_at DESC, c.created_at DESC
       LIMIT ${limit}
     `
 
@@ -876,37 +827,26 @@ export async function getNewestCoursesService(
  * Used for "Xu hướng" (Trending) section
  */
 export async function getTrendingCoursesService(
-  userId: number = 0,
   limit: number = 12
 ) {
   try {
     const rows = await sql`
       SELECT 
         c.*,
-        COALESCE(ROUND(AVG(f.rating))::smallint, 0) AS average_rating,
-        COALESCE(COUNT(f.id), 0)::int AS rating_count
+        MAX(cat.name) AS category_name,
+        COALESCE(ROUND(AVG(f.rating) * 2) / 2, 0) AS average_rating,
+        COALESCE(COUNT(f.id), 0)::int AS rating_count,
+        COUNT(DISTINCT e.id)::int AS recent_enrollment_count
       FROM courses c
+      LEFT JOIN categories cat ON c.category_id = cat.id
       LEFT JOIN feedback f ON f.course_id = c.id AND f.deleted_at IS NULL
+      INNER JOIN enrollments e ON e.course_id = c.id
       WHERE c.deleted_at IS NULL
         AND c.status = 'published'
-        AND (
-          c.visibility = 'public' 
-          OR c.visibility IS NULL
-          OR (
-            c.visibility = 'private' AND ${userId} != 0 AND EXISTS (
-              SELECT 1 FROM assignment_rules ar
-              WHERE ar.course_id = c.id
-              AND (
-                ar.target_type = 'all_employees'
-                OR (ar.target_type = 'department' AND ar.department_id = (SELECT department_id FROM users WHERE id = ${userId}))
-                OR (ar.target_type = 'role' AND ar.role_id IN (SELECT role_id FROM user_roles WHERE user_id = ${userId}))
-                OR (ar.target_type = 'user' AND ar.user_id = ${userId})
-              )
-            )
-          )
-        )
+        AND c.visibility = 'public'
+        AND e.enrolled_at >= (CURRENT_TIMESTAMP - INTERVAL '7 days')
       GROUP BY c.id
-      ORDER BY c.enrollment_count DESC, c.created_at DESC
+      ORDER BY recent_enrollment_count DESC, c.enrollment_count DESC, c.created_at DESC
       LIMIT ${limit}
     `
 
@@ -932,36 +872,78 @@ export async function getPersonalizedCoursesService(
 
     // Get user's department
     const userDept = await sql`
-      SELECT department_id FROM users WHERE id = ${userId}
+      SELECT u.department_id, d.name AS department_name
+      FROM users u
+      LEFT JOIN department d ON u.department_id = d.id
+      WHERE u.id = ${userId}
     `
 
-    if (userDept.length === 0) {
-      return { courses: [] }
+    if (userDept.length === 0 || !userDept[0].department_id) {
+      return { courses: [], departmentName: null }
     }
 
     const departmentId = userDept[0].department_id
+    const departmentName = userDept[0].department_name || null
 
     const rows = await sql`
       SELECT 
         c.*,
-        COALESCE(ROUND(AVG(f.rating))::smallint, 0) AS average_rating,
+        MAX(cat.name) AS category_name,
+        COALESCE(ROUND(AVG(f.rating) * 2) / 2, 0) AS average_rating,
         COALESCE(COUNT(f.id), 0)::int AS rating_count
       FROM courses c
+      INNER JOIN categories cat ON c.category_id = cat.id
       LEFT JOIN feedback f ON f.course_id = c.id AND f.deleted_at IS NULL
-      LEFT JOIN assignment_rules ar ON ar.course_id = c.id
       WHERE c.deleted_at IS NULL
         AND c.status = 'published'
-        AND (
-          c.visibility = 'public' 
-          OR c.visibility IS NULL
-          OR (
-            c.visibility = 'private' 
-            AND (
-              ar.target_type = 'all_employees'
-              OR (ar.target_type = 'department' AND ar.department_id = ${departmentId})
-              OR (ar.target_type = 'role' AND ar.role_id IN (SELECT role_id FROM user_roles WHERE user_id = ${userId}))
-              OR (ar.target_type = 'user' AND ar.user_id = ${userId})
-            )
+        AND c.visibility = 'public'
+        AND cat.is_deleted = false
+        AND cat.department_id = ${departmentId}
+      GROUP BY c.id
+      ORDER BY c.created_at DESC, c.enrollment_count DESC
+      LIMIT ${limit}
+    `
+
+    return { courses: rows as Course[], departmentName }
+  } catch (error) {
+    console.error("Error fetching personalized courses:", error)
+    return { courses: [], departmentName: null }
+  }
+}
+
+/**
+ * Get assigned private courses for the current user.
+ * Used for "Được giao" (Assigned) section.
+ */
+export async function getAssignedCoursesService(
+  userId: number = 0,
+  limit: number = 12
+) {
+  try {
+    if (!userId || userId === 0) {
+      return { courses: [] }
+    }
+
+    const rows = await sql`
+      SELECT 
+        c.*,
+        MAX(cat.name) AS category_name,
+        COALESCE(ROUND(AVG(f.rating) * 2) / 2, 0) AS average_rating,
+        COALESCE(COUNT(f.id), 0)::int AS rating_count
+      FROM courses c
+      LEFT JOIN categories cat ON c.category_id = cat.id
+      LEFT JOIN feedback f ON f.course_id = c.id AND f.deleted_at IS NULL
+      WHERE c.deleted_at IS NULL
+        AND c.status = 'published'
+        AND c.visibility = 'private'
+        AND EXISTS (
+          SELECT 1 FROM assignment_rules ar
+          WHERE ar.course_id = c.id
+          AND (
+            ar.target_type = 'all_employees'
+            OR (ar.target_type = 'department' AND ar.department_id = (SELECT department_id FROM users WHERE id = ${userId}))
+            OR (ar.target_type = 'role' AND ar.role_id IN (SELECT role_id FROM user_roles WHERE user_id = ${userId}))
+            OR (ar.target_type = 'user' AND ar.user_id = ${userId})
           )
         )
       GROUP BY c.id
@@ -971,7 +953,7 @@ export async function getPersonalizedCoursesService(
 
     return { courses: rows as Course[] }
   } catch (error) {
-    console.error("Error fetching personalized courses:", error)
+    console.error("Error fetching assigned courses:", error)
     return { courses: [] }
   }
 }
@@ -989,10 +971,12 @@ export async function getPopularCoursesByCategoryService(
     const rows = await sql`
       SELECT 
         c.*,
-        COALESCE(ROUND(AVG(f.rating))::smallint, 0) AS average_rating,
+        MAX(cat.name) AS category_name,
+        COALESCE(ROUND(AVG(f.rating) * 2) / 2, 0) AS average_rating,
         COALESCE(COUNT(f.id), 0)::int AS rating_count,
         ROW_NUMBER() OVER (PARTITION BY c.category_id ORDER BY c.enrollment_count DESC, c.created_at DESC) as category_rank
       FROM courses c
+      LEFT JOIN categories cat ON c.category_id = cat.id
       LEFT JOIN feedback f ON f.course_id = c.id AND f.deleted_at IS NULL
       WHERE c.deleted_at IS NULL
         AND c.status = 'published'

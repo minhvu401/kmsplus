@@ -144,6 +144,7 @@ interface UpdateCourseFormProps {
   availableLessons: Lesson[]
   availableQuizzes: Quiz[]
   onSuccess: () => void
+  onError?: (error?: string) => void
   userRole?: string // ✅ THÊM DÒNG NÀY
 }
 
@@ -301,6 +302,7 @@ export default function UpdateCourseForm({
   availableLessons: initialLessons = [],
   availableQuizzes: initialQuizzes = [],
   onSuccess,
+  onError,
   userRole = "", // ✅ NHẬN PROP Ở ĐÂY
 }: UpdateCourseFormProps) {
   const [categories, setCategories] = useState<{ id: number; name: string }[]>(
@@ -591,14 +593,13 @@ export default function UpdateCourseForm({
 
       const res = await updateCourseAPI(payload.id, finalPayload)
       if (res.success) {
-        message.success("Cập nhật Khóa học thành công!")
         if (onSuccess) onSuccess()
         router.refresh()
       } else {
-        message.error(res.error || "Cập nhật thất bại")
+        if (onError) onError(res.error || "Cập nhật thất bại")
       }
     } catch (err) {
-      message.error("Đã xảy ra lỗi hệ thống.")
+      if (onError) onError("Đã xảy ra lỗi hệ thống.")
     } finally {
       setLoading(false)
     }
@@ -1793,6 +1794,7 @@ function CurriculumContentBank({
           </span>
         }
         open={isCreateModalOpen}
+        forceRender
         onCancel={() => {
           setIsCreateModalOpen(false)
           form.resetFields()

@@ -1,7 +1,7 @@
 // @/src/app/(main)/courses/components/ManageCoursesClient.tsx
 "use client"
 
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useTransition } from "react"
 import { useRouter, usePathname, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import {
@@ -35,6 +35,7 @@ import {
   CheckOutlined,
   CloseOutlined,
   ClearOutlined,
+  InfoCircleOutlined,
 } from "@ant-design/icons"
 import type { Course } from "@/service/course.service"
 import type { Category } from "@/service/question.service"
@@ -83,6 +84,7 @@ export default function ManageCoursesClient({
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
+  const [isFilterPending, startFilterTransition] = useTransition()
   const [messageApi, contextHolder] = message.useMessage()
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [searchInput, setSearchInput] = useState(query)
@@ -97,6 +99,11 @@ export default function ManageCoursesClient({
   const [courseToDelete, setCourseToDelete] = useState<Course | null>(null)
   const [isApproveModalOpen, setIsApproveModalOpen] = useState(false)
   const [courseToApprove, setCourseToApprove] = useState<Course | null>(null)
+  const [isRejectModalOpen, setIsRejectModalOpen] = useState(false)
+  const [courseToReject, setCourseToReject] = useState<Course | null>(null)
+  const [rejectReason, setRejectReason] = useState("")
+  const [isViewReasonModalOpen, setIsViewReasonModalOpen] = useState(false)
+  const [viewReason, setViewReason] = useState<string>("")
 
   // New: Additional filters and view modes
   // ✅ ĐLCS THÊM: Initialize từ URL params
@@ -109,7 +116,6 @@ export default function ManageCoursesClient({
     return urlStatus || "All"
   })
   const [viewMode, setViewMode] = useState<"list" | "grid">("list")
-  const [filteredCourses, setFilteredCourses] = useState<Course[]>(courses)
 
   // Check if user is Training Manager (case-insensitive, handle spaces)
   const normalizedRole = userRole?.toLowerCase().trim() || ""
@@ -167,25 +173,6 @@ export default function ManageCoursesClient({
     router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname)
   }, [messageApi, pathname, router, searchParams])
 
-  // Apply filters and sorting
-  useEffect(() => {
-    let filtered = [...courses]
-
-    // Filter by status
-    if (selectedStatus !== "All") {
-      filtered = filtered.filter((course) => course.status === selectedStatus)
-    }
-
-    // Sort courses
-    filtered.sort((a, b) => {
-      const dateA = new Date(a.created_at).getTime()
-      const dateB = new Date(b.created_at).getTime()
-      return sortOrder === "newest" ? dateB - dateA : dateA - dateB
-    })
-
-    setFilteredCourses(filtered)
-  }, [courses, selectedStatus, sortOrder])
-
   const handleCategoryChange = (values: string[]) => {
     const params = new URLSearchParams(searchParams)
     params.set("page", "1")
@@ -199,7 +186,9 @@ export default function ManageCoursesClient({
     }
 
     setSelectedCategoryList(values)
-    router.push(`${pathname}?${params.toString()}`)
+    startFilterTransition(() => {
+      router.push(`${pathname}?${params.toString()}`)
+    })
   }
 
   // ✅ ĐLCS THÊM: Handler cho status change - update URL
@@ -214,7 +203,9 @@ export default function ManageCoursesClient({
     }
 
     setSelectedStatus(newStatus)
-    router.push(`${pathname}?${params.toString()}`)
+    startFilterTransition(() => {
+      router.push(`${pathname}?${params.toString()}`)
+    })
   }
 
   // ✅ ĐLCS THÊM: Handler cho sort change - update URL
@@ -229,7 +220,9 @@ export default function ManageCoursesClient({
     }
 
     setSortOrder(newSort)
-    router.push(`${pathname}?${params.toString()}`)
+    startFilterTransition(() => {
+      router.push(`${pathname}?${params.toString()}`)
+    })
   }
 
   const handleClearFilters = () => {
@@ -238,7 +231,9 @@ export default function ManageCoursesClient({
     setSearchInput("")
     setSelectedStatus("All")
     setSortOrder("newest")
-    router.push(`${pathname}?${params.toString()}`)
+    startFilterTransition(() => {
+      router.push(`${pathname}?${params.toString()}`)
+    })
   }
 
   const handleOpenUpdate = async (course: Course) => {
@@ -315,11 +310,39 @@ export default function ManageCoursesClient({
   const handleUpdateSuccess = () => {
     setIsUpdateModalOpen(false)
     setSelectedCourse(null)
+    messageApi.success(
+      language === "vi"
+        ? "Cập nhật khóa học thành công"
+        : "Course updated successfully"
+    )
     router.refresh() // Tải lại dữ liệu bảng
   }
+  const handleUpdateError = (error?: string) => {
+    messageApi.error(
+      error ||
+        (language === "vi"
+          ? "Không thể cập nhật khóa học"
+          : "Unable to update course")
+    )
+  }
+
   const handleCreateSuccess = () => {
     setIsCreateModalOpen(false)
+    messageApi.success(
+      language === "vi"
+        ? "Tạo khóa học thành công"
+        : "Course created successfully"
+    )
     router.refresh()
+  }
+
+  const handleCreateError = (error?: string) => {
+    messageApi.error(
+      error ||
+        (language === "vi"
+          ? "Không thể tạo khóa học"
+          : "Unable to create course")
+    )
   }
   // --- Search ---
   const handleSearch = (value: string) => {
@@ -329,7 +352,9 @@ export default function ManageCoursesClient({
       selectedCategoryList.forEach((cat) => params.append("category", cat))
     }
     params.set("page", "1")
-    router.push(`/courses/management?${params.toString()}`)
+    startFilterTransition(() => {
+      router.push(`/courses/management?${params.toString()}`)
+    })
   }
 
   // --- Approve ---
@@ -390,33 +415,66 @@ export default function ManageCoursesClient({
   }
 
   // --- Reject ---
-  const handleReject = (id: number, title: string) => {
-    Modal.confirm({
-      title: language === "vi" ? "Từ chối Khóa học" : "Reject Course",
+  const handleReject = (course: Course) => {
+    setCourseToReject(course)
+    setRejectReason("")
+    setIsRejectModalOpen(true)
+  }
+
+  const confirmReject = async () => {
+    if (!courseToReject) return
+
+    const messageKey = `reject-course-${courseToReject.id}`
+    messageApi.open({
+      key: messageKey,
+      type: "loading",
       content:
-        language === "vi"
-          ? `Bạn có chắc chắn muốn từ chối "${title}"? Khóa học này sẽ được chuyển về trạng thái Nháp.`
-          : `Are you sure you want to reject "${title}"? This course will be moved to the draft status.`,
-      okText: language === "vi" ? "Từ chối" : "Reject",
-      okType: "danger",
-      cancelText: "Hủy",
-      centered: true,
-      onOk: async () => {
-        try {
-          // Tại đây bạn sẽ gọi API để cập nhật status thành 'draft'
-          messageApi.info(
-            language === "vi"
-              ? "Khóa học đã bị từ chối và chuyển về trạng thái Nháp."
-              : "Course has been rejected and moved to draft status."
-          )
-          router.refresh()
-        } catch (error) {
-          messageApi.error(
-            language === "vi" ? "Lỗi hệ thống" : "System error occurred"
-          )
-        }
-      },
+        language === "vi" ? "Đang từ chối khóa học..." : "Rejecting course...",
+      duration: 0,
     })
+
+    try {
+      const res = await rejectCourseAction(courseToReject.id, rejectReason)
+      if (res.success) {
+        messageApi.open({
+          key: messageKey,
+          type: "success",
+          content:
+            language === "vi"
+              ? "Từ chối khóa học thành công"
+              : "Course rejected successfully",
+          duration: 2,
+        })
+        setTimeout(() => router.refresh(), 200)
+      } else {
+        messageApi.open({
+          key: messageKey,
+          type: "error",
+          content:
+            res.error ||
+            (language === "vi"
+              ? "Không thể từ chối khóa học"
+              : "Unable to reject course"),
+          duration: 3,
+        })
+      }
+    } catch (error) {
+      messageApi.open({
+        key: messageKey,
+        type: "error",
+        content: language === "vi" ? "Lỗi hệ thống" : "System error occurred",
+        duration: 3,
+      })
+    } finally {
+      setIsRejectModalOpen(false)
+      setCourseToReject(null)
+      setRejectReason("")
+    }
+  }
+
+  const handleViewReason = (reason: string) => {
+    setViewReason(reason)
+    setIsViewReasonModalOpen(true)
   }
 
   // --- Delete ---
@@ -501,7 +559,9 @@ export default function ManageCoursesClient({
     if (sortOrder !== "newest") params.set("sort", sortOrder)
 
     params.set("page", String(newPage))
-    router.push(`/courses/management?${params.toString()}`)
+    startFilterTransition(() => {
+      router.push(`/courses/management?${params.toString()}`)
+    })
   }
 
   // Status color mapping
@@ -612,7 +672,7 @@ export default function ManageCoursesClient({
       title: language === "vi" ? "Trạng thái" : "Status",
       dataIndex: "status",
       key: "status",
-      render: (status: string) => {
+      render: (status: string, record: Course) => {
         let color = "default"
         if (status === "published") color = "success"
         if (status === "pending_approval") color = "processing"
@@ -620,14 +680,33 @@ export default function ManageCoursesClient({
         if (status === "rejected") color = "error"
 
         return (
-          <Tag
-            color={color}
-            className="uppercase text-xs font-bold px-2 py-0.5 rounded-full"
-          >
-            {COURSE_STATUS_LABELS[
-              status as keyof typeof COURSE_STATUS_LABELS
-            ] || status}
-          </Tag>
+          <div className="flex items-center gap-2">
+            <Tag
+              color={color}
+              className="uppercase text-xs font-bold px-2 py-0.5 rounded-full"
+            >
+              {COURSE_STATUS_LABELS[
+                status as keyof typeof COURSE_STATUS_LABELS
+              ] || status}
+            </Tag>
+            {status === "rejected" && record.rejection_reason && (
+              <Tooltip
+                title={
+                  language === "vi"
+                    ? "Xem lý do từ chối"
+                    : "View rejection reason"
+                }
+              >
+                <InfoCircleOutlined
+                  className="text-blue-600 cursor-pointer hover:text-blue-800"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleViewReason(record.rejection_reason || "")
+                  }}
+                />
+              </Tooltip>
+            )}
+          </div>
         )
       },
     },
@@ -656,7 +735,7 @@ export default function ManageCoursesClient({
                 size="small"
                 onClick={(e) => {
                   e.stopPropagation()
-                  handleReject(record.id, record.title)
+                  handleReject(record)
                 }}
               >
                 {language === "vi" ? "Từ chối" : "Reject"}
@@ -895,6 +974,8 @@ export default function ManageCoursesClient({
                 placeholder="Select categories..."
                 value={selectedCategoryList}
                 onChange={handleCategoryChange}
+                showSearch
+                optionFilterProp="label"
                 options={categories.map((cat: any) => ({
                   label: cat.name,
                   value: String(cat.id),
@@ -985,7 +1066,8 @@ export default function ManageCoursesClient({
           <div className="p-6">
             <Table
               columns={columns}
-              dataSource={filteredCourses}
+              dataSource={courses}
+              loading={isFilterPending}
               rowKey="id"
               pagination={{
                 current: page,
@@ -1004,8 +1086,9 @@ export default function ManageCoursesClient({
             />
           </div>
         ) : (
-          <div className="p-6">
-            {filteredCourses.length === 0 ? (
+          <Spin spinning={isFilterPending}>
+            <div className="p-6">
+            {courses.length === 0 ? (
               <div className="text-center py-8">
                 {language === "vi"
                   ? "Không tìm thấy khóa học"
@@ -1013,7 +1096,7 @@ export default function ManageCoursesClient({
               </div>
             ) : (
               <Row gutter={[16, 16]}>
-                {filteredCourses.map((course) => (
+                {courses.map((course) => (
                   <Col xs={24} sm={12} lg={8} xl={6} key={course.id}>
                     <Card
                       hoverable
@@ -1039,14 +1122,36 @@ export default function ManageCoursesClient({
                         )
                       }
                       extra={
-                        <Tag
-                          color={statusColors[course.status] || "default"}
-                          className="text-xs"
-                        >
-                          {COURSE_STATUS_LABELS[
-                            course.status as keyof typeof COURSE_STATUS_LABELS
-                          ] || course.status}
-                        </Tag>
+                        <div className="flex items-center gap-2">
+                          <Tag
+                            color={statusColors[course.status] || "default"}
+                            className="text-xs"
+                          >
+                            {COURSE_STATUS_LABELS[
+                              course.status as keyof typeof COURSE_STATUS_LABELS
+                            ] || course.status}
+                          </Tag>
+                          {course.status === "rejected" &&
+                            course.rejection_reason && (
+                              <Tooltip
+                                title={
+                                  language === "vi"
+                                    ? "Xem lý do từ chối"
+                                    : "View rejection reason"
+                                }
+                              >
+                                <InfoCircleOutlined
+                                  className="text-blue-600 cursor-pointer hover:text-blue-800"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleViewReason(
+                                      course.rejection_reason || ""
+                                    )
+                                  }}
+                                />
+                              </Tooltip>
+                            )}
+                        </div>
                       }
                       className="cursor-pointer hover:shadow-lg transition-shadow h-full flex flex-col"
                       styles={{ body: { flex: 1, display: 'flex', flexDirection: 'column' } }}
@@ -1141,7 +1246,7 @@ export default function ManageCoursesClient({
                                 className="w-full"
                                 onClick={(e) => {
                                   e.stopPropagation()
-                                  handleReject(course.id, course.title)
+                                  handleReject(course)
                                 }}
                               >
                                 {language === "vi" ? "Từ chối" : "Reject"}
@@ -1272,7 +1377,8 @@ export default function ManageCoursesClient({
                 ))}
               </Row>
             )}
-          </div>
+            </div>
+          </Spin>
         )}
       </div>
 
@@ -1292,6 +1398,7 @@ export default function ManageCoursesClient({
             availableLessons={availableLessons}
             availableQuizzes={availableQuizzes}
             onSuccess={handleUpdateSuccess}
+            onError={handleUpdateError}
             userRole={userRole} // ✅ TRUYỀN THÊM PROP NÀY XUỐNG FORM UPDATE
           />
         )}
@@ -1309,6 +1416,7 @@ export default function ManageCoursesClient({
           availableLessons={availableLessons}
           availableQuizzes={availableQuizzes}
           onSuccess={handleCreateSuccess}
+          onError={handleCreateError}
         />
       </Modal>
 
@@ -1369,6 +1477,86 @@ export default function ManageCoursesClient({
             </>
           )}
         </p>
+      </Modal>
+
+      {/* Reject Reason Modal */}
+      <Modal
+        title={
+          language === "vi"
+            ? "Từ chối Khóa học - Nhập lý do"
+            : "Reject Course - Enter Reason"
+        }
+        open={isRejectModalOpen}
+        onOk={confirmReject}
+        onCancel={() => {
+          setIsRejectModalOpen(false)
+          setCourseToReject(null)
+          setRejectReason("")
+        }}
+        okText={language === "vi" ? "Từ chối" : "Reject"}
+        okType="danger"
+        cancelText={language === "vi" ? "Hủy" : "Cancel"}
+        centered
+        okButtonProps={{ disabled: !rejectReason.trim() }}
+      >
+        <div className="space-y-4">
+          <p>
+            {language === "vi" ? (
+              <>
+                Bạn đang từ chối khóa học <b>{courseToReject?.title}</b>. Vui
+                lòng nhập lý do từ chối:
+              </>
+            ) : (
+              <>
+                You are rejecting the course <b>{courseToReject?.title}</b>.
+                Please enter the rejection reason:
+              </>
+            )}
+          </p>
+          <Input.TextArea
+            rows={4}
+            placeholder={
+              language === "vi"
+                ? "Nhập lý do từ chối khóa học..."
+                : "Enter rejection reason..."
+            }
+            value={rejectReason}
+            onChange={(e) => setRejectReason(e.target.value)}
+            maxLength={500}
+            showCount
+          />
+        </div>
+      </Modal>
+
+      {/* View Rejection Reason Modal */}
+      <Modal
+        title={language === "vi" ? "Lý do từ chối" : "Rejection Reason"}
+        open={isViewReasonModalOpen}
+        onCancel={() => {
+          setIsViewReasonModalOpen(false)
+          setViewReason("")
+        }}
+        footer={[
+          <Button
+            key="close"
+            onClick={() => {
+              setIsViewReasonModalOpen(false)
+              setViewReason("")
+            }}
+          >
+            {language === "vi" ? "Đóng" : "Close"}
+          </Button>,
+        ]}
+        centered
+      >
+        <div className="space-y-2">
+          {/* <p className="text-gray-600">
+            {language === "vi" ? "Lý do từ chối:" : "Rejection reason:"}
+          </p> */}
+          <p className="text-gray-900 font-medium bg-gray-50 p-4 rounded-lg">
+            {viewReason}
+          </p>
+        </div>
       </Modal>
     </div>
   )

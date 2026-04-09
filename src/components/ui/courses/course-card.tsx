@@ -23,7 +23,7 @@ interface CourseCardProps {
   dueDate?: string // ISO date format or null
   skillTags?: string[]
   rating?: number // e.g., 4.8
-  students?: number // enrollment count
+  students?: number // feedback/rating count shown next to stars
   description?: string // short description
 }
 
@@ -111,9 +111,13 @@ export const CourseCard: React.FC<CourseCardProps> = React.memo(
       return `${wholeHours}h ${minutes}m`
     }
 
+    const categoryBadgeLabel =
+      course.category_name?.trim() || "Chưa phân loại"
+
     const difficultyColor = getDifficultyColor(course.duration_hours)
     const difficultyLabel = getDifficultyLabel(course.duration_hours)
     const isResuming = enrollmentStatus === "in-progress"
+    const normalizedRating = Number(rating ?? 0) || 0
 
     return (
       <div
@@ -375,6 +379,25 @@ export const CourseCard: React.FC<CourseCardProps> = React.memo(
             </h3>
           </Tooltip>
 
+          {/* Category Badge */}
+          <div
+            style={{
+              marginBottom: "8px",
+              maxWidth: "fit-content",
+              backgroundColor: "#eff6ff",
+              color: "#1e40af",
+              border: "1px solid #bfdbfe",
+              padding: "3px 10px",
+              borderRadius: "999px",
+              fontSize: "11px",
+              fontWeight: 700,
+              lineHeight: 1.2,
+            }}
+            title={categoryBadgeLabel}
+          >
+            {categoryBadgeLabel}
+          </div>
+
           {/* Course Description */}
           {description && (
             <p
@@ -509,7 +532,8 @@ export const CourseCard: React.FC<CourseCardProps> = React.memo(
                     key={i}
                     style={{
                       fontSize: "12px",
-                      color: i < Math.floor(rating) ? "#fbbf24" : "#e5e7eb",
+                      color:
+                        i < Math.floor(normalizedRating) ? "#fbbf24" : "#e5e7eb",
                     }}
                   />
                 ))}
@@ -517,7 +541,7 @@ export const CourseCard: React.FC<CourseCardProps> = React.memo(
               <span
                 style={{ fontSize: "12px", fontWeight: 700, color: "#111827" }}
               >
-                {rating.toFixed(1)}
+                {normalizedRating.toFixed(1)}
               </span>
             </div>
 
