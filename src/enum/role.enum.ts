@@ -3,7 +3,6 @@ export enum Role {
   CONTRIBUTOR = "Contributor",
   TRAINING_MANAGER = "Training Manager",
   ADMIN = "Admin",
-  DASHBOARD_VIEWER = "Dashboard Viewer",
   DIRECTOR = "Director",
 }
 
@@ -32,10 +31,5 @@ export const RoleConfig = {
     id: 5,
     name: "Director",
     label: "Giám đốc",
-  },
-  [Role.DASHBOARD_VIEWER]: {
-    id: 6,
-    name: "Dashboard Viewer",
-    label: "Người xem bảng điều khiển",
   },
 } as const

@@ -1048,7 +1048,8 @@ export default function ManageCoursesClient({
                           ] || course.status}
                         </Tag>
                       }
-                      className="cursor-pointer hover:shadow-lg transition-shadow"
+                      className="cursor-pointer hover:shadow-lg transition-shadow h-full flex flex-col"
+                      styles={{ body: { flex: 1, display: 'flex', flexDirection: 'column' } }}
                       onClick={() => {
                         if (!canEditCourse(course)) return
                         handleOpenUpdate(course)
@@ -1117,150 +1118,154 @@ export default function ManageCoursesClient({
                           </Text>
                         </div>
                       </div>
-                      <div className="mt-4 space-y-2">
+                      <div className="mt-4 space-y-2 mt-auto">
+                        {canApproveCourse && course.status === "pending_approval" && (
+                          <div className="flex gap-2">
+                            <span className="flex-1">
+                              <Button
+                                type="primary"
+                                size="small"
+                                className="w-full bg-blue-500 hover:bg-blue-600 border-blue-500 hover:border-blue-600"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleApprove(course)
+                                }}
+                              >
+                                {language === "vi" ? "Duyệt" : "Approve"}
+                              </Button>
+                            </span>
+                            <span className="flex-1">
+                              <Button
+                                danger
+                                size="small"
+                                className="w-full"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleReject(course.id, course.title)
+                                }}
+                              >
+                                {language === "vi" ? "Từ chối" : "Reject"}
+                              </Button>
+                            </span>
+                          </div>
+                        )}
                         <div className="flex gap-2">
-                          <Tooltip
-                            title={
-                              canEditCourse(course)
-                                ? language === "vi"
+                          {canEditCourse(course) && (
+                            <Tooltip
+                              title={
+                                language === "vi"
                                   ? "Chỉnh sửa khóa học"
                                   : "Edit Course"
-                                : language === "vi"
-                                  ? "Bạn chỉ có thể chỉnh sửa khóa học do bạn tạo"
-                                  : "You can only edit courses that you created"
-                            }
-                          >
-                            <span className="flex-1">
-                              <Button
-                                type="text"
-                                size="small"
-                                icon={<EditOutlined />}
-                                disabled={!canEditCourse(course)}
-                                className={
-                                  canEditCourse(course)
-                                    ? "w-full text-blue-600 hover:!text-blue-700"
-                                    : "w-full !text-gray-400 cursor-not-allowed"
-                                }
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  handleOpenUpdate(course)
-                                }}
-                              >
-                                {language === "vi" ? "Chỉnh sửa" : "Edit"}
-                              </Button>
-                            </span>
-                          </Tooltip>
-                          <Tooltip
-                            title={
-                              course.status === "published"
-                                ? language === "vi"
-                                  ? "Khóa học đã được xuất bản"
-                                  : "Course published"
-                                : course.status === "pending_approval"
+                              }
+                            >
+                              <span className="flex-1">
+                                <Button
+                                  type="text"
+                                  size="small"
+                                  icon={<EditOutlined />}
+                                  className="w-full text-blue-600 hover:!text-blue-700"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleOpenUpdate(course)
+                                  }}
+                                >
+                                  {language === "vi" ? "Chỉnh sửa" : "Edit"}
+                                </Button>
+                              </span>
+                            </Tooltip>
+                          )}
+                          {(course.status !== "published" && course.status !== "pending_approval") && (
+                            <Tooltip
+                              title={
+                                language === "vi"
+                                  ? "Xóa khóa học"
+                                  : "Delete Course"
+                              }
+                            >
+                              <span className="flex-1">
+                                <Button
+                                  type="text"
+                                  danger
+                                  size="small"
+                                  icon={<DeleteOutlined />}
+                                  className="w-full hover:bg-red-50"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleDelete(course)
+                                  }}
+                                >
+                                  {language === "vi" ? "Xóa" : "Delete"}
+                                </Button>
+                              </span>
+                            </Tooltip>
+                          )}
+                        </div>
+                        {course.status === "published" && (
+                          <div className="flex gap-2">
+                            <Tooltip
+                              title={
+                                course.status !== "published"
                                   ? language === "vi"
-                                    ? "Khóa học đang chờ duyệt"
-                                    : "Course pending approval"
+                                    ? "Khóa học chưa được xuất bản"
+                                    : "Course not published"
                                   : ""
-                            }
-                          >
-                            <span className="flex-1">
-                              <Button
-                                type="text"
-                                danger={course.status !== "published"}
-                                size="small"
-                                icon={<DeleteOutlined />}
-                                disabled={
-                                  course.status === "published" ||
-                                  course.status === "pending_approval"
-                                }
-                                className={
-                                  course.status === "published" ||
-                                  course.status === "pending_approval"
-                                    ? "w-full !text-gray-400 cursor-not-allowed"
-                                    : "w-full hover:bg-red-50"
-                                }
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  handleDelete(course)
-                                }}
-                              >
-                                {language === "vi" ? "Xóa" : "Delete"}
-                              </Button>
-                            </span>
-                          </Tooltip>
-                        </div>
-                        <div className="flex gap-2">
-                          <Tooltip
-                            title={
-                              course.status !== "published"
-                                ? language === "vi"
-                                  ? "Khóa học chưa được xuất bản"
-                                  : "Course not published"
-                                : ""
-                            }
-                          >
-                            <span className="w-full">
-                              <Button
-                                type="text"
-                                size="small"
-                                icon={<ReadOutlined />}
-                                disabled={course.status !== "published"}
-                                className={
-                                  course.status !== "published"
-                                    ? "w-full !text-gray-400 cursor-not-allowed"
-                                    : "w-full text-green-600 hover:!text-green-700 hover:bg-green-50"
-                                }
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  if (course.status !== "published") return
-                                  router.push(
-                                    `/courses/management/${course.id}/enrollments`
-                                  )
-                                }}
-                              >
-                                {language === "vi"
-                                  ? "Xem Ghi danh"
-                                  : "View Enrollments"}
-                              </Button>
-                            </span>
-                          </Tooltip>
-                        </div>
-                        <div className="flex gap-2">
-                          <Tooltip
-                            title={
-                              course.status !== "published"
-                                ? language === "vi"
-                                  ? "Khóa học chưa được xuất bản"
-                                  : "Course not published"
-                                : ""
-                            }
-                          >
-                            <span className="w-full">
-                              <Button
-                                type="text"
-                                size="small"
-                                icon={<StarOutlined />}
-                                disabled={course.status !== "published"}
-                                className={
-                                  course.status !== "published"
-                                    ? "w-full !text-gray-400 cursor-not-allowed"
-                                    : "w-full !text-yellow-700 hover:!text-amber-700 hover:bg-yellow-50"
-                                }
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  if (course.status !== "published") return
-                                  router.push(
-                                    `/courses/management/${course.id}/feedback`
-                                  )
-                                }}
-                              >
-                                {language === "vi"
-                                  ? "Xem phản hồi"
-                                  : "View Feedback"}
-                              </Button>
-                            </span>
-                          </Tooltip>
-                        </div>
+                              }
+                            >
+                              <span className="w-full">
+                                <Button
+                                  type="text"
+                                  size="small"
+                                  icon={<ReadOutlined />}
+                                  className="w-full text-green-600 hover:!text-green-700 hover:bg-green-50"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    if (course.status !== "published") return
+                                    router.push(
+                                      `/courses/management/${course.id}/enrollments`
+                                    )
+                                  }}
+                                >
+                                  {language === "vi"
+                                    ? "Xem Ghi danh"
+                                    : "View Enrollments"}
+                                </Button>
+                              </span>
+                            </Tooltip>
+                          </div>
+                        )}
+                        {course.status === "published" && (
+                          <div className="flex gap-2">
+                            <Tooltip
+                              title={
+                                course.status !== "published"
+                                  ? language === "vi"
+                                    ? "Khóa học chưa được xuất bản"
+                                    : "Course not published"
+                                  : ""
+                              }
+                            >
+                              <span className="w-full">
+                                <Button
+                                  type="text"
+                                  size="small"
+                                  icon={<StarOutlined />}
+                                  className="w-full !text-yellow-700 hover:!text-amber-700 hover:bg-yellow-50"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    if (course.status !== "published") return
+                                    router.push(
+                                      `/courses/management/${course.id}/feedback`
+                                    )
+                                  }}
+                                >
+                                  {language === "vi"
+                                    ? "Xem phản hồi"
+                                    : "View Feedback"}
+                                </Button>
+                              </span>
+                            </Tooltip>
+                          </div>
+                        )}
                       </div>
                     </Card>
                   </Col>
