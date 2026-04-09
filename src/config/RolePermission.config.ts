@@ -159,26 +159,38 @@ export const rolePermissionsMap: Record<Role, Permission[]> = {
     Permission.AI_EXPLANATION,
   ],
 
-  // DASHBOARD_VIEWER: 3 perms - xem thống kê cơ bản
-  [Role.DASHBOARD_VIEWER]: [
-    Permission.LOGIN,
-    Permission.LOGOUT,
-    Permission.VIEW_PROFILE,
-  ],
-
   // DIRECTOR: 14 perms - phê duyệt khóa học, xem thống kê
   [Role.DIRECTOR]: [
     // Access
     Permission.LOGIN,
     Permission.LOGOUT,
     Permission.VIEW_PROFILE,
+    // Questions - View
+    Permission.VIEW_QUESTION_LIST,
+    Permission.SEARCH_QUESTION,
+    Permission.READ_QUESTION,
+    Permission.CREATE_ANSWER,
+    Permission.EDIT_ANSWER,
+    Permission.DELETE_ANSWER,
+    Permission.OPEN_QUESTION,
+    Permission.CLOSE_QUESTION,
+    Permission.SHARE_QUESTION,
+    // Articles 
+    Permission.VIEW_ARTICLE_LIST,
+    Permission.SEARCH_ARTICLE,
+    Permission.READ_ARTICLE,
+    Permission.COMMENT_ARTICLE,
+    Permission.EDIT_ARTICLE_COMMENT,
+    Permission.DELETE_ARTICLE_COMMENT,
     // Courses - approve only
     Permission.VIEW_QUIZ,
     Permission.VIEW_QUIZ_LIST,
     Permission.VIEW_QUIZ_QUESTION,
-    Permission.APPROVE_COURSE,
+    Permission.VIEW_COURSE_LIST,
+    Permission.SEARCH_COURSE,
+    Permission.READ_COURSE,
+    // Permission.APPROVE_COURSE,
     Permission.VIEW_COURSE_STATISTICS,
-    Permission.REVIEW_COURSE,
     // System
     Permission.MONITOR_ACTIVITY,
     Permission.VIEW_STATISTICS,
