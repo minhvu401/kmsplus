@@ -22,8 +22,6 @@ export async function POST(request: NextRequest) {
   try {
     // Verify permission
     await requirePermission(Permission.CREATE_QUIZ)
-    console.log("[API] Authentication verified")
-
     const formData = await request.formData()
     console.log("[API] FormData received, parsing and validating...")
 

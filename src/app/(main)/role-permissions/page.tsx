@@ -145,7 +145,6 @@ const PERMISSION_GROUPS: PermissionGroup[] = [
 
 const ROLE_ORDER = [
   Role.EMPLOYEE,
-  Role.DASHBOARD_VIEWER,
   Role.CONTRIBUTOR,
   Role.TRAINING_MANAGER,
   Role.DIRECTOR,
@@ -160,7 +159,6 @@ const getRoleTranslationKey = (role: Role): string => {
     [Role.TRAINING_MANAGER]: "trainingmanager",
     [Role.DIRECTOR]: "director",
     [Role.ADMIN]: "admin",
-    [Role.DASHBOARD_VIEWER]: "dashboardviewer",
   }
   return `role.${roleMap[role]}`
 }

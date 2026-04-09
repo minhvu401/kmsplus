@@ -4,6 +4,8 @@ import React, {
   useState,
   useEffect,
   useRef,
+  useCallback,
+  useMemo,
   type ClipboardEvent,
   type KeyboardEvent,
 } from "react"
@@ -53,6 +55,85 @@ import { ArticleSearch } from "@/components/ui/articles/article-search"
 import { stripHtml } from "@/utils/sanitize"
 import type { Article, TopAuthor } from "@/service/articles.service"
 
+// Memoized Title Input Component - Using native input
+const TitleInput = React.memo(
+  React.forwardRef<
+    HTMLInputElement,
+    { onChange: (e: React.ChangeEvent<HTMLInputElement>) => void }
+  >(({ onChange }, ref) => (
+    <input
+      ref={ref}
+      type="text"
+      placeholder="Nhập tiêu đề bài viết"
+      onChange={onChange}
+      autoComplete="off"
+      style={{
+        width: "100%",
+        padding: "6px 11px",
+        fontSize: "14px",
+        lineHeight: "1.5",
+        border: "1px solid #d9d9d9",
+        borderRadius: "6px",
+        boxSizing: "border-box",
+        transition: "border-color 0.3s",
+      }}
+      onFocus={(e) => {
+        e.currentTarget.style.borderColor = "#40a9ff"
+        e.currentTarget.style.boxShadow = "0 0 0 2px rgba(24, 144, 255, 0.2)"
+      }}
+      onBlur={(e) => {
+        e.currentTarget.style.borderColor = "#d9d9d9"
+        e.currentTarget.style.boxShadow = "none"
+      }}
+    />
+  ))
+)
+
+// Title Section Component - Isolated with memo
+const TitleSection = React.memo(
+  ({
+    inputRef,
+    onInputChange,
+  }: {
+    inputRef: React.Ref<any>
+    onInputChange: (e: React.ChangeEvent<HTMLInputElement>) => void
+  }) => {
+    const [charCount, setCharCount] = useState(0)
+
+    const handleChange = useCallback(
+      (e: React.ChangeEvent<HTMLInputElement>) => {
+        setCharCount(e.target.value.replace(/<[^>]*>/g, "").trim().length)
+        onInputChange(e)
+      },
+      [onInputChange]
+    )
+
+    return (
+      <>
+        <div style={{ marginBottom: "16px" }}>
+          <span
+            style={{
+              fontSize: "13px",
+              fontWeight: "600",
+              color: "#111827",
+              display: "block",
+              marginBottom: "8px",
+            }}
+          >
+            Tiêu đề
+          </span>
+          <TitleInput ref={inputRef} onChange={handleChange} />
+        </div>
+        <Flex justify="flex-end" align="center" className="mb-4">
+          <span style={{ fontSize: "11px", color: "#6b7280" }}>
+            {charCount} / 150
+          </span>
+        </Flex>
+      </>
+    )
+  }
+)
+
 const { Text, Title, Paragraph } = Typography
 const { useBreakpoint } = Grid
 
@@ -96,6 +177,7 @@ export default function ViewArticlePage() {
   const [creatingArticle, setCreatingArticle] = useState(false)
   const [currentUser, setCurrentUser] = useState<any>(null)
   const titleEditorRef = useRef<HTMLDivElement>(null)
+  const titleInputRef = useRef<any>(null)
   const pageSize = 10
   const MAX_TAGS = 5
 
@@ -133,15 +215,17 @@ export default function ViewArticlePage() {
         getAllCategories(),
         getCurrentUserDetail(),
       ])
+
       const tagNames = (tagsRes || []).map((t: any) => t.name)
       setCurrentUser(userRes)
 
       // Filter categories based on user type
-      let normalizedCategories = Array.isArray(categoriesRes)
+      let normalizedCategoriesTemp = Array.isArray(categoriesRes)
         ? categoriesRes
             .filter(
               (c: any) =>
-                Number.isInteger(c?.id) &&
+                c?.id !== undefined &&
+                c?.id !== null &&
                 typeof c?.name === "string" &&
                 c.name.trim().length > 0
             )
@@ -158,12 +242,18 @@ export default function ViewArticlePage() {
 
       // For non-admin users, filter by department
       if (userRes && !userRes.isAdmin && userRes.department_id) {
-        normalizedCategories = normalizedCategories.filter(
+        normalizedCategoriesTemp = normalizedCategoriesTemp.filter(
           (c) =>
             c.department_id === null ||
             c.department_id === userRes.department_id
         )
       }
+
+      // Remove department_id before setting state
+      const normalizedCategories = normalizedCategoriesTemp.map((c) => ({
+        id: c.id,
+        name: c.name,
+      }))
 
       setTags(tagNames)
       setCategories(normalizedCategories)
@@ -197,6 +287,13 @@ export default function ViewArticlePage() {
     }
   }
 
+  const handleTitleChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      // Don't update state - keep it in TitleSection only to prevent parent re-render
+    },
+    []
+  )
+
   const resetCreateForm = () => {
     createForm.resetFields()
     setTitleContent("")
@@ -209,6 +306,9 @@ export default function ViewArticlePage() {
     setSubmitStatus("published")
     if (titleEditorRef.current) {
       titleEditorRef.current.innerText = ""
+    }
+    if (titleInputRef.current?.input) {
+      titleInputRef.current.input.value = ""
     }
   }
 
@@ -252,15 +352,22 @@ export default function ViewArticlePage() {
   }
 
   const handleCreateSubmit = async (values: any) => {
-    if (!titleContent.trim() || !contentValue.trim()) {
+    const titleValue = titleInputRef.current?.input?.value || ""
+    if (!titleValue.trim() || !contentValue.trim()) {
       message.error("Vui lòng nhập tiêu đề và nội dung")
+      return
+    }
+
+    try {
+      await createForm.validateFields(["tags"])
+    } catch (err) {
       return
     }
 
     setCreatingArticle(true)
     try {
       const formData = new FormData()
-      formData.append("title", titleContent)
+      formData.append("title", titleValue)
       formData.append("content", contentValue)
       formData.append("status", submitStatus)
       formData.append("tags", JSON.stringify(selectedTagsForCreate))
@@ -291,10 +398,23 @@ export default function ViewArticlePage() {
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
-        <Spin size="large" tip="Đang tải bài viết..." />
+        <Spin size="large" />
       </div>
     )
   }
+
+  const titleSectionElement = useMemo(
+    () => (
+      <>
+        <TitleSection
+          inputRef={titleInputRef}
+          onInputChange={handleTitleChange}
+        />
+        <Divider style={{ margin: "12px 0", borderColor: "#f3f4f6" }} />
+      </>
+    ),
+    [titleInputRef, handleTitleChange]
+  )
 
   return (
     <div className="p-8 bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50 min-h-screen">
@@ -327,6 +447,7 @@ export default function ViewArticlePage() {
                 }}
               >
                 <ArticleSearch
+                  value={searchQuery}
                   onSearch={(query) => {
                     setSearchQuery(query)
                     setCurrentPage(1)
@@ -519,7 +640,6 @@ export default function ViewArticlePage() {
                         }
                         thumbnailUrl={article.thumbnail_url || undefined}
                         publishedAt={article.created_at}
-                        viewCount={0}
                         readingTime={readingTime}
                         commentCount={Number(article.comment_count || 0)}
                         tags={tagList}
@@ -577,6 +697,7 @@ export default function ViewArticlePage() {
 
       {/* Create Article Modal */}
       <Modal
+        key={isModalOpen ? "open" : "closed"}
         title="Tạo Bài Viết Mới"
         open={isModalOpen}
         onCancel={() => {
@@ -586,55 +707,12 @@ export default function ViewArticlePage() {
         footer={null}
         width={900}
         style={{ maxHeight: "90vh", overflow: "auto" }}
+        destroyOnClose
       >
+        {/* Title - OUTSIDE Form to prevent re-render */}
+        {titleSectionElement}
+
         <Form form={createForm} layout="vertical" onFinish={handleCreateSubmit}>
-          {/* Title */}
-          <Form.Item
-            label={
-              <span
-                style={{
-                  fontSize: "13px",
-                  fontWeight: "600",
-                  color: "#111827",
-                }}
-              >
-                Tiêu đề
-              </span>
-            }
-            rules={[
-              {
-                required: true,
-                validator: () => {
-                  const textContent = titleContent
-                    .replace(/<[^>]*>/g, "")
-                    .trim()
-                  if (!textContent) {
-                    return Promise.reject("Vui lòng nhập tiêu đề")
-                  }
-                  if (textContent.length > 150) {
-                    return Promise.reject("Tiêu đề phải dưới 150 ký tự")
-                  }
-                  return Promise.resolve()
-                },
-              },
-            ]}
-          >
-            <Input
-              placeholder="Nhập tiêu đề bài viết"
-              value={titleContent}
-              onChange={(e) => setTitleContent(e.target.value)}
-              size="large"
-            />
-          </Form.Item>
-
-          <Flex justify="flex-end" align="center" className="mb-4">
-            <span style={{ fontSize: "11px", color: "#6b7280" }}>
-              {titleContent.replace(/<[^>]*>/g, "").trim().length} / 150
-            </span>
-          </Flex>
-
-          <Divider style={{ margin: "12px 0", borderColor: "#f3f4f6" }} />
-
           {/* Thumbnail Upload */}
           <Form.Item
             label={
@@ -794,6 +872,7 @@ export default function ViewArticlePage() {
 
           {/* Tags */}
           <Form.Item
+            name="tags"
             label={
               <span
                 style={{
@@ -807,14 +886,15 @@ export default function ViewArticlePage() {
             }
             rules={[
               {
-                validator: () => {
-                  if (selectedTagsForCreate.length > MAX_TAGS) {
+                validator: (_, value) => {
+                  if (value && value.length > MAX_TAGS) {
                     return Promise.reject(`Tối đa ${MAX_TAGS} thẻ`)
                   }
                   return Promise.resolve()
                 },
               },
             ]}
+            validateTrigger="onChange"
           >
             <Select
               mode="tags"
@@ -823,11 +903,23 @@ export default function ViewArticlePage() {
               onChange={(values) => {
                 if (values.length <= MAX_TAGS) {
                   setSelectedTagsForCreate(values)
+                  createForm.setFieldsValue({ tags: values })
+                  createForm.validateFields(["tags"])
                 } else {
                   message.warning(`Tối đa ${MAX_TAGS} thẻ`)
+                  setTimeout(() => {
+                    createForm.setFieldsValue({ tags: selectedTagsForCreate })
+                  }, 0)
                 }
               }}
-              options={tags.map((tag) => ({ label: tag, value: tag }))}
+              options={
+                selectedTagsForCreate.length >= MAX_TAGS
+                  ? [...selectedTagsForCreate].map((tag) => ({
+                      label: tag,
+                      value: tag,
+                    }))
+                  : tags.map((tag) => ({ label: tag, value: tag }))
+              }
             />
           </Form.Item>
 
@@ -854,6 +946,7 @@ export default function ViewArticlePage() {
                 onClick={() => setSubmitStatus("draft")}
                 htmlType="submit"
                 loading={creatingArticle}
+                disabled={selectedTagsForCreate.length > MAX_TAGS}
               >
                 Lưu nháp
               </Button>
@@ -869,7 +962,13 @@ export default function ViewArticlePage() {
               >
                 Hủy
               </Button>
-              <Tooltip title="Bài viết sẽ chờ phê duyệt từ Admin">
+              <Tooltip
+                title={
+                  selectedTagsForCreate.length > MAX_TAGS
+                    ? `Tối đa ${MAX_TAGS} thẻ`
+                    : "Bài viết sẽ chờ phê duyệt từ Admin"
+                }
+              >
                 <Button
                   type="primary"
                   htmlType="submit"
@@ -877,6 +976,7 @@ export default function ViewArticlePage() {
                   icon={<SendOutlined />}
                   onClick={() => setSubmitStatus("pending")}
                   loading={creatingArticle}
+                  disabled={selectedTagsForCreate.length > MAX_TAGS}
                 >
                   Gửi để phê duyệt
                 </Button>

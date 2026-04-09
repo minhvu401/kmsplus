@@ -32,7 +32,6 @@ export const rolePermissionsMap: Record<Role, Permission[]> = {
     Permission.ENROLL_COURSE,
     Permission.REVIEW_COURSE,
     Permission.VIEW_QUIZ,
-    Permission.VIEW_QUIZ_LIST,
     Permission.VIEW_QUIZ_QUESTION,
     Permission.PARTICIPATE_QUIZ,
     Permission.VIEW_QUIZ_RESULT,
