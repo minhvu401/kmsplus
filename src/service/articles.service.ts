@@ -449,6 +449,7 @@ export async function getAllCategoriesAction(): Promise<
     WHERE c.is_deleted = false
     ORDER BY d.name ASC NULLS LAST, c.name ASC
   `
+
   return categories as {
     id: number
     name: string
@@ -902,6 +903,7 @@ export async function getArticleByIdAction(
         department_name: article.department_name,
         author_name: article.author_name,
         author_email: article.author_email,
+        author_avatar_url: article.author_avatar_url,
         approver_name: article.approver_name,
         image_url: article.image_url,
         thumbnail_url: article.thumbnail_url,

@@ -1246,7 +1246,7 @@ export default function ManageCoursesClient({
                                 className="w-full"
                                 onClick={(e) => {
                                   e.stopPropagation()
-                                  handleReject(course.id, course.title)
+                                  handleReject(course)
                                 }}
                               >
                                 {language === "vi" ? "Từ chối" : "Reject"}

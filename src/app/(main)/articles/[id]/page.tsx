@@ -243,6 +243,7 @@ export default function ArticleDetailPage() {
       if (result.success) {
         message.success("Comment posted successfully")
         setCommentText("")
+        window.dispatchEvent(new Event("notifications:refresh"))
         await loadComments(parseInt(articleId))
       } else {
         message.error(result.message || "Failed to post comment")
@@ -283,6 +284,7 @@ export default function ArticleDetailPage() {
         message.success("Reply posted successfully")
         setReplyToId(null)
         setReplyText("")
+        window.dispatchEvent(new Event("notifications:refresh"))
         await loadComments(parseInt(articleId))
       } else {
         message.error(result.message || "Failed to post reply")
@@ -829,6 +831,13 @@ export default function ArticleDetailPage() {
                           icon={<SendOutlined />}
                           onClick={handleSubmitComment}
                           loading={submitting}
+                          disabled={!commentText.trim()}
+                          style={{
+                            opacity: !commentText.trim() ? 0.5 : 1,
+                            cursor: !commentText.trim()
+                              ? "not-allowed"
+                              : "pointer",
+                          }}
                         >
                           Send
                         </Button>
@@ -900,7 +909,9 @@ export default function ArticleDetailPage() {
                   <Title level={5} className="!mb-1">
                     {article.author_name || "Nguyễn Văn A"}
                   </Title>
-                  <Text type="secondary">Dream Jobs, Analyist</Text>
+                  <Text type="secondary">
+                    {article.department_name || "N/A"}
+                  </Text>
                 </div>
               </div>
             </Card>

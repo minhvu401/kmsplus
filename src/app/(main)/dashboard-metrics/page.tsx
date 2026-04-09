@@ -138,7 +138,6 @@ export default function DashboardMetricsPage() {
     Role.EMPLOYEE,
   ]
   const hasAccess = allowedRoles.includes(userRole as Role)
-
   if (!hasAccess) {
     return (
       <div className="p-6 bg-white m-6 rounded-lg">

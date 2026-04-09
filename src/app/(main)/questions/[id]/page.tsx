@@ -52,8 +52,10 @@ export default async function Page({
     Number(id),
     pageSize
   )
-  const { totalAnswerItems, totalPages } =
-    await fetchAnswerPages(Number(id), pageSize)
+  const { totalAnswerItems, totalPages } = await fetchAnswerPages(
+    Number(id),
+    pageSize
+  )
   const categories = await getActiveCategories()
 
   if (!question) {
@@ -61,11 +63,11 @@ export default async function Page({
   }
 
   return (
-    <PageWrapper>
-      <div className="mb-4">
+    <>
+      <div className="pl-4 pt-2 pb-3">
         <Link
           href={backTarget}
-          className="inline-flex items-center gap-2 text-sm font-medium text-gray-600 transition-colors hover:text-gray-900"
+          className="inline-flex items-center gap-2 text-sm font-medium text-gray-700 transition-colors hover:text-gray-900"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -82,25 +84,27 @@ export default async function Page({
               d="M15.75 19.5 8.25 12l7.5-7.5"
             />
           </svg>
-          Back to Q&A Forum
+          Back
         </Link>
       </div>
-      <QuestionsMessage scroll={false} />
-      <QuestionDetails
-        userId={Number(user.id)}
-        question={question}
-        categories={categories}
-      />
-      <AnswerSection
-        questionId={Number(id)}
-        answer_count={totalAnswerItems}
-        is_closed={question.is_closed}
-        answers={answers}
-        paginatedAnswers={paginatedAnswers}
-        totalPages={totalPages}
-        userId={Number(user.id)}
-        isSystemAdmin={isSystemAdmin}
-      />
-    </PageWrapper>
+      <PageWrapper>
+        <QuestionsMessage scroll={false} />
+        <QuestionDetails
+          userId={Number(user.id)}
+          question={question}
+          categories={categories}
+        />
+        <AnswerSection
+          questionId={Number(id)}
+          answer_count={totalAnswerItems}
+          is_closed={question.is_closed}
+          answers={answers}
+          paginatedAnswers={paginatedAnswers}
+          totalPages={totalPages}
+          userId={Number(user.id)}
+          isSystemAdmin={isSystemAdmin}
+        />
+      </PageWrapper>
+    </>
   )
 }

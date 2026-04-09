@@ -61,6 +61,7 @@ export default function EditArticlePage() {
   const [loadingCategories, setLoadingCategories] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
   const titleEditorRef = useRef<HTMLDivElement>(null)
+  const titleInputRef = useRef<HTMLInputElement>(null)
   const contentEditorRef = useRef<HTMLDivElement>(null)
   const savedSelectionRef = useRef<Range | null>(null)
   const pendingValuesRef = useRef<any>(null)
@@ -286,24 +287,21 @@ export default function EditArticlePage() {
                 },
               ]}
             >
-              <div>
-                <div
-                  ref={titleEditorRef}
-                  contentEditable
-                  onInput={handleTitleInput}
-                  onMouseDown={() => saveSelection()}
-                  onKeyDown={handleTitleKeyDown}
-                  onPaste={handleTitlePaste}
-                  className="border border-gray-300 rounded p-3 min-h-[60px] focus:outline-none focus:border-blue-500"
-                  style={{ backgroundColor: "white" }}
-                  data-placeholder="Type something here..."
-                />
-              </div>
+              <input
+                ref={titleInputRef}
+                type="text"
+                placeholder={titleContent || "Enter article title"}
+                defaultValue={titleContent}
+                onChange={(e) => setTitleContent(e.target.value)}
+                className="border border-gray-300 rounded p-3 w-full focus:outline-none focus:border-blue-500"
+                style={{ backgroundColor: "white" }}
+                maxLength={150}
+              />
             </Form.Item>
 
             <Flex justify="flex-end" align="center" className="mt-2 mb-4">
               <Text type="secondary" className="text-sm">
-                {titleContent.replace(/<[^>]*>/g, "").trim().length} / 150
+                {titleContent.length} / 150
               </Text>
             </Flex>
 
