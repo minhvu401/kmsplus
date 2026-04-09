@@ -25,9 +25,6 @@ const nextConfig: NextConfig = {
     "rc-picker",
   ],
 
-  // OPTIMIZED: Enable SWC minification for faster builds
-  swcMinify: true,
-
   // Compress static assets
   compress: true,
 

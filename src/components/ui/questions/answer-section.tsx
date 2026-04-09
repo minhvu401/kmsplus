@@ -285,73 +285,75 @@ export default function AnswerSection({
         className="w-full max-w-[980px] mx-auto px-2 md:px-3 mt-6"
         style={{ color: "#374151" }}
       >
-      {/* Header Section */}
-      <Flex vertical align="left" gap={10} style={{ marginBottom: 18 }}>
-        <div className="flex items-center gap-3">
-          <Title level={4} style={{ color: "#111827", margin: 0 }}>
-            Answers ({answer_count})
-          </Title>
-          <Select
-            size="small"
-            value={sort}
-            style={{ width: 120 }}
-            onChange={updateSort}
-            options={[
-              { value: "newest", label: "Newest" },
-              { value: "oldest", label: "Oldest" },
-            ]}
-            aria-label="Sort answers"
-          />
-        </div>
-        <div className="w-full">
-          {is_closed ? (
-            <LockedAnswerBox message="This question is archived. No new comments can be posted." />
-          ) : (
-            <CreateAnswerForm userId={userId} questionId={questionId} />
-          )}
-        </div>
-      </Flex>
+        {/* Header Section */}
+        <Flex vertical align="left" gap={10} style={{ marginBottom: 18 }}>
+          <div className="flex items-center gap-3">
+            <Title level={4} style={{ color: "#111827", margin: 0 }}>
+              Answers ({answer_count})
+            </Title>
+            <Select
+              size="small"
+              value={sort}
+              style={{ width: 120 }}
+              onChange={updateSort}
+              options={[
+                { value: "newest", label: "Newest" },
+                { value: "oldest", label: "Oldest" },
+              ]}
+              aria-label="Sort answers"
+            />
+          </div>
+          <div className="w-full">
+            {is_closed ? (
+              <LockedAnswerBox message="This question is archived. No new comments can be posted." />
+            ) : (
+              <CreateAnswerForm userId={userId} questionId={questionId} />
+            )}
+          </div>
+        </Flex>
 
-      <Divider style={{ margin: "0 0 14px 0" }} />
+        <Divider style={{ margin: "0 0 14px 0" }} />
 
-      {/* Comments Feed */}
-      <div className="relative">
-        {isRefreshing && (
-          <div className="absolute inset-0 z-10 flex items-center justify-center rounded-md bg-white/60">
-            <div className="flex items-center gap-2 text-gray-600">
-              <Spin size="large" />
-              <span className="text-sm font-medium">Refreshing answers...</span>
+        {/* Comments Feed */}
+        <div className="relative">
+          {isRefreshing && (
+            <div className="absolute inset-0 z-10 flex items-center justify-center rounded-md bg-white/60">
+              <div className="flex items-center gap-2 text-gray-600">
+                <Spin size="large" />
+                <span className="text-sm font-medium">
+                  Refreshing answers...
+                </span>
+              </div>
             </div>
+          )}
+
+          <div
+            className={`flex flex-col gap-2 transition-opacity duration-200 ${isRefreshing ? "opacity-60" : "opacity-100"}`}
+          >
+            {paginatedAnswers.length === 0 ? (
+              <div className="py-7 text-center text-gray-500">
+                No answers yet. Be the first to comment.
+              </div>
+            ) : (
+              paginatedAnswers.map((answer) => (
+                <RedditComment
+                  key={answer.id}
+                  node={answer}
+                  depth={0}
+                  {...commentActions}
+                />
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Pagination */}
+        {paginatedAnswers.length > 0 && (
+          <div className="flex flex-col items-center gap-3 mt-6 pb-6">
+            <PageSizeSelector currentPageSize={pageSize} />
+            <Pagination totalPages={totalPages} />
           </div>
         )}
-
-        <div
-          className={`flex flex-col gap-2 transition-opacity duration-200 ${isRefreshing ? "opacity-60" : "opacity-100"}`}
-        >
-          {paginatedAnswers.length === 0 ? (
-            <div className="py-7 text-center text-gray-500">
-              No answers yet. Be the first to comment.
-            </div>
-          ) : (
-            paginatedAnswers.map((answer) => (
-              <RedditComment
-                key={answer.id}
-                node={answer}
-                depth={0}
-                {...commentActions}
-              />
-            ))
-          )}
-        </div>
-      </div>
-
-      {/* Pagination */}
-      {paginatedAnswers.length > 0 && (
-        <div className="flex flex-col items-center gap-3 mt-6 pb-6">
-          <PageSizeSelector currentPageSize={pageSize} />
-          <Pagination totalPages={totalPages} />
-        </div>
-      )}
       </div>
     </>
   )
@@ -598,8 +600,12 @@ function ReplyBox(props: RedditCommentProps) {
             type="primary"
             onClick={() => onSubmitReply(node.id)}
             loading={isSubmittingReply}
-            disabled={replyCount < 1 || isSubmittingReply}
+            disabled={replyCount < 15 || isSubmittingReply}
             className="bg-blue-600 rounded-full px-4"
+            style={{
+              opacity: replyCount < 15 ? 0.5 : 1,
+              cursor: replyCount < 15 ? "not-allowed" : "pointer",
+            }}
           >
             Reply
           </Button>
@@ -704,7 +710,12 @@ export function AnswerMenu({
           >
             Cancel
           </Button>,
-          <Button key="delete" danger onClick={handleDelete} loading={isDeleting}>
+          <Button
+            key="delete"
+            danger
+            onClick={handleDelete}
+            loading={isDeleting}
+          >
             Delete
           </Button>,
         ]}

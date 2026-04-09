@@ -44,6 +44,9 @@ import {
 import ImgCrop from "antd-img-crop"
 import type { ColumnsType } from "antd/es/table"
 import type { FormInstance } from "antd/es/form"
+import { rolePermissionsMap } from "@/config/RolePermission.config"
+import { Permission } from "@/enum/permission.enum"
+import { Role } from "@/enum/role.enum"
 import {
   filterByTagAndCategory,
   getAllTags,
@@ -228,6 +231,20 @@ export default function ArticleManagement() {
     null
   )
 
+  // Approve confirmation modal states
+  const [isApproveConfirmOpen, setIsApproveConfirmOpen] = useState(false)
+  const [approveConfirmArticleId, setApproveConfirmArticleId] = useState<
+    number | null
+  >(null)
+  const [isApprovingArticle, setIsApprovingArticle] = useState(false)
+
+  // Delete confirmation modal states
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false)
+  const [deleteConfirmArticleId, setDeleteConfirmArticleId] = useState<
+    number | null
+  >(null)
+  const [deleteConfirmIsDeleted, setDeleteConfirmIsDeleted] = useState(false)
+
   const statusColors: Record<string, string> = {
     published: "green",
     draft: "blue",
@@ -257,6 +274,26 @@ export default function ArticleManagement() {
     return Number(article.author_id) === Number(currentUserId)
   }
 
+  const canApproveArticle = () => {
+    if (!currentUser?.roles || currentUser.roles.length === 0) {
+      return false
+    }
+
+    // Check if user has APPROVE_ARTICLE permission through any of their roles
+    return currentUser.roles.some((role) => {
+      const roleObj = Object.values(Role).find(
+        (r) => typeof r === "string" && r.toLowerCase() === role.toLowerCase()
+      )
+      if (!roleObj) {
+        return false
+      }
+      const hasPermission = (
+        rolePermissionsMap[roleObj as Role] || []
+      ).includes(Permission.APPROVE_ARTICLE)
+      return hasPermission
+    })
+  }
+
   const refreshCurrentArticles = async (showLoader: boolean = true) => {
     if (loadingUserInfo) return
 
@@ -271,6 +308,8 @@ export default function ArticleManagement() {
       if (statusFilter === "archived") {
         isDeletedFilter = true
         statusFilter = undefined
+      } else if (statusFilter && statusFilter !== "All") {
+        isDeletedFilter = false
       }
 
       const res = await filterByTagAndCategory(
@@ -565,56 +604,66 @@ export default function ArticleManagement() {
       key: "action",
       width: 150,
       fixed: "right",
-      render: (_, record) => (
-        <Space size="small" wrap>
-          {canEditArticle(record) && (
+      render: (_, record) => {
+        const showApproveButtons =
+          record.status === "pending" && canApproveArticle()
+        return (
+          <Space size="small" wrap>
+            {canEditArticle(record) && (
+              <Button
+                type="text"
+                icon={<EditOutlined />}
+                size="small"
+                onClick={() => openEditModal(Number(record.id))}
+                title="Edit"
+              />
+            )}
+            {showApproveButtons && (
+              <>
+                <Button
+                  type="text"
+                  size="small"
+                  style={{ color: "#52c41a" }}
+                  onClick={() => handleApproveClick(Number(record.id))}
+                  loading={
+                    isApprovingArticle &&
+                    approveConfirmArticleId === Number(record.id)
+                  }
+                  title="Approve"
+                >
+                  ✓
+                </Button>
+                <Button
+                  type="text"
+                  size="small"
+                  danger
+                  onClick={() => {
+                    setRejectingArticleId(Number(record.id))
+                    setIsRejectModalOpen(true)
+                  }}
+                  title="Reject"
+                >
+                  ✕
+                </Button>
+              </>
+            )}
             <Button
               type="text"
-              icon={<EditOutlined />}
+              danger={!record.is_deleted}
+              icon={
+                record.is_deleted ? <RollbackOutlined /> : <DeleteOutlined />
+              }
               size="small"
-              onClick={() => openEditModal(Number(record.id))}
-              title="Edit"
+              loading={deletingId === Number(record.id)}
+              onClick={(e) => {
+                e.stopPropagation()
+                handleArchiveClick(Number(record.id), !!record.is_deleted)
+              }}
+              title={record.is_deleted ? "Restore" : "Delete"}
             />
-          )}
-          {record.status === "pending" && (
-            <>
-              <Button
-                type="text"
-                size="small"
-                style={{ color: "#52c41a" }}
-                onClick={() => handleApprove(Number(record.id))}
-                loading={approvingArticleId === Number(record.id)}
-                title="Approve"
-              >
-                ✓
-              </Button>
-              <Button
-                type="text"
-                size="small"
-                danger
-                onClick={() => {
-                  setRejectingArticleId(Number(record.id))
-                  setIsRejectModalOpen(true)
-                }}
-                title="Reject"
-              >
-                ✕
-              </Button>
-            </>
-          )}
-          <Button
-            type="text"
-            danger={!record.is_deleted}
-            icon={record.is_deleted ? <RollbackOutlined /> : <DeleteOutlined />}
-            size="small"
-            loading={deletingId === Number(record.id)}
-            onClick={() =>
-              handleArchiveClick(Number(record.id), !!record.is_deleted)
-            }
-            title={record.is_deleted ? "Restore" : "Delete"}
-          />
-        </Space>
-      ),
+          </Space>
+        )
+      },
     },
   ]
 
@@ -647,43 +696,49 @@ export default function ArticleManagement() {
 
   const editFormCategoriesByDepartment = scopedCategoriesByUserDepartment
 
-  const handleArchiveClick = async (articleId: number, isDeleted: boolean) => {
-    const title = isDeleted ? "Restore Article" : "Delete Article"
-    const content = isDeleted
-      ? "Are you sure you want to restore this article?"
-      : "Are you sure you want to delete this article? This action marks it as archived and excludes it from active views."
-    const okText = isDeleted ? "Restore" : "Delete"
-    const okButtonDanger = !isDeleted
+  const handleArchiveClick = (articleId: number, isDeleted: boolean) => {
+    console.log("Delete button clicked:", { articleId, isDeleted })
+    setDeleteConfirmArticleId(articleId)
+    setDeleteConfirmIsDeleted(isDeleted)
+    setIsDeleteConfirmOpen(true)
+  }
 
-    Modal.confirm({
-      title,
-      content,
-      okText,
-      okButtonProps: { danger: okButtonDanger },
-      cancelText: "Cancel",
-      onOk: async () => {
-        try {
-          setDeletingId(articleId)
-          const res = isDeleted
-            ? await restoreArticle(articleId)
-            : await deleteArticle(articleId)
-          if (!res.success) {
-            throw new Error(res.message || "Failed to update")
-          }
-          message.success(
-            isDeleted
-              ? "Article restored successfully"
-              : "Article deleted successfully"
-          )
-          await refreshCurrentArticles(false)
-        } catch (err: any) {
-          message.error(err?.message || "Failed to update")
-          setArticlesError(err?.message || "Failed to update")
-        } finally {
-          setDeletingId(null)
-        }
-      },
-    })
+  const handleDeleteOrRestore = async (
+    articleId: number,
+    isDeleted: boolean
+  ) => {
+    try {
+      setDeletingId(articleId)
+      const res = isDeleted
+        ? await restoreArticle(articleId)
+        : await deleteArticle(articleId)
+
+      console.log("Response from server:", res)
+
+      if (!res.success) {
+        throw new Error(res.message || "Failed to update article")
+      }
+
+      message.success(
+        isDeleted
+          ? "Article restored successfully"
+          : "Article deleted successfully"
+      )
+
+      // Auto-switch to Archived view after delete to show the deleted article
+      if (!isDeleted) {
+        setSelectedStatus("archived")
+        setCurrentPage(1)
+      }
+
+      await refreshCurrentArticles(false)
+    } catch (err: any) {
+      console.error("Error during delete/restore:", err)
+      message.error(err?.message || "Failed to update")
+      setArticlesError(err?.message || "Failed to update")
+    } finally {
+      setDeletingId(null)
+    }
   }
 
   const openEditModal = async (articleId: number) => {
@@ -781,30 +836,29 @@ export default function ArticleManagement() {
     }
   }
 
-  const handleApprove = async (articleId: number) => {
-    Modal.confirm({
-      title: "Approve Article",
-      content: "Are you sure you want to approve this article?",
-      okText: "Approve",
-      okButtonProps: { type: "primary" },
-      cancelText: "Cancel",
-      onOk: async () => {
-        try {
-          setApprovingArticleId(articleId)
-          const result = await approveArticle(articleId)
-          if (result.success) {
-            message.success("Article approved successfully")
-            await refreshCurrentArticles(false)
-          } else {
-            message.error(result.message || "Failed to approve article")
-          }
-        } catch (err: any) {
-          message.error(err?.message || "An error occurred")
-        } finally {
-          setApprovingArticleId(null)
-        }
-      },
-    })
+  const handleApproveClick = (articleId: number) => {
+    setApproveConfirmArticleId(articleId)
+    setIsApproveConfirmOpen(true)
+  }
+
+  const handleApproveConfirm = async () => {
+    if (!approveConfirmArticleId) return
+    try {
+      setIsApprovingArticle(true)
+      const result = await approveArticle(approveConfirmArticleId)
+      if (result.success) {
+        message.success("Article approved successfully")
+        setIsApproveConfirmOpen(false)
+        setApproveConfirmArticleId(null)
+        await refreshCurrentArticles(false)
+      } else {
+        message.error(result.message || "Failed to approve article")
+      }
+    } catch (err: any) {
+      message.error(err?.message || "An error occurred")
+    } finally {
+      setIsApprovingArticle(false)
+    }
   }
 
   const handleRejectSubmit = async () => {
@@ -1941,10 +1995,109 @@ export default function ArticleManagement() {
               rows={4}
               disabled={isRejectingArticle}
             />
-            <Text type="secondary" className="text-xs">
-              The reason will be sent to the article author
-            </Text>
+            <Flex justify="space-between" align="center" className="mt-2">
+              <Text type="secondary" className="text-xs">
+                The reason will be sent to the article author
+              </Text>
+              <Text type="secondary" className="text-xs">
+                {rejectReason.length}
+              </Text>
+            </Flex>
           </div>
+        </div>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        title={deleteConfirmIsDeleted ? "Restore Article" : "Delete Article"}
+        open={isDeleteConfirmOpen}
+        onCancel={() => {
+          setIsDeleteConfirmOpen(false)
+          setDeleteConfirmArticleId(null)
+          setDeleteConfirmIsDeleted(false)
+        }}
+        footer={[
+          <Button
+            key="cancel"
+            onClick={() => {
+              setIsDeleteConfirmOpen(false)
+              setDeleteConfirmArticleId(null)
+              setDeleteConfirmIsDeleted(false)
+            }}
+            disabled={deletingId !== null}
+          >
+            Cancel
+          </Button>,
+          <Button
+            key="confirm"
+            danger={!deleteConfirmIsDeleted}
+            htmlType="submit"
+            loading={deletingId === deleteConfirmArticleId}
+            onClick={() => {
+              if (deleteConfirmArticleId !== null) {
+                handleDeleteOrRestore(
+                  deleteConfirmArticleId,
+                  deleteConfirmIsDeleted
+                )
+                  .then(() => {
+                    setIsDeleteConfirmOpen(false)
+                    setDeleteConfirmArticleId(null)
+                    setDeleteConfirmIsDeleted(false)
+                  })
+                  .catch(() => {
+                    // Error is already handled in handleDeleteOrRestore
+                  })
+              }
+            }}
+          >
+            {deleteConfirmIsDeleted ? "Restore" : "Delete"}
+          </Button>,
+        ]}
+        width={600}
+      >
+        <div className="space-y-4">
+          <p className="text-base">
+            {deleteConfirmIsDeleted
+              ? "Are you sure you want to restore this article?"
+              : "Are you sure you want to delete this article? This action marks it as archived and excludes it from active views."}
+          </p>
+        </div>
+      </Modal>
+
+      {/* Approve Confirmation Modal */}
+      <Modal
+        title="Approve Article"
+        open={isApproveConfirmOpen}
+        onCancel={() => {
+          setIsApproveConfirmOpen(false)
+          setApproveConfirmArticleId(null)
+        }}
+        footer={[
+          <Button
+            key="cancel"
+            onClick={() => {
+              setIsApproveConfirmOpen(false)
+              setApproveConfirmArticleId(null)
+            }}
+            disabled={isApprovingArticle}
+          >
+            Cancel
+          </Button>,
+          <Button
+            key="approve"
+            type="primary"
+            loading={isApprovingArticle}
+            onClick={handleApproveConfirm}
+          >
+            Approve Article
+          </Button>,
+        ]}
+        width={600}
+      >
+        <div className="space-y-4">
+          <p className="text-base">
+            Are you sure you want to approve this article?
+          </p>
         </div>
       </Modal>
     </div>
