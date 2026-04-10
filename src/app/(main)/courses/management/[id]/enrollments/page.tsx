@@ -28,12 +28,14 @@ import EnrollmentsPageSizeSelector from "@/components/ui/enrollments/enrollments
 import EnrollmentsPagination from "@/components/ui/enrollments/enrollments-pagination"
 import LearnersList from "@/components/ui/enrollments/learners-list"
 import type { LearnerEnrollment } from "@/components/ui/enrollments/enrollment-types"
+import useLanguageStore from "@/store/useLanguageStore"
 
 export default function CourseEnrollmentsPage() {
   const params = useParams()
   const router = useRouter()
   const searchParams = useSearchParams()
   const handledFlashRef = React.useRef<string | null>(null)
+  const { language } = useLanguageStore()
   const [messageApi, contextHolder] = message.useMessage()
   const courseId = params?.id as string
   const query = (searchParams.get("query") || "").trim().toLowerCase()
@@ -68,14 +70,16 @@ export default function CourseEnrollmentsPage() {
     handledFlashRef.current = flash
 
     messageApi.error(
-      "We couldn't find that user. They may have not enrolled in this course."
+      language === "vi"
+        ? "Không tìm thấy người dùng này. Có thể họ chưa ghi danh khóa học này."
+        : "We couldn't find that user. They may have not enrolled in this course."
     )
 
     const params = new URLSearchParams(searchParams.toString())
     params.delete("flash")
     const nextQuery = params.toString()
     router.replace(nextQuery ? `?${nextQuery}` : "?", { scroll: false })
-  }, [messageApi, router, searchParams])
+  }, [language, messageApi, router, searchParams])
 
   useEffect(() => {
     const loadDepartments = async () => {
@@ -302,8 +306,8 @@ export default function CourseEnrollmentsPage() {
 
         <div className="mt-6 flex flex-col gap-4 border-t border-gray-100 px-2 pt-4 md:flex-row md:items-center md:justify-between">
           <div className="text-sm text-gray-600">
-            Showing {totalItems > 0 ? startIndex + 1 : 0}-
-            {Math.min(startIndex + learners.length, totalItems)} of {totalItems} learners
+            {language === "vi" ? "Hiển thị" : "Showing"} {totalItems > 0 ? startIndex + 1 : 0}-
+            {Math.min(startIndex + learners.length, totalItems)} {language === "vi" ? "trên" : "of"} {totalItems} {language === "vi" ? "học viên" : "learners"}
           </div>
 
           <div className="flex flex-col gap-4 md:flex-row md:items-center">

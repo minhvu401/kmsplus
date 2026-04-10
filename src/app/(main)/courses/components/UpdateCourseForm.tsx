@@ -72,6 +72,7 @@ import {
   DeleteOutlined,
   SafetyCertificateOutlined,
 } from "@ant-design/icons"
+import useLanguageStore from "@/store/useLanguageStore"
 
 const { TextArea } = Input
 const { Dragger } = Upload
@@ -136,7 +137,6 @@ export type CoursePayload = {
   curriculum: Section[]
 }
 
-const steps = ["Thông Tin Cơ Bản", "Thông Tin Nâng Cao"]
 type StepStatus = "pending" | "valid" | "invalid"
 
 interface UpdateCourseFormProps {
@@ -178,6 +178,7 @@ function SortableItem({
 }
 
 function ContentBankItem({ icon, title, meta, onAdd, onEdit, onDelete }: any) {
+  const { language } = useLanguageStore()
   return (
     <div className="group flex items-center justify-between p-2 bg-white border rounded shadow-sm hover:shadow-md transition-shadow mb-2">
       <div className="flex items-center gap-2 overflow-hidden flex-1">
@@ -196,26 +197,32 @@ function ContentBankItem({ icon, title, meta, onAdd, onEdit, onDelete }: any) {
             if (onEdit) onEdit()
           }}
           className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors opacity-0 group-hover:opacity-100"
-          title="Edit"
+          title={language === "vi" ? "Chỉnh sửa" : "Edit"}
         >
           <Edit2 size={14} />
         </button>
         <div className="opacity-0 group-hover:opacity-100 transition-opacity">
           <Popconfirm
-            title="Delete this item?"
-            description="Are you sure to delete this content?"
+            title={
+              language === "vi" ? "Xóa nội dung này?" : "Delete this item?"
+            }
+            description={
+              language === "vi"
+                ? "Bạn có chắc chắn muốn xóa nội dung này?"
+                : "Are you sure to delete this content?"
+            }
             onConfirm={(e) => {
               e?.stopPropagation()
               if (onDelete) onDelete()
             }}
             onCancel={(e) => e?.stopPropagation()}
-            okText="Yes"
-            cancelText="No"
+            okText={language === "vi" ? "Xóa" : "Yes"}
+            cancelText={language === "vi" ? "Hủy" : "No"}
           >
             <button
               onClick={(e) => e.stopPropagation()}
               className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
-              title="Delete"
+              title={language === "vi" ? "Xóa" : "Delete"}
             >
               <Trash2 size={14} />
             </button>
@@ -227,7 +234,9 @@ function ContentBankItem({ icon, title, meta, onAdd, onEdit, onDelete }: any) {
             onAdd()
           }}
           className="text-blue-500 hover:text-blue-700 p-1 rounded-full hover:bg-blue-50 transition-colors ml-1"
-          title="Add to Curriculum"
+          title={
+            language === "vi" ? "Thêm vào chương trình" : "Add to Curriculum"
+          }
         >
           <PlusCircle size={18} />
         </button>
@@ -244,6 +253,7 @@ function FormModal({
   onClose,
   onSave,
 }: any) {
+  const { language } = useLanguageStore()
   const [value, setValue] = useState(initialValue)
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -282,13 +292,13 @@ function FormModal({
               onClick={onClose}
               className="px-4 py-2 bg-white text-blue-600 border border-blue-600 rounded text-sm font-medium hover:bg-blue-50 transition-colors"
             >
-              Hủy
+              {language === "vi" ? "Hủy" : "Cancel"}
             </button>
             <button
               type="submit"
               className="px-4 py-2 bg-blue-600 text-white rounded text-sm font-medium"
             >
-              Lưu Thay Đổi
+              {language === "vi" ? "Lưu Thay Đổi" : "Save Changes"}
             </button>
           </div>
         </form>
@@ -305,6 +315,11 @@ export default function UpdateCourseForm({
   onError,
   userRole = "", // ✅ NHẬN PROP Ở ĐÂY
 }: UpdateCourseFormProps) {
+  const { language } = useLanguageStore()
+  const stepLabels =
+    language === "vi"
+      ? ["Thông Tin Cơ Bản", "Thông Tin Nâng Cao"]
+      : ["Basic Information", "Advanced Information"]
   const [categories, setCategories] = useState<{ id: number; name: string }[]>(
     []
   )
@@ -398,7 +413,7 @@ export default function UpdateCourseForm({
   })
 
   const [stepStatus, setStepStatus] = useState<StepStatus[]>(
-    new Array(steps.length).fill("valid")
+    new Array(stepLabels.length).fill("valid")
   )
   const [imageUrl, setImageUrl] = useState<string | null>(
     initialData.thumbnail_url || null
@@ -418,7 +433,10 @@ export default function UpdateCourseForm({
   const handleUploadThumbnail = async (options: any) => {
     if (isLocked) return
     const { file, onSuccess, onError } = options
-    const hide = message.loading("Đang tải ảnh lên...", 0)
+    const hide = message.loading(
+      language === "vi" ? "Đang tải ảnh lên..." : "Uploading image...",
+      0
+    )
     try {
       const formData = new FormData()
       formData.append("file", file)
@@ -427,14 +445,21 @@ export default function UpdateCourseForm({
         `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
         { method: "POST", body: formData }
       )
-      if (!res.ok) throw new Error("Upload thất bại")
+      if (!res.ok)
+        throw new Error(language === "vi" ? "Upload thất bại" : "Upload failed")
       const data = await res.json()
       setImageUrl(data.secure_url)
       update("thumbnail_url", data.secure_url)
       if (onSuccess) onSuccess("Ok")
-      message.success("Tải ảnh thành công!")
+      message.success(
+        language === "vi" ? "Tải ảnh thành công!" : "Image uploaded successfully!"
+      )
     } catch (error: any) {
-      message.error(`Lỗi tải ảnh: ${error.message}`)
+      message.error(
+        language === "vi"
+          ? `Lỗi tải ảnh: ${error.message}`
+          : `Image upload error: ${error.message}`
+      )
       if (onError) onError({ error })
     } finally {
       hide()
@@ -533,7 +558,12 @@ export default function UpdateCourseForm({
   }
 
   function changeStep(newIndex: number) {
-    if (newIndex === current || newIndex < 0 || newIndex >= steps.length) return
+    if (
+      newIndex === current ||
+      newIndex < 0 ||
+      newIndex >= stepLabels.length
+    )
+      return
     const isCurrentStepValid = validateStep(current)
     setStepStatus((prev) => {
       const newStatus = [...prev]
@@ -541,14 +571,18 @@ export default function UpdateCourseForm({
       return newStatus
     })
     if (newIndex > current && !isCurrentStepValid) {
-      message.error("Vui lòng điền đủ thông tin trước khi tiếp tục")
+      message.error(
+        language === "vi"
+          ? "Vui lòng điền đủ thông tin trước khi tiếp tục"
+          : "Please complete required fields before continuing"
+      )
       return
     }
     setCurrent(newIndex)
   }
 
   async function handleSubmit() {
-    const allStepsValidResults = steps.map((_, i) => validateStep(i))
+    const allStepsValidResults = stepLabels.map((_, i) => validateStep(i))
     const isAllValid = allStepsValidResults.every((isValid) => isValid)
     setStepStatus((prev) =>
       prev.map((_, i) => (allStepsValidResults[i] ? "valid" : "invalid"))
@@ -557,7 +591,11 @@ export default function UpdateCourseForm({
     if (!isAllValid) {
       const firstInvalid = allStepsValidResults.findIndex((v) => !v)
       if (firstInvalid !== -1) setCurrent(firstInvalid)
-      message.error("Vui lòng hoàn thành tất cả các trường bắt buộc.")
+      message.error(
+        language === "vi"
+          ? "Vui lòng hoàn thành tất cả các trường bắt buộc."
+          : "Please complete all required fields."
+      )
       return
     }
 
@@ -596,10 +634,14 @@ export default function UpdateCourseForm({
         if (onSuccess) onSuccess()
         router.refresh()
       } else {
-        if (onError) onError(res.error || "Cập nhật thất bại")
+        if (onError)
+          onError(res.error || (language === "vi" ? "Cập nhật thất bại" : "Update failed"))
       }
     } catch (err) {
-      if (onError) onError("Đã xảy ra lỗi hệ thống.")
+      if (onError)
+        onError(
+          language === "vi" ? "Đã xảy ra lỗi hệ thống." : "A system error occurred."
+        )
     } finally {
       setLoading(false)
     }
@@ -617,18 +659,31 @@ export default function UpdateCourseForm({
       <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
         <h1 className="text-2xl font-semibold text-gray-900">
           {payload.title
-            ? `Cập Nhật Khóa Học: ${payload.title}`
-            : "Cập Nhật Khóa Học"}
+            ? language === "vi"
+              ? `Cập Nhật Khóa Học: ${payload.title}`
+              : `Update Course: ${payload.title}`
+            : language === "vi"
+              ? "Cập Nhật Khóa Học"
+              : "Update Course"}
         </h1>
         <div className="text-sm text-gray-500 mb-6">
-          Step {current + 1} / {steps.length}
+          {language === "vi" ? "Bước" : "Step"} {current + 1} /{" "}
+          {stepLabels.length}
         </div>
 
         {/* 🔥 THÔNG BÁO KHÓA CHỈNH SỬA KHI ĐÃ PUBLISHED */}
         {isLocked && (
           <Alert
-            message="Khóa học này đã Xuất Bản"
-            description="Bạn chỉ có thể cấu hình Hiển thị thư viện và Phân công bắt buộc. Các nội dung khác đã bị khóa để bảo vệ tiến độ của học viên."
+            message={
+              language === "vi"
+                ? "Khóa học này đã Xuất Bản"
+                : "This course has been published"
+            }
+            description={
+              language === "vi"
+                ? "Bạn chỉ có thể cấu hình Hiển thị thư viện và Phân công bắt buộc. Các nội dung khác đã bị khóa để bảo vệ tiến độ của học viên."
+                : "You can only configure Library Visibility and Mandatory Assignment Rules. Other content is locked to protect learner progress."
+            }
             type="warning"
             showIcon
             icon={<Lock />}
@@ -640,7 +695,7 @@ export default function UpdateCourseForm({
           className="mb-6"
           current={current}
           onChange={changeStep}
-          items={steps.map((s, i) => ({
+          items={stepLabels.map((s, i) => ({
             title: s,
             status:
               stepStatus[i] === "valid"
@@ -648,7 +703,10 @@ export default function UpdateCourseForm({
                 : stepStatus[i] === "invalid"
                   ? "error"
                   : "wait",
-            description: i === 1 ? `${totalItems} items` : undefined,
+            description:
+              i === 1
+                ? `${totalItems} ${language === "vi" ? "mục" : "items"}`
+                : undefined,
           }))}
         />
 
@@ -659,7 +717,8 @@ export default function UpdateCourseForm({
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium mb-1">
-                      Tiêu đề <span className="text-red-500">*</span>
+                      {language === "vi" ? "Tiêu đề" : "Title"}{" "}
+                      <span className="text-red-500">*</span>
                     </label>
                     <Input
                       disabled={isLocked}
@@ -676,11 +735,13 @@ export default function UpdateCourseForm({
                   </div>
                   <div>
                     <label className="block text-sm font-medium mb-1">
-                      Danh mục
+                      {language === "vi" ? "Danh mục" : "Category"}
                     </label>
                     <Select
                       disabled={isLocked}
-                      placeholder="Chọn danh mục"
+                      placeholder={
+                        language === "vi" ? "Chọn danh mục" : "Select category"
+                      }
                       className="w-full"
                       value={
                         payload.category_id
@@ -703,7 +764,7 @@ export default function UpdateCourseForm({
                   </div>
                   <div>
                     <label className="block text-sm font-medium mb-1">
-                      Mô tả ngắn
+                      {language === "vi" ? "Mô tả ngắn" : "Short description"}
                     </label>
                     <TextArea
                       disabled={isLocked}
@@ -717,7 +778,7 @@ export default function UpdateCourseForm({
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">
-                    Ảnh đại diện
+                    {language === "vi" ? "Ảnh đại diện" : "Thumbnail"}
                   </label>
                   <div
                     className={`border-2 border-dashed rounded-lg p-4 text-center transition-colors ${
@@ -740,13 +801,15 @@ export default function UpdateCourseForm({
                               showUploadList={false}
                               customRequest={handleUploadThumbnail}
                             >
-                              <Button ghost>Thay Đổi Ảnh</Button>
+                              <Button ghost>
+                                {language === "vi" ? "Thay Đổi Ảnh" : "Change Image"}
+                              </Button>
                             </Upload>
                             <Button
                               ghost
                               onClick={() => setCropModalVisible(true)}
                             >
-                              Cắt Ảnh
+                              {language === "vi" ? "Cắt Ảnh" : "Crop Image"}
                             </Button>
                           </div>
                         )}
@@ -763,7 +826,9 @@ export default function UpdateCourseForm({
                             <InboxOutlined className="text-2xl" />
                           </div>
                           <p className="text-gray-600 font-medium">
-                            Nhấn để tải ảnh đại diện lên
+                            {language === "vi"
+                              ? "Nhấn để tải ảnh đại diện lên"
+                              : "Click to upload thumbnail"}
                           </p>
                         </div>
                       </Upload>
@@ -776,7 +841,11 @@ export default function UpdateCourseForm({
                         update("thumbnail_url", e.target.value)
                         setImageUrl(e.target.value)
                       }}
-                      placeholder="Hoặc dán URL ảnh vào đây"
+                      placeholder={
+                        language === "vi"
+                          ? "Hoặc dán URL ảnh vào đây"
+                          : "Or paste image URL here"
+                      }
                       className="mt-3"
                     />
                   )}
@@ -786,13 +855,17 @@ export default function UpdateCourseForm({
               {/* PHẦN ĐƯỢC PHÉP SỬA (KỂ CẢ KHI PUBLISHED) */}
               <div>
                 <h2 className="text-lg font-bold text-gray-800 mb-1">
-                  Cấu Hình Hiển Thị & Quy Tắc Ghi Danh
+                  {language === "vi"
+                    ? "Cấu Hình Hiển Thị & Quy Tắc Ghi Danh"
+                    : "Visibility Settings & Enrollment Rules"}
                 </h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-4">
                   <div className="space-y-6">
                     <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                       <label className="block font-semibold text-gray-700 mb-2">
-                        1. Hiển Thị Trong Thư Viện
+                        {language === "vi"
+                          ? "1. Hiển Thị Trong Thư Viện"
+                          : "1. Visibility in Library"}
                       </label>
                       <Radio.Group
                         value={payload.visibility || "private"}
@@ -804,11 +877,14 @@ export default function UpdateCourseForm({
                           className="bg-white p-3 border rounded-md shadow-sm w-full"
                         >
                           <span className="font-semibold text-blue-600">
-                            Công Khai (Thư Viện Mở)
+                            {language === "vi"
+                              ? "Công Khai (Thư Viện Mở)"
+                              : "Public (Open Library)"}
                           </span>
                           <span className="block text-xs text-gray-500 mt-1">
-                            Bất kỳ ai cũng có thể xem và tự ghi danh vào khóa
-                            học này.
+                            {language === "vi"
+                              ? "Bất kỳ ai cũng có thể xem và tự ghi danh vào khóa học này."
+                              : "Anyone can view and self-enroll in this course."}
                           </span>
                         </Radio>
                         <Radio
@@ -816,11 +892,14 @@ export default function UpdateCourseForm({
                           className="bg-white p-3 border rounded-md shadow-sm w-full m-0"
                         >
                           <span className="font-semibold text-orange-600">
-                            Riêng Tư (Ẩn)
+                            {language === "vi"
+                              ? "Riêng Tư (Ẩn)"
+                              : "Private (Hidden)"}
                           </span>
                           <span className="block text-xs text-gray-500 mt-1">
-                            Ẩn khỏi thư viện. Chỉ người dùng được phân công mới
-                            có thể xem.
+                            {language === "vi"
+                              ? "Ẩn khỏi thư viện. Chỉ người dùng được phân công mới có thể xem."
+                              : "Hidden from library. Only assigned users can view it."}
                           </span>
                         </Radio>
                       </Radio.Group>
@@ -830,10 +909,14 @@ export default function UpdateCourseForm({
                     <div className="flex justify-between items-start mb-4">
                       <div>
                         <label className="block font-semibold text-blue-900 mb-1">
-                          2. Phân Công Bắt Buộc
+                          {language === "vi"
+                            ? "2. Phân Công Bắt Buộc"
+                            : "2. Mandatory Assignment"}
                         </label>
                         <p className="text-xs text-blue-700">
-                          Buộc các nhóm cụ thể phải tham gia khóa học này.
+                          {language === "vi"
+                            ? "Buộc các nhóm cụ thể phải tham gia khóa học này."
+                            : "Require specific groups to take this course."}
                         </p>
                       </div>
                       <Button
@@ -854,7 +937,7 @@ export default function UpdateCourseForm({
                           ])
                         }}
                       >
-                        Thêm Quy Tắc
+                        {language === "vi" ? "Thêm Quy Tắc" : "Add Rule"}
                       </Button>
                     </div>
                     <div className="flex-1 overflow-y-auto space-y-3 pr-1 max-h-[300px] custom-scrollbar">
@@ -863,7 +946,9 @@ export default function UpdateCourseForm({
                         <div className="h-32 flex flex-col items-center justify-center border-2 border-dashed border-blue-200 rounded-lg text-blue-400">
                           <SafetyCertificateOutlined className="text-2xl mb-2" />
                           <span className="text-sm">
-                            Chưa có quy tắc bắt buộc nào được đặt.
+                            {language === "vi"
+                              ? "Chưa có quy tắc bắt buộc nào được đặt."
+                              : "No mandatory rules have been set yet."}
                           </span>
                         </div>
                       ) : (
@@ -892,17 +977,37 @@ export default function UpdateCourseForm({
                                   options={[
                                     {
                                       value: "all_employees",
-                                      label: "Tất Cả NV",
+                                      label:
+                                        language === "vi"
+                                          ? "Tất Cả NV"
+                                          : "All Employees",
                                     },
-                                    { value: "department", label: "Phòng Ban" },
-                                    { value: "role", label: "Vai Trò" },
-                                    { value: "user", label: "Người Dùng" },
+                                    {
+                                      value: "department",
+                                      label:
+                                        language === "vi"
+                                          ? "Phòng Ban"
+                                          : "Department",
+                                    },
+                                    {
+                                      value: "role",
+                                      label: language === "vi" ? "Vai Trò" : "Role",
+                                    },
+                                    {
+                                      value: "user",
+                                      label:
+                                        language === "vi" ? "Người Dùng" : "User",
+                                    },
                                   ]}
                                 />
                                 <div className="flex-1">
                                   {rule.target_type === "department" && (
                                     <Select
-                                      placeholder="Chọn Phòng Ban..."
+                                      placeholder={
+                                        language === "vi"
+                                          ? "Chọn Phòng Ban..."
+                                          : "Select Department..."
+                                      }
                                       className="w-full"
                                       value={rule.department_id}
                                       onChange={(val) => {
@@ -926,7 +1031,11 @@ export default function UpdateCourseForm({
                                   )}
                                   {rule.target_type === "role" && (
                                     <Select
-                                      placeholder="Chọn Vai Trò..."
+                                      placeholder={
+                                        language === "vi"
+                                          ? "Chọn Vai Trò..."
+                                          : "Select Role..."
+                                      }
                                       className="w-full"
                                       value={rule.role_id}
                                       onChange={(val) => {
@@ -939,18 +1048,28 @@ export default function UpdateCourseForm({
                                       options={[
                                         {
                                           value: 1,
-                                          label: "Quản Lý (Manager)",
+                                          label:
+                                            language === "vi"
+                                              ? "Quản Lý (Manager)"
+                                              : "Manager",
                                         },
                                         {
                                           value: 2,
-                                          label: "Nhân Viên (Staff)",
+                                          label:
+                                            language === "vi"
+                                              ? "Nhân Viên (Staff)"
+                                              : "Staff",
                                         },
                                       ]}
                                     />
                                   )}
                                   {rule.target_type === "user" && (
                                     <Select
-                                      placeholder="Tìm người dùng..."
+                                      placeholder={
+                                        language === "vi"
+                                          ? "Tìm người dùng..."
+                                          : "Search user..."
+                                      }
                                       className="w-full"
                                       value={rule.user_id}
                                       onChange={(val) => {
@@ -975,7 +1094,11 @@ export default function UpdateCourseForm({
                                   {rule.target_type === "all_employees" && (
                                     <Input
                                       disabled
-                                      value="Toàn Công Ty"
+                                      value={
+                                        language === "vi"
+                                          ? "Toàn Công Ty"
+                                          : "Whole Company"
+                                      }
                                       className="bg-gray-50 text-center"
                                     />
                                   )}
@@ -983,7 +1106,7 @@ export default function UpdateCourseForm({
                               </div>
                               <div className="flex gap-2 items-center bg-gray-50 p-2 rounded border border-gray-200">
                                 <span className="text-xs font-semibold text-gray-500 w-16">
-                                  Hạn:
+                                  {language === "vi" ? "Hạn:" : "Due:"}
                                 </span>
                                 <Select
                                   size="small"
@@ -997,9 +1120,18 @@ export default function UpdateCourseForm({
                                     update("assignment_rules", r)
                                   }}
                                   options={[
-                                    { value: "none", label: "Không" },
-                                    { value: "relative", label: "Ngày" },
-                                    { value: "fixed", label: "Cố Định" },
+                                    {
+                                      value: "none",
+                                      label: language === "vi" ? "Không" : "None",
+                                    },
+                                    {
+                                      value: "relative",
+                                      label: language === "vi" ? "Ngày" : "Days",
+                                    },
+                                    {
+                                      value: "fixed",
+                                      label: language === "vi" ? "Cố Định" : "Fixed",
+                                    },
                                   ]}
                                 />
                                 <div className="flex-1 flex justify-end">
@@ -1015,7 +1147,9 @@ export default function UpdateCourseForm({
                                         r[index].due_days = v
                                         update("assignment_rules", r)
                                       }}
-                                      addonAfter="ngày"
+                                      addonAfter={
+                                        language === "vi" ? "ngày" : "days"
+                                      }
                                       className="w-full"
                                     />
                                   )}
@@ -1041,7 +1175,9 @@ export default function UpdateCourseForm({
                                   {(rule.due_type === "none" ||
                                     !rule.due_type) && (
                                     <span className="text-xs text-gray-400 italic">
-                                      Không giới hạn
+                                      {language === "vi"
+                                        ? "Không giới hạn"
+                                        : "No deadline"}
                                     </span>
                                   )}
                                 </div>
@@ -1074,7 +1210,7 @@ export default function UpdateCourseForm({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium mb-1 text-gray-700">
-                    Trạng Thái
+                    {language === "vi" ? "Trạng Thái" : "Status"}
                   </label>
                   <Select
                     disabled={isLocked}
@@ -1098,7 +1234,7 @@ export default function UpdateCourseForm({
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1 text-gray-700">
-                    Thời Lượng (giờ)
+                    {language === "vi" ? "Thời Lượng (giờ)" : "Duration (hours)"}
                   </label>
                   <Input
                     disabled={isLocked}
@@ -1139,8 +1275,9 @@ export default function UpdateCourseForm({
                 />
                 {stepStatus[1] === "invalid" && (
                   <p className="mt-2 text-sm text-red-600">
-                    Chương trình phải có ít nhất một chương, và mỗi chương phải
-                    có ít nhất một mục.
+                    {language === "vi"
+                      ? "Chương trình phải có ít nhất một chương, và mỗi chương phải có ít nhất một mục."
+                      : "The curriculum must have at least one section, and each section must have at least one item."}
                   </p>
                 )}
               </div>
@@ -1153,18 +1290,18 @@ export default function UpdateCourseForm({
         <div>
           {current > 0 && (
             <Button size="large" onClick={() => changeStep(current - 1)}>
-              Quay Lại
+              {language === "vi" ? "Quay Lại" : "Back"}
             </Button>
           )}
         </div>
         <div>
-          {current < steps.length - 1 ? (
+          {current < stepLabels.length - 1 ? (
             <Button
               type="primary"
               size="large"
               onClick={() => changeStep(current + 1)}
             >
-              Tiếp Tục Đến Chương Trình
+              {language === "vi" ? "Tiếp Tục Đến Chương Trình" : "Continue to Curriculum"}
             </Button>
           ) : (
             <Button
@@ -1175,14 +1312,14 @@ export default function UpdateCourseForm({
               style={{ backgroundColor: "#10b981" }}
               className="font-bold px-8 shadow-md"
             >
-              Lưu Thay Đổi
+              {language === "vi" ? "Lưu Thay Đổi" : "Save Changes"}
             </Button>
           )}
         </div>
       </div>
 
       <Modal
-        title="Cắt Ảnh"
+        title={language === "vi" ? "Cắt Ảnh" : "Crop Image"}
         open={cropModalVisible}
         onCancel={() => setCropModalVisible(false)}
         onOk={() => setCropModalVisible(false)}
@@ -1190,9 +1327,17 @@ export default function UpdateCourseForm({
       >
         <div className="text-center">
           {imageUrl && (
-            <img src={imageUrl} alt="Crop Preview" className="max-w-full" />
+            <img
+              src={imageUrl}
+              alt={language === "vi" ? "Xem trước ảnh cắt" : "Crop preview"}
+              className="max-w-full"
+            />
           )}
-          <p className="mt-2 text-gray-500">Chức năng cắt ảnh placeholder.</p>
+          <p className="mt-2 text-gray-500">
+            {language === "vi"
+              ? "Chức năng cắt ảnh placeholder."
+              : "Image crop placeholder feature."}
+          </p>
         </div>
       </Modal>
     </div>
@@ -1236,6 +1381,7 @@ function CurriculumContentBank({
   courseCategoryId,
   isLocked,
 }: CurriculumContentBankProps) {
+  const { language } = useLanguageStore()
   const router = useRouter()
   const [modalState, setModalState] = useState<{
     type: "Section"
@@ -1266,7 +1412,9 @@ function CurriculumContentBank({
     return (
       <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
         <h3 className="text-lg font-semibold mb-4 text-gray-700">
-          Chương Trình Khóa Học (Chỉ xem)
+          {language === "vi"
+            ? "Chương Trình Khóa Học (Chỉ xem)"
+            : "Course Curriculum (Read-only)"}
         </h3>
         <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
           {sections.map((section) => (
@@ -1276,7 +1424,9 @@ function CurriculumContentBank({
               </div>
               <div className="p-3 space-y-2">
                 {section.items.length === 0 ? (
-                  <p className="text-sm text-gray-400 italic">Chương trống</p>
+                  <p className="text-sm text-gray-400 italic">
+                    {language === "vi" ? "Chương trống" : "Empty section"}
+                  </p>
                 ) : (
                   section.items.map((item) => (
                     <div
@@ -1295,8 +1445,8 @@ function CurriculumContentBank({
                       </div>
                       <span className="text-xs text-gray-400 bg-gray-50 px-2 py-1 rounded">
                         {item.type === "lesson"
-                          ? `${item.duration_minutes || 0} min`
-                          : `${item.question_count || 0} Qs`}
+                          ? `${item.duration_minutes || 0} ${language === "vi" ? "phút" : "min"}`
+                          : `${item.question_count || 0} ${language === "vi" ? "câu" : "Qs"}`}
                       </span>
                     </div>
                   ))
@@ -1314,7 +1464,10 @@ function CurriculumContentBank({
   const handleAddSection = () => {
     const newSection: Section = {
       id: `section-${Date.now()}`,
-      title: `Section ${sections.length + 1}`,
+      title:
+        language === "vi"
+          ? `Chương ${sections.length + 1}`
+          : `Section ${sections.length + 1}`,
       order: sections.length,
       items: [],
     }
@@ -1334,15 +1487,22 @@ function CurriculumContentBank({
   }
   const handleDeleteSection = (id: string | number) => {
     modal.confirm({
-      title: "Xóa Chương",
+      title: language === "vi" ? "Xóa Chương" : "Delete Section",
       content: (
         <div className="text-gray-600">
-          Bạn có chắc chắn muốn xóa chương này?
+          {language === "vi"
+            ? "Bạn có chắc chắn muốn xóa chương này?"
+            : "Are you sure you want to delete this section?"}
           <br />
-          <b className="text-red-500">Tất cả bài học bên trong sẽ bị xóa.</b>
+          <b className="text-red-500">
+            {language === "vi"
+              ? "Tất cả bài học bên trong sẽ bị xóa."
+              : "All lessons inside this section will be deleted."}
+          </b>
         </div>
       ),
-      okText: "Xóa",
+      okText: language === "vi" ? "Xóa" : "Delete",
+      cancelText: language === "vi" ? "Hủy" : "Cancel",
       okType: "danger",
       onOk: () => {
         onChange(sections.filter((s) => String(s.id) !== String(id)))
@@ -1360,7 +1520,11 @@ function CurriculumContentBank({
       s.items.some((i) => i.resource_id === item.id && i.type === type)
     )
     if (isDuplicate) {
-      message.warning("Nội dung này đã tồn tại trong chương trình khóa học!")
+      message.warning(
+        language === "vi"
+          ? "Nội dung này đã tồn tại trong chương trình khóa học!"
+          : "This content already exists in the curriculum!"
+      )
       return
     }
 
@@ -1393,9 +1557,13 @@ function CurriculumContentBank({
     itemId: string | number
   ) => {
     modal.confirm({
-      title: "Xóa Mục",
-      content: "Bạn có chắc chắn muốn xóa mục này?",
-      okText: "Xóa",
+      title: language === "vi" ? "Xóa Mục" : "Delete Item",
+      content:
+        language === "vi"
+          ? "Bạn có chắc chắn muốn xóa mục này?"
+          : "Are you sure you want to delete this item?",
+      okText: language === "vi" ? "Xóa" : "Delete",
+      cancelText: language === "vi" ? "Hủy" : "Cancel",
       okType: "danger",
       centered: true,
       onOk: () => {
@@ -1409,13 +1577,16 @@ function CurriculumContentBank({
               : s
           )
         )
-        message.success("Đã xóa mục")
+        message.success(language === "vi" ? "Đã xóa mục" : "Item deleted")
       },
     })
   }
 
   const handleUploadPDF = async (file: File) => {
-    const hide = message.loading("Đang tải PDF lên...", 0)
+    const hide = message.loading(
+      language === "vi" ? "Đang tải PDF lên..." : "Uploading PDF...",
+      0
+    )
     try {
       const formData = new FormData()
       formData.append("file", file)
@@ -1428,9 +1599,11 @@ function CurriculumContentBank({
       const data = await res.json()
       setPdfFile({ name: file.name, url: data.secure_url })
       form.setFieldsValue({ content: data.secure_url })
-      message.success("Đã tải PDF lên thành công!")
+      message.success(
+        language === "vi" ? "Đã tải PDF lên thành công!" : "PDF uploaded successfully!"
+      )
     } catch (error) {
-      message.error("Tải lên thất bại")
+      message.error(language === "vi" ? "Tải lên thất bại" : "Upload failed")
     } finally {
       hide()
     }
@@ -1447,7 +1620,11 @@ function CurriculumContentBank({
 
   const handleEditItemAction = (item: any, type: "lesson" | "quiz") => {
     if (type === "quiz")
-      return message.info("Chức năng sửa bài kiểm tra sắp ra mắt")
+      return message.info(
+        language === "vi"
+          ? "Chức năng sửa bài kiểm tra sắp ra mắt"
+          : "Quiz editing is coming soon"
+      )
     const lesson = item as Lesson
     setEditingLessonId(Number(lesson.id))
     setIsCreateModalOpen(true)
@@ -1476,7 +1653,10 @@ function CurriculumContentBank({
     setContentType(lessonType)
     if (lessonType === "video" && existingContent) setVideoUrl(existingContent)
     if (lessonType === "pdf" && existingContent)
-      setPdfFile({ name: "Tệp hiện có", url: existingContent })
+      setPdfFile({
+        name: language === "vi" ? "Tệp hiện có" : "Existing file",
+        url: existingContent,
+      })
   }
 
   const handleDeleteItemAction = async (
@@ -1488,7 +1668,9 @@ function CurriculumContentBank({
       await deleteLessonAPI(id)
       onLessonDeleted(id)
     } catch (error) {
-      message.error("Không thể xóa bài học")
+      message.error(
+        language === "vi" ? "Không thể xóa bài học" : "Unable to delete lesson"
+      )
     }
   }
 
@@ -1503,7 +1685,9 @@ function CurriculumContentBank({
           category_id: values.category_id ? Number(values.category_id) : null,
         })
         onLessonUpdated(updated as unknown as Lesson)
-        message.success("Đã cập nhật bài học!")
+        message.success(
+          language === "vi" ? "Đã cập nhật bài học!" : "Lesson updated successfully!"
+        )
         setIsCreateModalOpen(false)
         setEditingLessonId(null)
       } else {
@@ -1523,7 +1707,15 @@ function CurriculumContentBank({
       setVideoUrl("")
       setPdfFile(null)
     } catch (error) {
-      message.error(editingLessonId ? "Cập nhật thất bại" : "Tạo thất bại")
+      message.error(
+        editingLessonId
+          ? language === "vi"
+            ? "Cập nhật thất bại"
+            : "Update failed"
+          : language === "vi"
+            ? "Tạo thất bại"
+            : "Creation failed"
+      )
     } finally {
       setIsCreating(false)
     }
@@ -1556,7 +1748,9 @@ function CurriculumContentBank({
     >
       <div className="bg-gray-50 p-4 rounded border flex-1 flex flex-col overflow-hidden">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-semibold m-0">Nội Dung Có Sẵn</h3>
+          <h3 className="text-lg font-semibold m-0">
+            {language === "vi" ? "Nội Dung Có Sẵn" : "Available Content"}
+          </h3>
           <Button
             type="primary"
             size="small"
@@ -1576,20 +1770,24 @@ function CurriculumContentBank({
             }}
             className="bg-[#1677ff] hover:bg-blue-500 shadow-sm"
           >
-            Bài Học Mới
+            {language === "vi" ? "Bài Học Mới" : "New Lesson"}
           </Button>
         </div>
         {sections.length > 0 && (
           <div className="mb-4">
             <label className="block text-xs font-medium text-gray-500 mb-1">
-              Chọn Chương Để Thêm Vào
+              {language === "vi"
+                ? "Chọn Chương Để Thêm Vào"
+                : "Select Section to Add Into"}
             </label>
             <Select
               className="w-full"
               value={activeSectionId || undefined}
               onChange={setActiveSectionId}
               options={sections.map((s) => ({ value: s.id, label: s.title }))}
-              placeholder="Chọn chương..."
+              placeholder={
+                language === "vi" ? "Chọn chương..." : "Select section..."
+              }
             />
           </div>
         )}
@@ -1597,7 +1795,9 @@ function CurriculumContentBank({
         <div className="grid grid-cols-2 gap-2 mb-2">
           <Select
             allowClear
-            placeholder="Lọc danh mục..."
+            placeholder={
+              language === "vi" ? "Lọc danh mục..." : "Filter by category..."
+            }
             className="w-full"
             value={selectedFilterCategory}
             onChange={setSelectedFilterCategory}
@@ -1609,7 +1809,9 @@ function CurriculumContentBank({
             }
           />
           <Input
-            placeholder="Tìm tên bài..."
+            placeholder={
+              language === "vi" ? "Tìm tên bài..." : "Search lesson title..."
+            }
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             prefix={<Search size={14} className="text-gray-400" />}
@@ -1621,13 +1823,13 @@ function CurriculumContentBank({
             className={`px-4 py-2 text-sm font-medium ${activeTab === "lessons" ? "border-b-2 border-blue-600 text-blue-600" : "text-gray-500"}`}
             onClick={() => setActiveTab("lessons")}
           >
-            Bài Học
+            {language === "vi" ? "Bài Học" : "Lessons"}
           </button>
           <button
             className={`px-4 py-2 text-sm font-medium ${activeTab === "quizzes" ? "border-b-2 border-blue-600 text-blue-600" : "text-gray-500"}`}
             onClick={() => setActiveTab("quizzes")}
           >
-            Bài Kiểm Tra
+            {language === "vi" ? "Bài Kiểm Tra" : "Quizzes"}
           </button>
         </div>
         <div className="overflow-y-auto flex-1 max-h-[400px] pr-1">
@@ -1643,7 +1845,11 @@ function CurriculumContentBank({
                 onAdd={() =>
                   activeSectionId
                     ? handleAddItem(activeSectionId, l, "lesson")
-                    : message.warning("Vui lòng chọn một chương trước")
+                    : message.warning(
+                        language === "vi"
+                          ? "Vui lòng chọn một chương trước"
+                          : "Please select a section first"
+                      )
                 }
               />
             ))}
@@ -1659,13 +1865,19 @@ function CurriculumContentBank({
                 onAdd={() =>
                   activeSectionId
                     ? handleAddItem(activeSectionId, q, "quiz")
-                    : message.warning("Vui lòng chọn một chương trước")
+                    : message.warning(
+                        language === "vi"
+                          ? "Vui lòng chọn một chương trước"
+                          : "Please select a section first"
+                      )
                 }
               />
             ))}
           {activeTab === "lessons" && filteredLessons.length === 0 && (
             <p className="text-center text-gray-400 py-4 text-sm">
-              Không có bài học nào khớp với bộ lọc.
+              {language === "vi"
+                ? "Không có bài học nào khớp với bộ lọc."
+                : "No lessons match the current filters."}
             </p>
           )}
         </div>
@@ -1677,7 +1889,9 @@ function CurriculumContentBank({
         onDragEnd={onDragEnd}
       >
         <div className="flex flex-col h-[500px]">
-          <h3 className="text-lg font-semibold mb-4">Chương Trình Khóa Học</h3>
+          <h3 className="text-lg font-semibold mb-4">
+            {language === "vi" ? "Chương Trình Khóa Học" : "Course Curriculum"}
+          </h3>
           <div className="flex-1 overflow-y-auto space-y-4 pr-1">
             {sections.map((section) => (
               <div
@@ -1758,7 +1972,7 @@ function CurriculumContentBank({
                   </SortableContext>
                   {section.items.length === 0 && (
                     <p className="text-center text-sm text-gray-400 py-2 italic">
-                      Chương trống
+                      {language === "vi" ? "Chương trống" : "Empty section"}
                     </p>
                   )}
                 </div>
@@ -1770,15 +1984,15 @@ function CurriculumContentBank({
             onClick={handleAddSection}
             className="w-full mt-4 flex items-center justify-center gap-2 p-3 border-2 border-dashed border-gray-300 rounded text-gray-600 hover:border-blue-500 hover:text-blue-600 transition-colors"
           >
-            <Plus size={18} /> Thêm Chương
+            <Plus size={18} /> {language === "vi" ? "Thêm Chương" : "Add Section"}
           </button>
         </div>
       </DndContext>
 
       {modalState?.type === "Section" && (
         <FormModal
-          title="Sửa tên chương"
-          label="Tiêu đề"
+          title={language === "vi" ? "Sửa tên chương" : "Edit section name"}
+          label={language === "vi" ? "Tiêu đề" : "Title"}
           initialValue={
             sections.find((s) => s.id === modalState.sectionId)?.title
           }
@@ -1790,7 +2004,13 @@ function CurriculumContentBank({
       <Modal
         title={
           <span className="text-lg font-bold">
-            {editingLessonId ? "Sửa Bài Học" : "Tạo Bài Học Mới"}
+            {editingLessonId
+              ? language === "vi"
+                ? "Sửa Bài Học"
+                : "Edit Lesson"
+              : language === "vi"
+                ? "Tạo Bài Học Mới"
+                : "Create New Lesson"}
           </span>
         }
         open={isCreateModalOpen}
@@ -1820,20 +2040,44 @@ function CurriculumContentBank({
               name="title"
               label={
                 <span className="font-semibold">
-                  Tiêu đề bài học <span className="text-red-500">*</span>
+                  {language === "vi" ? "Tiêu đề bài học" : "Lesson title"}{" "}
+                  <span className="text-red-500">*</span>
                 </span>
               }
-              rules={[{ required: true, message: "Vui lòng nhập tiêu đề" }]}
+              rules={[
+                {
+                  required: true,
+                  message:
+                    language === "vi"
+                      ? "Vui lòng nhập tiêu đề"
+                      : "Please enter a title",
+                },
+              ]}
             >
-              <Input placeholder="ví dụ: Giới thiệu chung" size="large" />
+              <Input
+                placeholder={
+                  language === "vi"
+                    ? "ví dụ: Giới thiệu chung"
+                    : "e.g., General Introduction"
+                }
+                size="large"
+              />
             </Form.Item>
           </div>
           <Form.Item
             name="category_id"
-            label={<span className="font-semibold">Danh mục bài học</span>}
+            label={
+              <span className="font-semibold">
+                {language === "vi" ? "Danh mục bài học" : "Lesson category"}
+              </span>
+            }
           >
             <Select
-              placeholder="Chọn danh mục phân loại"
+              placeholder={
+                language === "vi"
+                  ? "Chọn danh mục phân loại"
+                  : "Select a category"
+              }
               size="large"
               allowClear
               showSearch
@@ -1852,7 +2096,11 @@ function CurriculumContentBank({
 
           <Form.Item
             name="type"
-            label={<span className="font-semibold">Loại Nội Dung</span>}
+            label={
+              <span className="font-semibold">
+                {language === "vi" ? "Loại Nội Dung" : "Content Type"}
+              </span>
+            }
           >
             <Radio.Group
               onChange={(e) => {
@@ -1866,13 +2114,13 @@ function CurriculumContentBank({
               value={contentType}
             >
               <Radio.Button value="text_media" className="flex-1 text-center">
-                Văn bản & Media
+                {language === "vi" ? "Văn bản & Media" : "Text & Media"}
               </Radio.Button>
               <Radio.Button value="video" className="flex-1 text-center">
-                Video Link
+                {language === "vi" ? "Liên kết Video" : "Video Link"}
               </Radio.Button>
               <Radio.Button value="pdf" className="flex-1 text-center">
-                Tải lên PDF
+                {language === "vi" ? "Tải lên PDF" : "Upload PDF"}
               </Radio.Button>
             </Radio.Group>
           </Form.Item>
@@ -1880,8 +2128,20 @@ function CurriculumContentBank({
           {contentType === "text_media" && (
             <Form.Item
               name="content"
-              label={<span className="font-semibold">Nội dung Bài Học</span>}
-              rules={[{ required: true, message: "Vui lòng nhập nội dung" }]}
+              label={
+                <span className="font-semibold">
+                  {language === "vi" ? "Nội dung Bài Học" : "Lesson Content"}
+                </span>
+              }
+              rules={[
+                {
+                  required: true,
+                  message:
+                    language === "vi"
+                      ? "Vui lòng nhập nội dung"
+                      : "Please enter content",
+                },
+              ]}
             >
               <RichTextEditor
                 value={form.getFieldValue("content")}
@@ -1890,7 +2150,9 @@ function CurriculumContentBank({
                   if (content !== form.getFieldValue("content"))
                     form.setFieldValue("content", content)
                 }}
-                placeholder="Bắt đầu nhập..."
+                placeholder={
+                  language === "vi" ? "Bắt đầu nhập..." : "Start typing..."
+                }
               />
             </Form.Item>
           )}
@@ -1898,12 +2160,32 @@ function CurriculumContentBank({
             <div className="space-y-4">
               <Form.Item
                 name="content"
-                label={<span className="font-semibold">Nhập URL Video</span>}
+                label={
+                  <span className="font-semibold">
+                    {language === "vi" ? "Nhập URL Video" : "Video URL"}
+                  </span>
+                }
                 rules={[
-                  { required: true, message: "Vui lòng nhập URL video" },
-                  { type: "url", message: "Vui lòng nhập URL hợp lệ" },
+                  {
+                    required: true,
+                    message:
+                      language === "vi"
+                        ? "Vui lòng nhập URL video"
+                        : "Please enter a video URL",
+                  },
+                  {
+                    type: "url",
+                    message:
+                      language === "vi"
+                        ? "Vui lòng nhập URL hợp lệ"
+                        : "Please enter a valid URL",
+                  },
                 ]}
-                help="Hỗ trợ: YouTube, Vimeo, Wistia."
+                help={
+                  language === "vi"
+                    ? "Hỗ trợ: YouTube, Vimeo, Wistia."
+                    : "Supported: YouTube, Vimeo, Wistia."
+                }
               >
                 <Input
                   placeholder="https://www.youtube.com/watch?v=..."
@@ -1918,7 +2200,7 @@ function CurriculumContentBank({
                       width="100%"
                       height="100%"
                       src={`https://www.youtube.com/embed/${getYoutubeEmbedId(videoUrl)}`}
-                      title="Video Preview"
+                      title={language === "vi" ? "Xem trước video" : "Video preview"}
                       frameBorder="0"
                       allowFullScreen
                       className="rounded shadow-sm"
@@ -1929,7 +2211,11 @@ function CurriculumContentBank({
                     <PlayCircleOutlined
                       style={{ fontSize: "32px", marginBottom: "8px" }}
                     />
-                    <span>Preview video sẽ hiển thị ở đây</span>
+                    <span>
+                      {language === "vi"
+                        ? "Preview video sẽ hiển thị ở đây"
+                        : "Video preview will appear here"}
+                    </span>
                   </div>
                 )}
               </div>
@@ -1939,8 +2225,20 @@ function CurriculumContentBank({
             <div>
               <Form.Item
                 name="content"
-                label={<span className="font-semibold">Tệp PDF</span>}
-                rules={[{ required: true, message: "Vui lòng tải lên PDF" }]}
+                label={
+                  <span className="font-semibold">
+                    {language === "vi" ? "Tệp PDF" : "PDF File"}
+                  </span>
+                }
+                rules={[
+                  {
+                    required: true,
+                    message:
+                      language === "vi"
+                        ? "Vui lòng tải lên PDF"
+                        : "Please upload a PDF",
+                  },
+                ]}
                 style={{ display: "none" }}
               >
                 <Input />
@@ -1957,7 +2255,9 @@ function CurriculumContentBank({
                     <InboxOutlined style={{ color: "#3b82f6" }} />
                   </p>
                   <p className="ant-upload-text">
-                    Kéo thả hoặc nhấp để tải PDF lên
+                    {language === "vi"
+                      ? "Kéo thả hoặc nhấp để tải PDF lên"
+                      : "Drag and drop or click to upload PDF"}
                   </p>
                 </Dragger>
               </div>
@@ -1992,7 +2292,7 @@ function CurriculumContentBank({
                 form.resetFields()
               }}
             >
-              Hủy
+              {language === "vi" ? "Hủy" : "Cancel"}
             </Button>
             <Button
               type="primary"
@@ -2001,7 +2301,13 @@ function CurriculumContentBank({
               size="large"
               className="bg-[#1677ff] hover:bg-blue-700 font-semibold px-8 shadow-md"
             >
-              {editingLessonId ? "Lưu Thay Đổi" : "Tạo Bài Học"}
+              {editingLessonId
+                ? language === "vi"
+                  ? "Lưu Thay Đổi"
+                  : "Save Changes"
+                : language === "vi"
+                  ? "Tạo Bài Học"
+                  : "Create Lesson"}
             </Button>
           </div>
         </Form>
@@ -2016,9 +2322,13 @@ function CurriculumContentBank({
       >
         <div className="text-center py-4">
           <CheckCircleFilled className="text-green-500 text-5xl mb-4" />
-          <h2 className="text-xl font-bold mb-2">Thành Công!</h2>
+          <h2 className="text-xl font-bold mb-2">
+            {language === "vi" ? "Thành Công!" : "Success!"}
+          </h2>
           <p className="text-gray-500 mb-6">
-            Bài học <strong>"{createdLessonName}"</strong> đã được lưu.
+            {language === "vi" ? "Bài học" : "Lesson"}{" "}
+            <strong>"{createdLessonName}"</strong>{" "}
+            {language === "vi" ? "đã được lưu." : "has been saved."}
           </p>
           <Button
             block
@@ -2026,7 +2336,7 @@ function CurriculumContentBank({
             size="large"
             onClick={() => setIsSuccessModalOpen(false)}
           >
-            Đóng
+            {language === "vi" ? "Đóng" : "Close"}
           </Button>
         </div>
       </Modal>

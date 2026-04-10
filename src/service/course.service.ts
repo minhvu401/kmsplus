@@ -242,7 +242,9 @@ export async function getAllCoursesAction({
       : sql``
 
   const hodNonDraftCondition =
-    isHeadOfDepartment && !isAdmin ? sql`AND c.status <> 'draft'` : sql``
+    isHeadOfDepartment && !isAdmin && userId
+      ? sql`AND (c.creator_id = ${userId} OR c.status <> 'draft')`
+      : sql``
 
   // Query Courses with Category Join
   const rows = await sql`
