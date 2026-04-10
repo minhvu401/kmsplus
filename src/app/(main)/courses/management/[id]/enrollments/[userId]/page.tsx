@@ -9,6 +9,7 @@ import { getCourseLearnerEnrollmentDetail } from "@/action/enrollment/enrollment
 import { getCourseManagementAccess } from "@/action/courses/courseAction"
 import LearnerProgressDetail from "@/components/ui/enrollments/learner-progress-detail"
 import type { LearnerEnrollmentDetail } from "@/components/ui/enrollments/enrollment-types"
+import useLanguageStore from "@/store/useLanguageStore"
 
 export default function LearnerProgressPage() {
   const params = useParams() as { id: string; userId: string }
@@ -17,6 +18,7 @@ export default function LearnerProgressPage() {
   const [hasAccess, setHasAccess] = useState(false)
   const [errorMessage, setErrorMessage] = useState("")
   const [detail, setDetail] = useState<LearnerEnrollmentDetail | null>(null)
+  const { language } = useLanguageStore()
 
   useEffect(() => {
     const checkAccess = async () => {
@@ -85,14 +87,18 @@ export default function LearnerProgressPage() {
       } catch (error) {
         console.error("Failed to load learner enrollment detail:", error)
         setDetail(null)
-        setErrorMessage("Failed to load learner detail")
+        setErrorMessage(
+          language === "vi"
+            ? "Không thể tải chi tiết học viên"
+            : "Failed to load learner detail"
+        )
       } finally {
         setIsLoading(false)
       }
     }
 
     loadDetail()
-  }, [hasAccess, params.id, params.userId, router])
+  }, [hasAccess, language, params.id, params.userId, router])
 
   if (isLoading) {
     return (
@@ -108,8 +114,13 @@ export default function LearnerProgressPage() {
         <Alert
           type="error"
           showIcon
-          message="Unable to load learner"
-          description={errorMessage || "No enrollment detail found for this learner."}
+          message={language === "vi" ? "Không thể tải học viên" : "Unable to load learner"}
+          description={
+            errorMessage ||
+            (language === "vi"
+              ? "Không tìm thấy chi tiết ghi danh cho học viên này."
+              : "No enrollment detail found for this learner.")
+          }
         />
       </div>
     )

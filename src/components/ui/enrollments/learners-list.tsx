@@ -1,11 +1,12 @@
 "use client"
 
 import React from "react"
-import { Avatar, Button, Progress, Table, Tag } from "antd"
+import { Avatar, Button, Progress, Table, Tag, Tooltip } from "antd"
 import { EyeOutlined, CheckCircleOutlined, UserOutlined } from "@ant-design/icons"
 import { useRouter } from "next/navigation"
 import type { ColumnsType } from "antd/es/table"
 import type { LearnerEnrollment } from "./enrollment-types"
+import useLanguageStore from "@/store/useLanguageStore"
 
 const PRIMARY_BLUE = "#1677ff"
 
@@ -14,12 +15,15 @@ interface LearnersListProps {
   courseId: string
 }
 
-function getStatusTag(status: LearnerEnrollment["status"]) {
+function getStatusTag(
+  status: LearnerEnrollment["status"],
+  language: "vi" | "en"
+) {
   if (status === "Completed") {
     return (
       <Tag color="blue" className="rounded-full px-3 border-0">
         <CheckCircleOutlined className="mr-1" />
-        Completed
+        {language === "vi" ? "Hoàn thành" : "Completed"}
       </Tag>
     )
   }
@@ -30,20 +34,21 @@ function getStatusTag(status: LearnerEnrollment["status"]) {
         className="rounded-full px-3 border-0"
         style={{ backgroundColor: "#eff6ff", color: PRIMARY_BLUE }}
       >
-        In Progress
+        {language === "vi" ? "Đang học" : "In Progress"}
       </Tag>
     )
   }
 
-  return <Tag className="rounded-full px-3">Not Started</Tag>
+  return <Tag className="rounded-full px-3">{language === "vi" ? "Chưa bắt đầu" : "Not Started"}</Tag>
 }
 
 export default function LearnersList({ learners, courseId }: LearnersListProps) {
   const router = useRouter()
+  const { language } = useLanguageStore()
 
   const columns: ColumnsType<LearnerEnrollment> = [
     {
-      title: "Learner",
+      title: language === "vi" ? "Học viên" : "Learner",
       dataIndex: "name",
       key: "name",
       render: (_: string, record) => (
@@ -61,20 +66,23 @@ export default function LearnersList({ learners, courseId }: LearnersListProps) 
       ),
     },
     {
-      title: "Department",
+      title: language === "vi" ? "Phòng ban" : "Department",
       dataIndex: "department",
       key: "department",
       className: "text-gray-600",
     },
     {
-      title: "Enrollment Date",
+      title: language === "vi" ? "Ngày ghi danh" : "Enrollment Date",
       dataIndex: "enrollmentDate",
       key: "enrollmentDate",
       className: "text-gray-500",
-      render: (value: string) => new Date(value).toLocaleDateString("en-GB"),
+      render: (value: string) =>
+        new Date(value).toLocaleDateString(
+          language === "vi" ? "vi-VN" : "en-GB"
+        ),
     },
     {
-      title: "Overall Progress",
+      title: language === "vi" ? "Tiến độ tổng" : "Overall Progress",
       dataIndex: "progress",
       key: "progress",
       width: 240,
@@ -103,30 +111,33 @@ export default function LearnersList({ learners, courseId }: LearnersListProps) 
       },
     },
     {
-      title: "Course Status",
+      title: language === "vi" ? "Trạng thái khóa học" : "Course Status",
       dataIndex: "status",
       key: "status",
-      render: (status: LearnerEnrollment["status"]) => getStatusTag(status),
+      render: (status: LearnerEnrollment["status"]) =>
+        getStatusTag(status, language as "vi" | "en"),
     },
     {
-      title: "Action",
+      title: language === "vi" ? "Thao tác" : "Action",
       key: "action",
       render: (_: unknown, record) => (
-        <Button
-          type="text"
-          shape="circle"
-          icon={<EyeOutlined />}
-          className="text-gray-400 hover:bg-blue-50"
-          onMouseEnter={(event) => {
-            event.currentTarget.style.color = PRIMARY_BLUE
-          }}
-          onMouseLeave={(event) => {
-            event.currentTarget.style.color = ""
-          }}
-          onClick={() => {
-            router.push(`/courses/management/${courseId}/enrollments/${record.id}`)
-          }}
-        />
+        <Tooltip title={language === "vi" ? "Xem chi tiết" : "View details"}>
+          <Button
+            type="text"
+            shape="circle"
+            icon={<EyeOutlined />}
+            className="text-gray-400 hover:bg-blue-50"
+            onMouseEnter={(event) => {
+              event.currentTarget.style.color = PRIMARY_BLUE
+            }}
+            onMouseLeave={(event) => {
+              event.currentTarget.style.color = ""
+            }}
+            onClick={() => {
+              router.push(`/courses/management/${courseId}/enrollments/${record.id}`)
+            }}
+          />
+        </Tooltip>
       ),
     },
   ]
