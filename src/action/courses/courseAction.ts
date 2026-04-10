@@ -148,8 +148,12 @@ export async function getAllCourses(params: GetAllCoursesParams) {
 }
 
 export async function getCourseById(id: number) {
+  console.log("🟦 [getCourseById] Fetching course with id:", id)
   await requirePermission(Permission.READ_COURSE)
-  return getCourseByIdAction(id)
+  const courseData = await getCourseByIdAction(id)
+  console.log("🟦 [getCourseById] Course data returned:", courseData)
+  console.log("🟦 [getCourseById] Category ID:", courseData?.category_id)
+  return courseData
 }
 
 type CourseManagementAccessResult = {

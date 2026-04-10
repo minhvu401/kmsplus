@@ -37,7 +37,6 @@ import TrendingKeywordsCloud from "./components/TrendingKeywordsCloud"
 import CourseDropoffRateChart from "./components/CourseDropoffRateChart"
 import UnansweredQuestionsChart from "./components/UnansweredQuestionsChart"
 import TopContributorsTable from "./components/TopContributorsTable"
-import QuestionBankHealthChart from "./components/QuestionBankHealthChart"
 
 // System Admin Components
 import PendingItemsOverview from "./components/PendingItemsOverview"
@@ -308,13 +307,6 @@ export default function DashboardMetricsPage() {
           <Row gutter={[20, 20]} className="mt-6 w-full animate-fadeInUp">
             <Col xs={24} className="transition-all duration-500">
               <TopContributorsTable />
-            </Col>
-          </Row>
-
-          {/* Row 4: Question Bank Health */}
-          <Row gutter={[20, 20]} className="mt-6 w-full animate-fadeInUp">
-            <Col xs={24} className="transition-all duration-500">
-              <QuestionBankHealthChart />
             </Col>
           </Row>
         </>

@@ -8,8 +8,18 @@ export async function getQuestions(page: number = 1, limit: number = 10) {
 }
 
 export async function getQuestionsByCategory(categoryId: number) {
+  console.log(
+    "🟦 [getQuestionsByCategory] Fetching questions for categoryId:",
+    categoryId
+  )
   // await requireAuth()
-  return service.getQuestionsByCategoryAction(categoryId)
+  const questionsData = await service.getQuestionsByCategoryAction(categoryId)
+  console.log(
+    "🟦 [getQuestionsByCategory] Questions returned:",
+    questionsData?.length || 0,
+    "questions"
+  )
+  return questionsData
 }
 
 export async function getAllQuestions() {

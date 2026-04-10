@@ -87,7 +87,7 @@ export const rolePermissionsMap: Record<Role, Permission[]> = {
     Permission.AI_EXPLANATION,
   ],
 
-  // TRAINING_MANAGER: 54 perms - quản lý khóa học, quiz, phê duyệt bài viết
+  // TRAINING_MANAGER: 56 perms - quản lý khóa học, quiz, phê duyệt bài viết, phân tích AI
   [Role.TRAINING_MANAGER]: [
     // Access
     Permission.LOGIN,
@@ -151,6 +151,9 @@ export const rolePermissionsMap: Record<Role, Permission[]> = {
     Permission.UPDATE_CATEGORY,
     Permission.DELETE_CATEGORY,
     Permission.SEARCH_CATEGORY,
+    // System - Analytics & AI
+    Permission.VIEW_STATISTICS,
+    Permission.MANAGE_SYSTEM,
     // Settings
     Permission.LANGUAGE_SETTING,
     Permission.MODERATE_CONTENT,
@@ -174,7 +177,7 @@ export const rolePermissionsMap: Record<Role, Permission[]> = {
     Permission.OPEN_QUESTION,
     Permission.CLOSE_QUESTION,
     Permission.SHARE_QUESTION,
-    // Articles 
+    // Articles
     Permission.VIEW_ARTICLE_LIST,
     Permission.SEARCH_ARTICLE,
     Permission.READ_ARTICLE,
