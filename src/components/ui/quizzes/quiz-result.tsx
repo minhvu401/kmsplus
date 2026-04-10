@@ -97,8 +97,7 @@ export default function QuizResult({
       language === "vi"
         ? "Không thể bắt đầu lần làm bài"
         : "Failed to start quiz attempt",
-    backToSummary:
-      language === "vi" ? "Quay lại tổng quan" : "Back to Summary",
+    backToSummary: language === "vi" ? "Quay lại tổng quan" : "Back to Summary",
     passed: language === "vi" ? "Đạt" : "Passed",
     failed: language === "vi" ? "Không đạt" : "Failed",
     score: language === "vi" ? "Điểm" : "Score",
@@ -106,13 +105,9 @@ export default function QuizResult({
     completedTitle:
       language === "vi" ? "Đã hoàn thành bài kiểm tra" : "Quiz Completed",
     completedSubtitle:
-      language === "vi"
-        ? "Bạn đã hoàn thành bài"
-        : "You have completed the",
+      language === "vi" ? "Bạn đã hoàn thành bài" : "You have completed the",
     reviewDetailed:
-      language === "vi"
-        ? "Xem chi tiết đáp án"
-        : "Review Detailed Answers",
+      language === "vi" ? "Xem chi tiết đáp án" : "Review Detailed Answers",
     retryQuiz: language === "vi" ? "Làm lại" : "Retry Quiz",
     left: language === "vi" ? "còn lại" : "left",
     status: language === "vi" ? "Trạng thái" : "Status",
@@ -142,7 +137,8 @@ export default function QuizResult({
 
   // Formatting time
   const formatTime = (seconds: number) => {
-    if (seconds < 60) return language === "vi" ? `${seconds} giây` : `${seconds}s`
+    if (seconds < 60)
+      return language === "vi" ? `${seconds} giây` : `${seconds}s`
     const m = Math.floor(seconds / 60)
     const s = seconds % 60
     if (language === "vi") {
@@ -163,9 +159,7 @@ export default function QuizResult({
       attemptsLeft !== undefined &&
       attemptsLeft <= 0
     ) {
-      message.error(
-        t.reachedMaxAttempts
-      )
+      message.error(t.reachedMaxAttempts)
       return
     }
 
@@ -209,7 +203,9 @@ export default function QuizResult({
               <Tag color={isPassed ? "success" : "error"}>
                 {isPassed ? t.passed : t.failed}
               </Tag>
-              <Text type="secondary">{t.score}: {displayScore}/100</Text>
+              <Text type="secondary">
+                {t.score}: {displayScore}/100
+              </Text>
             </Space>
           </Space>
           <Button
@@ -327,7 +323,10 @@ export default function QuizResult({
                 >
                   {t.retryQuiz}
                   {attemptsLeft !== null && attemptsLeft !== undefined && (
-                    <span> ({attemptsLeft} {t.left})</span>
+                    <span>
+                      {" "}
+                      ({attemptsLeft} {t.left})
+                    </span>
                   )}
                 </Button>
               )}
@@ -481,7 +480,9 @@ export default function QuizResult({
                 <Title level={3} style={{ margin: 0, color: "#52c41a" }}>
                   {correctCount}
                 </Title>
-                <Text type="secondary">/ {totalQuestions} {t.correct}</Text>
+                <Text type="secondary">
+                  / {totalQuestions} {t.correct}
+                </Text>
               </Space>
               <Text type="danger" style={{ fontSize: 12, marginTop: 4 }}>
                 {incorrectCount} {t.incorrect}
@@ -712,39 +713,30 @@ function QuestionCard({
             padding: "20px 24px",
           }}
         >
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "flex-start",
-              gap: 16,
-            }}
-          >
-            <div style={{ flex: 1 }}>
-              <Space size={8} style={{ marginBottom: 8 }}>
-                <SafetyCertificateOutlined style={{ color: "#1677ff" }} />
-                <Text strong style={{ color: "#1677ff" }}>
-                  {t.instructorFeedback}
-                </Text>
-              </Space>
-              <Paragraph style={{ margin: 0, color: "#595959" }}>
-                {question.explanation ? (
-                  question.explanation
-                ) : (
-                  <>
-                    {t.correctAnswerPrefix}{" "}
-                    <strong>{correctAnswers.join(", ")}</strong>.
-                  </>
-                )}
-              </Paragraph>
-            </div>
-            <div>
-              <AIExplanationButton
-                attemptId={attemptId}
-                questionId={question.id}
-                questionText={question.questionText}
-              />
-            </div>
+          <div style={{ marginBottom: 16 }}>
+            <Space size={8} style={{ marginBottom: 8 }}>
+              <SafetyCertificateOutlined style={{ color: "#1677ff" }} />
+              <Text strong style={{ color: "#1677ff" }}>
+                {t.instructorFeedback}
+              </Text>
+            </Space>
+            <Paragraph style={{ margin: 0, color: "#595959" }}>
+              {question.explanation ? (
+                question.explanation
+              ) : (
+                <>
+                  {t.correctAnswerPrefix}{" "}
+                  <strong>{correctAnswers.join(", ")}</strong>.
+                </>
+              )}
+            </Paragraph>
+          </div>
+          <div>
+            <AIExplanationButton
+              attemptId={attemptId}
+              questionId={question.id}
+              questionText={question.questionText}
+            />
           </div>
         </div>
       )}
