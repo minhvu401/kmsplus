@@ -14,6 +14,7 @@ export interface PaginatedQuestionsResponse {
 export interface QuestionType {
   key: React.Key
   id: string
+  creator_id?: number | null
   question_text: string
   name: string
   type: "single_choice" | "multiple_choice"
@@ -32,21 +33,58 @@ export interface FullQuestionType {
   explanation?: string | null
 }
 
+export interface GetQuestionsFilters {
+  query?: string
+  type?: "single_choice" | "multiple_choice" | "all"
+  category?: string
+  sort?: "newest" | "oldest"
+}
+
 export async function getQuestionsAction(
   page: number = 1,
-  limit: number = 10
+  limit: number = 10,
+  filters: GetQuestionsFilters = {}
 ): Promise<PaginatedQuestionsResponse> {
   try {
-    const offset = (page - 1) * limit
+    const safePage = Number.isFinite(page) && page > 0 ? page : 1
+    const safeLimit = Number.isFinite(limit) && limit > 0 ? limit : 10
+    const offset = (safePage - 1) * safeLimit
+
+    const normalizedQuery = filters.query?.trim() ?? ""
+    const selectedType = filters.type ?? "all"
+    const selectedCategory = filters.category ?? "all"
+    const sort = filters.sort ?? "newest"
+
+    const whereQuery = normalizedQuery
+      ? sql`
+          AND (
+            COALESCE(qb.question_text, '') ILIKE ${"%" + normalizedQuery + "%"}
+            OR COALESCE(qb.explanation, '') ILIKE ${"%" + normalizedQuery + "%"}
+          )
+        `
+      : sql``
+
+    const whereType =
+      selectedType !== "all" ? sql`AND qb.type = ${selectedType}` : sql``
+
+    const whereCategory =
+      selectedCategory !== "all" ? sql`AND c.name = ${selectedCategory}` : sql``
+
     const countResult = await sql`
       SELECT COUNT(*) as total
       FROM question_bank qb
-      WHERE qb.is_deleted = false OR qb.is_deleted IS NULL
+      JOIN categories c ON qb.category_id = c.id
+      WHERE (qb.is_deleted = false OR qb.is_deleted IS NULL)
+      ${whereQuery}
+      ${whereType}
+      ${whereCategory}
     `
     const totalItems = parseInt(countResult[0].total)
+
     const data = await sql`
       SELECT 
         qb.id, 
+        qb.creator_id,
         qb.question_text, 
         qb.type,
         qb.explanation,
@@ -56,18 +94,24 @@ export async function getQuestionsAction(
       FROM question_bank qb
       JOIN categories c
       ON qb.category_id = c.id
-      WHERE qb.is_deleted = false OR qb.is_deleted IS NULL
-      ORDER BY qb.updated_at DESC
-      LIMIT ${limit} OFFSET ${offset};
+      WHERE (qb.is_deleted = false OR qb.is_deleted IS NULL)
+      ${whereQuery}
+      ${whereType}
+      ${whereCategory}
+      ORDER BY
+        CASE WHEN ${sort} = 'oldest' THEN qb.created_at END ASC,
+        CASE WHEN ${sort} = 'newest' THEN qb.created_at END DESC,
+        qb.created_at DESC
+      LIMIT ${safeLimit} OFFSET ${offset};
     `
     // ← STEP 4: Tính tổng số trang
-    const totalPages = Math.ceil(totalItems / limit)
+    const totalPages = Math.max(1, Math.ceil(totalItems / safeLimit))
     // ← STEP 5: Return object với metadata
     return {
       data: data as QuestionType[],
       totalItems,
       totalPages,
-      currentPage: page,
+      currentPage: safePage,
     }
   } catch (error) {
     console.error("Error fetching questions:", error)
@@ -146,7 +190,11 @@ export async function getAllQuestionsAction() {
 export async function getCategoriesAction() {
   try {
     const data = await sql`
-      SELECT id, name FROM categories;
+      SELECT id, name
+      FROM categories
+      WHERE (is_deleted = false OR is_deleted IS NULL)
+        AND id <> 1
+      ORDER BY name ASC;
     `
     return data
   } catch (error) {
@@ -164,6 +212,7 @@ export async function createQuestionAction(questionData: any) {
       options,
       correctAnswer,
       explanation,
+      creatorId,
     } = questionData
 
     // Sanitize: escape HTML and trim
@@ -203,7 +252,7 @@ export async function createQuestionAction(questionData: any) {
       ${JSON.stringify(sanitizedOptions)}, 
       ${JSON.stringify(correctAnswer)},
       ${sanitizedExplanation},
-      1)
+      ${creatorId})
       RETURNING *;
     `
     return {

@@ -79,6 +79,7 @@ export default function ManageCoursesClient({
   availableQuizzes,
   userRole = "", // ✅ Nhận prop userRole
 }: ManageCoursesClientProps) {
+  const visibleCategories = categories.filter((cat) => Number(cat.id) !== 1)
   const handledFlashRef = React.useRef<string | null>(null)
   const { language } = useLanguageStore()
   const router = useRouter()
@@ -89,7 +90,9 @@ export default function ManageCoursesClient({
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [searchInput, setSearchInput] = useState(query)
   const [selectedCategoryList, setSelectedCategoryList] =
-    useState<string[]>(selectedCategories)
+    useState<string[]>(
+      selectedCategories.filter((categoryId) => Number(categoryId) !== 1)
+    )
   const [hasActiveFilters, setHasActiveFilters] = useState(false)
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false)
   const [selectedCourse, setSelectedCourse] = useState<
@@ -174,18 +177,19 @@ export default function ManageCoursesClient({
   }, [messageApi, pathname, router, searchParams])
 
   const handleCategoryChange = (values: string[]) => {
+    const safeValues = values.filter((categoryId) => Number(categoryId) !== 1)
     const params = new URLSearchParams(searchParams)
     params.set("page", "1")
 
-    if (values.length === 0) {
+    if (safeValues.length === 0) {
       params.delete("category")
     } else {
       // Remove old category params and add new ones
       params.delete("category")
-      values.forEach((cat) => params.append("category", cat))
+      safeValues.forEach((cat) => params.append("category", cat))
     }
 
-    setSelectedCategoryList(values)
+    setSelectedCategoryList(safeValues)
     startFilterTransition(() => {
       router.push(`${pathname}?${params.toString()}`)
     })
@@ -976,7 +980,7 @@ export default function ManageCoursesClient({
                 onChange={handleCategoryChange}
                 showSearch
                 optionFilterProp="label"
-                options={categories.map((cat: any) => ({
+                options={visibleCategories.map((cat: any) => ({
                   label: cat.name,
                   value: String(cat.id),
                 }))}

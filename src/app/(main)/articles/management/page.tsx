@@ -492,7 +492,7 @@ export default function ArticleManagement() {
       setLoadingCategories(true)
       try {
         const res = await getAllCategories()
-        let filteredCategories = res || []
+        let filteredCategories = (res || []).filter((cat) => Number(cat.id) !== 1)
 
         // Nếu user không phải admin, chỉ hiển thị categories của department user đó
         if (!isAdmin && currentUser?.department_id) {
@@ -510,6 +510,19 @@ export default function ArticleManagement() {
       }
     })()
   }, [isAdmin, currentUser?.department_id])
+
+  useEffect(() => {
+    if (selectedCategory === 1) {
+      setSelectedCategory("All")
+    }
+    if (categoryIdFormValue === 1) {
+      setCategoryIdFormValue(undefined)
+    }
+    if (editCategoryId === 1) {
+      setEditCategoryId(undefined)
+      editForm.setFieldValue("categoryId", undefined)
+    }
+  }, [selectedCategory, categoryIdFormValue, editCategoryId, editForm])
 
   // Initialize edit title ref when edit modal opens with content
   useEffect(() => {
