@@ -58,7 +58,6 @@ export function ActionCell({
                             color: canManage ? '#1890ff' : '#9ca3af',
                         }}
                         onClick={canManage ? handleEdit : undefined}
-                        title={canManage ? 'Edit' : disabledReason}
                     />
                 </Tooltip>
                 <Popconfirm
@@ -76,7 +75,6 @@ export function ActionCell({
                                 cursor: canManage ? 'pointer' : 'not-allowed',
                                 color: canManage ? '#ff4d4f' : '#9ca3af',
                             }}
-                            title={canManage ? 'Delete' : disabledReason}
                         />
                     </Tooltip>
                 </Popconfirm>

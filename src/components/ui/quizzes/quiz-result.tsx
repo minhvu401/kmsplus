@@ -22,28 +22,34 @@ import {
 } from "@ant-design/icons"
 import useLanguageStore from "@/store/useLanguageStore"
 
-const normalizeArray = (v: unknown): string[] => {
-  if (Array.isArray(v)) return v.map(String)
+const normalizeArray = (v: unknown): number[] => {
+  if (Array.isArray(v)) {
+    return [...new Set(v.map((item) => Number(item)).filter(Number.isFinite))]
+  }
   if (typeof v === "object" && v !== null && "correct" in v) {
     const correct = (v as { correct: unknown }).correct
-    return Array.isArray(correct) ? correct.map(String) : [String(correct)]
+    return normalizeArray(correct)
   }
   if (typeof v === "string") {
     try {
       const parsed = JSON.parse(v)
-      if (parsed?.correct !== undefined) {
-        return Array.isArray(parsed.correct) ? parsed.correct : [parsed.correct]
-      }
-      return Array.isArray(parsed) ? parsed.map(String) : [String(parsed)]
+      return normalizeArray(parsed)
     } catch {
-      return [v]
+      const asNumber = Number(v)
+      return Number.isFinite(asNumber) ? [asNumber] : []
     }
   }
-  if (typeof v === "number") return [String(v)]
+  if (typeof v === "number") return Number.isFinite(v) ? [v] : []
   return []
 }
 
-const parseOptions = (opts: unknown): [string, string][] => {
+type ParsedOption = {
+  id: number
+  label: string
+  text: string
+}
+
+const parseOptions = (opts: unknown): ParsedOption[] => {
   if (typeof opts === "string") {
     try {
       opts = JSON.parse(opts)
@@ -52,21 +58,29 @@ const parseOptions = (opts: unknown): [string, string][] => {
     }
   }
   if (typeof opts === "object" && opts !== null && !Array.isArray(opts)) {
-    return Object.entries(opts) as [string, string][]
+    return Object.entries(opts).map(([key, value], idx) => {
+      const asNumber = Number(key)
+      return {
+        id: Number.isFinite(asNumber) ? asNumber : idx,
+        label: String.fromCharCode(65 + idx),
+        text: String(value),
+      }
+    })
   }
   if (Array.isArray(opts)) {
-    return opts.map(
-      (opt, idx) =>
-        [String.fromCharCode(65 + idx), String(opt)] as [string, string]
-    )
+    return opts.map((opt, idx) => ({
+      id: idx,
+      label: String.fromCharCode(65 + idx),
+      text: String(opt),
+    }))
   }
   return []
 }
 
 // Evaluate if a question is correct
 const isQuestionCorrect = (q: QuestionResult) => {
-  const selected = normalizeArray(q.selectedAnswers).sort()
-  const correct = normalizeArray(q.correctAnswers).sort()
+  const selected = normalizeArray(q.selectedAnswers).sort((a, b) => a - b)
+  const correct = normalizeArray(q.correctAnswers).sort((a, b) => a - b)
   return JSON.stringify(selected) === JSON.stringify(correct)
 }
 
@@ -562,6 +576,9 @@ function QuestionCard({
   const optionsList = parseOptions(question.options)
   const selectedAnswers = normalizeArray(question.selectedAnswers)
   const correctAnswers = normalizeArray(question.correctAnswers)
+  const correctAnswerLabels = optionsList
+    .filter((opt) => correctAnswers.includes(opt.id))
+    .map((opt) => opt.label)
 
   return (
     <Card
@@ -605,9 +622,9 @@ function QuestionCard({
         </Paragraph>
 
         <Space direction="vertical" size={12} style={{ width: "100%" }}>
-          {optionsList.map(([key, text]) => {
-            const isSelected = selectedAnswers.includes(key)
-            const isRightAnswer = correctAnswers.includes(key)
+          {optionsList.map((option) => {
+            const isSelected = selectedAnswers.includes(option.id)
+            const isRightAnswer = correctAnswers.includes(option.id)
 
             // Determine styling based on state
             let borderColor = "#f0f0f0"
@@ -625,7 +642,9 @@ function QuestionCard({
                   marginRight: 12,
                 }}
               >
-                <span style={{ fontSize: 10, color: "#8c8c8c" }}>{key}</span>
+                  <span style={{ fontSize: 10, color: "#8c8c8c" }}>
+                    {option.label}
+                  </span>
               </div>
             )
             let textColor = "inherit"
@@ -672,7 +691,7 @@ function QuestionCard({
 
             return (
               <div
-                key={key}
+                key={option.id}
                 style={{
                   border: `1px solid ${borderColor}`,
                   backgroundColor: bgColor,
@@ -684,7 +703,7 @@ function QuestionCard({
                 }}
               >
                 {icon}
-                <Text style={{ flex: 1, color: textColor }}>{text}</Text>
+                <Text style={{ flex: 1, color: textColor }}>{option.text}</Text>
                 {isSelected && !isRightAnswer && (
                   <Text type="danger" style={{ fontSize: 12, fontWeight: 600 }}>
                     {t.yourAnswer}
@@ -726,7 +745,7 @@ function QuestionCard({
               ) : (
                 <>
                   {t.correctAnswerPrefix}{" "}
-                  <strong>{correctAnswers.join(", ")}</strong>.
+                  <strong>{correctAnswerLabels.join(", ")}</strong>.
                 </>
               )}
             </Paragraph>

@@ -269,6 +269,14 @@ export default function QuestionBankClient({
   }
 
   const getManagePermission = (question: QuestionType) => {
+    if (question.is_in_active_quiz) {
+      return {
+        canManage: false,
+        reason:
+          'Câu hỏi này đang được sử dụng trong một quiz đang hoạt động nên không thể chỉnh sửa hoặc xóa.',
+      }
+    }
+
     if (isSystemAdmin) {
       return { canManage: true, reason: '' }
     }
