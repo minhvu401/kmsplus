@@ -15,6 +15,7 @@ export interface QuestionType {
   key: React.Key
   id: string
   creator_id?: number | null
+  is_in_active_quiz?: boolean
   question_text: string
   name: string
   type: "single_choice" | "multiple_choice"
@@ -85,6 +86,15 @@ export async function getQuestionsAction(
       SELECT 
         qb.id, 
         qb.creator_id,
+        EXISTS (
+          SELECT 1
+          FROM quiz_questions qq
+          JOIN quizzes q ON q.id = qq.quiz_id
+          WHERE qq.question_id = qb.id
+            AND q.is_deleted = false
+            AND (q.available_from IS NULL OR q.available_from <= NOW())
+            AND (q.available_until IS NULL OR q.available_until >= NOW())
+        ) as is_in_active_quiz,
         qb.question_text, 
         qb.type,
         qb.explanation,

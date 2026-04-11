@@ -48,7 +48,52 @@ type AttemptStats = {
 
 type QuestionRow = {
   type: "single_choice" | "multiple_choice"
-  correct_answer: any
+  correct_answer: unknown
+}
+
+const toNumberArray = (value: unknown): number[] => {
+  if (Array.isArray(value)) {
+    return [...new Set(value.map((v) => Number(v)).filter(Number.isFinite))]
+  }
+
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? [value] : []
+  }
+
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value)
+      return toNumberArray(parsed)
+    } catch {
+      const asNumber = Number(value)
+      return Number.isFinite(asNumber) ? [asNumber] : []
+    }
+  }
+
+  if (value && typeof value === "object" && "correct" in value) {
+    return toNumberArray((value as { correct: unknown }).correct)
+  }
+
+  return []
+}
+
+const normalizeCorrectAnswer = (value: unknown): number[] => {
+  return toNumberArray(value)
+}
+
+const normalizeSelectedAnswer = (
+  value: number | number[]
+): number[] => {
+  const raw = Array.isArray(value) ? value : [value]
+  return [...new Set(raw.map((v) => Number(v)).filter(Number.isFinite))].sort(
+    (a, b) => a - b
+  )
+}
+
+const isSameAnswerSet = (selected: number[], correct: number[]): boolean => {
+  if (selected.length !== correct.length) return false
+  const selectedSet = new Set(selected)
+  return correct.every((value) => selectedSet.has(value))
 }
 
 // Question Result Type (for quiz results)
@@ -595,7 +640,7 @@ export async function saveAttemptAnswerAction(
   attemptId: number,
   userId: number,
   questionId: number,
-  selectedAnswer: string | string[]
+  selectedAnswer: number | number[]
 ) {
   try {
     // 1️⃣ Verify attempt is valid and active
@@ -656,36 +701,18 @@ export async function saveAttemptAnswerAction(
 
     const { type, correct_answer } = questionResult[0]
 
-    // 3️⃣ Parse correct_answer format: {"correct":"B"} or {"correct":["A","B"]}
-    let correctAnswerParsed = correct_answer
-    if (typeof correct_answer === "string") {
-      correctAnswerParsed = JSON.parse(correct_answer)
-    }
-    const correctValue = correctAnswerParsed?.correct
+    // 3️⃣ Normalize both selected answer and correct answer to numeric index arrays.
+    const normalizedSelected = normalizeSelectedAnswer(selectedAnswer)
+    const answerToStore =
+      type === "single_choice"
+        ? normalizedSelected.slice(0, 1)
+        : normalizedSelected
+    const normalizedCorrect = normalizeCorrectAnswer(correct_answer).sort(
+      (a, b) => a - b
+    )
 
-    // 4️⃣ Determine correctness
-    let isCorrect = false
-
-    if (type === "single_choice") {
-      // selectedAnswer is "B", correctValue is "B"
-      isCorrect = selectedAnswer === correctValue
-    } else if (type === "multiple_choice") {
-      // selectedAnswer is ["A", "B"], correctValue is ["A", "B"]
-      const selectedArray = Array.isArray(selectedAnswer)
-        ? selectedAnswer
-        : [selectedAnswer]
-
-      const correctArray = Array.isArray(correctValue)
-        ? correctValue
-        : [correctValue]
-
-      const selectedSet = new Set(selectedArray)
-      const correctSet = new Set(correctArray)
-
-      isCorrect =
-        selectedSet.size === correctSet.size &&
-        [...selectedSet].every((v) => correctSet.has(v))
-    }
+    // 4️⃣ Determine correctness based on exact set match.
+    const isCorrect = isSameAnswerSet(answerToStore, normalizedCorrect)
 
     // 5️⃣ Calculate points
     const pointsEarned = isCorrect ? 1 : 0
@@ -702,7 +729,7 @@ export async function saveAttemptAnswerAction(
       VALUES (
         ${attemptId},
         ${questionId},
-        ${JSON.stringify(selectedAnswer)},
+        ${JSON.stringify(answerToStore)},
         ${isCorrect},
         ${pointsEarned}
       )
@@ -968,8 +995,8 @@ export async function getAttemptResultAction(
         questionText: q.question_text,
         type: q.type,
         options: q.options,
-        selectedAnswers: q.selected_answers,
-        correctAnswers: q.correct_answers,
+        selectedAnswers: toNumberArray(q.selected_answers),
+        correctAnswers: normalizeCorrectAnswer(q.correct_answers),
         explanation: q.explanation,
       })),
     }
