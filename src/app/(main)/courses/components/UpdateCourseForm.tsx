@@ -350,7 +350,9 @@ export default function UpdateCourseForm({
           getAllDepartments(),
           getAllUsers(),
         ])
-        setCategories(categoriesData)
+        setCategories(
+          (categoriesData || []).filter((cat: any) => Number(cat.id) !== 1)
+        )
         setDepartments(departmentsData || [])
         setUsers(
           usersData?.map((user: any) => ({
@@ -408,6 +410,7 @@ export default function UpdateCourseForm({
 
   const [payload, setPayload] = useState<CoursePayload>({
     ...initialData,
+    category_id: Number(initialData.category_id) === 1 ? null : initialData.category_id,
     visibility: initialData.visibility || "private",
     assignment_rules: initialData.assignment_rules || [],
   })
