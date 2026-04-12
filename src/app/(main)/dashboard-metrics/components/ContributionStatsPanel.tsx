@@ -9,10 +9,13 @@ import {
 } from "@ant-design/icons"
 import { getContributionStatsMetrics } from "@/action/metrics/metricsActions"
 import useUserStore from "@/store/useUserStore"
+import useLanguageStore from "@/store/useLanguageStore"
+import { t } from "@/lib/i18n"
 import type { ContributionStatsData } from "@/service/metrics.service"
 
 export default function ContributionStatsPanel() {
   const { user } = useUserStore()
+  const { language } = useLanguageStore()
   const [stats, setStats] = useState<ContributionStatsData | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -56,7 +59,7 @@ export default function ContributionStatsPanel() {
       title={
         <div className="flex items-center gap-2">
           <CommentOutlined className="text-purple-600 text-lg" />
-          <span>Thống kê đóng góp của tôi</span>
+          <span>{t("dashboard.metrics.contribution_stats", language)}</span>
         </div>
       }
       className="shadow-md border-0"
@@ -70,21 +73,21 @@ export default function ContributionStatsPanel() {
           <Col xs={24} sm={8}>
             <StatItem
               icon={<FileTextOutlined />}
-              label="Bài viết"
+              label={t("dashboard.metrics.articles", language)}
               value={stats.articles}
             />
           </Col>
           <Col xs={24} sm={8}>
             <StatItem
               icon={<QuestionCircleOutlined />}
-              label="Câu hỏi"
+              label={t("dashboard.metrics.questions", language)}
               value={stats.questions}
             />
           </Col>
           <Col xs={24} sm={8}>
             <StatItem
               icon={<CommentOutlined />}
-              label="Câu trả lời"
+              label={t("dashboard.metrics.answers", language)}
               value={stats.answers}
             />
           </Col>

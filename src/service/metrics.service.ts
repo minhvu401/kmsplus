@@ -78,8 +78,10 @@ export interface PendingItemsData {
   courses: number
 }
 
+export type TimePeriodType = "day" | "week" | "month" | "year"
+
 export interface NewUsersGrowthData {
-  week: string
+  period: string
   newUsers: number
 }
 
@@ -471,6 +473,12 @@ export async function fetchTopContributorsMetrics(): Promise<
         ) as total_contributions
       FROM users u
       WHERE u.status = 'active'
+        AND NOT EXISTS (
+          SELECT 1
+          FROM user_roles ur
+          JOIN roles r ON ur.role_id = r.id
+          WHERE ur.user_id = u.id AND r.name ILIKE '%admin%'
+        )
       ORDER BY total_contributions DESC
       LIMIT 5
     `
@@ -504,6 +512,12 @@ export async function fetchTopLearnersMetrics(): Promise<ContributorData[]> {
       FROM users u
       LEFT JOIN enrollments e ON u.id = e.user_id AND e.status = 'completed'
       WHERE u.status = 'active'
+        AND NOT EXISTS (
+          SELECT 1
+          FROM user_roles ur
+          JOIN roles r ON ur.role_id = r.id
+          WHERE ur.user_id = u.id AND r.name ILIKE '%admin%'
+        )
       GROUP BY u.id, u.full_name, u.avatar_url
       ORDER BY completed_courses DESC
       LIMIT 5
@@ -592,28 +606,239 @@ export async function fetchPendingItemsMetrics(): Promise<PendingItemsData> {
 }
 
 /**
- * Fetch new users growth by week
+ * Fetch new users growth by time period (day/week/month/year)
+ * - day: Hiển thị 24 giờ của ngày được chọn (0h-23h)
+ * - week: Hiển thị 7 ngày của tuần được chọn trong tháng
+ * - month: Hiển thị 1-31 ngày của tháng được chọn
+ * - year: Hiển thị 12 tháng của năm được chọn
  */
-export async function fetchNewUsersGrowthMetrics(): Promise<
-  NewUsersGrowthData[]
-> {
+export async function fetchNewUsersGrowthMetrics(
+  timePeriod: TimePeriodType = "week",
+  selectedValue: string = ""
+): Promise<NewUsersGrowthData[]> {
   try {
-    const result = await sql`
-      SELECT 
-        TO_CHAR(DATE_TRUNC('week', created_at), 'W') as week,
-        COUNT(*) as newUsers
-      FROM users
-      WHERE created_at >= CURRENT_DATE - INTERVAL '12 weeks'
-      GROUP BY DATE_TRUNC('week', created_at)
-      ORDER BY DATE_TRUNC('week', created_at) ASC
-    `
+    let result: any[] = []
+    const today = new Date()
+    const currentYear = today.getFullYear()
+    const currentMonth = today.getMonth() + 1
+    let targetDate = today
+    let targetYear = currentYear
+    let targetMonth = currentMonth
 
-    return (
-      result.map((row: any) => ({
-        week: `W${row.week}`,
-        newUsers: parseInt(row.newUsers) || 0,
-      })) || []
-    )
+    // Parse selectedValue based on timePeriod
+    if (selectedValue) {
+      if (timePeriod === "day") {
+        // selectedValue is a date string (YYYY-MM-DD)
+        targetDate = new Date(selectedValue)
+      } else if (timePeriod === "month") {
+        // selectedValue is month number (1-12)
+        targetMonth = parseInt(selectedValue) || currentMonth
+      } else if (timePeriod === "year") {
+        // selectedValue is year string
+        targetYear = parseInt(selectedValue) || currentYear
+      }
+    }
+
+    switch (timePeriod) {
+      case "day": {
+        // Get hourly data for selected day
+        const dateStr = targetDate.toISOString().split("T")[0]
+        const data = await sql`
+          SELECT 
+            EXTRACT(HOUR FROM users.created_at) as hour,
+            COUNT(*) as newUsers
+          FROM users
+          WHERE DATE(users.created_at) = ${dateStr}::date
+          GROUP BY EXTRACT(HOUR FROM users.created_at)
+          ORDER BY EXTRACT(HOUR FROM users.created_at) ASC
+        `
+        result = data
+        break
+      }
+      case "week": {
+        // Get daily data for current week
+        const data = await sql`
+          SELECT 
+            DATE(users.created_at)::date as date,
+            COUNT(*) as newUsers
+          FROM users
+          WHERE DATE_TRUNC('week', users.created_at) = DATE_TRUNC('week', CURRENT_DATE)
+          GROUP BY DATE(users.created_at)
+          ORDER BY DATE(users.created_at) ASC
+        `
+        result = data
+        break
+      }
+      case "month": {
+        // Get daily data for selected month
+        const data = await sql`
+          SELECT 
+            DATE(users.created_at)::date as date,
+            COUNT(*) as newUsers
+          FROM users
+          WHERE EXTRACT(MONTH FROM users.created_at) = ${targetMonth}
+            AND EXTRACT(YEAR FROM users.created_at) = ${currentYear}
+          GROUP BY DATE(users.created_at)
+          ORDER BY DATE(users.created_at) ASC
+        `
+        result = data
+        break
+      }
+      case "year": {
+        // Get monthly data for selected year
+        const data = await sql`
+          SELECT 
+            DATE_TRUNC('month', users.created_at)::date as date,
+            COUNT(*) as newUsers
+          FROM users
+          WHERE EXTRACT(YEAR FROM users.created_at) = ${targetYear}
+          GROUP BY DATE_TRUNC('month', users.created_at)
+          ORDER BY DATE_TRUNC('month', users.created_at) ASC
+        `
+        result = data
+        break
+      }
+      default: {
+        // Default: current week
+        const data = await sql`
+          SELECT 
+            DATE(users.created_at)::date as date,
+            COUNT(*) as newUsers
+          FROM users
+          WHERE DATE_TRUNC('week', users.created_at) = DATE_TRUNC('week', CURRENT_DATE)
+          GROUP BY DATE(users.created_at)
+          ORDER BY DATE(users.created_at) ASC
+        `
+        result = data
+        break
+      }
+    }
+
+    // Generate complete time series for current period
+    let fullSeries: any[] = []
+
+    if (timePeriod === "day") {
+      // Generate 24 hours (0h-23h) for selected day
+      for (let h = 0; h < 24; h++) {
+        const period = `${h}h`
+        fullSeries.push({
+          period,
+          date: h.toString(),
+          newUsers: 0,
+        })
+      }
+    } else if (timePeriod === "week") {
+      // Generate 7 days of current week (Mon-Sun)
+      const first = today.getDate() - today.getDay() + 1 // Monday
+      for (let i = 0; i < 7; i++) {
+        const day = new Date(today)
+        day.setDate(first + i)
+        const dayNames = [
+          "Thứ 2",
+          "Thứ 3",
+          "Thứ 4",
+          "Thứ 5",
+          "Thứ 6",
+          "Thứ 7",
+          "CN",
+        ]
+        const period = `${dayNames[i]} (${day.getDate()}/${day.getMonth() + 1})`
+        const dateStr = day.toISOString().split("T")[0]
+        fullSeries.push({
+          period,
+          date: dateStr,
+          newUsers: 0,
+        })
+      }
+    } else if (timePeriod === "month") {
+      // Generate days of selected month
+      const daysInMonth = new Date(currentYear, targetMonth, 0).getDate()
+      for (let d = 1; d <= daysInMonth; d++) {
+        const period = `${d}/${targetMonth}`
+        const dateStr = `${currentYear}-${String(targetMonth).padStart(2, "0")}-${String(d).padStart(2, "0")}`
+        fullSeries.push({
+          period,
+          date: dateStr,
+          newUsers: 0,
+        })
+      }
+    } else if (timePeriod === "year") {
+      // Generate 12 months for selected year
+      const monthNames = [
+        "Tháng 1",
+        "Tháng 2",
+        "Tháng 3",
+        "Tháng 4",
+        "Tháng 5",
+        "Tháng 6",
+        "Tháng 7",
+        "Tháng 8",
+        "Tháng 9",
+        "Tháng 10",
+        "Tháng 11",
+        "Tháng 12",
+      ]
+      for (let m = 1; m <= 12; m++) {
+        const period = monthNames[m - 1]
+        const dateStr = `${targetYear}-${String(m).padStart(2, "0")}-01`
+        fullSeries.push({
+          period,
+          date: dateStr,
+          newUsers: 0,
+        })
+      }
+    }
+
+    // Merge with DB results
+    if (timePeriod === "day") {
+      // For day, map by hour
+      const dbMap = new Map(result.map((row: any) => [Number(row.hour), row]))
+      const mappedResult = fullSeries.map((timeSlot, index) => {
+        const dbRow = dbMap.get(index)
+        return {
+          period: timeSlot.period,
+          newUsers: dbRow ? parseInt(dbRow.newusers) || 0 : 0,
+        }
+      })
+      return mappedResult
+    } else if (timePeriod === "year") {
+      // For year, map by month extracted from date
+      const dbMap = new Map(
+        result.map((row: any) => {
+          const monthFromDate = new Date(row.date).getMonth() + 1
+          return [monthFromDate, row]
+        })
+      )
+      const mappedResult = fullSeries.map((timeSlot, index) => {
+        const dbRow = dbMap.get(index + 1)
+        return {
+          period: timeSlot.period,
+          newUsers: dbRow ? parseInt(dbRow.newusers) || 0 : 0,
+        }
+      })
+      return mappedResult
+    } else {
+      // For week/month, map by date
+      const dbMap = new Map(
+        result.map((row: any) => {
+          // Convert ISO date with timezone to YYYY-MM-DD format
+          const dateOnly =
+            row.date instanceof Date
+              ? row.date.toISOString().split("T")[0]
+              : String(row.date).split("T")[0]
+          return [dateOnly, row]
+        })
+      )
+
+      const mappedResult = fullSeries.map((timeSlot) => {
+        const dbRow = dbMap.get(timeSlot.date)
+        return {
+          period: timeSlot.period,
+          newUsers: dbRow ? parseInt(dbRow.newusers) || 0 : 0,
+        }
+      })
+      return mappedResult
+    }
   } catch (error) {
     console.error("Error fetching new users growth:", error)
     return []
@@ -676,22 +901,23 @@ export async function fetchPersonalLearningProgressMetrics(
           100.0 * COALESCE(SUM(CASE WHEN pl.status = 'completed' THEN 1 ELSE 0 END), 0) /
           NULLIF(COUNT(pl.id), 0)
         ) as progressPercentage,
-        MAX(pl.updated_at) as lastUpdated
+        TO_CHAR((MAX(COALESCE(pl.updated_at, e.enrolled_at, CURRENT_TIMESTAMP)) AT TIME ZONE 'UTC'), 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') as lastUpdated
       FROM enrollments e
       JOIN courses c ON e.course_id = c.id
       LEFT JOIN progress_lessons pl ON e.id = pl.enrollment_id
       WHERE e.user_id = ${userId}
         AND e.status IN ('in_progress', 'completed')
       GROUP BY c.id, c.title
-      ORDER BY MAX(pl.updated_at) DESC
+      ORDER BY MAX(COALESCE(pl.updated_at, e.enrolled_at, CURRENT_TIMESTAMP)) DESC
     `
 
     return (
       result.map((row: any) => ({
-        courseId: row.courseId,
-        courseTitle: row.courseTitle,
-        progressPercentage: parseInt(row.progressPercentage) || 0,
-        lastUpdated: row.lastUpdated,
+        courseId: row.courseid || row.courseId,
+        courseTitle: row.coursetitle || row.courseTitle,
+        progressPercentage:
+          parseInt(row.progresspercentage || row.progressPercentage) || 0,
+        lastUpdated: row.lastupdated || row.lastUpdated,
       })) || []
     )
   } catch (error) {
@@ -707,10 +933,9 @@ export async function fetchContributionStatsMetrics(
   userId: string
 ): Promise<ContributionStatsData> {
   try {
-    // Try to fetch contributions - attempting user_id column (may need adjustment based on schema)
     const result = await sql`
       SELECT 
-        COALESCE((SELECT COUNT(*) FROM articles WHERE user_id = ${userId}), 0) as articles,
+        COALESCE((SELECT COUNT(*) FROM articles WHERE author_id = ${userId}), 0) as articles,
         COALESCE((SELECT COUNT(*) FROM questions WHERE user_id = ${userId}), 0) as questions,
         COALESCE((SELECT COUNT(*) FROM answers WHERE user_id = ${userId}), 0) as answers
     `
