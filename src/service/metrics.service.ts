@@ -267,23 +267,23 @@ export async function fetchTopCategoriesMetrics(): Promise<TopCategoryData[]> {
 
 /**
  * Fetch average content rating
- * Based on reviews for the last 12 months
- * Note: If reviews table does not exist, add rating column to comments or create reviews table
+ * Based on course reviews (feedback table) for the last 12 months
+ * Shows monthly trends of course ratings
  */
 export async function fetchContentRatingMetrics(): Promise<
   ContentRatingData[]
 > {
   try {
-    // Try query from reviews table first
+    // Query from feedback table (course reviews) - monthly average
     const result = await sql`
       SELECT 
-        TO_CHAR(DATE_TRUNC('month', r.created_at), 'MMM YY') as month,
-        ROUND(AVG(COALESCE(r.rating, 0))::numeric, 2) as rating
-      FROM reviews r
-      WHERE r.created_at >= CURRENT_DATE - INTERVAL '1 year'
-        AND r.rating IS NOT NULL
-      GROUP BY DATE_TRUNC('month', r.created_at)
-      ORDER BY DATE_TRUNC('month', r.created_at) ASC
+        TO_CHAR(DATE_TRUNC('month', f.created_at), 'MMM YY') as month,
+        ROUND(AVG(f.rating)::numeric, 2) as rating
+      FROM feedback f
+      WHERE f.created_at >= CURRENT_DATE - INTERVAL '1 year'
+        AND f.deleted_at IS NULL
+      GROUP BY DATE_TRUNC('month', f.created_at)
+      ORDER BY DATE_TRUNC('month', f.created_at) ASC
     `
 
     if (!result || result.length === 0) {
