@@ -36,10 +36,15 @@ export default function TopContributorsTable() {
     loadData()
   }, [])
 
-  const renderLeaderboard = (data: ContributorData[]) => {
+  const renderLeaderboard = (
+    data: ContributorData[],
+    type: "contributor" | "learner"
+  ) => {
     if (data.length === 0) {
       return (
-        <div className="text-center text-gray-400 py-10">Chưa có dữ liệu</div>
+        <div className="text-center text-gray-400 py-10">
+          {t("dashboard.metrics.no_data", language)}
+        </div>
       )
     }
 
@@ -58,7 +63,9 @@ export default function TopContributorsTable() {
               <div>
                 <div className="font-medium">{item.name}</div>
                 <div className="text-sm text-gray-500">
-                  {item.type === "contributor" ? "Người đóng góp" : "Người học"}
+                  {type === "contributor"
+                    ? t("dashboard.metrics.contributor_type", language)
+                    : t("dashboard.metrics.learner_type", language)}
                 </div>
               </div>
             </div>
@@ -67,7 +74,9 @@ export default function TopContributorsTable() {
                 {item.contributions}
               </div>
               <div className="text-xs text-gray-500">
-                {item.type === "contributor" ? "đóng góp" : "khóa hoàn"}
+                {type === "contributor"
+                  ? t("dashboard.metrics.contribution", language)
+                  : t("dashboard.metrics.courses_completed", language)}
               </div>
             </div>
           </div>
@@ -95,13 +104,13 @@ export default function TopContributorsTable() {
           items={[
             {
               key: "contributors",
-              label: "👥 Người đóng góp",
-              children: renderLeaderboard(contributors),
+              label: t("dashboard.metrics.contributors_tab", language),
+              children: renderLeaderboard(contributors, "contributor"),
             },
             {
               key: "learners",
-              label: "🎓 Người học xuất sắc",
-              children: renderLeaderboard(learners),
+              label: t("dashboard.metrics.learners_tab", language),
+              children: renderLeaderboard(learners, "learner"),
             },
           ]}
         />

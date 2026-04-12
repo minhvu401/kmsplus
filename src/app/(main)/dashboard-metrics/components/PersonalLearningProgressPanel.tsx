@@ -5,11 +5,14 @@ import { Card, Progress, List, Empty, Spin, Space } from "antd"
 import { BookOutlined, CalendarOutlined } from "@ant-design/icons"
 import { getPersonalLearningProgressMetrics } from "@/action/metrics/metricsActions"
 import useUserStore from "@/store/useUserStore"
+import useLanguageStore from "@/store/useLanguageStore"
+import { t } from "@/lib/i18n"
 import type { PersonalLearningProgressData } from "@/service/metrics.service"
 import Link from "next/link"
 
 export default function PersonalLearningProgressPanel() {
   const { user } = useUserStore()
+  const { language } = useLanguageStore()
   const [progress, setProgress] = useState<PersonalLearningProgressData[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -19,6 +22,7 @@ export default function PersonalLearningProgressPanel() {
 
       try {
         const result = await getPersonalLearningProgressMetrics(user.id)
+        console.log("Personal Learning Progress Data:", result)
         setProgress(result)
       } catch (error) {
         console.error("Error loading personal learning progress:", error)
@@ -41,7 +45,9 @@ export default function PersonalLearningProgressPanel() {
       title={
         <div className="flex items-center gap-2">
           <BookOutlined className="text-blue-600 text-lg" />
-          <span>Tiến độ học tập của tôi</span>
+          <span>
+            {t("dashboard.metrics.personal_learning_progress", language)}
+          </span>
         </div>
       }
       className="shadow-md border-0"
@@ -51,7 +57,7 @@ export default function PersonalLearningProgressPanel() {
           <Spin />
         </div>
       ) : progress.length === 0 ? (
-        <Empty description="Chưa có khóa học nào" />
+        <Empty description={t("dashboard.metrics.no_courses", language)} />
       ) : (
         <List
           dataSource={progress}
@@ -73,8 +79,19 @@ export default function PersonalLearningProgressPanel() {
                   <Space size="small">
                     <CalendarOutlined className="text-xs" />
                     <span className="text-xs text-gray-500">
-                      Cập nhật:{" "}
-                      {new Date(item.lastUpdated).toLocaleDateString("vi-VN")}
+                      {t("dashboard.metrics.updated", language)}{" "}
+                      {(() => {
+                        try {
+                          if (!item.lastUpdated) return "N/A"
+                          const date = new Date(item.lastUpdated)
+                          if (isNaN(date.getTime())) return "N/A"
+                          return date.toLocaleDateString(
+                            language === "vi" ? "vi-VN" : "en-GB"
+                          )
+                        } catch (e) {
+                          return "N/A"
+                        }
+                      })()}
                     </span>
                   </Space>
                 }

@@ -38,6 +38,7 @@ import {
   type QuestionBankHealthData,
   type PendingItemsData,
   type NewUsersGrowthData,
+  type TimePeriodType,
   type MandatoryCourseData,
   type PersonalLearningProgressData,
   type ContributionStatsData,
@@ -247,13 +248,14 @@ export async function getPendingItemsMetrics(): Promise<PendingItemsData> {
 }
 
 /**
- * Get new users growth metrics
+ * Get new users growth metrics with time period selection
  */
-export async function getNewUsersGrowthMetrics(): Promise<
-  NewUsersGrowthData[]
-> {
+export async function getNewUsersGrowthMetrics(
+  timePeriod: TimePeriodType = "week",
+  selectedValue: string = ""
+): Promise<NewUsersGrowthData[]> {
   try {
-    const data = await fetchNewUsersGrowthMetrics()
+    const data = await fetchNewUsersGrowthMetrics(timePeriod, selectedValue)
     return data
   } catch (error) {
     console.error("Failed to fetch new users growth:", error)

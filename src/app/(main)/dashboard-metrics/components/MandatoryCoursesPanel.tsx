@@ -9,11 +9,14 @@ import {
 } from "@ant-design/icons"
 import { getMandatoryCoursesMetrics } from "@/action/metrics/metricsActions"
 import useUserStore from "@/store/useUserStore"
+import useLanguageStore from "@/store/useLanguageStore"
+import { t } from "@/lib/i18n"
 import type { MandatoryCourseData } from "@/service/metrics.service"
 import Link from "next/link"
 
 export default function MandatoryCoursesPanel() {
   const { user } = useUserStore()
+  const { language } = useLanguageStore()
   const [courses, setCourses] = useState<MandatoryCourseData[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -47,9 +50,16 @@ export default function MandatoryCoursesPanel() {
   }
 
   const getStatusText = (course: MandatoryCourseData) => {
-    if (course.isOverdue) return `Quá hạn ${Math.abs(course.daysUntilDue)} ngày`
-    if (course.daysUntilDue <= 0) return "Hôm nay là hạn"
-    return `Còn ${course.daysUntilDue} ngày`
+    if (course.isOverdue) {
+      return language === "vi"
+        ? `${t("dashboard.metrics.overdue", language)} ${Math.abs(course.daysUntilDue)} ngày`
+        : `${t("dashboard.metrics.overdue", language)} by ${Math.abs(course.daysUntilDue)} days`
+    }
+    if (course.daysUntilDue <= 0)
+      return t("dashboard.metrics.today_is_due", language)
+    return language === "vi"
+      ? `${t("dashboard.metrics.days_left", language)} ${course.daysUntilDue} ngày`
+      : `${t("dashboard.metrics.days_left", language)} ${course.daysUntilDue} days`
   }
 
   return (
@@ -57,7 +67,7 @@ export default function MandatoryCoursesPanel() {
       title={
         <div className="flex items-center gap-2">
           <ExclamationCircleOutlined className="text-red-600 text-lg" />
-          <span>Khóa học bắt buộc sắp hết hạn</span>
+          <span>{t("dashboard.metrics.mandatory_courses", language)}</span>
         </div>
       }
       className="shadow-md border-0"
@@ -67,7 +77,9 @@ export default function MandatoryCoursesPanel() {
           <Spin />
         </div>
       ) : courses.length === 0 ? (
-        <Empty description="Không có khóa học bắt buộc sắp hết hạn" />
+        <Empty
+          description={t("dashboard.metrics.no_mandatory_courses", language)}
+        />
       ) : (
         <List
           dataSource={courses}
@@ -91,17 +103,22 @@ export default function MandatoryCoursesPanel() {
                 }
                 description={
                   <div className="text-sm text-gray-600">
-                    Hạn: {new Date(course.dueDate).toLocaleDateString("vi-VN")}
+                    {t("dashboard.metrics.due_date", language)}{" "}
+                    {new Date(course.dueDate).toLocaleDateString(
+                      language === "vi" ? "vi-VN" : "en-GB"
+                    )}
                   </div>
                 }
               />
               <div className="flex items-center gap-2">
                 <Tag color={getStatusColor(course)}>
-                  {course.status === "pending" ? "Chưa bắt đầu" : "Đang học"}
+                  {course.status === "pending"
+                    ? t("dashboard.metrics.not_started", language)
+                    : t("dashboard.metrics.in_progress", language)}
                 </Tag>
                 <Link href={`/courses/${course.id}`}>
                   <Button type="primary" size="small">
-                    Đi học
+                    {t("dashboard.metrics.start_learning", language)}
                   </Button>
                 </Link>
               </div>
