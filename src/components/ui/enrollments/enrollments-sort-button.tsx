@@ -4,18 +4,30 @@ import React from "react"
 import { Button, Dropdown } from "antd"
 import { SortAscendingOutlined } from "@ant-design/icons"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
-
-const SORT_OPTIONS: Record<string, string> = {
-  "name-asc": "Alphabetically (A-Z)",
-  "progress-desc": "By Progress Percentage",
-  "enrollment-date-desc": "Enrollment Date (Newest)",
-  "enrollment-date-asc": "Enrollment Date (Oldest)",
-}
+import useLanguageStore from "@/store/useLanguageStore"
 
 export default function EnrollmentsSortButton() {
   const pathname = usePathname()
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { language } = useLanguageStore()
+
+  const sortOptions: Record<string, string> = {
+    "name-asc":
+      language === "vi" ? "Theo tên (A-Z)" : "Alphabetically (A-Z)",
+    "progress-desc":
+      language === "vi"
+        ? "Theo phần trăm tiến độ"
+        : "By Progress Percentage",
+    "enrollment-date-desc":
+      language === "vi"
+        ? "Ngày ghi danh (Mới nhất)"
+        : "Enrollment Date (Newest)",
+    "enrollment-date-asc":
+      language === "vi"
+        ? "Ngày ghi danh (Cũ nhất)"
+        : "Enrollment Date (Oldest)",
+  }
 
   const currentSort = searchParams.get("sort") || "name-asc"
 
@@ -31,7 +43,7 @@ export default function EnrollmentsSortButton() {
       menu={{
         selectedKeys: [currentSort],
         onClick: handleSortChange,
-        items: Object.entries(SORT_OPTIONS).map(([value, label]) => ({
+        items: Object.entries(sortOptions).map(([value, label]) => ({
           key: value,
           label,
         })),
@@ -44,7 +56,7 @@ export default function EnrollmentsSortButton() {
         size="large"
         className="rounded-lg text-gray-600 font-medium"
       >
-        Sort
+        {language === "vi" ? "Sắp xếp" : "Sort"}
       </Button>
     </Dropdown>
   )

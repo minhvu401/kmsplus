@@ -395,14 +395,6 @@ export default function ViewArticlePage() {
     }
   }
 
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center min-h-screen">
-        <Spin size="large" />
-      </div>
-    )
-  }
-
   const titleSectionElement = useMemo(
     () => (
       <>
@@ -415,6 +407,14 @@ export default function ViewArticlePage() {
     ),
     [titleInputRef, handleTitleChange]
   )
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <Spin size="large" />
+      </div>
+    )
+  }
 
   return (
     <div className="p-8 bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50 min-h-screen">

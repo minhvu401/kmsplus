@@ -51,6 +51,9 @@ export default async function ManagerCoursesPage({ searchParams }: Props) {
     : categoriesParam
       ? [categoriesParam as string]
       : []
+  const safeSelectedCategories = selectedCategories.filter(
+    (categoryId) => Number(categoryId) !== 1
+  )
 
   // ✅ ĐLCS THÊM: Extract status filter from URL
   const status = Array.isArray(params?.status)
@@ -72,7 +75,7 @@ export default async function ManagerCoursesPage({ searchParams }: Props) {
         query,
         page,
         limit,
-        categories: selectedCategories,
+        categories: safeSelectedCategories,
         status,
         sort: sortOrder,
       }),
@@ -93,9 +96,10 @@ export default async function ManagerCoursesPage({ searchParams }: Props) {
   const categories = Array.isArray(categoriesRes)
     ? categoriesRes
     : (categoriesRes as any)?.data || []
+  const safeCategories = categories.filter((c: any) => Number(c.id) !== 1)
 
   // ✅ LẤY DANH SÁCH ID DANH MỤC ĐƯỢC PHÉP XEM CỦA PHÒNG BAN NÀY
-  const allowedCategoryIds = categories.map((c: any) => Number(c.id))
+  const allowedCategoryIds = safeCategories.map((c: any) => Number(c.id))
   const isAdmin = user.role?.toLowerCase().includes("admin")
 
   // 👇 LOGIC AN TOÀN: Ép mảng VÀ LỌC THEO PHÒNG BAN
@@ -126,8 +130,8 @@ export default async function ManagerCoursesPage({ searchParams }: Props) {
           enforceCreatorOnlyEdit={isHeadOfDepartmentView}
           query={query}
           page={page}
-          selectedCategories={selectedCategories}
-          categories={categories}
+          selectedCategories={safeSelectedCategories}
+          categories={safeCategories}
           availableLessons={safeLessons}
           availableQuizzes={safeQuizzes}
           userRole={user.role} // ✅ Đảm bảo truyền role vào đây
