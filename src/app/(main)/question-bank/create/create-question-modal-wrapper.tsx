@@ -20,9 +20,10 @@ export default function CreateQuestionModalWrapper() {
             setIsLoadingCategories(true);
             setCategoriesError(null);
             try {
-                const cats = await actions.getCategories();
-                if (cats && cats.length > 0) {
-                    setCategories(cats);
+                const cats = await actions.getCategoriesForQuestionModal();
+                const safeCategories = (cats || []).filter((cat) => Number(cat.id) !== 1);
+                if (safeCategories.length > 0) {
+                    setCategories(safeCategories);
                 } else {
                     setCategoriesError('Không có chủ đề nào trong hệ thống');
                 }

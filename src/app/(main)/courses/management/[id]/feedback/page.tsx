@@ -8,6 +8,7 @@ import PageSizeSelector from "@/components/ui/questions/page-size-selector"
 import PageWrapper from "@/components/ui/questions/page-wrapper"
 import ManageReviewsTable from "@/components/ui/reviews/manage-reviews"
 import ViewReviewsTable from "@/components/ui/reviews/view-reviews"
+import FeedbackPageText from "@/components/ui/reviews/feedback-page-text"
 import { requireAuth } from "@/lib/auth"
 import { sql } from "@/lib/database"
 import { Flex } from "antd"
@@ -85,13 +86,14 @@ export default async function CourseManageReviewsPage(props: PageProps) {
   return (
     <PageWrapper>
       <Flex className="p-6" vertical>
-        <Flex className="mb-6 flex items-center justify-between">
-          <h1 className="text-gray-600 text-3xl font-bold">Manage course reviews</h1>
-        </Flex>
-
-        <Flex className="mb-4 text-gray-500 text-sm">
-          Course Name: {(course as any)?.title || `Course #${courseId}`}
-        </Flex>
+        <FeedbackPageText
+          courseTitle={(course as any)?.title || ""}
+          courseId={courseId}
+          currentPage={currentPage}
+          pageSize={pageSize}
+          totalCount={totalCount}
+          currentCount={reviews.length}
+        />
 
         {useReadOnlyReviewsTable ? (
           <ViewReviewsTable reviews={reviews} />
@@ -107,10 +109,6 @@ export default async function CourseManageReviewsPage(props: PageProps) {
           <Pagination totalPages={totalPages} />
         </Flex>
 
-        <Flex className="flex justify-center text-gray-600 mt-4 text-sm">
-          Showing {reviews.length > 0 ? (currentPage - 1) * pageSize + 1 : 0}-
-          {Math.min(currentPage * pageSize, totalCount)} of {totalCount} reviews
-        </Flex>
       </Flex>
     </PageWrapper>
   )

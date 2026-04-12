@@ -4,6 +4,7 @@ import React from "react"
 import { Button, Popover, Select } from "antd"
 import { FilterOutlined } from "@ant-design/icons"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
+import useLanguageStore from "@/store/useLanguageStore"
 
 interface EnrollmentsFilterButtonProps {
   departments: string[]
@@ -18,6 +19,7 @@ export default function EnrollmentsFilterButton({
 
   const currentStatus = searchParams.get("status") || "any"
   const currentDepartment = searchParams.get("department") || "any"
+  const { language } = useLanguageStore()
 
   const updateParam = (key: string, value: string) => {
     const params = new URLSearchParams(searchParams.toString())
@@ -44,31 +46,40 @@ export default function EnrollmentsFilterButton({
     <div className="w-72 space-y-4">
       <div>
         <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-500">
-          Status
+          {language === "vi" ? "Trạng thái" : "Status"}
         </div>
         <Select
           value={currentStatus}
           className="w-full"
           onChange={(value) => updateParam("status", value)}
           options={[
-            { label: "Any", value: "any" },
-            { label: "Not Started", value: "Not Started" },
-            { label: "In Progress", value: "In Progress" },
-            { label: "Completed", value: "Completed" },
+            { label: language === "vi" ? "Tất cả" : "Any", value: "any" },
+            {
+              label: language === "vi" ? "Chưa bắt đầu" : "Not Started",
+              value: "Not Started",
+            },
+            {
+              label: language === "vi" ? "Đang học" : "In Progress",
+              value: "In Progress",
+            },
+            {
+              label: language === "vi" ? "Hoàn thành" : "Completed",
+              value: "Completed",
+            },
           ]}
         />
       </div>
 
       <div>
         <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-500">
-          Department
+          {language === "vi" ? "Phòng ban" : "Department"}
         </div>
         <Select
           value={currentDepartment}
           className="w-full"
           onChange={(value) => updateParam("department", value)}
           options={[
-            { label: "Any", value: "any" },
+            { label: language === "vi" ? "Tất cả" : "Any", value: "any" },
             ...departments.map((department) => ({
               label: department,
               value: department,
@@ -78,7 +89,7 @@ export default function EnrollmentsFilterButton({
       </div>
 
       <Button block onClick={resetFilters}>
-        Reset filters
+        {language === "vi" ? "Đặt lại bộ lọc" : "Reset filters"}
       </Button>
     </div>
   )
@@ -90,7 +101,7 @@ export default function EnrollmentsFilterButton({
         size="large"
         className="rounded-lg text-gray-600 font-medium"
       >
-        Filter
+        {language === "vi" ? "Bộ lọc" : "Filter"}
       </Button>
     </Popover>
   )

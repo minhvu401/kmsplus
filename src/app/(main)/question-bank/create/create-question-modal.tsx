@@ -31,6 +31,9 @@ const CreateQuestionModal = ({
   editingRecord,
   onSuccess,
 }: CreateQuestionModalProps) => {
+  const availableCategories = (categories || []).filter(
+    (category) => Number(category.id) !== 1
+  )
   const [options, setOptions] = useState(["", "", "", ""])
   const [correctIndex, setCorrectIndex] = useState<number | null>(null)
   const [correctIndexes, setCorrectIndexes] = useState<number[]>([])
@@ -164,13 +167,15 @@ const CreateQuestionModal = ({
     if (editingRecord) {
       //nếu đang edit
       setIsLoadingEditRecord(true)
+      const safeCategoryId =
+        Number(editingRecord.category_id) === 1 ? undefined : editingRecord.category_id
       form.setFieldsValue({
         //đổ dữ liệu vào form
         questionText: editingRecord.question_text,
-        categoryId: editingRecord.category_id,
+        categoryId: safeCategoryId,
         explanation: editingRecord.explanation || "",
       })
-      setSelectedCategory(editingRecord.category_id)
+      setSelectedCategory(safeCategoryId ?? null)
       // đổ dữ liệu cho useState
       setQuestionType(editingRecord.type)
 
@@ -420,8 +425,8 @@ const CreateQuestionModal = ({
                 .includes(input.toLowerCase())
             }
           >
-            {categories && categories.length > 0 ? (
-              categories.map((category) => (
+            {availableCategories.length > 0 ? (
+              availableCategories.map((category) => (
                 <Select.Option
                   key={category.id}
                   value={category.id}

@@ -325,7 +325,9 @@ export default function CreateCourseForm({
           getAllDepartments(),
           getAllUsers(),
         ])
-        setCategories(categoriesData)
+        setCategories(
+          (categoriesData || []).filter((cat: any) => Number(cat.id) !== 1)
+        )
         setDepartments(departmentsData || [])
         setUsers(
           usersData?.map((user: any) => ({

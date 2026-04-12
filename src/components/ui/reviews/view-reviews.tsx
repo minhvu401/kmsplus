@@ -4,6 +4,7 @@ import type { ReviewWithUser } from "@/service/review.service"
 import { Avatar, Rate, Table, Typography } from "antd"
 import type { TableProps } from "antd"
 import { UserOutlined } from "@ant-design/icons"
+import useLanguageStore from "@/store/useLanguageStore"
 
 const { Text } = Typography
 
@@ -27,20 +28,22 @@ export default function ViewReviewsTable({
 }: {
   reviews: ReviewWithUser[]
 }) {
+  const { language } = useLanguageStore()
+
   const columns: TableProps<ReviewWithUser>["columns"] = [
     {
-      title: "User",
+      title: language === "vi" ? "Người dùng" : "User",
       key: "user",
       width: 200,
       render: () => (
         <div className="flex items-center gap-2">
           <Avatar size={28} icon={<UserOutlined />} />
-          <Text>Anonymous</Text>
+          <Text>{language === "vi" ? "Ẩn danh" : "Anonymous"}</Text>
         </div>
       ),
     },
     {
-      title: "Rating",
+      title: language === "vi" ? "Đánh giá" : "Rating",
       dataIndex: "rating",
       key: "rating",
       width: 220,
@@ -61,12 +64,12 @@ export default function ViewReviewsTable({
       },
     },
     {
-      title: "Feedback",
+      title: language === "vi" ? "Phản hồi" : "Feedback",
       dataIndex: "content",
       key: "content",
       render: (content: string | null) => (
         <Text className="whitespace-pre-wrap text-gray-700">
-          {content?.trim() || "No feedback content"}
+          {content?.trim() || (language === "vi" ? "Không có nội dung phản hồi" : "No feedback content")}
         </Text>
       ),
     },
@@ -79,7 +82,10 @@ export default function ViewReviewsTable({
       rowKey="id"
       pagination={false}
       scroll={{ x: 980 }}
-      locale={{ emptyText: "No feedback found" }}
+      locale={{
+        emptyText:
+          language === "vi" ? "Không tìm thấy phản hồi" : "No feedback found",
+      }}
     />
   )
 }
