@@ -9,20 +9,22 @@ import {
 } from "@/action/quiz/quizActions"
 import { notFound, redirect } from "next/navigation"
 
-const normalizeSelectedOptionId = (value: unknown): string | string[] => {
-  if (Array.isArray(value)) return value.map(String)
+const normalizeSelectedOptionId = (value: unknown): number | number[] => {
+  if (Array.isArray(value)) {
+    const normalized = value.map((item) => Number(item)).filter(Number.isFinite)
+    return normalized.length <= 1 ? (normalized[0] ?? -1) : normalized
+  }
   if (typeof value === "string") {
     try {
       const parsed = JSON.parse(value)
-      if (Array.isArray(parsed)) return parsed.map(String)
-      if (typeof parsed === "string") return parsed
-      return String(parsed)
+      return normalizeSelectedOptionId(parsed)
     } catch {
-      return value
+      const asNumber = Number(value)
+      return Number.isFinite(asNumber) ? asNumber : -1
     }
   }
-  if (value == null) return ""
-  return String(value)
+  if (typeof value === "number" && Number.isFinite(value)) return value
+  return -1
 }
 
 export default async function Page({
@@ -67,7 +69,10 @@ export default async function Page({
     savedAnswers.map((a) => [
       a.question_id,
       normalizeSelectedOptionId(a.selected_option_id),
-    ])
+    ]).filter(([, selected]) => {
+      if (typeof selected === "number") return selected >= 0
+      return selected.length > 0
+    })
   )
 
   return (

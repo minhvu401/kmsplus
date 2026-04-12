@@ -434,7 +434,7 @@ export async function getAttemptResult(attemptId: number) {
 const SaveAnswerSchema = z.object({
   attemptId: z.coerce.number().int(),
   questionId: z.coerce.number().int(),
-  selectedAnswer: z.union([z.string(), z.array(z.string())]),
+  selectedAnswer: z.union([z.coerce.number().int(), z.array(z.coerce.number().int())]),
 })
 
 const SaveHeartbeatSchema = z.object({
@@ -498,6 +498,46 @@ const GetExplanationSchema = z.object({
  */
 export async function getQuestionExplanation(input: unknown) {
   try {
+    const parseIndexArray = (value: unknown): number[] => {
+      if (Array.isArray(value)) {
+        return value.map((v) => Number(v)).filter(Number.isFinite)
+      }
+      if (typeof value === "number") {
+        return Number.isFinite(value) ? [value] : []
+      }
+      if (typeof value === "string") {
+        try {
+          return parseIndexArray(JSON.parse(value))
+        } catch {
+          const asNumber = Number(value)
+          return Number.isFinite(asNumber) ? [asNumber] : []
+        }
+      }
+      if (value && typeof value === "object" && "correct" in value) {
+        return parseIndexArray((value as { correct: unknown }).correct)
+      }
+      return []
+    }
+
+    const parseOptionsArray = (value: unknown): string[] => {
+      if (Array.isArray(value)) {
+        return value.map((opt) => String(opt))
+      }
+      if (typeof value === "string") {
+        try {
+          return parseOptionsArray(JSON.parse(value))
+        } catch {
+          return []
+        }
+      }
+      if (value && typeof value === "object") {
+        return Object.values(value as Record<string, unknown>).map((opt) =>
+          String(opt)
+        )
+      }
+      return []
+    }
+
     // 1️⃣ Validate payload
     const parsed = GetExplanationSchema.safeParse(input)
     if (!parsed.success) {
@@ -570,31 +610,21 @@ export async function getQuestionExplanation(input: unknown) {
       WHERE attempt_id = ${attemptId} AND question_id = ${questionId}
       LIMIT 1
     `
+    const optionsArray = parseOptionsArray(question.options)
+
     if (answerRows.length > 0) {
-      userAnswer = String(answerRows[0].selected_option_id)
+      const selectedIndexes = parseIndexArray(answerRows[0].selected_option_id)
+      userAnswer = selectedIndexes
+        .map((idx) => optionsArray[idx] ?? `Option ${idx}`)
+        .join(", ")
     }
 
-    // 8️⃣ Parse options if it's JSON
-    let optionsArray = []
-    if (question.options && typeof question.options === "object") {
-      optionsArray = Array.isArray(question.options)
-        ? question.options
-        : Object.values(question.options)
-    }
+    // 8️⃣ Format correct answer for display
+    const correctAnswerDisplay = parseIndexArray(question.correct_answer)
+      .map((idx) => optionsArray[idx] ?? `Option ${idx}`)
+      .join(", ")
 
-    // 9️⃣ Format correct answer for display
-    let correctAnswerDisplay = ""
-    if (question.correct_answer) {
-      if (typeof question.correct_answer === "object") {
-        correctAnswerDisplay = Array.isArray(question.correct_answer)
-          ? question.correct_answer.join(", ")
-          : JSON.stringify(question.correct_answer)
-      } else {
-        correctAnswerDisplay = String(question.correct_answer)
-      }
-    }
-
-    // 🔟 Generate AI explanation
+    // 9️⃣ Generate AI explanation
     const explanation = await generateAIExplanation({
       questionText: question.question_text,
       explanation: question.explanation || "",

@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react"
 import { Input } from "antd"
 import { SearchOutlined } from "@ant-design/icons"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
+import useLanguageStore from "@/store/useLanguageStore"
 
 export default function EnrollmentsSearchBar() {
   const pathname = usePathname()
@@ -11,6 +12,7 @@ export default function EnrollmentsSearchBar() {
   const searchParams = useSearchParams()
 
   const queryParam = searchParams.get("query") || ""
+  const { language } = useLanguageStore()
   const [query, setQuery] = useState(queryParam)
 
   useEffect(() => {
@@ -52,7 +54,11 @@ export default function EnrollmentsSearchBar() {
       value={query}
       onChange={(event) => setQuery(event.target.value)}
       prefix={<SearchOutlined className="text-gray-400" />}
-      placeholder="Search by learner name or email..."
+      placeholder={
+        language === "vi"
+          ? "Tìm theo tên hoặc email học viên..."
+          : "Search by learner name or email..."
+      }
       className="w-full md:w-96 rounded-lg bg-gray-50 hover:bg-white focus:bg-white border-gray-200"
       size="large"
       allowClear

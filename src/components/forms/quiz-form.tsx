@@ -17,7 +17,13 @@ import useLanguageStore from "@/store/useLanguageStore"
 
 const { Title, Text, Paragraph } = Typography
 
-const parseOptions = (opts: unknown): [string, string][] => {
+type ParsedOption = {
+  id: number
+  label: string
+  text: string
+}
+
+const parseOptions = (opts: unknown): ParsedOption[] => {
   if (typeof opts === "string") {
     try {
       opts = JSON.parse(opts)
@@ -26,13 +32,21 @@ const parseOptions = (opts: unknown): [string, string][] => {
     }
   }
   if (typeof opts === "object" && opts !== null && !Array.isArray(opts)) {
-    return Object.entries(opts) as [string, string][]
+    return Object.entries(opts).map(([key, text], idx) => {
+      const numericKey = Number(key)
+      return {
+        id: Number.isFinite(numericKey) ? numericKey : idx,
+        label: String.fromCharCode(65 + idx),
+        text: String(text),
+      }
+    })
   }
   if (Array.isArray(opts)) {
-    return opts.map(
-      (opt, idx) =>
-        [String.fromCharCode(65 + idx), String(opt)] as [string, string]
-    )
+    return opts.map((opt, idx) => ({
+      id: idx,
+      label: String.fromCharCode(65 + idx),
+      text: String(opt),
+    }))
   }
   return []
 }
@@ -56,7 +70,7 @@ export default function QuizForm({
   attemptNumber: number
   questions: Question[]
   durationSeconds: number | null
-  initialAnswers: Record<number, string | string[]>
+  initialAnswers: Record<number, number | number[]>
 }) {
   const { language } = useLanguageStore()
   const t = {
@@ -95,7 +109,7 @@ export default function QuizForm({
   }
 
   const [answers, setAnswers] =
-    useState<Record<number, string | string[]>>(initialAnswers)
+    useState<Record<number, number | number[]>>(initialAnswers)
   const [timeLeft, setTimeLeft] = useState<number | null>(durationSeconds)
   const [isPending, startTransition] = useTransition()
   const [open, setOpen] = useState(false)
@@ -154,7 +168,7 @@ export default function QuizForm({
   }, [timeLeft])
 
   /* ---------------- ANSWER CHANGE ---------------- */
-  function handleAnswerChange(questionId: number, value: string | string[]) {
+  function handleAnswerChange(questionId: number, value: number | number[]) {
     setAnswers((prev) => ({
       ...prev,
       [questionId]: value,
@@ -433,8 +447,8 @@ function QuestionCard({
   index: number
   total: number
   question: any
-  value?: string | string[]
-  onChange: (id: number, value: string | string[]) => void
+  value?: number | number[]
+  onChange: (id: number, value: number | number[]) => void
   labelQuestion: string
   labelOf: string
 }) {
@@ -486,13 +500,13 @@ function QuestionCard({
         {question.type === "single_choice" ? (
           <SingleChoice
             question={question}
-            value={value as string | undefined}
+            value={typeof value === "number" ? value : undefined}
             onChange={(v) => onChange(question.id, v)}
           />
         ) : (
           <MultipleChoice
             question={question}
-            value={(value as string[]) || []}
+            value={Array.isArray(value) ? value : []}
             onChange={(v) => onChange(question.id, v)}
           />
         )}
@@ -507,15 +521,15 @@ function SingleChoice({
   onChange,
 }: {
   question: any
-  value?: string
-  onChange: (v: string) => void
+  value?: number
+  onChange: (v: number) => void
 }) {
   const options = parseOptions(question.options)
 
   return (
     <Space direction="vertical" size={12} style={{ width: "100%" }}>
-      {options.map(([key, text]) => {
-        const isSelected = value === key
+      {options.map((option) => {
+        const isSelected = value === option.id
 
         const borderColor = isSelected ? "#1677ff" : "#f0f0f0"
         const bgColor = isSelected ? "#f8fafd" : "transparent"
@@ -547,20 +561,22 @@ function SingleChoice({
               marginRight: 12,
             }}
           >
-            <span style={{ fontSize: 10, color: "#8c8c8c" }}>{key}</span>
+            <span style={{ fontSize: 10, color: "#8c8c8c" }}>
+              {option.label}
+            </span>
           </div>
         )
 
         return (
           <div
-            key={key}
+            key={option.id}
             role="button"
             tabIndex={0}
-            onClick={() => onChange(key)}
+            onClick={() => onChange(option.id)}
             onKeyDown={(e) => {
               if (e.key === "Enter" || e.key === " ") {
                 e.preventDefault()
-                onChange(key)
+                onChange(option.id)
               }
             }}
             style={{
@@ -575,7 +591,7 @@ function SingleChoice({
             }}
           >
             {icon}
-            <Text style={{ flex: 1 }}>{text}</Text>
+            <Text style={{ flex: 1 }}>{option.text}</Text>
             {isSelected && (
               <Text type="secondary" style={{ fontSize: 12, fontWeight: 600 }}>
                 Selected
@@ -594,16 +610,16 @@ function MultipleChoice({
   onChange,
 }: {
   question: any
-  value?: string[]
-  onChange: (v: string[]) => void
+  value?: number[]
+  onChange: (v: number[]) => void
 }) {
   const options = parseOptions(question.options)
   const selected = new Set(value)
 
   return (
     <Space direction="vertical" size={12} style={{ width: "100%" }}>
-      {options.map(([key, text]) => {
-        const isSelected = selected.has(key)
+      {options.map((option) => {
+        const isSelected = selected.has(option.id)
 
         const borderColor = isSelected ? "#1677ff" : "#f0f0f0"
         const bgColor = isSelected ? "#f8fafd" : "transparent"
@@ -635,27 +651,29 @@ function MultipleChoice({
               marginRight: 12,
             }}
           >
-            <span style={{ fontSize: 10, color: "#8c8c8c" }}>{key}</span>
+            <span style={{ fontSize: 10, color: "#8c8c8c" }}>
+              {option.label}
+            </span>
           </div>
         )
 
         return (
           <div
-            key={key}
+            key={option.id}
             role="button"
             tabIndex={0}
             onClick={() => {
               const next = new Set(selected)
-              if (next.has(key)) next.delete(key)
-              else next.add(key)
+              if (next.has(option.id)) next.delete(option.id)
+              else next.add(option.id)
               onChange(Array.from(next))
             }}
             onKeyDown={(e) => {
               if (e.key === "Enter" || e.key === " ") {
                 e.preventDefault()
                 const next = new Set(selected)
-                if (next.has(key)) next.delete(key)
-                else next.add(key)
+                if (next.has(option.id)) next.delete(option.id)
+                else next.add(option.id)
                 onChange(Array.from(next))
               }
             }}
@@ -671,7 +689,7 @@ function MultipleChoice({
             }}
           >
             {icon}
-            <Text style={{ flex: 1 }}>{text}</Text>
+            <Text style={{ flex: 1 }}>{option.text}</Text>
             {isSelected && (
               <Text type="secondary" style={{ fontSize: 12, fontWeight: 600 }}>
                 Selected

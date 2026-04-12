@@ -242,7 +242,9 @@ export async function getAllCoursesAction({
       : sql``
 
   const hodNonDraftCondition =
-    isHeadOfDepartment && !isAdmin ? sql`AND c.status <> 'draft'` : sql``
+    isHeadOfDepartment && !isAdmin && userId
+      ? sql`AND (c.creator_id = ${userId} OR c.status <> 'draft')`
+      : sql``
 
   // Query Courses with Category Join
   const rows = await sql`
@@ -293,9 +295,13 @@ export async function getCourseByIdAction(id: number) {
   const courseResult = await sql`
     SELECT 
       c.*,
-      cat.name as category_name
+      cat.name as category_name,
+      u.full_name as creator_name,
+      u.full_name as creator_full_name,
+      u.avatar_url as creator_avatar_url
     FROM courses c
     LEFT JOIN categories cat ON c.category_id = cat.id
+    LEFT JOIN users u ON c.creator_id = u.id
     WHERE c.id = ${id} AND c.deleted_at IS NULL
   `
   if (courseResult.length === 0) return null
@@ -304,9 +310,21 @@ export async function getCourseByIdAction(id: number) {
   // 2. Lấy danh sách Assignment Rules (CẬP NHẬT MỚI)
   const rulesResult = await sql`
     SELECT 
-      id, target_type, department_id, user_id, 
-      due_type, due_days, due_date
-    FROM assignment_rules 
+      ar.id,
+      ar.target_type,
+      ar.department_id,
+      ar.user_id,
+      ar.role_id,
+      ar.due_type,
+      ar.due_days,
+      ar.due_date,
+      d.name AS department_name,
+      u.full_name AS user_name,
+      r.name AS role_name
+    FROM assignment_rules ar
+    LEFT JOIN department d ON ar.department_id = d.id
+    LEFT JOIN users u ON ar.user_id = u.id
+    LEFT JOIN roles r ON ar.role_id = r.id
     WHERE course_id = ${id}
   `
 
@@ -346,6 +364,44 @@ export async function getCourseByIdAction(id: number) {
     `
   }
 
+  // 4.1. Lấy chi tiết câu hỏi cho các Quiz trong curriculum
+  const quizIds = itemsResult
+    .filter((item) => item.type === "quiz" && item.quiz_id)
+    .map((item) => Number(item.quiz_id))
+
+  let quizQuestionRows: any[] = []
+  if (quizIds.length > 0) {
+    quizQuestionRows = await sql`
+      SELECT
+        qq.quiz_id,
+        qb.id AS question_id,
+        qb.question_text,
+        qb.type AS question_type,
+        qb.options,
+        qb.correct_answer
+      FROM quiz_questions qq
+      JOIN question_bank qb ON qb.id = qq.question_id
+      WHERE qq.quiz_id = ANY(${quizIds})
+        AND (qb.is_deleted = FALSE OR qb.is_deleted IS NULL)
+      ORDER BY qq.quiz_id ASC, qq.id ASC
+    `
+  }
+
+  const quizQuestionsByQuizId = new Map<number, any[]>()
+  for (const row of quizQuestionRows) {
+    const quizId = Number(row.quiz_id)
+    if (!quizQuestionsByQuizId.has(quizId)) {
+      quizQuestionsByQuizId.set(quizId, [])
+    }
+    quizQuestionsByQuizId.get(quizId)?.push({
+      question_id: Number(row.question_id),
+      question_text: row.question_text,
+      question_type: row.question_type,
+      options: row.options,
+      correct_answer: row.correct_answer,
+    })
+  }
+
   // 5. Ghép dữ liệu Curriculum (Mapping)
   const curriculum = sectionsResult.map((section) => {
     const items = itemsResult
@@ -363,6 +419,10 @@ export async function getCourseByIdAction(id: number) {
         video_url: item.video_url,
         file_path: item.file_path,
         lesson_content: item.lesson_content,
+        quiz_questions:
+          item.type === "quiz"
+            ? quizQuestionsByQuizId.get(Number(item.quiz_id)) || []
+            : [],
       }))
 
     return {

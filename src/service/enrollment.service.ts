@@ -182,7 +182,7 @@ export async function getCourseLearnerEnrollmentsService({
 
     const whereDepartment =
       department && department !== "any"
-        ? sql`AND COALESCE(to_jsonb(u)->>'department', 'Unknown') = ${department}`
+        ? sql`AND COALESCE(d.name, 'Unknown') = ${department}`
         : sql``
 
     const rows = await sql`
@@ -202,7 +202,7 @@ export async function getCourseLearnerEnrollmentsService({
         COALESCE(u.full_name, u.email, 'Learner #' || le.user_id::text) as name,
         COALESCE(u.email, '') as email,
         COALESCE(u.avatar_url, '') as avatar,
-        COALESCE(to_jsonb(u)->>'department', 'Unknown') as department,
+        COALESCE(d.name, 'Unknown') as department,
         le.enrolled_at as enrollment_date,
         COALESCE(le.progress_percentage, 0)::int as progress,
         CASE
@@ -212,6 +212,7 @@ export async function getCourseLearnerEnrollmentsService({
         END as course_status
       FROM latest_enrollments le
       LEFT JOIN users u ON u.id = le.user_id
+      LEFT JOIN department d ON d.id = u.department_id
       WHERE 1 = 1
         ${whereQuery}
         ${whereStatus}
@@ -240,6 +241,7 @@ export async function getCourseLearnerEnrollmentsService({
       SELECT COUNT(*)::int as total
       FROM latest_enrollments le
       LEFT JOIN users u ON u.id = le.user_id
+      LEFT JOIN department d ON d.id = u.department_id
       WHERE 1 = 1
         ${whereQuery}
         ${whereStatus}
@@ -254,10 +256,11 @@ export async function getCourseLearnerEnrollmentsService({
         WHERE e.course_id = ${courseId}
         ORDER BY e.user_id, e.enrolled_at DESC, e.id DESC
       )
-      SELECT DISTINCT COALESCE(to_jsonb(u)->>'department', 'Unknown') as department
+      SELECT DISTINCT COALESCE(d.name, 'Unknown') as department
       FROM latest_enrollments le
       LEFT JOIN users u ON u.id = le.user_id
-      ORDER BY COALESCE(to_jsonb(u)->>'department', 'Unknown') ASC
+      LEFT JOIN department d ON d.id = u.department_id
+      ORDER BY COALESCE(d.name, 'Unknown') ASC
     `
 
     const learners: CourseLearnerEnrollment[] = (rows as any[]).map((row) => ({
@@ -309,7 +312,7 @@ export async function getCourseLearnerEnrollmentDetailService({
         COALESCE(u.full_name, u.email, 'Learner #' || e.user_id::text) AS name,
         COALESCE(u.email, '') AS email,
         COALESCE(u.avatar_url, '') AS avatar,
-        COALESCE(to_jsonb(u)->>'department', 'Unknown') AS department,
+        COALESCE(d.name, 'Unknown') AS department,
         e.enrolled_at AS enrollment_date,
         COALESCE(e.progress_percentage, 0)::int AS progress,
         CASE
@@ -327,6 +330,7 @@ export async function getCourseLearnerEnrollmentDetailService({
         ) AS total_items
       FROM enrollments e
       LEFT JOIN users u ON u.id = e.user_id
+      LEFT JOIN department d ON d.id = u.department_id
       LEFT JOIN courses c ON c.id = e.course_id
       WHERE e.course_id = ${courseId} AND e.user_id = ${userId}
       ORDER BY e.enrolled_at DESC, e.id DESC
