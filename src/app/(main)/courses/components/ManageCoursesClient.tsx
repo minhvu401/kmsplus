@@ -534,6 +534,24 @@ export default function ManageCoursesClient({
     return []
   }
 
+  const getLessonTypeLabel = (lessonType?: string) => {
+    const key = (lessonType || "").toLowerCase()
+
+    if (key === "text_media" || key === "text") {
+      return language === "vi" ? "Văn bản" : "Text"
+    }
+
+    if (key === "video") {
+      return language === "vi" ? "Video" : "Video"
+    }
+
+    if (key === "pdf" || key === "file") {
+      return language === "vi" ? "PDF" : "PDF"
+    }
+
+    return language === "vi" ? "Khác" : "Other"
+  }
+
   const handleUpdateSuccess = () => {
     setIsUpdateModalOpen(false)
     setSelectedCourse(null)
@@ -1622,6 +1640,17 @@ export default function ManageCoursesClient({
         open={isPreviewModalOpen}
         onCancel={handleClosePreview}
         footer={[
+          <Button
+            key="view-full-course"
+            type="primary"
+            disabled={!previewCourse?.id}
+            onClick={() => {
+              if (!previewCourse?.id) return
+              router.push(`/courses/${previewCourse.id}`)
+            }}
+          >
+            {language === "vi" ? "Xem toàn bộ khóa học" : "View Full Course"}
+          </Button>,
           <Button key="close" onClick={handleClosePreview}>
             {language === "vi" ? "Đóng" : "Close"}
           </Button>,
@@ -1793,7 +1822,7 @@ export default function ManageCoursesClient({
                                       </div>
                                       <div className="text-xs text-gray-500">
                                         {item.type === "lesson"
-                                          ? `${language === "vi" ? "Bài học" : "Lesson"}${item.duration_minutes ? ` • ${item.duration_minutes} ${language === "vi" ? "phút" : "min"}` : ""}`
+                                          ? `${language === "vi" ? "Bài học" : "Lesson"} | ${getLessonTypeLabel(item.lesson_type)}${item.duration_minutes ? ` • ${item.duration_minutes} ${language === "vi" ? "phút" : "min"}` : ""}`
                                           : `${language === "vi" ? "Bài kiểm tra" : "Quiz"}${item.question_count ? ` • ${item.question_count} ${language === "vi" ? "câu" : "questions"}` : ""}`}
                                       </div>
                                     </div>

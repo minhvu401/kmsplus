@@ -29,6 +29,9 @@ export type MenuItem = Required<MenuProps>["items"][number] & {
   children?: MenuItem[]
 }
 
+const byLang = (language: "vi" | "en", vi: string, en: string) =>
+  language === "vi" ? vi : en
+
 const useNavigation = () => {
   const router = useRouter()
 
@@ -52,8 +55,11 @@ const createEmployeeSidebarItems = (
       key: PageRoute.QUESTIONS,
       icon: <MessageOutlined />,
       label: t("sidebar.qa", language) || "Q&A",
-      title:
-        "Q&A - Create/Update/Delete Questions & Answers, Share Published Questions",
+      title: byLang(
+        language,
+        "Hỏi đáp - Tạo/Cập nhật/Xóa câu hỏi và câu trả lời, chia sẻ câu hỏi đã xuất bản",
+        "Q&A - Create/Update/Delete Questions & Answers, Share Published Questions"
+      ),
       route: PageRoute.QUESTIONS,
       onClick: () => navigate(PageRoute.QUESTIONS),
     },
@@ -65,7 +71,7 @@ const createEmployeeSidebarItems = (
       key: PageRoute.ARTICLES,
       icon: <FileTextOutlined />,
       label: t("sidebar.articles", language),
-      title: "Articles - View & Comment (CRUD)",
+      title: byLang(language, "Bài viết - Xem và bình luận (CRUD)", "Articles - View & Comment (CRUD)"),
       route: PageRoute.ARTICLES,
       onClick: () => navigate(PageRoute.ARTICLES),
     },
@@ -77,7 +83,11 @@ const createEmployeeSidebarItems = (
       key: PageRoute.COURSES,
       icon: <BookOutlined />,
       label: t("sidebar.courses", language),
-      title: "Courses - Search, View, Enroll & Participate in Quizzes",
+      title: byLang(
+        language,
+        "Khóa học - Tìm kiếm, xem, đăng ký và tham gia bài thi",
+        "Courses - Search, View, Enroll & Participate in Quizzes"
+      ),
       route: PageRoute.COURSES,
       onClick: () => navigate(PageRoute.COURSES),
     },
@@ -89,7 +99,7 @@ const createEmployeeSidebarItems = (
       key: "learning-history",
       icon: <HistoryOutlined />,
       label: t("sidebar.learning_history", language),
-      title: "Learning History - Track your progress",
+      title: byLang(language, "Lịch sử học tập - Theo dõi tiến độ", "Learning History - Track your progress"),
       route: "/history",
       onClick: () => navigate("/history"),
     },
@@ -121,8 +131,11 @@ const createContributorSidebarItems = (
       key: PageRoute.QUESTIONS,
       icon: <MessageOutlined />,
       label: t("sidebar.qa", language) || "Q&A",
-      title:
-        "Q&A - Create/Update/Delete Questions & Answers, Share Published Questions",
+      title: byLang(
+        language,
+        "Hỏi đáp - Tạo/Cập nhật/Xóa câu hỏi và câu trả lời, chia sẻ câu hỏi đã xuất bản",
+        "Q&A - Create/Update/Delete Questions & Answers, Share Published Questions"
+      ),
       route: PageRoute.QUESTIONS,
       onClick: () => navigate(PageRoute.QUESTIONS),
     },
@@ -134,7 +147,11 @@ const createContributorSidebarItems = (
       key: PageRoute.ARTICLES,
       icon: <FileTextOutlined />,
       label: t("sidebar.articles", language),
-      title: "Articles - Full CRUD (Create/Update/Delete) & Comment",
+      title: byLang(
+        language,
+        "Bài viết - CRUD đầy đủ (Tạo/Cập nhật/Xóa) và bình luận",
+        "Articles - Full CRUD (Create/Update/Delete) & Comment"
+      ),
       route: PageRoute.ARTICLES,
       onClick: () => navigate(PageRoute.ARTICLES),
     },
@@ -143,7 +160,7 @@ const createContributorSidebarItems = (
       key: PageRoute.ARTICLE_MANAGEMENT,
       icon: <FileTextOutlined />,
       label: t("sidebar.article_management", language),
-      title: "Articles - Manage Articles",
+      title: byLang(language, "Bài viết - Quản lý bài viết", "Articles - Manage Articles"),
       route: PageRoute.ARTICLE_MANAGEMENT,
       onClick: () => navigate(PageRoute.ARTICLE_MANAGEMENT),
     },
@@ -155,7 +172,11 @@ const createContributorSidebarItems = (
       key: "contributions",
       icon: <BulbOutlined />,
       label: t("sidebar.contributions", language),
-      title: t("sidebar.contributions", language) + " - Track your contributions",
+      title: byLang(
+        language,
+        `${t("sidebar.contributions", language)} - Theo dõi đóng góp của bạn`,
+        `${t("sidebar.contributions", language)} - Track your contributions`
+      ),
       disabled: true, // UI chưa làm
     },
     {
@@ -184,7 +205,7 @@ const createTrainingManagerSidebarItems = (
     // Dashboard Section Header
     {
       key: "dashboard-header",
-      label: "DASHBOARD",
+      label: byLang(language, "BẢNG ĐIỀU KHIỂN", "DASHBOARD"),
       disabled: true,
       style: {
         textAlign: "left",
@@ -198,8 +219,8 @@ const createTrainingManagerSidebarItems = (
     {
       key: PageRoute.DASHBOARD_METRICS,
       icon: <DashboardOutlined />,
-      label: "Dashboard Metrics",
-      title: "Dashboard Metrics - View performance analytics",
+      label: byLang(language, "Chỉ số tổng quan", "Dashboard Metrics"),
+      title: byLang(language, "Chỉ số tổng quan - Xem phân tích hiệu suất", "Dashboard Metrics - View performance analytics"),
       route: PageRoute.DASHBOARD_METRICS,
       onClick: () => navigate(PageRoute.DASHBOARD_METRICS),
     },
@@ -224,7 +245,7 @@ const createTrainingManagerSidebarItems = (
       key: PageRoute.ARTICLES,
       icon: <FileTextOutlined />,
       label: t("sidebar.articles", language),
-      title: "Articles - View Articles",
+      title: byLang(language, "Bài viết - Xem bài viết", "Articles - View Articles"),
       route: PageRoute.ARTICLES,
       onClick: () => navigate(PageRoute.ARTICLES),
     },
@@ -233,8 +254,11 @@ const createTrainingManagerSidebarItems = (
       key: PageRoute.QUESTIONS,
       icon: <MessageOutlined />,
       label: t("sidebar.qa", language) || "Q&A",
-      title:
-        "Q&A - Create/Update/Delete Questions & Answers, Share Published Questions",
+      title: byLang(
+        language,
+        "Hỏi đáp - Tạo/Cập nhật/Xóa câu hỏi và câu trả lời, chia sẻ câu hỏi đã xuất bản",
+        "Q&A - Create/Update/Delete Questions & Answers, Share Published Questions"
+      ),
       route: PageRoute.QUESTIONS,
       onClick: () => navigate(PageRoute.QUESTIONS),
     },
@@ -243,7 +267,7 @@ const createTrainingManagerSidebarItems = (
       key: PageRoute.COURSES,
       icon: <BookOutlined />,
       label: t("sidebar.courses", language),
-      title: "Courses - View & Manage Courses",
+      title: byLang(language, "Khóa học - Xem và quản lý khóa học", "Courses - View & Manage Courses"),
       route: PageRoute.COURSES,
       onClick: () => navigate(PageRoute.COURSES),
     },
@@ -253,7 +277,7 @@ const createTrainingManagerSidebarItems = (
     // Management Section Header
     {
       key: "management-header",
-      label: "MANAGEMENT",
+      label: byLang(language, "QUẢN LÝ", "MANAGEMENT"),
       disabled: true,
       style: {
         textAlign: "left",
@@ -267,8 +291,8 @@ const createTrainingManagerSidebarItems = (
     {
       key: PageRoute.QA_MANAGEMENT,
       icon: <MessageOutlined />,
-      label: "Q&A Management",
-      title: "Q&A Management - Manage Questions & Answers",
+      label: byLang(language, "Quản lý Hỏi đáp", "Q&A Management"),
+      title: byLang(language, "Quản lý Hỏi đáp - Quản lý câu hỏi và câu trả lời", "Q&A Management - Manage Questions & Answers"),
       route: PageRoute.QA_MANAGEMENT,
       onClick: () => navigate(PageRoute.QA_MANAGEMENT),
     },
@@ -276,8 +300,8 @@ const createTrainingManagerSidebarItems = (
     {
       key: PageRoute.ARTICLE_MANAGEMENT,
       icon: <FormOutlined />,
-      label: "Article Management",
-      title: "Article Management - Create/Update/Delete Articles",
+      label: byLang(language, "Quản lý bài viết", "Article Management"),
+      title: byLang(language, "Quản lý bài viết - Tạo/Cập nhật/Xóa bài viết", "Article Management - Create/Update/Delete Articles"),
       route: PageRoute.ARTICLE_MANAGEMENT,
       onClick: () => navigate(PageRoute.ARTICLE_MANAGEMENT),
     },
@@ -285,8 +309,8 @@ const createTrainingManagerSidebarItems = (
     {
       key: PageRoute.QUIZ_MANAGEMENT,
       icon: <FormOutlined />,
-      label: "Quiz Management",
-      title: "Quiz Management - Create/Update/Delete Quizzes",
+      label: byLang(language, "Quản lý bài thi", "Quiz Management"),
+      title: byLang(language, "Quản lý bài thi - Tạo/Cập nhật/Xóa bài thi", "Quiz Management - Create/Update/Delete Quizzes"),
       route: PageRoute.QUIZ_MANAGEMENT,
       onClick: () => navigate(PageRoute.QUIZ_MANAGEMENT),
     },
@@ -294,8 +318,8 @@ const createTrainingManagerSidebarItems = (
     {
       key: PageRoute.COURSE_MANAGEMENT,
       icon: <BookOutlined />,
-      label: "Course Management",
-      title: "Course Management - Create/Update/Delete/Approve Courses",
+      label: byLang(language, "Quản lý khóa học", "Course Management"),
+      title: byLang(language, "Quản lý khóa học - Tạo/Cập nhật/Xóa/Phê duyệt khóa học", "Course Management - Create/Update/Delete/Approve Courses"),
       route: PageRoute.COURSE_MANAGEMENT,
       onClick: () => navigate(PageRoute.COURSE_MANAGEMENT),
     },
@@ -303,8 +327,8 @@ const createTrainingManagerSidebarItems = (
     {
       key: PageRoute.CATEGORY_MANAGEMENT,
       icon: <FolderOpenOutlined />,
-      label: "Category Management",
-      title: "Category Management - Create/Update/Delete Categories",
+      label: byLang(language, "Quản lý danh mục", "Category Management"),
+      title: byLang(language, "Quản lý danh mục - Tạo/Cập nhật/Xóa danh mục", "Category Management - Create/Update/Delete Categories"),
       route: PageRoute.CATEGORY_MANAGEMENT,
       onClick: () => navigate(PageRoute.CATEGORY_MANAGEMENT),
     },
@@ -312,8 +336,8 @@ const createTrainingManagerSidebarItems = (
     {
       key: PageRoute.QUESTION_BANK_MANAGEMENT,
       icon: <DatabaseOutlined />,
-      label: "Question Bank",
-      title: "Question Bank - Manage Questions for Quizzes",
+      label: byLang(language, "Ngân hàng câu hỏi", "Question Bank"),
+      title: byLang(language, "Ngân hàng câu hỏi - Quản lý câu hỏi cho bài thi", "Question Bank - Manage Questions for Quizzes"),
       route: PageRoute.QUESTION_BANK_MANAGEMENT,
       onClick: () => navigate(PageRoute.QUESTION_BANK_MANAGEMENT),
     },
@@ -343,7 +367,7 @@ const createSystemAdminSidebarItems = (
     // Dashboard Section Header
     {
       key: "dashboard-header",
-      label: "DASHBOARD",
+      label: byLang(language, "BẢNG ĐIỀU KHIỂN", "DASHBOARD"),
       disabled: true,
       style: {
         textAlign: "left",
@@ -357,8 +381,8 @@ const createSystemAdminSidebarItems = (
     {
       key: PageRoute.DASHBOARD_METRICS,
       icon: <DashboardOutlined />,
-      label: "Dashboard Metrics",
-      title: "Dashboard Metrics - View performance analytics",
+      label: byLang(language, "Chỉ số tổng quan", "Dashboard Metrics"),
+      title: byLang(language, "Chỉ số tổng quan - Xem phân tích hiệu suất", "Dashboard Metrics - View performance analytics"),
       route: PageRoute.DASHBOARD_METRICS,
       onClick: () => navigate(PageRoute.DASHBOARD_METRICS),
     },
@@ -368,7 +392,7 @@ const createSystemAdminSidebarItems = (
     // Knowledge Section Header
     {
       key: "knowledge-header",
-      label: "KNOWLEDGE",
+      label: byLang(language, "TRI THỨC", "KNOWLEDGE"),
       disabled: true,
       style: {
         textAlign: "left",
@@ -383,8 +407,11 @@ const createSystemAdminSidebarItems = (
       key: PageRoute.QUESTIONS,
       icon: <MessageOutlined />,
       label: t("sidebar.qa", language) || "Q&A",
-      title:
-        "Q&A - Create/Update/Delete Questions & Answers, Share Published Questions",
+      title: byLang(
+        language,
+        "Hỏi đáp - Tạo/Cập nhật/Xóa câu hỏi và câu trả lời, chia sẻ câu hỏi đã xuất bản",
+        "Q&A - Create/Update/Delete Questions & Answers, Share Published Questions"
+      ),
       route: PageRoute.QUESTIONS,
       onClick: () => navigate(PageRoute.QUESTIONS),
     },
@@ -393,7 +420,7 @@ const createSystemAdminSidebarItems = (
       key: PageRoute.ARTICLES,
       icon: <FileTextOutlined />,
       label: t("sidebar.articles", language),
-      title: "Articles - Create/Read/Delete Articles",
+      title: byLang(language, "Bài viết - Tạo/Xem/Xóa bài viết", "Articles - Create/Read/Delete Articles"),
       route: PageRoute.ARTICLES,
       onClick: () => navigate(PageRoute.ARTICLES),
     },
@@ -402,7 +429,7 @@ const createSystemAdminSidebarItems = (
       key: PageRoute.COURSES,
       icon: <BookOutlined />,
       label: t("sidebar.courses", language),
-      title: "Courses - Manage All Courses",
+      title: byLang(language, "Khóa học - Quản lý tất cả khóa học", "Courses - Manage All Courses"),
       route: PageRoute.COURSES,
       onClick: () => navigate(PageRoute.COURSES),
     },
@@ -412,7 +439,7 @@ const createSystemAdminSidebarItems = (
     // Management Section Header
     {
       key: "management-header",
-      label: "MANAGEMENT",
+      label: byLang(language, "QUẢN LÝ", "MANAGEMENT"),
       disabled: true,
       style: {
         textAlign: "left",
@@ -426,8 +453,8 @@ const createSystemAdminSidebarItems = (
     {
       key: PageRoute.QA_MANAGEMENT,
       icon: <MessageOutlined />,
-      label: "Q&A Management",
-      title: "Q&A Management - Manage Questions & Answers",
+      label: byLang(language, "Quản lý Hỏi đáp", "Q&A Management"),
+      title: byLang(language, "Quản lý Hỏi đáp - Quản lý câu hỏi và câu trả lời", "Q&A Management - Manage Questions & Answers"),
       route: PageRoute.QA_MANAGEMENT,
       onClick: () => navigate(PageRoute.QA_MANAGEMENT),
     },
@@ -435,8 +462,8 @@ const createSystemAdminSidebarItems = (
     {
       key: PageRoute.ARTICLE_MANAGEMENT,
       icon: <FormOutlined />,
-      label: "Article Management",
-      title: "Article Management - Create/Update/Delete Articles",
+      label: byLang(language, "Quản lý bài viết", "Article Management"),
+      title: byLang(language, "Quản lý bài viết - Tạo/Cập nhật/Xóa bài viết", "Article Management - Create/Update/Delete Articles"),
       route: PageRoute.ARTICLE_MANAGEMENT,
       onClick: () => navigate(PageRoute.ARTICLE_MANAGEMENT),
     },
@@ -444,8 +471,8 @@ const createSystemAdminSidebarItems = (
     {
       key: PageRoute.QUIZ_MANAGEMENT,
       icon: <FormOutlined />,
-      label: "Quiz Management",
-      title: "Quiz Management - Create/Update/Delete Quizzes",
+      label: byLang(language, "Quản lý bài thi", "Quiz Management"),
+      title: byLang(language, "Quản lý bài thi - Tạo/Cập nhật/Xóa bài thi", "Quiz Management - Create/Update/Delete Quizzes"),
       route: PageRoute.QUIZ_MANAGEMENT,
       onClick: () => navigate(PageRoute.QUIZ_MANAGEMENT),
     },
@@ -453,8 +480,8 @@ const createSystemAdminSidebarItems = (
     {
       key: PageRoute.COURSE_MANAGEMENT,
       icon: <BookOutlined />,
-      label: "Course Management",
-      title: "Course Management - Create/Update/Delete Courses",
+      label: byLang(language, "Quản lý khóa học", "Course Management"),
+      title: byLang(language, "Quản lý khóa học - Tạo/Cập nhật/Xóa khóa học", "Course Management - Create/Update/Delete Courses"),
       route: PageRoute.COURSE_MANAGEMENT,
       onClick: () => navigate(PageRoute.COURSE_MANAGEMENT),
     },
@@ -462,8 +489,8 @@ const createSystemAdminSidebarItems = (
     {
       key: PageRoute.CATEGORY_MANAGEMENT,
       icon: <FolderOpenOutlined />,
-      label: "Category Management",
-      title: "Category Management - Create/Update/Delete Categories",
+      label: byLang(language, "Quản lý danh mục", "Category Management"),
+      title: byLang(language, "Quản lý danh mục - Tạo/Cập nhật/Xóa danh mục", "Category Management - Create/Update/Delete Categories"),
       route: PageRoute.CATEGORY_MANAGEMENT,
       onClick: () => navigate(PageRoute.CATEGORY_MANAGEMENT),
     },
@@ -471,8 +498,8 @@ const createSystemAdminSidebarItems = (
     {
       key: PageRoute.QUESTION_BANK_MANAGEMENT,
       icon: <DatabaseOutlined />,
-      label: "Question Bank",
-      title: "Question Bank - Manage Questions for Quizzes",
+      label: byLang(language, "Ngân hàng câu hỏi", "Question Bank"),
+      title: byLang(language, "Ngân hàng câu hỏi - Quản lý câu hỏi cho bài thi", "Question Bank - Manage Questions for Quizzes"),
       route: PageRoute.QUESTION_BANK_MANAGEMENT,
       onClick: () => navigate(PageRoute.QUESTION_BANK_MANAGEMENT),
     },
@@ -497,7 +524,7 @@ const createSystemAdminSidebarItems = (
       key: PageRoute.USER_MANAGEMENT,
       icon: <TeamOutlined />,
       label: t("sidebar.user_management", language),
-      title: "User Management - Create/Read/Update/Delete Users",
+      title: byLang(language, "Quản lý người dùng - Tạo/Xem/Cập nhật/Xóa người dùng", "User Management - Create/Read/Update/Delete Users"),
       route: PageRoute.USER_MANAGEMENT,
       onClick: () => navigate(PageRoute.USER_MANAGEMENT),
     },
@@ -506,7 +533,7 @@ const createSystemAdminSidebarItems = (
       key: PageRoute.ROLE_PERMISSIONS,
       icon: <CopyOutlined />,
       label: t("sidebar.role_permission", language),
-      title: "Role-Permission - View & Manage Role Permissions Matrix",
+      title: byLang(language, "Vai trò - Quyền hạn: Xem và quản lý ma trận phân quyền", "Role-Permission - View & Manage Role Permissions Matrix"),
       route: PageRoute.ROLE_PERMISSIONS,
       onClick: () => navigate(PageRoute.ROLE_PERMISSIONS),
     },
@@ -514,8 +541,8 @@ const createSystemAdminSidebarItems = (
     {
       key: PageRoute.SYSTEM_SETTINGS,
       icon: <SettingOutlined />,
-      label: "System Settings",
-      title: "System Settings - Configure System Parameters",
+      label: byLang(language, "Cài đặt hệ thống", "System Settings"),
+      title: byLang(language, "Cài đặt hệ thống - Cấu hình tham số hệ thống", "System Settings - Configure System Parameters"),
       route: PageRoute.SYSTEM_SETTINGS,
       onClick: () => navigate(PageRoute.SYSTEM_SETTINGS),
     },
@@ -545,7 +572,7 @@ const createDirectorSidebarItems = (
     // Dashboard Section Header
     {
       key: "dashboard-header",
-      label: "DASHBOARD",
+      label: byLang(language, "BẢNG ĐIỀU KHIỂN", "DASHBOARD"),
       disabled: true,
       style: {
         textAlign: "left",
@@ -559,8 +586,8 @@ const createDirectorSidebarItems = (
     {
       key: PageRoute.DASHBOARD_METRICS,
       icon: <DashboardOutlined />,
-      label: "Dashboard Metrics",
-      title: "Dashboard Metrics - View performance analytics",
+      label: byLang(language, "Chỉ số tổng quan", "Dashboard Metrics"),
+      title: byLang(language, "Chỉ số tổng quan - Xem phân tích hiệu suất", "Dashboard Metrics - View performance analytics"),
       route: PageRoute.DASHBOARD_METRICS,
       onClick: () => navigate(PageRoute.DASHBOARD_METRICS),
     },
@@ -570,7 +597,7 @@ const createDirectorSidebarItems = (
     // Knowledge Section Header
     {
       key: "knowledge-header",
-      label: "KNOWLEDGE",
+      label: byLang(language, "TRI THỨC", "KNOWLEDGE"),
       disabled: true,
       style: {
         textAlign: "left",
@@ -585,7 +612,7 @@ const createDirectorSidebarItems = (
       key: PageRoute.QUESTIONS,
       icon: <MessageOutlined />,
       label: t("sidebar.qa", language) || "Q&A",
-      title: "Q&A - View Questions & Answers",
+      title: byLang(language, "Hỏi đáp - Xem câu hỏi và câu trả lời", "Q&A - View Questions & Answers"),
       route: PageRoute.QUESTIONS,
       onClick: () => navigate(PageRoute.QUESTIONS),
     },
@@ -594,7 +621,7 @@ const createDirectorSidebarItems = (
       key: PageRoute.ARTICLES,
       icon: <FileTextOutlined />,
       label: t("sidebar.articles", language),
-      title: "Articles - View Articles",
+      title: byLang(language, "Bài viết - Xem bài viết", "Articles - View Articles"),
       route: PageRoute.ARTICLES,
       onClick: () => navigate(PageRoute.ARTICLES),
     },
@@ -603,7 +630,7 @@ const createDirectorSidebarItems = (
       key: PageRoute.COURSES,
       icon: <BookOutlined />,
       label: t("sidebar.courses", language),
-      title: "Courses - View Courses",
+      title: byLang(language, "Khóa học - Xem khóa học", "Courses - View Courses"),
       route: PageRoute.COURSES,
       onClick: () => navigate(PageRoute.COURSES),
     },

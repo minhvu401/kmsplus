@@ -6,6 +6,7 @@ import {
   updateLessonAction,
   deleteLessonAction as deleteLessonService, // Đổi tên để tránh trùng
   checkLessonUsageService,
+  checkLessonsUsageBatchService,
   softDeleteLessonService,
   hardDeleteLessonService,
   cloneLessonService,
@@ -122,6 +123,10 @@ export async function createNewLessonAPI(data: {
 // ✅ 1. Kiểm tra phụ thuộc (Dùng cho cả Edit và Delete)
 export async function checkLessonDependencyAPI(id: number) {
   return await checkLessonUsageService(id)
+}
+
+export async function checkLessonDependenciesBatchAPI(ids: number[]) {
+  return await checkLessonsUsageBatchService(ids)
 }
 
 // ✅ 2. Xóa thông minh (Tự quyết định Hard hay Soft Delete)

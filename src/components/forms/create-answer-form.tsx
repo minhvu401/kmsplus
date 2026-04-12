@@ -5,6 +5,7 @@ import { Form, Input, Select, Button, Typography, Flex, message } from "antd"
 import { State, createAnswer } from "@/action/question/questionActions"
 import { useRouter } from "next/navigation"
 import RichTextEditor from "@/components/ui/RichTextEditor"
+import useLanguageStore from "@/store/useLanguageStore"
 
 const { Text } = Typography
 
@@ -37,6 +38,26 @@ export default function CreateAnswerForm({
   userId: number
   questionId: number
 }) {
+  const { language } = useLanguageStore()
+  const isVi = language === "vi"
+  const text = isVi
+    ? {
+        answerPosted: "Câu trả lời của bạn đã được đăng thành công.",
+        contentRequired: "Vui lòng cung cấp thêm chi tiết",
+        contentMin: "Câu trả lời phải có ít nhất 15 ký tự",
+        contentPlaceholder: "Nhập câu trả lời của bạn tại đây...",
+        charLimit: "Giới hạn ký tự",
+        send: "Gửi",
+      }
+    : {
+        answerPosted: "Your answer has been posted successfully.",
+        contentRequired: "Please provide more details",
+        contentMin: "Answers must be at least 15 characters",
+        contentPlaceholder: "Enter your answer here...",
+        charLimit: "Character limit",
+        send: "Send",
+      }
+
   const [form] = Form.useForm()
   const [contentCount, setContentCount] = useState(0)
   const [messageApi, contextHolder] = message.useMessage()
@@ -54,7 +75,7 @@ export default function CreateAnswerForm({
     if (state.message === "Answer created successfully") {
       form.resetFields()
       setContentCount(0)
-      messageApi.success("Your answer has been posted successfully.")
+      messageApi.success(text.answerPosted)
       startTransition(() => {
         router.refresh()
       })
@@ -77,7 +98,7 @@ export default function CreateAnswerForm({
     }
 
     messageApi.error(state.message)
-  }, [state, messageApi, form, router])
+  }, [state, messageApi, form, router, text.answerPosted])
 
   return (
     <>
@@ -117,7 +138,7 @@ export default function CreateAnswerForm({
               return val
             }}
             rules={[
-              { required: true, message: "Please provide more details" },
+              { required: true, message: text.contentRequired },
               {
                 validator: (_, value) => {
                   // Only validate length if user has entered content
@@ -130,20 +151,18 @@ export default function CreateAnswerForm({
                     .replace(/&nbsp;/g, " ")
                     .trim()
                   if (plainText.length > 0 && plainText.length < 15) {
-                    return Promise.reject(
-                      "Answers must be at least 15 characters"
-                    )
+                    return Promise.reject(text.contentMin)
                   }
                   return Promise.resolve()
                 },
               },
             ]}
           >
-            <ContentEditor placeholder="Enter your answer here..." />
+            <ContentEditor placeholder={text.contentPlaceholder} />
           </Form.Item>
 
           <Flex justify="space-between" align="center">
-            <Text type="secondary">Character limit {contentCount} / 600</Text>
+            <Text type="secondary">{text.charLimit} {contentCount} / 600</Text>
             <Button
               type="primary"
               size="large"
@@ -155,7 +174,7 @@ export default function CreateAnswerForm({
                 cursor: contentCount < 15 ? "not-allowed" : "pointer",
               }}
             >
-              Send
+              {text.send}
             </Button>
           </Flex>
         </Form>

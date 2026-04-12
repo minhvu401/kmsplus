@@ -38,6 +38,7 @@ import Pagination from "@/components/ui/questions/pagination"
 import PageSizeSelector from "@/components/ui/questions/page-size-selector"
 import { useSearchParams, useRouter } from "next/navigation"
 import RichTextEditor from "@/components/ui/RichTextEditor"
+import useLanguageStore from "@/store/useLanguageStore"
 
 const { Title, Text } = Typography
 const HCM_TIME_ZONE = "Asia/Ho_Chi_Minh"
@@ -69,12 +70,35 @@ const parseUtcTimestamp = (value: Date | string) => {
   return new Date(normalized)
 }
 
-const formatHcmDateTime = (value: Date | string) => {
+const formatHcmDateTime = (value: Date | string, language: "vi" | "en") => {
   const timestamp = parseUtcTimestamp(value)
-  return timestamp.toLocaleString("vi-VN", {
+  return timestamp.toLocaleString(language === "vi" ? "vi-VN" : "en-US", {
     timeZone: HCM_TIME_ZONE,
     hour12: false,
   })
+}
+
+type AnswerText = {
+  answersTitle: string
+  newest: string
+  oldest: string
+  sortLabel: string
+  lockedMessage: string
+  refreshing: string
+  noAnswers: string
+  reply: string
+  editPlaceholder: string
+  cancel: string
+  saveEdits: string
+  replyTo: (name: string) => string
+  deleteAnswerTitle: string
+  deleteConfirmMessage: string
+  delete: string
+  edit: string
+  deletedSuccess: string
+  replyPosted: string
+  replyFailed: string
+  answerUpdated: string
 }
 
 // Type for nested reply structure
@@ -103,6 +127,54 @@ export default function AnswerSection({
   userId: number
   isSystemAdmin: boolean
 }) {
+  const { language } = useLanguageStore()
+  const isVi = language === "vi"
+  const text: AnswerText = isVi
+    ? {
+        answersTitle: "Câu trả lời",
+        newest: "Mới nhất",
+        oldest: "Cũ nhất",
+        sortLabel: "Sắp xếp câu trả lời",
+        lockedMessage: "Câu hỏi này đã được lưu trữ. Không thể thêm bình luận mới.",
+        refreshing: "Đang làm mới câu trả lời...",
+        noAnswers: "Chưa có câu trả lời nào. Hãy là người đầu tiên phản hồi.",
+        reply: "Trả lời",
+        editPlaceholder: "Chỉnh sửa bình luận của bạn...",
+        cancel: "Hủy",
+        saveEdits: "Lưu chỉnh sửa",
+        replyTo: (name: string) => `Trả lời ${name}...`,
+        deleteAnswerTitle: "Xóa câu trả lời",
+        deleteConfirmMessage: "Bạn có chắc chắn muốn xóa câu trả lời này?",
+        delete: "Xóa",
+        edit: "Chỉnh sửa",
+        deletedSuccess: "Câu trả lời của bạn đã được xóa thành công.",
+        replyPosted: "Phản hồi của bạn đã được đăng thành công.",
+        replyFailed: "Đăng phản hồi thất bại.",
+        answerUpdated: "Câu trả lời của bạn đã được cập nhật thành công.",
+      }
+    : {
+        answersTitle: "Answers",
+        newest: "Newest",
+        oldest: "Oldest",
+        sortLabel: "Sort answers",
+        lockedMessage: "This question is archived. No new comments can be posted.",
+        refreshing: "Refreshing answers...",
+        noAnswers: "No answers yet. Be the first to comment.",
+        reply: "Reply",
+        editPlaceholder: "Edit your comment...",
+        cancel: "Cancel",
+        saveEdits: "Save Edits",
+        replyTo: (name: string) => `Reply to ${name}...`,
+        deleteAnswerTitle: "Delete Answer",
+        deleteConfirmMessage: "Are you sure you want to delete this answer?",
+        delete: "Delete",
+        edit: "Edit",
+        deletedSuccess: "Your answer has been deleted successfully.",
+        replyPosted: "Your reply has been posted successfully.",
+        replyFailed: "Failed to post reply.",
+        answerUpdated: "Your answer has been updated successfully.",
+      }
+
   const router = useRouter()
   const searchParams = useSearchParams()
   const [messageApi, contextHolder] = message.useMessage()
@@ -204,7 +276,7 @@ export default function AnswerSection({
     startTransition(async () => {
       const result = await createReply(formData)
       if (result?.message === "Reply created successfully") {
-        messageApi.success("Your reply has been posted successfully.")
+        messageApi.success(text.replyPosted)
         cancelReply()
         refreshAnswers()
       } else if (result?.errors && Object.keys(result.errors).length > 0) {
@@ -212,7 +284,7 @@ export default function AnswerSection({
           .flat()
           .filter(Boolean)
           .join(" | ")
-        messageApi.error(errorDetails || "Failed to post reply.")
+        messageApi.error(errorDetails || text.replyFailed)
       } else if (result?.message) {
         messageApi.error(result.message)
       }
@@ -222,7 +294,7 @@ export default function AnswerSection({
 
   useEffect(() => {
     if (updateState?.message === "Answer updated successfully") {
-      messageApi.success("Your answer has been updated successfully.")
+      messageApi.success(text.answerUpdated)
       setSavingAnswerId(null)
       cancelEdit()
       refreshAnswers()
@@ -232,7 +304,7 @@ export default function AnswerSection({
     if (updateState?.errors && Object.keys(updateState.errors).length > 0) {
       setSavingAnswerId(null)
     }
-  }, [updateState?.message, updateState?.errors, messageApi])
+  }, [updateState?.message, updateState?.errors, messageApi, text.answerUpdated])
 
   const contentError = updateState?.errors?.content?.[0]
 
@@ -265,7 +337,7 @@ export default function AnswerSection({
     onCancelReply: cancelReply,
     onSubmitReply: handleSubmitReply,
     onAnswerDeletedSuccess: () => {
-      messageApi.success("Your answer has been deleted successfully.")
+      messageApi.success(text.deletedSuccess)
       refreshAnswers()
     },
     onSetReplyContent: (val: string) => {
@@ -276,6 +348,8 @@ export default function AnswerSection({
         .trim()
       setReplyCount(plainText.length)
     },
+    text,
+    language,
   }
 
   return (
@@ -289,7 +363,7 @@ export default function AnswerSection({
         <Flex vertical align="left" gap={10} style={{ marginBottom: 18 }}>
           <div className="flex items-center gap-3">
             <Title level={4} style={{ color: "#111827", margin: 0 }}>
-              Answers ({answer_count})
+              {text.answersTitle} ({answer_count})
             </Title>
             <Select
               size="small"
@@ -297,15 +371,15 @@ export default function AnswerSection({
               style={{ width: 120 }}
               onChange={updateSort}
               options={[
-                { value: "newest", label: "Newest" },
-                { value: "oldest", label: "Oldest" },
+                { value: "newest", label: text.newest },
+                { value: "oldest", label: text.oldest },
               ]}
-              aria-label="Sort answers"
+              aria-label={text.sortLabel}
             />
           </div>
           <div className="w-full">
             {is_closed ? (
-              <LockedAnswerBox message="This question is archived. No new comments can be posted." />
+              <LockedAnswerBox message={text.lockedMessage} />
             ) : (
               <CreateAnswerForm userId={userId} questionId={questionId} />
             )}
@@ -321,7 +395,7 @@ export default function AnswerSection({
               <div className="flex items-center gap-2 text-gray-600">
                 <Spin size="large" />
                 <span className="text-sm font-medium">
-                  Refreshing answers...
+                  {text.refreshing}
                 </span>
               </div>
             </div>
@@ -332,7 +406,7 @@ export default function AnswerSection({
           >
             {paginatedAnswers.length === 0 ? (
               <div className="py-7 text-center text-gray-500">
-                No answers yet. Be the first to comment.
+                {text.noAnswers}
               </div>
             ) : (
               paginatedAnswers.map((answer) => (
@@ -388,6 +462,8 @@ interface RedditCommentProps {
   onSubmitReply: (parentId: number) => void
   onAnswerDeletedSuccess: () => void
   onSetReplyContent: (val: string) => void
+  text: AnswerText
+  language: "vi" | "en"
 }
 
 function RedditComment(props: RedditCommentProps) {
@@ -400,6 +476,8 @@ function RedditComment(props: RedditCommentProps) {
     editingAnswerId,
     replyingToId,
     onBeginReply,
+    text,
+    language,
   } = props
 
   const isEditing = editingAnswerId === node.id
@@ -430,6 +508,7 @@ function RedditComment(props: RedditCommentProps) {
               onEdit={() => props.onBeginEdit(node)}
               isEditing={isEditing}
               onDeletedSuccess={props.onAnswerDeletedSuccess}
+              text={text}
             />
           )}
         </div>
@@ -456,13 +535,13 @@ function RedditComment(props: RedditCommentProps) {
         {!isEditing && (
           <div className="flex items-center justify-between mt-0.5">
             <Text type="secondary" className="text-xs">
-              {formatHcmDateTime(node.created_at)}
+              {formatHcmDateTime(node.created_at, language)}
             </Text>
 
             {!is_closed && (
               <ActionButton
                 icon={<MessageOutlined />}
-                text="Reply"
+                text={text.reply}
                 onClick={() => onBeginReply(node.id)}
               />
             )}
@@ -530,6 +609,7 @@ function EditBox(props: RedditCommentProps) {
     onCancelEdit,
     onSaveEdit,
     node,
+    text,
   } = props
   const isSaving = savingAnswerId === node.id
   return (
@@ -537,7 +617,7 @@ function EditBox(props: RedditCommentProps) {
       <RichTextEditor
         value={editingContent}
         onChange={onSetEditingContent}
-        placeholder="Edit your comment..."
+        placeholder={text.editPlaceholder}
         size="compact"
       />
       <div className="flex justify-between items-center bg-gray-50 p-2 rounded-b border-t border-gray-200">
@@ -546,7 +626,7 @@ function EditBox(props: RedditCommentProps) {
         </Text>
         <div className="flex gap-2">
           <Button size="small" onClick={onCancelEdit} disabled={isSaving}>
-            Cancel
+            {text.cancel}
           </Button>
           <Button
             size="small"
@@ -556,7 +636,7 @@ function EditBox(props: RedditCommentProps) {
             disabled={editingCount < 1 || isSaving}
             className="bg-blue-600"
           >
-            Save Edits
+            {text.saveEdits}
           </Button>
         </div>
       </div>
@@ -573,6 +653,7 @@ function ReplyBox(props: RedditCommentProps) {
     onCancelReply,
     onSubmitReply,
     node,
+    text,
   } = props
   const isSubmittingReply = replySubmittingParentId === node.id
   return (
@@ -580,7 +661,7 @@ function ReplyBox(props: RedditCommentProps) {
       <RichTextEditor
         value={replyContent}
         onChange={onSetReplyContent}
-        placeholder={`Reply to ${node.user_name}...`}
+        placeholder={text.replyTo(node.user_name)}
         size="compact"
       />
       <div className="flex justify-between items-center mt-2">
@@ -593,7 +674,7 @@ function ReplyBox(props: RedditCommentProps) {
             onClick={onCancelReply}
             disabled={isSubmittingReply}
           >
-            Cancel
+            {text.cancel}
           </Button>
           <Button
             size="small"
@@ -607,7 +688,7 @@ function ReplyBox(props: RedditCommentProps) {
               cursor: replyCount < 15 ? "not-allowed" : "pointer",
             }}
           >
-            Reply
+            {text.reply}
           </Button>
         </div>
       </div>
@@ -620,11 +701,13 @@ export function AnswerMenu({
   onEdit,
   isEditing,
   onDeletedSuccess,
+  text,
 }: {
   answer: Answer
   onEdit: () => void
   isEditing: boolean
   onDeletedSuccess: () => void
+  text: AnswerText
 }) {
   const [open, setOpen] = useState(false)
   const [isDeleteVisible, setDeleteVisible] = useState(false)
@@ -640,7 +723,7 @@ export function AnswerMenu({
             setOpen(false)
           }}
         >
-          <EditOutlined /> Edit
+          <EditOutlined /> {text.edit}
         </span>
       ),
       disabled: isEditing,
@@ -655,7 +738,7 @@ export function AnswerMenu({
           }}
           className="text-red-500"
         >
-          <DeleteOutlined /> Delete
+          <DeleteOutlined /> {text.delete}
         </span>
       ),
     },
@@ -692,7 +775,7 @@ export function AnswerMenu({
       </Dropdown>
 
       <Modal
-        title="Delete Answer"
+        title={text.deleteAnswerTitle}
         centered
         open={isDeleteVisible}
         onCancel={() => {
@@ -708,7 +791,7 @@ export function AnswerMenu({
             onClick={() => setDeleteVisible(false)}
             disabled={isDeleting}
           >
-            Cancel
+            {text.cancel}
           </Button>,
           <Button
             key="delete"
@@ -716,11 +799,11 @@ export function AnswerMenu({
             onClick={handleDelete}
             loading={isDeleting}
           >
-            Delete
+            {text.delete}
           </Button>,
         ]}
       >
-        <Text>Are you sure you want to delete this answer?</Text>
+        <Text>{text.deleteConfirmMessage}</Text>
       </Modal>
     </>
   )

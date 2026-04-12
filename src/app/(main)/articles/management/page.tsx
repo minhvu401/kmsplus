@@ -66,9 +66,9 @@ import {
 import type { Article, Tag } from "@/service/articles.service"
 import {
   uploadImageToCloudinary,
-  getCloudinaryThumbnailUrl,
 } from "@/lib/cloudinary"
 import QuillEditor from "@/components/QuillEditorLazy"
+import useLanguageStore from "@/store/useLanguageStore"
 
 if (typeof window !== "undefined") {
   ;(window as any).React = React
@@ -149,6 +149,7 @@ const applyQuote = (
 
 export default function ArticleManagement() {
   const router = useRouter()
+  const { language } = useLanguageStore()
   const PAGE_SIZE = 10
   const MAX_TAGS = 5
   const THUMBNAIL_MAX_SIZE_MB = 10
@@ -214,8 +215,10 @@ export default function ArticleManagement() {
     title: string
     content: string
     authorName: string
+    authorAvatarUrl: string
     categoryName: string
     createdAt: Date | string | null
+    thumbnailUrl: string
   } | null>(null)
   const [editForm] = Form.useForm()
   const [editTitleContent, setEditTitleContent] = useState("")
@@ -858,8 +861,13 @@ export default function ArticleManagement() {
           title: article.title || "Untitled",
           content: article.content || "",
           authorName: article.author_name || "Unknown",
+          authorAvatarUrl: article.author_avatar_url || "",
           categoryName: article.category_name || "No category",
           createdAt: article.created_at || null,
+          thumbnailUrl:
+            article.thumbnail_url ||
+            article.image_url ||
+            DEFAULT_ARTICLE_THUMBNAIL,
         })
       } else {
         message.error("Failed to load article preview")
@@ -1809,7 +1817,10 @@ export default function ArticleManagement() {
 
       {/* Article Preview Modal */}
       <Modal
-        title={previewArticle?.title || "Article Preview"}
+        title={
+          previewArticle?.title ||
+          (language === "vi" ? "Xem trước bài viết" : "Article Preview")
+        }
         open={isPreviewModalOpen}
         onCancel={() => {
           setIsPreviewModalOpen(false)
@@ -1825,7 +1836,7 @@ export default function ArticleManagement() {
               setPreviewArticleId(null)
             }}
           >
-            Close
+            {language === "vi" ? "Đóng" : "Close"}
           </Button>,
           <Button
             key="view"
@@ -1837,7 +1848,7 @@ export default function ArticleManagement() {
               }
             }}
           >
-            View Full Article
+            {language === "vi" ? "Xem toàn bộ bài viết" : "View Full Article"}
           </Button>,
         ]}
         width={900}
@@ -1848,18 +1859,37 @@ export default function ArticleManagement() {
           },
         }}
       >
-        <Spin spinning={loadingPreviewData} tip="Loading preview...">
+        <Spin
+          spinning={loadingPreviewData}
+          tip={language === "vi" ? "Đang tải xem trước..." : "Loading preview..."}
+        >
           {previewArticle && (
             <Space direction="vertical" size="middle" className="w-full">
+              <img
+                src={previewArticle.thumbnailUrl || DEFAULT_ARTICLE_THUMBNAIL}
+                alt={previewArticle.title || "Article thumbnail"}
+                className="w-full max-h-72 object-cover rounded-lg border border-gray-200"
+                onError={(e) => {
+                  ;(e.target as HTMLImageElement).src = DEFAULT_ARTICLE_THUMBNAIL
+                }}
+              />
               <Space size="small" align="center">
-                <Text type="secondary">Author:</Text>
+                <Text type="secondary">{language === "vi" ? "Tác giả:" : "Author:"}</Text>
+                <Avatar size="small" src={previewArticle.authorAvatarUrl || undefined}>
+                  {(previewArticle.authorName || "Unknown")
+                    .split(" ")
+                    .map((part) => part[0])
+                    .join("")
+                    .slice(0, 2)
+                    .toUpperCase()}
+                </Avatar>
                 <Text>{previewArticle.authorName}</Text>
                 <Text type="secondary">|</Text>
-                <Text type="secondary">Category:</Text>
+                <Text type="secondary">{language === "vi" ? "Danh mục:" : "Category:"}</Text>
                 <Text>{previewArticle.categoryName}</Text>
               </Space>
               <Text type="secondary">
-                Created: {formatVietnamDateTime(previewArticle.createdAt)}
+                {language === "vi" ? "Ngày tạo:" : "Created:"} {formatVietnamDateTime(previewArticle.createdAt)}
               </Text>
               <Divider style={{ margin: "8px 0" }} />
               {previewArticle.content ? (
@@ -1868,7 +1898,11 @@ export default function ArticleManagement() {
                   dangerouslySetInnerHTML={{ __html: previewArticle.content }}
                 />
               ) : (
-                <Text type="secondary">No content available.</Text>
+                <Text type="secondary">
+                  {language === "vi"
+                    ? "Không có nội dung để hiển thị."
+                    : "No content available."}
+                </Text>
               )}
             </Space>
           )}

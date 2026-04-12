@@ -42,17 +42,37 @@ import {
 import { Question } from "@/service/question.service";
 import { Category } from "@/service/question.service";
 import { deleteQuestion, closeQuestion, openQuestion, updateQuestion, State } from "@/action/question/questionActions";
-import Link from 'next/link';
+import useLanguageStore from "@/store/useLanguageStore";
 
 const HCM_TIME_ZONE = "Asia/Ho_Chi_Minh";
 
-const formatHcmDate = (date: Date) => {
-    return date.toLocaleDateString("vi-VN", {
+const formatHcmDate = (date: Date, language: "vi" | "en") => {
+    return date.toLocaleDateString(language === "vi" ? "vi-VN" : "en-US", {
         timeZone: HCM_TIME_ZONE,
     });
 };
 
-export default function QuestionDetails({ userId, question, categories }: { userId: number; question: Question; categories: Category[] }) {
+export default function QuestionDetails({ userId, isSystemAdmin, question, categories }: { userId: number; isSystemAdmin: boolean; question: Question; categories: Category[] }) {
+    const { language } = useLanguageStore();
+    const isVi = language === "vi";
+    const text = isVi
+        ? {
+            by: "bởi",
+            closed: "Đã đóng",
+            open: "Đang mở",
+            askedOn: "đặt vào",
+            closedOn: "đóng vào",
+            updatedOn: "cập nhật lần cuối vào",
+        }
+        : {
+            by: "by",
+            closed: "Closed",
+            open: "Open",
+            askedOn: "asked on",
+            closedOn: "closed on",
+            updatedOn: "last updated on",
+        };
+
     const createdAt = new Date(question.created_at);
     const updatedAt = new Date(question.updated_at);
 
@@ -86,14 +106,14 @@ export default function QuestionDetails({ userId, question, categories }: { user
                 </Flex>
 
                 <Flex style={{ flex: "none" }}>
-                    <QuestionMenu userId={userId} question={question} categories={categories} />
+                    <QuestionMenu userId={userId} isSystemAdmin={isSystemAdmin} question={question} categories={categories} />
                 </Flex>
             </Flex>
 
             {/* Author & Category Info */}
             <Flex align="center" justify="flex-start" gap={12} style={{ color: "#374151", width: "100%", marginBottom: 12 }}>
                 <Flex align="center" gap={4}>
-                    <Text>by</Text>
+                    <Text>{text.by}</Text>
                     <Avatar
                         size="small"
                         src={question.user_avatar || undefined}
@@ -103,7 +123,7 @@ export default function QuestionDetails({ userId, question, categories }: { user
                 </Flex>
                 <Tag color="blue">{question.category_name}</Tag>
                 <Tag color={question.is_closed ? "red" : "green"}>
-                    {question.is_closed ? "Closed" : "Open"}
+                    {question.is_closed ? text.closed : text.open}
                 </Tag>
             </Flex>
 
@@ -115,11 +135,11 @@ export default function QuestionDetails({ userId, question, categories }: { user
                 wrap="wrap"
                 style={{ color: "#4b5563", fontWeight: 500, width: "100%" }}
             >
-                <Text>asked on {formatHcmDate(createdAt)}</Text>
+                <Text>{text.askedOn} {formatHcmDate(createdAt, language)}</Text>
                 {question.is_closed ? (
-                    <Text>closed on {formatHcmDate(updatedAt)}</Text>
+                    <Text>{text.closedOn} {formatHcmDate(updatedAt, language)}</Text>
                 ) : (
-                    <Text>last updated on {formatHcmDate(updatedAt)}</Text>
+                    <Text>{text.updatedOn} {formatHcmDate(updatedAt, language)}</Text>
                 )}
             </Flex>
 
@@ -138,13 +158,93 @@ export default function QuestionDetails({ userId, question, categories }: { user
 
 export function QuestionMenu({
     userId,
+    isSystemAdmin,
     question,
     categories,
 }: {
     userId: number;
+    isSystemAdmin: boolean;
     question: Question;
     categories: Category[];
 }) {
+    const { language } = useLanguageStore();
+    const isVi = language === "vi";
+    const text = isVi
+        ? {
+            linkCopied: "Đã sao chép liên kết câu hỏi!",
+            copyFailed: "Sao chép liên kết thất bại.",
+            editQuestion: "Chỉnh sửa câu hỏi",
+            deleteQuestion: "Xóa câu hỏi",
+            openQuestion: "Mở câu hỏi",
+            closeQuestion: "Đóng câu hỏi",
+            shareQuestion: "Chia sẻ câu hỏi",
+            confirmation: "Xác nhận",
+            cancel: "Hủy",
+            delete: "Xóa",
+            confirm: "Xác nhận",
+            deletePostTitle: "Bạn có chắc chắn muốn xóa bài viết này?",
+            deletePostDesc: "Bài viết của bạn sẽ bị xóa vĩnh viễn.",
+            closePostTitle: "Bạn có chắc chắn muốn đóng bài viết này?",
+            closePostDesc: "Bài viết của bạn sẽ bị đóng. Không cho phép bình luận mới.",
+            openPostTitle: "Bạn có chắc chắn muốn mở bài viết này?",
+            openPostDesc: "Bài viết của bạn sẽ được mở. Bình luận mới sẽ được cho phép.",
+            editTitle: "Chỉnh sửa câu hỏi",
+            submit: "Gửi",
+            titleLabel: "Tiêu đề:",
+            titleRequired: "Vui lòng nhập tiêu đề",
+            titleMin: "Tiêu đề phải có ít nhất 3 ký tự",
+            titlePlaceholder: "Viết tiêu đề câu hỏi của bạn...",
+            charLimit: "Giới hạn ký tự",
+            contentLabel: "Nội dung:",
+            contentRequired: "Vui lòng cung cấp thêm chi tiết",
+            contentMin: "Nội dung phải có ít nhất 10 ký tự",
+            contentPlaceholder: "Cung cấp thêm chi tiết về câu hỏi của bạn...",
+            categoryLabel: "Danh mục:",
+            categoryRequired: "Vui lòng chọn danh mục",
+            categoryPlaceholder: "Chọn danh mục",
+            leave: "Rời đi",
+            leaveTitle: "Bạn có chắc chắn muốn rời khỏi cửa sổ này?",
+            leaveDesc: "Phần chỉnh sửa của bạn sẽ không được lưu.",
+            submitEditTitle: "Bạn có chắc chắn muốn chỉnh sửa câu hỏi này?",
+        }
+        : {
+            linkCopied: "Question link copied to clipboard!",
+            copyFailed: "Failed to copy link.",
+            editQuestion: "Edit question",
+            deleteQuestion: "Delete question",
+            openQuestion: "Open question",
+            closeQuestion: "Close question",
+            shareQuestion: "Share question",
+            confirmation: "Confirmation",
+            cancel: "Cancel",
+            delete: "Delete",
+            confirm: "Confirm",
+            deletePostTitle: "Are you sure you want to delete this post?",
+            deletePostDesc: "Your post will be permanently deleted.",
+            closePostTitle: "Are you sure you want to close this post?",
+            closePostDesc: "Your post will be closed. No new comments will be allowed.",
+            openPostTitle: "Are you sure you want to open this post?",
+            openPostDesc: "Your post will be opened. New comments will be allowed.",
+            editTitle: "Edit Question",
+            submit: "Submit",
+            titleLabel: "Title:",
+            titleRequired: "Please enter a title",
+            titleMin: "Title must be at least 3 characters",
+            titlePlaceholder: "Write your question title here...",
+            charLimit: "Character limit",
+            contentLabel: "Content:",
+            contentRequired: "Please provide more details",
+            contentMin: "Content must be at least 10 characters",
+            contentPlaceholder: "Provide more details about your question...",
+            categoryLabel: "Category:",
+            categoryRequired: "Please select a category",
+            categoryPlaceholder: "Select category",
+            leave: "Leave",
+            leaveTitle: "Are you sure you want to leave this pop-up?",
+            leaveDesc: "Your edit will not be saved.",
+            submitEditTitle: "Are you sure you want to edit this question?",
+        };
+
 
     const [form] = Form.useForm();
     // Visibility state for the dropdown menu
@@ -175,15 +275,15 @@ export function QuestionMenu({
         const url = `${window.location.origin}/questions/${question.id}`;
         try {
             await navigator.clipboard.writeText(url);
-            messageApi.success('Question link copied to clipboard!');
+            messageApi.success(text.linkCopied);
         } catch {
-            messageApi.error('Failed to copy link.');
+            messageApi.error(text.copyFailed);
         }
         setOpen(false);
     };
 
     const items = [
-        ...(Number(userId) === Number(question.user_id)
+        ...((Number(userId) === Number(question.user_id) || isSystemAdmin)
             ? [
                 {
                     key: 'edit',
@@ -194,7 +294,7 @@ export function QuestionMenu({
                                 setOpen(false);
                             }}
                         >
-                            <EditOutlined /> Edit question
+                            <EditOutlined /> {text.editQuestion}
                         </span>
                     ),
                 },
@@ -207,7 +307,7 @@ export function QuestionMenu({
                                 setOpen(false);
                             }}
                         >
-                            <DeleteOutlined /> Delete question
+                            <DeleteOutlined /> {text.deleteQuestion}
                         </span>
                     ),
                 },
@@ -221,7 +321,7 @@ export function QuestionMenu({
                                     setOpen(false);
                                 }}
                             >
-                                <UnlockOutlined /> Open question
+                                <UnlockOutlined /> {text.openQuestion}
                             </span>
                         ),
                     }
@@ -234,7 +334,7 @@ export function QuestionMenu({
                                     setOpen(false);
                                 }}
                             >
-                                <LockOutlined /> Close question
+                                <LockOutlined /> {text.closeQuestion}
                             </span>
                         ),
                     },
@@ -244,7 +344,7 @@ export function QuestionMenu({
             key: 'share',
             label: (
                 <span onClick={handleShare}>
-                    <ShareAltOutlined /> Share question
+                    <ShareAltOutlined /> {text.shareQuestion}
                 </span>
             ),
         },
@@ -320,69 +420,69 @@ export function QuestionMenu({
             </Dropdown>
 
             <Modal
-                title="Confirmation"
+                title={text.confirmation}
                 centered
                 open={isDeleteVisible}
                 onCancel={() => setDeleteVisible(false)}
                 footer={[
                     <Button key="cancel" onClick={() => setDeleteVisible(false)}>
-                        Cancel
+                        {text.cancel}
                     </Button>,
                     <Button key="delete" danger onClick={handleDelete}>
-                        Delete
+                        {text.delete}
                     </Button>,
                 ]}
             >
-                <Text>Are you sure you want to delete this post?</Text>
+                <Text>{text.deletePostTitle}</Text>
                 <br />
-                <Text type="secondary">Your post will be permanently deleted.</Text>
+                <Text type="secondary">{text.deletePostDesc}</Text>
             </Modal>
 
             <Modal
-                title="Confirmation"
+                title={text.confirmation}
                 centered
                 open={isCloseVisible}
                 onCancel={() => setCloseVisible(false)}
                 footer={[
                     <Button key="cancel" onClick={() => setCloseVisible(false)}>
-                        Cancel
+                        {text.cancel}
                     </Button>,
                     <Button key="close" danger onClick={handleClose}>
-                        Confirm
+                        {text.confirm}
                     </Button>,
                 ]}
             >
-                <Text>Are you sure you want to close this post?</Text>
+                <Text>{text.closePostTitle}</Text>
                 <br />
-                <Text type="secondary">Your post will be closed. No new comments will be allowed.</Text>
+                <Text type="secondary">{text.closePostDesc}</Text>
             </Modal>
 
             <Modal
-                title="Confirmation"
+                title={text.confirmation}
                 centered
                 open={isOpenVisible}
                 onCancel={() => setOpenVisible(false)}
                 footer={[
                     <Button key="cancel" onClick={() => setOpenVisible(false)}>
-                        Cancel
+                        {text.cancel}
                     </Button>,
                     <Button key="open" danger onClick={handleOpen}>
-                        Confirm
+                        {text.confirm}
                     </Button>,
                 ]}
             >
-                <Text>Are you sure you want to open this post?</Text>
+                <Text>{text.openPostTitle}</Text>
                 <br />
-                <Text type="secondary">Your post will be opened. New comments will be allowed.</Text>
+                <Text type="secondary">{text.openPostDesc}</Text>
             </Modal>
 
             <Modal
-                title="Edit Question"
+                title={text.editTitle}
                 centered
                 open={isUpdateVisible}
                 onCancel={() => setLeaveVisible(true)}
                 onOk={() => setSubmitVisible(true)}
-                okText="Submit"
+                okText={text.submit}
                 width={700}
                 destroyOnHidden
                 afterClose={() => {
@@ -414,28 +514,28 @@ export function QuestionMenu({
                     }}
                 >
                     <Form.Item
-                        label={<Text strong>Title:</Text>}
+                        label={<Text strong>{text.titleLabel}</Text>}
                         name="title"
                         help={titleError}
                         validateStatus={titleError ? "error" : undefined}
-                        rules={[{ required: true, message: 'Please enter a title' },
-                        { min: 3, message: 'Title must be at least 3 characters' }
+                        rules={[{ required: true, message: text.titleRequired },
+                        { min: 3, message: text.titleMin }
                         ]}
                     >
                         <Input
-                            placeholder="Write your question title here..."
+                            placeholder={text.titlePlaceholder}
                             maxLength={150}
                             onChange={(e) => setTitleCount(e.target.value.length)}
                             style={{ height: 40 }}
                             className="placeholder-styled"
                         />
                     </Form.Item>
-                    <Text type="secondary">Character limit {titleCount} / 150</Text>
+                    <Text type="secondary">{text.charLimit} {titleCount} / 150</Text>
 
                     <Divider style={{ margin: '8px 0 16px' }} />
 
                     <Form.Item
-                        label={<Text strong>Content:</Text>}
+                        label={<Text strong>{text.contentLabel}</Text>}
                         name="content"
                         help={contentError}
                         validateStatus={contentError ? "error" : undefined}
@@ -445,7 +545,7 @@ export function QuestionMenu({
                             setContentCount(plainText.length);
                             return val;
                         }}
-                        rules={[{ required: true, message: 'Please provide more details' },
+                        rules={[{ required: true, message: text.contentRequired },
                         {
                             validator: (_, value) => {
                                 // Only validate length if user has entered content
@@ -455,28 +555,28 @@ export function QuestionMenu({
                                 // Strip HTML tags to get plain text for validation
                                 const plainText = value.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
                                 if (plainText.length > 0 && plainText.length < 10) {
-                                    return Promise.reject('Content must be at least 10 characters');
+                                    return Promise.reject(text.contentMin);
                                 }
                                 return Promise.resolve();
                             }
                         }
                         ]}
                     >
-                        <ContentEditor placeholder="Provide more details about your question..." />
+                        <ContentEditor placeholder={text.contentPlaceholder} />
                     </Form.Item>
-                    <Text type="secondary">Character limit {contentCount} / 3000</Text>
+                    <Text type="secondary">{text.charLimit} {contentCount} / 3000</Text>
 
                     <Divider style={{ margin: '8px 0 16px' }} />
 
                     <Form.Item
-                        label={<Text strong>Category:</Text>}
+                        label={<Text strong>{text.categoryLabel}</Text>}
                         name="category_id"
                         help={categoryError}
                         validateStatus={categoryError ? "error" : undefined}
-                        rules={[{ required: true, message: 'Please select a category' }]}
+                        rules={[{ required: true, message: text.categoryRequired }]}
                     >
                         <Select
-                            placeholder={<span style={{ color: '#4b5563', fontStyle: 'italic', fontSize: '14px' }}>Select category</span>}
+                            placeholder={<span style={{ color: '#4b5563', fontStyle: 'italic', fontSize: '14px' }}>{text.categoryPlaceholder}</span>}
                             options={categories.map((cat) => ({
                                 label: cat.name,
                                 value: Number(cat.id),
@@ -489,39 +589,39 @@ export function QuestionMenu({
             </Modal>
 
             <Modal
-                title="Confirmation"
+                title={text.confirmation}
                 centered
                 open={isLeaveVisible}
                 onCancel={() => setLeaveVisible(false)}
                 footer={[
                     <Button key="cancel" onClick={() => setLeaveVisible(false)}>
-                        Cancel
+                        {text.cancel}
                     </Button>,
                     <Button key="leave" danger onClick={handleLeave}>
-                        Leave
+                        {text.leave}
                     </Button>,
                 ]}
             >
-                <Text>Are you sure you want to leave this pop-up?</Text>
+                <Text>{text.leaveTitle}</Text>
                 <br />
-                <Text type="secondary">Your edit will not be saved.</Text>
+                <Text type="secondary">{text.leaveDesc}</Text>
             </Modal>
 
             <Modal
-                title="Confirmation"
+                title={text.confirmation}
                 centered
                 open={isSubmitVisible}
                 onCancel={() => setSubmitVisible(false)}
                 footer={[
                     <Button key="cancel" onClick={() => setSubmitVisible(false)}>
-                        Cancel
+                        {text.cancel}
                     </Button>,
                     <Button key="submit" type="primary" onClick={handleSubmit}>
-                        Submit
+                        {text.submit}
                     </Button>,
                 ]}
             >
-                <Text>Are you sure you want to edit this question?</Text>
+                <Text>{text.submitEditTitle}</Text>
             </Modal>
 
         </>

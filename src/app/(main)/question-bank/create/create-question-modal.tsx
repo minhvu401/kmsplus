@@ -232,6 +232,7 @@ const CreateQuestionModal = ({
       title={editingRecord ? "Sửa câu hỏi" : "Tạo câu hỏi"}
       open={isModalOpen}
       onCancel={onClose}
+      centered
       footer={[
         <Button key="back" onClick={handleCancel}>
           Hủy

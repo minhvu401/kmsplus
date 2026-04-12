@@ -95,7 +95,6 @@ export async function getCategoriesAPI() {
     const check = await sql`
       SELECT 
         u.department_id as user_dept,
-        (SELECT id FROM department WHERE head_of_department_id = ${userId} AND is_deleted = false LIMIT 1) as managed_dept,
         EXISTS (
           SELECT 1 FROM user_roles ur
           JOIN roles r ON ur.role_id = r.id
@@ -106,22 +105,24 @@ export async function getCategoriesAPI() {
     `
 
     if (check.length === 0) return []
-    const { is_admin, user_dept, managed_dept } = check[0]
+    const { is_admin, user_dept } = check[0]
 
-    // NẾU LÀ ADMIN: Trả về tất cả Category
+    // NẾU LÀ ADMIN: Trả về tất cả Category trừ ID 1
     if (is_admin) {
       const allCategories = await sql`
         SELECT id, name FROM categories 
-        WHERE is_deleted = false ORDER BY name ASC
+        WHERE is_deleted = false
+          AND id <> 1
+        ORDER BY name ASC
       `
       return allCategories.map((c: any) => ({ id: Number(c.id), name: c.name }))
     }
 
-    // NẾU LÀ USER BÌNH THƯỜNG / HOD / MANAGER: Chỉ trả về Category của phòng ban họ
+    // NẾU KHÔNG PHẢI ADMIN: Chỉ trả về Category cùng phòng ban với user
     const departmentCategories = await sql`
       SELECT id, name FROM categories 
       WHERE is_deleted = false 
-        AND (department_id = ${user_dept} OR department_id = ${managed_dept})
+        AND department_id = ${user_dept}
       ORDER BY name ASC
     `
     return departmentCategories.map((c: any) => ({
@@ -131,6 +132,37 @@ export async function getCategoriesAPI() {
   } catch (error) {
     console.error("Failed to get categories:", error)
     return []
+  }
+}
+
+/**
+ * Resolve a default course id for a selected category in quiz creation flow.
+ * Returns null when category is inaccessible or no active course exists.
+ */
+export async function getDefaultCourseIdByCategoryAPI(categoryId: number) {
+  try {
+    await requirePermission(Permission.VIEW_COURSE_LIST)
+    const user = await requireAuth()
+    if (!user?.id || !categoryId) return null
+
+    const userId = parseInt(user.id)
+    const hasAccess = await validateCategoryPermission(userId, categoryId)
+    if (!hasAccess) return null
+
+    const rows = await sql`
+      SELECT id
+      FROM courses
+      WHERE category_id = ${categoryId}
+        AND is_deleted = false
+      ORDER BY updated_at DESC
+      LIMIT 1
+    `
+
+    if (rows.length === 0) return null
+    return Number(rows[0].id)
+  } catch (error) {
+    console.error("Failed to resolve course by category:", error)
+    return null
   }
 }
 

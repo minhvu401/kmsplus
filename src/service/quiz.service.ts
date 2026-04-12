@@ -135,9 +135,8 @@ export type AttemptHistorySummary = {
 // 1. Định nghĩa Type đầy đủ
 export type Quiz = {
   id: number
-  course_id: number
-  category_id?: number | null // Category from associated course
-  category_name?: string | null // Category name from associated course
+  category_id: number
+  category_name?: string | null
   title: string
   description: string | null
   time_limit_minutes: number | null
@@ -156,7 +155,6 @@ type GetAllQuizzesParams = {
   query?: string
   page?: number
   limit?: number
-  course_id?: number
   category_id?: number | "All" // Filter by category
 }
 
@@ -175,7 +173,7 @@ export async function getAllQuizzesAction(
   params: GetAllQuizzesParams = {} // Gán giá trị mặc định là rỗng
 ): Promise<GetAllQuizzesResult> {
   try {
-    const { query = "", page = 1, limit = 100, course_id } = params
+    const { query = "", page = 1, limit = 100, category_id } = params
     const offset = (page - 1) * limit
 
     // Xử lý điều kiện lọc
@@ -186,7 +184,8 @@ export async function getAllQuizzesAction(
     const quizzes = await sql`
       SELECT 
         q.id, 
-        q.course_id,
+        q.category_id,
+        cat.name as category_name,
         q.title, 
         q.description,
         q.time_limit_minutes,
@@ -202,8 +201,11 @@ export async function getAllQuizzesAction(
           WHERE qq.quiz_id = q.id
         ) as question_count
       FROM quizzes q
+      LEFT JOIN categories cat ON cat.id = q.category_id
       WHERE q.is_deleted = false
-      ${course_id ? sql`AND q.course_id = ${course_id}` : sql``}
+      ${category_id && category_id !== "All"
+        ? sql`AND q.category_id = ${category_id}`
+        : sql``}
       ${query ? sql`AND q.title ILIKE ${"%" + query + "%"}` : sql``}
       ORDER BY q.created_at DESC
       LIMIT ${limit} OFFSET ${offset}
@@ -214,7 +216,9 @@ export async function getAllQuizzesAction(
       SELECT COUNT(*) as total
       FROM quizzes q
       WHERE q.is_deleted = false
-      ${course_id ? sql`AND q.course_id = ${course_id}` : sql``}
+      ${category_id && category_id !== "All"
+        ? sql`AND q.category_id = ${category_id}`
+        : sql``}
       ${query ? sql`AND q.title ILIKE ${"%" + query + "%"}` : sql``}
     `
 
@@ -245,8 +249,12 @@ export async function getAllQuizzesAction(
 export async function getQuizByIdAction(id: number) {
   try {
     const rows = await sql`
-      SELECT * FROM quizzes
-      WHERE id = ${id} AND is_deleted = FALSE
+      SELECT
+        q.*, 
+        cat.name AS category_name
+      FROM quizzes q
+      LEFT JOIN categories cat ON cat.id = q.category_id
+      WHERE q.id = ${id} AND q.is_deleted = FALSE
     `
     return rows.length > 0 ? (rows[0] as Quiz) : null
   } catch (error) {
@@ -260,7 +268,7 @@ export async function getQuizByIdAction(id: number) {
  * Tạo mới một bài thi.
  */
 export async function createQuizAction(data: {
-  course_id: number
+  category_id: number
   title: string
   description?: string
   status?: string
@@ -270,12 +278,11 @@ export async function createQuizAction(data: {
   questionIds?: number[]
 }) {
   try {
-    // Không cần BEGIN/COMMIT nếu chỉ có 1 lệnh INSERT đơn lẻ,
-    // trừ khi thư viện DB yêu cầu bắt buộc.
+    await sql`BEGIN`
 
     const result = await sql`
       INSERT INTO quizzes (
-        course_id, 
+        category_id, 
         title, 
         description, 
         time_limit_minutes, 
@@ -285,7 +292,7 @@ export async function createQuizAction(data: {
         created_at,
         updated_at
       ) VALUES (
-        ${data.course_id}, 
+        ${data.category_id}, 
         ${data.title}, 
         ${data.description || null}, 
         ${data.time_limit_minutes || null}, 
@@ -297,9 +304,28 @@ export async function createQuizAction(data: {
       ) RETURNING *
     `
 
-    return result[0] as Quiz
+    const createdQuiz = result[0] as Quiz
+    const normalizedQuestionIds = Array.from(
+      new Set((data.questionIds || []).map((id) => Number(id)).filter(Number.isFinite))
+    )
+
+    if (normalizedQuestionIds.length > 0) {
+      for (let index = 0; index < normalizedQuestionIds.length; index++) {
+        const questionId = normalizedQuestionIds[index]
+        await sql`
+          INSERT INTO quiz_questions (quiz_id, question_id, question_order)
+          VALUES (${createdQuiz.id}, ${questionId}, ${index + 1})
+          ON CONFLICT (quiz_id, question_id)
+          DO UPDATE SET question_order = EXCLUDED.question_order
+        `
+      }
+    }
+
+    await sql`COMMIT`
+
+    return createdQuiz
   } catch (err) {
-    console.error("createQuizAction failed:", err)
+    await sql`ROLLBACK`
     console.error("createQuizAction failed:", err)
     throw new Error("Failed to create quiz")
   }
@@ -1110,6 +1136,8 @@ export async function getQuizQuestionsAction(quizId: number) {
         qq.question_order,
         qb.question_text,
         qb.type,
+        qb.options,
+        qb.correct_answer,
         qb.explanation
       FROM quiz_questions qq
       JOIN question_bank qb ON qq.question_id = qb.id
@@ -1120,6 +1148,66 @@ export async function getQuizQuestionsAction(quizId: number) {
   } catch (error) {
     console.error("getQuizQuestionsAction error:", error)
     return []
+  }
+}
+
+/**
+ * Kiểm tra quiz đã được gắn vào curriculum của course nào chưa.
+ */
+export async function isQuizUsedInCourseAction(quizId: number) {
+  try {
+    const rows = await sql`
+      SELECT EXISTS (
+        SELECT 1
+        FROM curriculum_items ci
+        JOIN sections s ON s.id = ci.section_id
+        JOIN courses c ON c.id = s.course_id
+        WHERE ci.quiz_id = ${quizId}
+          AND c.deleted_at IS NULL
+      ) AS is_used
+    `
+
+    return Boolean(rows[0]?.is_used)
+  } catch (error) {
+    console.error("isQuizUsedInCourseAction error:", error)
+    throw new Error("Failed to check quiz course usage")
+  }
+}
+
+/**
+ * Kiểm tra nhiều quiz đã được gắn vào curriculum course hay chưa.
+ */
+export async function isQuizzesUsedInCourseBatchAction(quizIds: number[]) {
+  const normalizedQuizIds = Array.from(
+    new Set((quizIds || []).map((id) => Number(id)).filter((id) => Number.isFinite(id) && id > 0))
+  )
+
+  if (normalizedQuizIds.length === 0) {
+    return {} as Record<number, boolean>
+  }
+
+  try {
+    const rows = await sql`
+      SELECT DISTINCT ci.quiz_id
+      FROM curriculum_items ci
+      JOIN sections s ON s.id = ci.section_id
+      JOIN courses c ON c.id = s.course_id
+      WHERE ci.quiz_id = ANY(${normalizedQuizIds}::int[])
+        AND c.deleted_at IS NULL
+    `
+
+    const usedSet = new Set<number>(
+      (rows as any[])
+        .map((row) => Number(row.quiz_id))
+        .filter((id) => Number.isFinite(id))
+    )
+
+    return Object.fromEntries(
+      normalizedQuizIds.map((quizId) => [quizId, usedSet.has(quizId)])
+    ) as Record<number, boolean>
+  } catch (error) {
+    console.error("isQuizzesUsedInCourseBatchAction error:", error)
+    throw new Error("Failed to check quizzes course usage")
   }
 }
 

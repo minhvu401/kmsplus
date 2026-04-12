@@ -2,6 +2,7 @@
 
 import { Select } from 'antd'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import useLanguageStore from '@/store/useLanguageStore'
 
 interface PageSizeSelectorProps {
     currentPageSize: number
@@ -10,6 +11,9 @@ interface PageSizeSelectorProps {
 export default function PageSizeSelector({
     currentPageSize,
 }: PageSizeSelectorProps) {
+    const { language } = useLanguageStore()
+    const isVi = language === 'vi'
+
     const pathname = usePathname()
     const searchParams = useSearchParams()
     const router = useRouter()
@@ -23,7 +27,7 @@ export default function PageSizeSelector({
 
     return (
         <div className="flex items-center gap-3">
-            <span className="text-sm text-gray-700 font-medium">Items per page:</span>
+            <span className="text-sm text-gray-700 font-medium">{isVi ? 'Số mục mỗi trang:' : 'Items per page:'}</span>
             <Select
                 value={currentPageSize}
                 onChange={handleChangePageSize}

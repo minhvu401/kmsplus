@@ -13,8 +13,8 @@ import QuestionDetails from "@/components/ui/questions/question-details"
 import QuestionsMessage from "@/components/ui/questions/questions-message"
 import { Role } from "@/enum/role.enum"
 import { requireAuth } from "@/lib/auth"
-import Link from "next/link"
 import { notFound } from "next/navigation"
+import QuestionBackLink from "./QuestionBackLink"
 
 export default async function Page({
   params,
@@ -65,32 +65,13 @@ export default async function Page({
   return (
     <>
       <div className="pl-4 pt-2 pb-3">
-        <Link
-          href={backTarget}
-          className="inline-flex items-center gap-2 text-sm font-medium text-gray-700 transition-colors hover:text-gray-900"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            className="h-4 w-4"
-            aria-hidden="true"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M15.75 19.5 8.25 12l7.5-7.5"
-            />
-          </svg>
-          Back
-        </Link>
+        <QuestionBackLink backTarget={backTarget} />
       </div>
       <PageWrapper>
         <QuestionsMessage scroll={false} />
         <QuestionDetails
           userId={Number(user.id)}
+          isSystemAdmin={isSystemAdmin}
           question={question}
           categories={categories}
         />

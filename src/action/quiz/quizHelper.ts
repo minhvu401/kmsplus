@@ -32,7 +32,7 @@ export const QuizCreateDto = z.object({
     .max(1000, "Mô tả không vượt quá 1000 ký tự")
     .optional()
     .default(""),
-  course_id: z.number().positive("Invalid course ID"),
+  category_id: z.number().positive("Invalid category ID"),
   status: z.enum(["draft", "published", "archived"]).default("draft"),
   time_limit_minutes: z.number().positive().optional(),
   passing_score: z.number().min(0).max(100).default(70),
@@ -46,7 +46,7 @@ export type QuizCreateDtoType = z.infer<typeof QuizCreateDto>
 // ============================================
 
 export interface ParsedQuizData {
-  course_id: number
+  category_id: number
   title: string
   description: string
   status: string
@@ -61,7 +61,7 @@ export interface ParsedQuizData {
  * Dùng cho cả API route và server action
  */
 export function parseAndValidateQuizFormData(formData: FormData): ParsedQuizData {
-  const course_id = Number(formData.get("course_id"))
+  const category_id = Number(formData.get("category_id"))
   const title = (formData.get("title") as string) || ""
   const description = (formData.get("description") as string) || ""
   const status = (formData.get("status") as string) || "draft"
@@ -88,8 +88,8 @@ export function parseAndValidateQuizFormData(formData: FormData): ParsedQuizData
     }
   }
 
-  if (!course_id) {
-    throw new Error("Course ID is required")
+  if (!category_id) {
+    throw new Error("Category ID is required")
   }
 
   // Sanitize inputs
@@ -100,7 +100,7 @@ export function parseAndValidateQuizFormData(formData: FormData): ParsedQuizData
   const validationResult = QuizCreateDto.safeParse({
     title: sanitizedTitle,
     description: sanitizedDescription,
-    course_id,
+    category_id,
     status,
     time_limit_minutes,
     passing_score,
@@ -112,7 +112,7 @@ export function parseAndValidateQuizFormData(formData: FormData): ParsedQuizData
   }
 
   return {
-    course_id: validationResult.data.course_id,
+    category_id: validationResult.data.category_id,
     title: validationResult.data.title,
     description: validationResult.data.description,
     status: validationResult.data.status,

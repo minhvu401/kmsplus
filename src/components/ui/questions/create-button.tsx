@@ -5,6 +5,7 @@ import { Button, Form, Modal, Typography, Input, Select, Divider } from "antd"
 import { EditOutlined } from "@ant-design/icons"
 import { State, createQuestion } from "@/action/question/questionActions"
 import RichTextEditor from "@/components/ui/RichTextEditor"
+import useLanguageStore from "@/store/useLanguageStore"
 
 const { Text } = Typography
 
@@ -50,6 +51,61 @@ export function CreateQuestion({
   returnTo?: string
   isFullWidth?: boolean
 }) {
+  const { language } = useLanguageStore()
+  const isVi = language === "vi"
+
+  const text = isVi
+    ? {
+        askQuestion: "Đặt câu hỏi",
+        askQuestionCta: "Đặt câu hỏi - Chia sẻ kiến thức",
+        askQuestionShort: "Đặt câu hỏi",
+        submit: "Gửi",
+        titleLabel: "Tiêu đề:",
+        titleRequired: "Vui lòng nhập tiêu đề",
+        titleMin: "Tiêu đề phải có ít nhất 3 ký tự",
+        titleMax: "Tiêu đề phải dưới 150 ký tự",
+        titlePlaceholder: "Viết tiêu đề câu hỏi của bạn...",
+        charLimit: "Giới hạn ký tự",
+        contentLabel: "Nội dung:",
+        contentRequired: "Vui lòng cung cấp thêm chi tiết",
+        contentMin: "Nội dung phải có ít nhất 10 ký tự",
+        contentPlaceholder: "Cung cấp thêm chi tiết về câu hỏi của bạn...",
+        categoryLabel: "Danh mục:",
+        categoryRequired: "Vui lòng chọn danh mục",
+        categoryPlaceholder: "Chọn danh mục",
+        confirmation: "Xác nhận",
+        cancel: "Hủy",
+        leave: "Rời đi",
+        confirmLeaveTitle: "Bạn có chắc chắn muốn rời khỏi cửa sổ này?",
+        confirmLeaveDesc: "Câu hỏi của bạn sẽ không được lưu.",
+        confirmSubmit: "Bạn có chắc chắn muốn gửi câu hỏi này?",
+      }
+    : {
+        askQuestion: "Ask Question",
+        askQuestionCta: "Ask Question - Share Your Knowledge",
+        askQuestionShort: "Ask A Question",
+        submit: "Submit",
+        titleLabel: "Title:",
+        titleRequired: "Please enter a title",
+        titleMin: "Title must be at least 3 characters",
+        titleMax: "Title must be under 150 characters",
+        titlePlaceholder: "Write your question title here...",
+        charLimit: "Character limit",
+        contentLabel: "Content:",
+        contentRequired: "Please provide more details",
+        contentMin: "Content must be at least 10 characters",
+        contentPlaceholder: "Provide more details about your question...",
+        categoryLabel: "Category:",
+        categoryRequired: "Please select a category",
+        categoryPlaceholder: "Select category",
+        confirmation: "Confirmation",
+        cancel: "Cancel",
+        leave: "Leave",
+        confirmLeaveTitle: "Are you sure you want to leave this pop-up?",
+        confirmLeaveDesc: "Your question will not be saved.",
+        confirmSubmit: "Are you sure you want to ask this question?",
+      }
+
   const [form] = Form.useForm()
   const [isCreateVisible, setCreateVisible] = useState(false)
   const [isLeaveVisible, setLeaveVisible] = useState(false)
@@ -108,7 +164,7 @@ export function CreateQuestion({
           button.style.boxShadow = "0 2px 8px rgba(30, 64, 175, 0.12)"
           button.style.borderColor = "#1e40af"
         }}
-        aria-label="Ask Question"
+        aria-label={text.askQuestion}
         onClick={() => setCreateVisible(true)}
       >
         <EditOutlined
@@ -119,18 +175,18 @@ export function CreateQuestion({
         />
         <span>
           {isFullWidth
-            ? "Ask Question - Share Your Knowledge"
-            : "Ask A Question"}
+            ? text.askQuestionCta
+            : text.askQuestionShort}
         </span>
       </Button>
 
       <Modal
-        title="Ask Question"
+        title={text.askQuestion}
         centered
         open={isCreateVisible}
         onCancel={() => setLeaveVisible(true)}
         onOk={() => setSubmitVisible(true)}
-        okText="Submit"
+        okText={text.submit}
         width={700}
       >
         <style>{placeholderStyles}</style>
@@ -159,20 +215,20 @@ export function CreateQuestion({
           }}
         >
           <Form.Item
-            label={<Text strong>Title:</Text>}
+            label={<Text strong>{text.titleLabel}</Text>}
             name="title"
             help={titleError}
             validateStatus={titleError ? "error" : undefined}
             rules={[
-              { required: true, message: "Please enter a title" },
-              { min: 3, message: "Title must be at least 3 characters" },
+              { required: true, message: text.titleRequired },
+              { min: 3, message: text.titleMin },
               {
                 validator: (_, value) => {
                   if (!value) {
                     return Promise.resolve()
                   }
                   if (value.length > 150) {
-                    return Promise.reject("Title must be under 150 characters")
+                    return Promise.reject(text.titleMax)
                   }
                   return Promise.resolve()
                 },
@@ -180,19 +236,19 @@ export function CreateQuestion({
             ]}
           >
             <Input
-              placeholder="Write your question title here..."
+              placeholder={text.titlePlaceholder}
               maxLength={150}
               onChange={(e) => setTitleCount(e.target.value.length)}
               style={{ height: 40 }}
               className="placeholder-styled"
             />
           </Form.Item>
-          <Text type="secondary">Character limit {titleCount} / 150</Text>
+          <Text type="secondary">{text.charLimit} {titleCount} / 150</Text>
 
           <Divider style={{ margin: "8px 0 16px" }} />
 
           <Form.Item
-            label={<Text strong>Content:</Text>}
+            label={<Text strong>{text.contentLabel}</Text>}
             name="content"
             help={contentError}
             validateStatus={contentError ? "error" : undefined}
@@ -208,7 +264,7 @@ export function CreateQuestion({
               return val
             }}
             rules={[
-              { required: true, message: "Please provide more details" },
+              { required: true, message: text.contentRequired },
               {
                 validator: (_, value) => {
                   // Only validate length if user has entered content
@@ -221,27 +277,25 @@ export function CreateQuestion({
                     .replace(/&nbsp;/g, " ")
                     .trim()
                   if (plainText.length > 0 && plainText.length < 10) {
-                    return Promise.reject(
-                      "Content must be at least 10 characters"
-                    )
+                    return Promise.reject(text.contentMin)
                   }
                   return Promise.resolve()
                 },
               },
             ]}
           >
-            <ContentEditor placeholder="Provide more details about your question..." />
+            <ContentEditor placeholder={text.contentPlaceholder} />
           </Form.Item>
-          <Text type="secondary">Character limit {contentCount} / 3000</Text>
+          <Text type="secondary">{text.charLimit} {contentCount} / 3000</Text>
 
           <Divider style={{ margin: "8px 0 16px" }} />
 
           <Form.Item
-            label={<Text strong>Category:</Text>}
+            label={<Text strong>{text.categoryLabel}</Text>}
             name="category_id"
             help={categoryError}
             validateStatus={categoryError ? "error" : undefined}
-            rules={[{ required: true, message: "Please select a category" }]}
+            rules={[{ required: true, message: text.categoryRequired }]}
           >
             <Select
               placeholder={
@@ -252,7 +306,7 @@ export function CreateQuestion({
                     fontSize: "14px",
                   }}
                 >
-                  Select category
+                  {text.categoryPlaceholder}
                 </span>
               }
               options={categories.map((cat) => ({
@@ -267,39 +321,39 @@ export function CreateQuestion({
       </Modal>
 
       <Modal
-        title="Confirmation"
+        title={text.confirmation}
         centered
         open={isLeaveVisible}
         onCancel={() => setLeaveVisible(false)}
         footer={[
           <Button key="cancel" onClick={() => setLeaveVisible(false)}>
-            Cancel
+            {text.cancel}
           </Button>,
           <Button key="leave" danger onClick={handleLeave}>
-            Leave
+            {text.leave}
           </Button>,
         ]}
       >
-        <Text>Are you sure you want to leave this pop-up?</Text>
+        <Text>{text.confirmLeaveTitle}</Text>
         <br />
-        <Text type="secondary">Your question will not be saved.</Text>
+        <Text type="secondary">{text.confirmLeaveDesc}</Text>
       </Modal>
 
       <Modal
-        title="Confirmation"
+        title={text.confirmation}
         centered
         open={isSubmitVisible}
         onCancel={() => setSubmitVisible(false)}
         footer={[
           <Button key="cancel" onClick={() => setSubmitVisible(false)}>
-            Cancel
+            {text.cancel}
           </Button>,
           <Button key="submit" type="primary" onClick={handleSubmit}>
-            Submit
+            {text.submit}
           </Button>,
         ]}
       >
-        <Text>Are you sure you want to ask this question?</Text>
+        <Text>{text.confirmSubmit}</Text>
       </Modal>
     </>
   )

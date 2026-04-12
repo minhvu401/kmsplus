@@ -31,7 +31,7 @@ import { sanitizeTitle, sanitizeDescription } from "@/utils/sanitize"
 const TOTAL_QUIZ_POINTS = 100 // Tổng điểm quiz cố định
 
 interface QuizPayload {
-  course_id: number
+  category_id: number
   title: string
   description: string
   status: string
@@ -102,7 +102,7 @@ export default function CreateQuizPage() {
   const [errors, setErrors] = useState<StepErrors>({})
 
   const [payload, setPayload] = useState<QuizPayload>({
-    course_id: 1,
+    category_id: 1,
     title: "",
     description: "",
     status: "draft",
@@ -574,16 +574,16 @@ export default function CreateQuizPage() {
       return
     }
 
-    if (!payload.course_id) {
-      console.warn("[handleSubmit] Course ID not found")
-      message.error(t("quiz.course_required", language))
+    if (!payload.category_id) {
+      console.warn("[handleSubmit] Category ID not found")
+      message.error("Category is required")
       return
     }
 
     setLoading(true)
     try {
       const formData = new FormData()
-      formData.append("course_id", String(payload.course_id))
+      formData.append("category_id", String(payload.category_id))
       formData.append("title", payload.title)
       formData.append("description", payload.description)
       formData.append("status", payload.status)

@@ -9,7 +9,7 @@ import { parseAndValidateQuizFormData } from "@/action/quiz/quizHelper"
  * Create a new quiz with questions
  *
  * Expects FormData with:
- * - course_id: number
+ * - category_id: number
  * - title: string
  * - description: string (optional)
  * - status: string (draft, published, archived)
@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
 
     // Call service directly to create quiz
     await createQuizAction({
-      course_id: parsedData.course_id,
+      category_id: parsedData.category_id,
       title: parsedData.title,
       description: parsedData.description,
       status: parsedData.status,

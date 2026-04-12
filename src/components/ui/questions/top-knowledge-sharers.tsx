@@ -2,6 +2,7 @@
 
 import { Flex, Typography, Avatar } from 'antd';
 import { TrophyOutlined, UserOutlined } from '@ant-design/icons';
+import useLanguageStore from '@/store/useLanguageStore';
 
 const { Text, Title } = Typography;
 
@@ -17,6 +18,23 @@ interface TopKnowledgeSharersProps {
 }
 
 export default function TopKnowledgeSharers({ topSharers = [] }: TopKnowledgeSharersProps) {
+    const { language } = useLanguageStore();
+    const isVi = language === 'vi';
+
+    const text = isVi
+        ? {
+            title: 'Top chia sẻ kiến thức',
+            empty: 'Chưa có người đóng góp',
+            points: 'điểm',
+            footer: 'Điểm được tính từ câu trả lời và đóng góp hữu ích',
+        }
+        : {
+            title: 'Top Knowledge Sharers',
+            empty: 'No contributors yet',
+            points: 'points',
+            footer: 'Points earned from answers and helpful contributions',
+        };
+
     // Use provided data, no fallback to mock data
     const sharers: TopSharer[] = topSharers;
 
@@ -51,7 +69,7 @@ export default function TopKnowledgeSharers({ topSharers = [] }: TopKnowledgeSha
             <Flex align="center" gap={10} style={{ marginBottom: 20 }}>
                 <TrophyOutlined style={{ fontSize: '20px', color: '#2563eb' }} />
                 <Title level={4} style={{ margin: 0, fontSize: '16px', fontWeight: 700 }}>
-                    Top Knowledge Sharers
+                    {text.title}
                 </Title>
             </Flex>
 
@@ -59,7 +77,7 @@ export default function TopKnowledgeSharers({ topSharers = [] }: TopKnowledgeSha
             <Flex vertical gap={12}>
                 {sharers.length === 0 ? (
                     <Text type="secondary" style={{ fontSize: '13px', textAlign: 'center', padding: '20px 0' }}>
-                        No contributors yet
+                        {text.empty}
                     </Text>
                 ) : (
                     sharers.map((sharer, index) => (
@@ -120,7 +138,7 @@ export default function TopKnowledgeSharers({ topSharers = [] }: TopKnowledgeSha
                                         fontSize: '12px',
                                     }}
                                 >
-                                    {sharer.score.toLocaleString()} points
+                                    {sharer.score.toLocaleString()} {text.points}
                                 </Text>
                             </Flex>
                         </Flex>
@@ -138,7 +156,7 @@ export default function TopKnowledgeSharers({ topSharers = [] }: TopKnowledgeSha
                     textAlign: 'center',
                 }}
             >
-                Points earned from answers and helpful contributions
+                {text.footer}
             </Text>
         </div>
     );
