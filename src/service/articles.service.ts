@@ -68,6 +68,7 @@ export type UpdateArticleInput = {
   id: number
   title: string
   content: string
+  status: "draft" | "pending" | "published"
   tags: string[]
   category_id?: number | null
   department_id?: number | null
@@ -384,6 +385,7 @@ export async function filterByTagAction(
       c.name as category_name,
       d.name as department_name,
       u.full_name as author_name,
+      u.avatar_url as author_avatar_url,
       ua.full_name as approver_name
     FROM articles a
     INNER JOIN filtered_articles fa ON a.id = fa.id
@@ -393,7 +395,7 @@ export async function filterByTagAction(
     LEFT JOIN department d ON c.department_id = d.id
     LEFT JOIN users u ON a.author_id = u.id
     LEFT JOIN users ua ON a.approved_by = ua.id
-    GROUP BY a.id, c.id, d.id, u.id, ua.id
+    GROUP BY a.id, c.id, d.id, u.id, u.avatar_url, ua.id
     ORDER BY
       COALESCE(a.approved_at, a.created_at) ${sortOrder === "oldest" ? sql`ASC` : sql`DESC`},
       a.id DESC
@@ -925,8 +927,21 @@ export async function updateArticleAction(
   input: UpdateArticleInput
 ): Promise<{ success: boolean; message: string }> {
   try {
-    const { id, title, content, tags, category_id, image_url, thumbnail_url } =
-      input
+    const {
+      id,
+      title,
+      content,
+      status,
+      tags,
+      category_id,
+      image_url,
+      thumbnail_url,
+    } = input
+
+    const normalizedStatus =
+      status === "draft" || status === "pending" || status === "published"
+        ? status
+        : "draft"
 
     // Update article
     const result = await sql`
@@ -934,6 +949,9 @@ export async function updateArticleAction(
       SET 
         title = ${title}, 
         content = ${content}, 
+        status = ${normalizedStatus},
+        approved_by = CASE WHEN ${normalizedStatus} = 'published' THEN approved_by ELSE NULL END,
+        approved_at = CASE WHEN ${normalizedStatus} = 'published' THEN approved_at ELSE NULL END,
         category_id = ${category_id ?? null},
         image_url = ${image_url ?? null},
         thumbnail_url = ${thumbnail_url ?? null},

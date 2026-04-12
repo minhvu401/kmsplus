@@ -7,6 +7,7 @@ import React, {
   type KeyboardEvent,
   type ClipboardEvent,
 } from "react"
+import { useRouter } from "next/navigation"
 import {
   Table,
   Input,
@@ -29,6 +30,7 @@ import {
   Tooltip,
   Upload,
   Pagination,
+  Avatar,
 } from "antd"
 import {
   SearchOutlined,
@@ -146,6 +148,7 @@ const applyQuote = (
 }
 
 export default function ArticleManagement() {
+  const router = useRouter()
   const PAGE_SIZE = 10
   const MAX_TAGS = 5
   const THUMBNAIL_MAX_SIZE_MB = 10
@@ -204,6 +207,16 @@ export default function ArticleManagement() {
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [editingArticleId, setEditingArticleId] = useState<number | null>(null)
+  const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false)
+  const [loadingPreviewData, setLoadingPreviewData] = useState(false)
+  const [previewArticleId, setPreviewArticleId] = useState<number | null>(null)
+  const [previewArticle, setPreviewArticle] = useState<{
+    title: string
+    content: string
+    authorName: string
+    categoryName: string
+    createdAt: Date | string | null
+  } | null>(null)
   const [editForm] = Form.useForm()
   const [editTitleContent, setEditTitleContent] = useState("")
   const [editContentValue, setEditContentValue] = useState("")
@@ -212,6 +225,12 @@ export default function ArticleManagement() {
   const [editSubmitStatus, setEditSubmitStatus] = useState<
     "draft" | "published" | "pending"
   >("published")
+  const editSubmitStatusRef = useRef<"draft" | "published" | "pending">(
+    "published"
+  )
+  const [editOriginalStatus, setEditOriginalStatus] = useState<string | null>(
+    null
+  )
   const [editingArticle, setEditingArticle] = useState(false)
   const [loadingEditData, setLoadingEditData] = useState(false)
   const [editThumbnailUrl, setEditThumbnailUrl] = useState("") // New
@@ -246,12 +265,15 @@ export default function ArticleManagement() {
   const [deleteConfirmIsDeleted, setDeleteConfirmIsDeleted] = useState(false)
 
   const statusColors: Record<string, string> = {
-    published: "green",
-    draft: "blue",
-    pending: "gold",
-    rejected: "red",
-    archived: "red",
+    published: "success",
+    draft: "warning",
+    pending: "processing",
+    rejected: "error",
+    archived: "default",
   }
+
+  const DEFAULT_ARTICLE_THUMBNAIL =
+    "https://images.unsplash.com/photo-1499750310107-5fef28a66643?w=400&h=300&fit=crop"
 
   const formatVietnamDateTime = (date: Date | string | null | undefined) => {
     if (!date) return "-"
@@ -266,6 +288,12 @@ export default function ArticleManagement() {
       hour: "2-digit",
       minute: "2-digit",
     })
+  }
+
+  const formatStatusLabel = (status: string) => {
+    return status
+      .replace(/_/g, " ")
+      .replace(/\b\w/g, (char) => char.toUpperCase())
   }
 
   const canEditArticle = (article: Article) => {
@@ -464,7 +492,7 @@ export default function ArticleManagement() {
       setLoadingCategories(true)
       try {
         const res = await getAllCategories()
-        let filteredCategories = res || []
+        let filteredCategories = (res || []).filter((cat) => Number(cat.id) !== 1)
 
         // Nếu user không phải admin, chỉ hiển thị categories của department user đó
         if (!isAdmin && currentUser?.department_id) {
@@ -483,12 +511,30 @@ export default function ArticleManagement() {
     })()
   }, [isAdmin, currentUser?.department_id])
 
+  useEffect(() => {
+    if (selectedCategory === 1) {
+      setSelectedCategory("All")
+    }
+    if (categoryIdFormValue === 1) {
+      setCategoryIdFormValue(undefined)
+    }
+    if (editCategoryId === 1) {
+      setEditCategoryId(undefined)
+      editForm.setFieldValue("categoryId", undefined)
+    }
+  }, [selectedCategory, categoryIdFormValue, editCategoryId, editForm])
+
   // Initialize edit title ref when edit modal opens with content
   useEffect(() => {
-    if (isEditModalOpen && editTitleEditorRef.current && editTitleContent) {
+    if (
+      isEditModalOpen &&
+      !loadingEditData &&
+      editTitleEditorRef.current &&
+      editTitleContent
+    ) {
       editTitleEditorRef.current.innerText = editTitleContent
     }
-  }, [isEditModalOpen, editTitleContent])
+  }, [isEditModalOpen, loadingEditData])
 
   const columns: ColumnsType<Article> = [
     {
@@ -497,28 +543,67 @@ export default function ArticleManagement() {
       key: "title",
       width: 300,
       ellipsis: true,
-      fixed: "left",
       render: (title: string, record: Article) => (
-        <a
-          href={`/articles/${record.id}`}
-          className="text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
-        >
-          {title?.trim() || "(No title)"}
-        </a>
+        <div className="flex items-center gap-3 min-w-0">
+          <img
+            src={
+              record.thumbnail_url ||
+              record.image_url ||
+              DEFAULT_ARTICLE_THUMBNAIL
+            }
+            alt="Thumbnail"
+            className="w-20 h-14 object-cover rounded flex-shrink-0"
+            onError={(e) => {
+              ;(e.target as HTMLImageElement).src = DEFAULT_ARTICLE_THUMBNAIL
+            }}
+          />
+          <button
+            type="button"
+            className="min-w-0 text-left"
+            onClick={() => openPreviewModal(Number(record.id))}
+            title={title?.trim() || "(No title)"}
+          >
+            <div className="text-blue-600 hover:text-blue-800 hover:underline cursor-pointer truncate">
+              {title?.trim() || "(No title)"}
+            </div>
+            <Text type="secondary" className="text-xs block truncate">
+              {record.category_name || "No category"}
+            </Text>
+          </button>
+        </div>
       ),
     },
     {
       title: "Author",
       dataIndex: "author_name",
       key: "author_name",
-      width: 150,
-      render: (author: string | null) => <Text>{author || "Unknown"}</Text>,
+      width: 220,
+      render: (_: string | null, record: Article) => {
+        const authorName = record.author_name || "Unknown"
+        const initials = authorName
+          .split(" ")
+          .map((part) => part[0])
+          .join("")
+          .slice(0, 2)
+          .toUpperCase()
+
+        return (
+          <div className="flex items-start gap-2 min-w-0">
+            <Avatar size="small" src={record.author_avatar_url || undefined}>
+              {initials}
+            </Avatar>
+            <Text className="whitespace-normal break-words leading-5">
+              {authorName}
+            </Text>
+          </div>
+        )
+      },
     },
     {
       title: "Tag",
       dataIndex: "article_tags",
       key: "article_tags",
-      width: 150,
+      width: 130,
       render: (tagString: string) => {
         if (!tagString) return <Text type="secondary">No tags</Text>
         const tagList = tagString
@@ -546,47 +631,18 @@ export default function ArticleManagement() {
       },
     },
     {
-      title: "Category",
-      dataIndex: "category_name",
-      key: "category_name",
-      width: 150,
-      render: (category: string | null) => <Text>{category || "null"}</Text>,
-    },
-    // New: Thumbnail column
-    {
-      title: "Thumbnail",
-      dataIndex: "thumbnail_url",
-      key: "thumbnail_url",
-      width: 120,
-      render: (thumbnailUrl: string, record: Article) => {
-        const src = thumbnailUrl || record.image_url
-        if (!src) {
-          return <Text type="secondary">No image</Text>
-        }
-
-        return (
-          <img
-            src={src}
-            alt="Thumbnail"
-            className="w-20 h-16 object-cover rounded"
-            onError={(e) => {
-              ;(e.target as HTMLImageElement).src =
-                "https://via.placeholder.com/80x60?text=No+Image"
-            }}
-          />
-        )
-      },
-    },
-    {
       title: "Status",
       dataIndex: "status",
       key: "status",
-      width: 120,
+      width: 100,
       render: (status: string, record: Article) => {
         const displayStatus = record.is_deleted ? "archived" : status
-        const displayText = record.is_deleted ? "Archived" : status
+        const displayText = formatStatusLabel(displayStatus)
         return (
-          <AntTag color={statusColors[displayStatus] || "default"}>
+          <AntTag
+            color={statusColors[displayStatus] || "default"}
+            className="text-xs font-semibold px-2 py-0.5 rounded-full"
+          >
             {displayText}
           </AntTag>
         )
@@ -596,30 +652,46 @@ export default function ArticleManagement() {
       title: "Created At",
       dataIndex: "created_at",
       key: "created_at",
-      width: 170,
+      width: 160,
       render: (date: Date) => <Text>{formatVietnamDateTime(date)}</Text>,
     },
     {
       title: "Action",
       key: "action",
-      width: 150,
-      fixed: "right",
+      width: 120,
       render: (_, record) => {
         const showApproveButtons =
           record.status === "pending" && canApproveArticle()
         return (
-          <Space size="small" wrap>
-            {canEditArticle(record) && (
+          <Flex vertical gap={2}>
+            <Space size="small" wrap>
+              {canEditArticle(record) && (
+                <Button
+                  type="text"
+                  icon={<EditOutlined />}
+                  size="small"
+                  style={{ color: "#1677ff" }}
+                  onClick={() => openEditModal(Number(record.id))}
+                  title="Edit"
+                />
+              )}
               <Button
                 type="text"
-                icon={<EditOutlined />}
+                danger={!record.is_deleted}
+                icon={
+                  record.is_deleted ? <RollbackOutlined /> : <DeleteOutlined />
+                }
                 size="small"
-                onClick={() => openEditModal(Number(record.id))}
-                title="Edit"
+                loading={deletingId === Number(record.id)}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleArchiveClick(Number(record.id), !!record.is_deleted)
+                }}
+                title={record.is_deleted ? "Restore" : "Delete"}
               />
-            )}
+            </Space>
             {showApproveButtons && (
-              <>
+              <Space size="small" wrap>
                 <Button
                   type="text"
                   size="small"
@@ -645,23 +717,9 @@ export default function ArticleManagement() {
                 >
                   ✕
                 </Button>
-              </>
+              </Space>
             )}
-            <Button
-              type="text"
-              danger={!record.is_deleted}
-              icon={
-                record.is_deleted ? <RollbackOutlined /> : <DeleteOutlined />
-              }
-              size="small"
-              loading={deletingId === Number(record.id)}
-              onClick={(e) => {
-                e.stopPropagation()
-                handleArchiveClick(Number(record.id), !!record.is_deleted)
-              }}
-              title={record.is_deleted ? "Restore" : "Delete"}
-            />
-          </Space>
+          </Flex>
         )
       },
     },
@@ -750,6 +808,18 @@ export default function ArticleManagement() {
       const result: any = await getArticleById(articleId)
       if (result.success && result.data) {
         const article = result.data
+        setEditOriginalStatus(article.status || null)
+        if (
+          article.status === "draft" ||
+          article.status === "pending" ||
+          article.status === "published"
+        ) {
+          setEditSubmitStatus(article.status)
+          editSubmitStatusRef.current = article.status
+        } else {
+          setEditSubmitStatus("published")
+          editSubmitStatusRef.current = "published"
+        }
         setEditTitleContent(article.title || "")
         setEditContentValue(article.content || "")
         setEditImageUrl(article.image_url || "")
@@ -772,6 +842,35 @@ export default function ArticleManagement() {
       setIsEditModalOpen(false)
     } finally {
       setLoadingEditData(false)
+    }
+  }
+
+  const openPreviewModal = async (articleId: number) => {
+    setIsPreviewModalOpen(true)
+    setLoadingPreviewData(true)
+    setPreviewArticleId(articleId)
+
+    try {
+      const result: any = await getArticleById(articleId)
+      if (result.success && result.data) {
+        const article = result.data
+        setPreviewArticle({
+          title: article.title || "Untitled",
+          content: article.content || "",
+          authorName: article.author_name || "Unknown",
+          categoryName: article.category_name || "No category",
+          createdAt: article.created_at || null,
+        })
+      } else {
+        message.error("Failed to load article preview")
+        setIsPreviewModalOpen(false)
+      }
+    } catch (err: any) {
+      message.error("Failed to load article preview")
+      setIsPreviewModalOpen(false)
+      setPreviewArticleId(null)
+    } finally {
+      setLoadingPreviewData(false)
     }
   }
 
@@ -801,7 +900,7 @@ export default function ArticleManagement() {
       formData.append("id", String(editingArticleId))
       formData.append("title", editTitleContent)
       formData.append("content", editContentValue)
-      formData.append("status", editSubmitStatus)
+      formData.append("status", editSubmitStatusRef.current)
       formData.append("tags", JSON.stringify(editSelectedTags))
       formData.append(
         "category_id",
@@ -825,6 +924,8 @@ export default function ArticleManagement() {
         setEditSelectedTags([])
         setEditingArticleId(null)
         setEditSubmitStatus("published")
+        editSubmitStatusRef.current = "published"
+        setEditOriginalStatus(null)
         await refreshCurrentArticles(false)
       } else {
         message.error(result.message || "Failed to update article")
@@ -1100,7 +1201,6 @@ export default function ArticleManagement() {
                 dataSource={articles}
                 loading={loadingArticles}
                 rowKey="id"
-                scroll={{ x: 1800 }}
                 pagination={{
                   current: currentPage,
                   pageSize: PAGE_SIZE,
@@ -1121,17 +1221,18 @@ export default function ArticleManagement() {
                       const displayStatus = article.is_deleted
                         ? "archived"
                         : article.status
-                      const displayText = article.is_deleted
-                        ? "Deleted"
-                        : article.status
+                      const displayText = formatStatusLabel(displayStatus)
                       return (
                         <Col xs={24} sm={12} lg={8} xl={6} key={article.id}>
                           <Card
                             hoverable
+                            onClick={() => openPreviewModal(Number(article.id))}
+                            className="cursor-pointer"
                             title={article.title}
                             extra={
                               <AntTag
                                 color={statusColors[displayStatus] || "default"}
+                                className="text-xs font-semibold px-2 py-0.5 rounded-full"
                               >
                                 {displayText}
                               </AntTag>
@@ -1141,13 +1242,13 @@ export default function ArticleManagement() {
                                 src={
                                   article.thumbnail_url ||
                                   article.image_url ||
-                                  "https://via.placeholder.com/240x160?text=No+Image"
+                                  DEFAULT_ARTICLE_THUMBNAIL
                                 }
                                 alt="Thumbnail"
                                 className="h-40 w-full object-cover"
                                 onError={(e) => {
                                   ;(e.target as HTMLImageElement).src =
-                                    "https://via.placeholder.com/240x160?text=No+Image"
+                                    DEFAULT_ARTICLE_THUMBNAIL
                                 }}
                               />
                             }
@@ -1157,21 +1258,23 @@ export default function ArticleManagement() {
                               size="small"
                               className="w-full"
                             >
-                              <Text type="secondary">
-                                Updated:{" "}
-                                {formatVietnamDateTime(article.updated_at)}
-                              </Text>
+                              <Space size="small" align="center">
+                                <Avatar
+                                  size="small"
+                                  src={article.author_avatar_url || undefined}
+                                >
+                                  {(article.author_name || "Unknown")
+                                    .split(" ")
+                                    .map((part) => part[0])
+                                    .join("")
+                                    .slice(0, 2)
+                                    .toUpperCase()}
+                                </Avatar>
+                                <Text>{article.author_name || "Unknown"}</Text>
+                              </Space>
                               <Text type="secondary">
                                 Created:{" "}
                                 {formatVietnamDateTime(article.created_at)}
-                              </Text>
-                              <Text type="secondary">
-                                Approved At:{" "}
-                                {formatVietnamDateTime(article.approved_at)}
-                              </Text>
-                              <Text type="secondary">
-                                Deleted At:{" "}
-                                {formatVietnamDateTime(article.deleted_at)}
                               </Text>
                               <div>
                                 <Text type="secondary" strong>
@@ -1192,37 +1295,95 @@ export default function ArticleManagement() {
                                   </AntTag>
                                 ))}
                               </Space>
-                              <Space>
+                              <div className="flex gap-2 w-full">
                                 {canEditArticle(article) && (
+                                  <span className="flex-1">
+                                    <Button
+                                      type="text"
+                                      icon={<EditOutlined />}
+                                      size="small"
+                                      className="w-full text-blue-600 hover:!text-blue-700"
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        openEditModal(Number(article.id))
+                                      }}
+                                    >
+                                      Edit article
+                                    </Button>
+                                  </span>
+                                )}
+                                <span className="flex-1">
                                   <Button
                                     type="text"
-                                    icon={<EditOutlined />}
-                                    size="small"
-                                    onClick={() =>
-                                      openEditModal(Number(article.id))
+                                    danger={!article.is_deleted}
+                                    icon={
+                                      article.is_deleted ? (
+                                        <RollbackOutlined />
+                                      ) : (
+                                        <DeleteOutlined />
+                                      )
                                     }
-                                  />
+                                    size="small"
+                                    className={
+                                      article.is_deleted
+                                        ? "w-full hover:bg-gray-100"
+                                        : "w-full hover:bg-red-50"
+                                    }
+                                    loading={deletingId === Number(article.id)}
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      handleArchiveClick(
+                                        Number(article.id),
+                                        !!article.is_deleted
+                                      )
+                                    }}
+                                  >
+                                    {article.is_deleted
+                                      ? "Restore article"
+                                      : "Delete article"}
+                                  </Button>
+                                </span>
+                              </div>
+                              {article.status === "pending" &&
+                                canApproveArticle() &&
+                                !article.is_deleted && (
+                                  <div className="flex gap-2 w-full">
+                                    <span className="flex-1">
+                                      <Button
+                                        type="primary"
+                                        size="small"
+                                        className="w-full bg-blue-500 hover:bg-blue-600 border-blue-500 hover:border-blue-600"
+                                        loading={
+                                          isApprovingArticle &&
+                                          approveConfirmArticleId ===
+                                            Number(article.id)
+                                        }
+                                        onClick={(e) => {
+                                          e.stopPropagation()
+                                          handleApproveClick(Number(article.id))
+                                        }}
+                                      >
+                                        Approve
+                                      </Button>
+                                    </span>
+                                    <span className="flex-1">
+                                      <Button
+                                        danger
+                                        size="small"
+                                        className="w-full"
+                                        onClick={(e) => {
+                                          e.stopPropagation()
+                                          setRejectingArticleId(
+                                            Number(article.id)
+                                          )
+                                          setIsRejectModalOpen(true)
+                                        }}
+                                      >
+                                        Reject
+                                      </Button>
+                                    </span>
+                                  </div>
                                 )}
-                                <Button
-                                  type="text"
-                                  danger={!article.is_deleted}
-                                  icon={
-                                    article.is_deleted ? (
-                                      <RollbackOutlined />
-                                    ) : (
-                                      <DeleteOutlined />
-                                    )
-                                  }
-                                  size="small"
-                                  loading={deletingId === Number(article.id)}
-                                  onClick={() =>
-                                    handleArchiveClick(
-                                      Number(article.id),
-                                      !!article.is_deleted
-                                    )
-                                  }
-                                />
-                              </Space>
                             </Space>
                           </Card>
                         </Col>
@@ -1264,6 +1425,7 @@ export default function ArticleManagement() {
           </Title>
         }
         open={isModalOpen}
+        centered
         onCancel={() => {
           setIsModalOpen(false)
           createForm.resetFields()
@@ -1275,12 +1437,19 @@ export default function ArticleManagement() {
         }}
         footer={null}
         width={900}
-        style={{ maxHeight: "90vh", overflow: "auto" }}
+        styles={{
+          body: {
+            maxHeight: "78vh",
+            overflowY: "auto",
+            paddingRight: 32,
+          },
+        }}
         getContainer={() => document.body}
       >
         <Form
           form={createForm}
           layout="vertical"
+          requiredMark={false}
           onFinish={async (values) => {
             setCreatingArticle(true)
             try {
@@ -1328,8 +1497,8 @@ export default function ArticleManagement() {
         >
           <Form.Item
             label={
-              <Text strong className="text-xl">
-                Title
+              <Text strong className="text-base">
+                Title <span className="text-red-500">*</span>
               </Text>
             }
             name="title"
@@ -1449,7 +1618,7 @@ export default function ArticleManagement() {
           <Form.Item
             label={
               <Text strong className="text-base">
-                Content
+                Content <span className="text-red-500">*</span>
               </Text>
             }
             name="content"
@@ -1495,7 +1664,7 @@ export default function ArticleManagement() {
           <Form.Item
             label={
               <Text strong className="text-base">
-                Category
+                Category <span className="text-red-500">*</span>
               </Text>
             }
             name="categoryId"
@@ -1539,6 +1708,7 @@ export default function ArticleManagement() {
           >
             <Select
               mode="tags"
+              maxCount={MAX_TAGS}
               options={tags.map((tag) => ({
                 label: tag.name,
                 value: tag.name,
@@ -1616,7 +1786,7 @@ export default function ArticleManagement() {
                   onClick={() => setSubmitStatus("published")}
                   loading={creatingArticle}
                 >
-                  Post
+                  Publish
                 </Button>
               ) : (
                 <Tooltip title="Only Admin can publish. Your article will be pending for approval.">
@@ -1637,9 +1807,78 @@ export default function ArticleManagement() {
         </Form>
       </Modal>
 
+      {/* Article Preview Modal */}
+      <Modal
+        title={previewArticle?.title || "Article Preview"}
+        open={isPreviewModalOpen}
+        onCancel={() => {
+          setIsPreviewModalOpen(false)
+          setPreviewArticle(null)
+          setPreviewArticleId(null)
+        }}
+        footer={[
+          <Button
+            key="close"
+            onClick={() => {
+              setIsPreviewModalOpen(false)
+              setPreviewArticle(null)
+              setPreviewArticleId(null)
+            }}
+          >
+            Close
+          </Button>,
+          <Button
+            key="view"
+            type="primary"
+            disabled={!previewArticleId}
+            onClick={() => {
+              if (previewArticleId) {
+                router.push(`/articles/${previewArticleId}`)
+              }
+            }}
+          >
+            View Full Article
+          </Button>,
+        ]}
+        width={900}
+        styles={{
+          body: {
+            maxHeight: "78vh",
+            overflowY: "auto",
+          },
+        }}
+      >
+        <Spin spinning={loadingPreviewData} tip="Loading preview...">
+          {previewArticle && (
+            <Space direction="vertical" size="middle" className="w-full">
+              <Space size="small" align="center">
+                <Text type="secondary">Author:</Text>
+                <Text>{previewArticle.authorName}</Text>
+                <Text type="secondary">|</Text>
+                <Text type="secondary">Category:</Text>
+                <Text>{previewArticle.categoryName}</Text>
+              </Space>
+              <Text type="secondary">
+                Created: {formatVietnamDateTime(previewArticle.createdAt)}
+              </Text>
+              <Divider style={{ margin: "8px 0" }} />
+              {previewArticle.content ? (
+                <div
+                  className="article-preview-content"
+                  dangerouslySetInnerHTML={{ __html: previewArticle.content }}
+                />
+              ) : (
+                <Text type="secondary">No content available.</Text>
+              )}
+            </Space>
+          )}
+        </Spin>
+      </Modal>
+
       <Modal
         title="Edit Article"
         open={isEditModalOpen}
+        centered
         onCancel={() => {
           setIsEditModalOpen(false)
           editForm.resetFields()
@@ -1648,23 +1887,32 @@ export default function ArticleManagement() {
           setEditSelectedTags([])
           setEditingArticleId(null)
           setEditSubmitStatus("published")
+          editSubmitStatusRef.current = "published"
+          setEditOriginalStatus(null)
         }}
         footer={null}
         width={900}
-        style={{ maxHeight: "90vh", overflow: "auto" }}
+        styles={{
+          body: {
+            maxHeight: "78vh",
+            overflowY: "auto",
+            paddingRight: 20,
+          },
+        }}
         getContainer={() => document.body}
       >
         <Spin spinning={loadingEditData} tip="Loading article...">
           <Form
             form={editForm}
             layout="vertical"
+            requiredMark={false}
             onFinish={handleEditSubmit}
             validateTrigger="onBlur"
           >
             <Form.Item
               label={
-                <Text strong className="text-xl">
-                  Title
+                <Text strong className="text-base">
+                    Title <span className="text-red-500">*</span>
                 </Text>
               }
               name="title"
@@ -1709,7 +1957,7 @@ export default function ArticleManagement() {
                     .trim()
                   document.execCommand("insertText", false, text)
                 }}
-                className="border border-gray-300 rounded p-3 min-h-[60px] focus:outline-none focus:border-blue-500 text-lg font-medium"
+                className="border border-gray-300 rounded p-3 min-h-[60px] focus:outline-none focus:border-blue-500 text-base font-normal"
                 style={{ backgroundColor: "white" }}
                 suppressContentEditableWarning
               />
@@ -1776,7 +2024,7 @@ export default function ArticleManagement() {
             <Form.Item
               label={
                 <Text strong className="text-base">
-                  Content
+                  Content <span className="text-red-500">*</span>
                 </Text>
               }
               name="content"
@@ -1831,7 +2079,7 @@ export default function ArticleManagement() {
             <Form.Item
               label={
                 <Text strong className="text-base">
-                  Category
+                  Category <span className="text-red-500">*</span>
                 </Text>
               }
               name="categoryId"
@@ -1875,6 +2123,7 @@ export default function ArticleManagement() {
             >
               <Select
                 mode="tags"
+                maxCount={MAX_TAGS}
                 options={tags.map((tag) => ({
                   label: tag.name,
                   value: tag.name,
@@ -1927,18 +2176,47 @@ export default function ArticleManagement() {
                     setEditSelectedTags([])
                     setEditingArticleId(null)
                     setEditSubmitStatus("published")
+                    editSubmitStatusRef.current = "published"
+                    setEditOriginalStatus(null)
                     setEditCategoryId(undefined)
                   }}
                   disabled={editingArticle}
                 >
                   Cancel
                 </Button>
+                {editOriginalStatus === "draft" && (
+                  <Button
+                    type="primary"
+                    htmlType="submit"
+                    size="large"
+                    icon={<SendOutlined />}
+                    onClick={() => {
+                      setEditSubmitStatus("pending")
+                      editSubmitStatusRef.current = "pending"
+                    }}
+                    loading={editingArticle}
+                  >
+                    Submit for Review
+                  </Button>
+                )}
                 <Button
                   type="primary"
                   htmlType="submit"
                   size="large"
                   icon={<SaveOutlined />}
-                  onClick={() => setEditSubmitStatus("published")}
+                  onClick={() => {
+                    const statusForUpdate =
+                      editOriginalStatus === "draft" ||
+                      editOriginalStatus === "pending" ||
+                      editOriginalStatus === "published"
+                        ? (editOriginalStatus as
+                            | "draft"
+                            | "pending"
+                            | "published")
+                        : "published"
+                    setEditSubmitStatus(statusForUpdate)
+                    editSubmitStatusRef.current = statusForUpdate
+                  }}
                   loading={editingArticle}
                 >
                   Update

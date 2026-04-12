@@ -3,6 +3,7 @@
 import React from "react"
 import { Select } from "antd"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
+import useLanguageStore from "@/store/useLanguageStore"
 
 interface EnrollmentsPageSizeSelectorProps {
   currentPageSize: number
@@ -14,6 +15,7 @@ export default function EnrollmentsPageSizeSelector({
   const pathname = usePathname()
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { language } = useLanguageStore()
 
   const handlePageSizeChange = (value: number) => {
     const params = new URLSearchParams(searchParams.toString())
@@ -24,7 +26,9 @@ export default function EnrollmentsPageSizeSelector({
 
   return (
     <div className="flex items-center gap-3">
-      <span className="text-sm text-gray-700 font-medium">Items per page:</span>
+      <span className="text-sm text-gray-700 font-medium">
+        {language === "vi" ? "Số mục mỗi trang:" : "Items per page:"}
+      </span>
       <Select
         value={currentPageSize}
         onChange={handlePageSizeChange}

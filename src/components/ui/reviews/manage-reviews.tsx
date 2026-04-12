@@ -7,6 +7,7 @@ import type { TableProps } from "antd"
 import { StopOutlined, UserOutlined } from "@ant-design/icons"
 import { useRouter } from "next/navigation"
 import { useState, useTransition } from "react"
+import useLanguageStore from "@/store/useLanguageStore"
 
 const { Text } = Typography
 
@@ -42,6 +43,7 @@ export default function ManageReviewsTable({
   courseId: number
 }) {
   const router = useRouter()
+  const { language } = useLanguageStore()
   const [messageApi, contextHolder] = message.useMessage()
   const [isPending, startTransition] = useTransition()
   const [processingReviewId, setProcessingReviewId] = useState<number | null>(null)
@@ -55,7 +57,7 @@ export default function ManageReviewsTable({
     messageApi.open({
       key: messageKey,
       type: "loading",
-      content: "Deactivating review...",
+      content: language === "vi" ? "Đang ẩn đánh giá..." : "Deactivating review...",
       duration: 0,
     })
 
@@ -70,7 +72,7 @@ export default function ManageReviewsTable({
           messageApi.open({
             key: messageKey,
             type: "success",
-            content: "Review deactivated",
+            content: language === "vi" ? "Đã ẩn đánh giá" : "Review deactivated",
             duration: 2,
           })
           router.refresh()
@@ -80,14 +82,21 @@ export default function ManageReviewsTable({
         messageApi.open({
           key: messageKey,
           type: "error",
-          content: result.error || "Failed to deactivate review",
+          content:
+            result.error ||
+            (language === "vi"
+              ? "Không thể ẩn đánh giá"
+              : "Failed to deactivate review"),
           duration: 3,
         })
       } catch (error) {
         messageApi.open({
           key: messageKey,
           type: "error",
-          content: "System error while deactivating review",
+          content:
+            language === "vi"
+              ? "Lỗi hệ thống khi ẩn đánh giá"
+              : "System error while deactivating review",
           duration: 3,
         })
       } finally {
@@ -116,7 +125,7 @@ export default function ManageReviewsTable({
 
   const columns: TableProps<ReviewWithUser>["columns"] = [
     {
-      title: "User",
+      title: language === "vi" ? "Người dùng" : "User",
       key: "user",
       width: 260,
       render: (_value, record) => (
@@ -130,17 +139,17 @@ export default function ManageReviewsTable({
           </Avatar>
           <div className="min-w-0">
             <Text strong className="block truncate" title={record.user_name}>
-              {record.user_name || "Unknown user"}
+              {record.user_name || (language === "vi" ? "Người dùng không rõ" : "Unknown user")}
             </Text>
             <Text type="secondary" className="block truncate" title={record.user_email}>
-              {record.user_email || "No email"}
+              {record.user_email || (language === "vi" ? "Không có email" : "No email")}
             </Text>
           </div>
         </div>
       ),
     },
     {
-      title: "Rating",
+      title: language === "vi" ? "Đánh giá" : "Rating",
       dataIndex: "rating",
       key: "rating",
       width: 220,
@@ -161,29 +170,29 @@ export default function ManageReviewsTable({
       },
     },
     {
-      title: "Feedback",
+      title: language === "vi" ? "Phản hồi" : "Feedback",
       dataIndex: "content",
       key: "content",
       render: (content: string | null) => (
         <Text className="whitespace-pre-wrap text-gray-700">
-          {content?.trim() || "No feedback content"}
+          {content?.trim() || (language === "vi" ? "Không có nội dung phản hồi" : "No feedback content")}
         </Text>
       ),
     },
     {
-      title: "Status",
+      title: language === "vi" ? "Trạng thái" : "Status",
       dataIndex: "deleted_at",
       key: "status",
       width: 130,
       render: (deletedAt: string | null) =>
         deletedAt ? (
-          <Tag color="red">Inactive</Tag>
+          <Tag color="red">{language === "vi" ? "Đã ẩn" : "Inactive"}</Tag>
         ) : (
-          <Tag color="green">Active</Tag>
+          <Tag color="green">{language === "vi" ? "Đang hiển thị" : "Active"}</Tag>
         ),
     },
     {
-      title: "Action",
+      title: language === "vi" ? "Thao tác" : "Action",
       key: "action",
       width: 150,
       render: (_value, record) => {
@@ -191,7 +200,7 @@ export default function ManageReviewsTable({
         const isProcessingThisRow = isPending && processingReviewId === record.id
 
         if (isInactive) {
-          return <Text type="secondary">No action</Text>
+          return <Text type="secondary">{language === "vi" ? "Không có thao tác" : "No action"}</Text>
         }
 
         return (
@@ -203,7 +212,7 @@ export default function ManageReviewsTable({
             disabled={isPending && processingReviewId !== record.id}
             onClick={() => showDeactivateConfirm(record)}
           >
-            Deactivate
+            {language === "vi" ? "Ẩn đánh giá" : "Deactivate"}
           </Button>
         )
       },
@@ -219,27 +228,36 @@ export default function ManageReviewsTable({
         rowKey="id"
         pagination={false}
         scroll={{ x: 1100 }}
-        locale={{ emptyText: "No feedback found" }}
+        locale={{
+          emptyText:
+            language === "vi" ? "Không tìm thấy phản hồi" : "No feedback found",
+        }}
       />
 
       <Modal
-        title="Confirmation"
+        title={language === "vi" ? "Xác nhận" : "Confirmation"}
         centered
         open={isDeactivateVisible}
         onCancel={closeDeactivateModal}
         footer={[
           <Button key="cancel" onClick={closeDeactivateModal}>
-            Cancel
+            {language === "vi" ? "Hủy" : "Cancel"}
           </Button>,
           <Button key="deactivate" danger onClick={confirmDeactivate}>
-            Deactivate
+            {language === "vi" ? "Ẩn đánh giá" : "Deactivate"}
           </Button>,
         ]}
       >
-        <Text>Are you sure you want to deactivate this review?</Text>
+        <Text>
+          {language === "vi"
+            ? "Bạn có chắc chắn muốn ẩn đánh giá này?"
+            : "Are you sure you want to deactivate this review?"}
+        </Text>
         <br />
         <Text type="secondary">
-          This review will be hidden from learners and removed from average rating.
+          {language === "vi"
+            ? "Đánh giá này sẽ bị ẩn khỏi học viên và loại khỏi điểm trung bình."
+            : "This review will be hidden from learners and removed from average rating."}
         </Text>
       </Modal>
     </>

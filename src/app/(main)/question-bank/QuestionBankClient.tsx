@@ -6,7 +6,6 @@ import {
   Input,
   Button,
   Table,
-  message,
   Tag,
   Typography,
   Select,
@@ -14,21 +13,17 @@ import {
   Col,
   Spin,
   Segmented,
-  Empty,
   Card,
-  Space,
   Divider,
   Tooltip,
+  Modal,
 } from 'antd'
 import {
   SearchOutlined,
-  PlusOutlined,
   ClearOutlined,
-  DeleteOutlined,
-  EditOutlined,
 } from '@ant-design/icons'
 import type { TableProps } from 'antd'
-import { QuestionType } from '@/service/questionbank.service'
+import { FullQuestionType, QuestionType } from '@/service/questionbank.service'
 import * as actions from '@/action/question-bank/questionBankActions'
 import CreateQuestionModalWrapper from './create/create-question-modal-wrapper'
 import { ActionCell } from './action-cell'
@@ -41,6 +36,12 @@ interface QuestionBankClientProps {
   currentPage: number
   pageSize: number
   categories: Record<string, any>[]
+  query: string
+  selectedType: string
+  selectedCategory: string
+  sortOrder: 'newest' | 'oldest'
+  currentUserId: number | null
+  isSystemAdmin: boolean
 }
 
 // Utility functions
@@ -84,85 +85,217 @@ export default function QuestionBankClient({
   currentPage,
   pageSize,
   categories,
+  query,
+  selectedType: initialSelectedType,
+  selectedCategory: initialSelectedCategory,
+  sortOrder: initialSortOrder,
+  currentUserId,
+  isSystemAdmin,
 }: QuestionBankClientProps) {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
-  const [messageApi, contextHolder] = message.useMessage()
 
   // Search and filter states
-  const [searchInput, setSearchInput] = useState('')
+  const [searchInput, setSearchInput] = useState(query)
   const debouncedSearchInput = useDebounce(searchInput, 300)
-  const [selectedType, setSelectedType] = useState<string>('all')
-  const [selectedCategory, setSelectedCategory] = useState<string>('all')
-  const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest')
-  const [hasActiveFilters, setHasActiveFilters] = useState(false)
+  const selectedType = initialSelectedType
+  const selectedCategory = initialSelectedCategory
+  const sortOrder = initialSortOrder
 
   // View mode
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list')
 
-  // Filtered data
-  const [filteredQuestions, setFilteredQuestions] =
-    useState<QuestionType[]>(initialQuestions)
   const [loading, setLoading] = useState(false)
+  const [modalCategories, setModalCategories] = useState<Record<string, any>[]>([])
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false)
+  const [previewQuestion, setPreviewQuestion] = useState<QuestionType | null>(null)
+  const [previewDetail, setPreviewDetail] = useState<FullQuestionType | null>(null)
+  const [isPreviewLoading, setIsPreviewLoading] = useState(false)
 
-  // Check active filters
-  useEffect(() => {
-    const active =
-      debouncedSearchInput !== '' ||
-      selectedType !== 'all' ||
-      selectedCategory !== 'all'
-    setHasActiveFilters(active)
-  }, [debouncedSearchInput, selectedType, selectedCategory])
-
-  // Apply filters
-  useEffect(() => {
-    let filtered = [...initialQuestions]
-
-    // Filter by search
-    if (debouncedSearchInput) {
-      filtered = filtered.filter(
-        (q) =>
-          q.question_text
-            .toLowerCase()
-            .includes(debouncedSearchInput.toLowerCase()) ||
-          q.explanation
-            ?.toLowerCase()
-            .includes(debouncedSearchInput.toLowerCase())
-      )
+  const setOrDeleteParam = (
+    params: URLSearchParams,
+    key: string,
+    value: string,
+    defaultValue: string
+  ) => {
+    if (value === defaultValue || value === '') {
+      params.delete(key)
+      return
     }
+    params.set(key, value)
+  }
 
-    // Filter by type
-    if (selectedType !== 'all') {
-      filtered = filtered.filter((q) => q.type === selectedType)
-    }
+  const pushParams = (updater: (params: URLSearchParams) => void) => {
+    const params = new URLSearchParams(searchParams.toString())
+    updater(params)
+    router.push(`${pathname}?${params.toString()}`)
+  }
 
-    // Filter by category
-    if (selectedCategory !== 'all') {
-      filtered = filtered.filter((q) => q.name === selectedCategory)
-    }
-
-    // Sort
-    filtered.sort((a, b) => {
-      const dateA = new Date(a.created_at).getTime()
-      const dateB = new Date(b.created_at).getTime()
-      return sortOrder === 'newest' ? dateB - dateA : dateA - dateB
+  const handleTablePaginationChange = (page: number, nextPageSize: number) => {
+    pushParams((params) => {
+      params.set('page', page.toString())
+      params.set('limit', nextPageSize.toString())
     })
+  }
 
-    setFilteredQuestions(filtered)
-  }, [
-    initialQuestions,
-    debouncedSearchInput,
-    selectedType,
-    selectedCategory,
-    sortOrder,
-  ])
+  const hasActiveFilters =
+    query !== '' ||
+    selectedType !== 'all' ||
+    selectedCategory !== 'all' ||
+    sortOrder !== 'newest'
+
+  useEffect(() => {
+    // Ignore stale debounced value when query changed externally via URL updates.
+    if (debouncedSearchInput !== searchInput) {
+      return
+    }
+
+    if (debouncedSearchInput === query) {
+      return
+    }
+
+    pushParams((params) => {
+      setOrDeleteParam(params, 'query', debouncedSearchInput, '')
+      params.set('page', '1')
+    })
+  }, [debouncedSearchInput, searchInput, query])
+
+  useEffect(() => {
+    setSearchInput(query)
+  }, [query])
+
+  useEffect(() => {
+    const loadModalCategories = async () => {
+      try {
+        const cats = await actions.getCategoriesForQuestionModal()
+        setModalCategories(cats || [])
+      } catch (error) {
+        console.error('Error loading modal categories:', error)
+        setModalCategories([])
+      }
+    }
+
+    loadModalCategories()
+  }, [])
+
+  const handleTypeChange = (value: string) => {
+    pushParams((params) => {
+      setOrDeleteParam(params, 'type', value, 'all')
+      params.set('page', '1')
+    })
+  }
+
+  const handleCategoryChange = (value: string) => {
+    pushParams((params) => {
+      setOrDeleteParam(params, 'category', value, 'all')
+      params.set('page', '1')
+    })
+  }
+
+  const handleSortChange = (value: 'newest' | 'oldest') => {
+    pushParams((params) => {
+      setOrDeleteParam(params, 'sort', value, 'newest')
+      params.set('page', '1')
+    })
+  }
 
   const handleClearFilters = () => {
     setSearchInput('')
-    setSelectedType('all')
-    setSelectedCategory('all')
-    setSortOrder('newest')
+    pushParams((params) => {
+      params.delete('query')
+      params.delete('type')
+      params.delete('category')
+      params.delete('sort')
+      params.set('page', '1')
+    })
+  }
+
+  const parseOptions = (raw: unknown): string[] => {
+    if (Array.isArray(raw)) {
+      return raw.map((item) => String(item))
+    }
+
+    if (typeof raw === 'string') {
+      try {
+        const parsed = JSON.parse(raw)
+        return Array.isArray(parsed) ? parsed.map((item) => String(item)) : []
+      } catch {
+        return []
+      }
+    }
+
+    return []
+  }
+
+  const parseCorrectAnswers = (raw: unknown): number[] => {
+    if (typeof raw === 'number') {
+      return [raw]
+    }
+
+    if (Array.isArray(raw)) {
+      return raw
+        .map((item) => Number(item))
+        .filter((value) => Number.isFinite(value))
+    }
+
+    if (typeof raw === 'string') {
+      try {
+        const parsed = JSON.parse(raw)
+        return parseCorrectAnswers(parsed)
+      } catch {
+        const numeric = Number(raw)
+        return Number.isFinite(numeric) ? [numeric] : []
+      }
+    }
+
+    return []
+  }
+
+  const openPreview = async (question: QuestionType) => {
+    setPreviewQuestion(question)
+    setIsPreviewOpen(true)
+    setIsPreviewLoading(true)
+
+    try {
+      const detail = await actions.getQuestionById(question.id)
+      setPreviewDetail((detail as FullQuestionType) || null)
+    } catch (error) {
+      console.error('Error loading question preview detail:', error)
+      setPreviewDetail(null)
+    } finally {
+      setIsPreviewLoading(false)
+    }
+  }
+
+  const getManagePermission = (question: QuestionType) => {
+    if (question.is_in_active_quiz) {
+      return {
+        canManage: false,
+        reason:
+          'Câu hỏi này đang được sử dụng trong một quiz đang hoạt động nên không thể chỉnh sửa hoặc xóa.',
+      }
+    }
+
+    if (isSystemAdmin) {
+      return { canManage: true, reason: '' }
+    }
+
+    if (currentUserId == null) {
+      return {
+        canManage: false,
+        reason: 'Không thể xác minh người dùng hiện tại để chỉnh sửa/xóa câu hỏi này.',
+      }
+    }
+
+    if (Number(question.creator_id) === Number(currentUserId)) {
+      return { canManage: true, reason: '' }
+    }
+
+    return {
+      canManage: false,
+      reason: 'Bạn chỉ có thể chỉnh sửa hoặc xóa câu hỏi do bạn tạo.',
+    }
   }
 
   // Table columns
@@ -171,8 +304,14 @@ export default function QuestionBankClient({
       title: 'Nội dung',
       dataIndex: 'question_text',
       key: 'question_text',
-      render: (text: string) => (
-        <span className='font-medium text-gray-900'>{truncateText(text, 50)}</span>
+      render: (text: string, record: QuestionType) => (
+        <button
+          type='button'
+          className='font-medium text-gray-900 hover:text-blue-700 hover:underline text-left'
+          onClick={() => openPreview(record)}
+        >
+          {truncateText(text, 50)}
+        </button>
       ),
     },
     {
@@ -206,13 +345,23 @@ export default function QuestionBankClient({
       title: 'Hành động',
       key: 'action',
       width: 100,
-      render: (_, record) => <ActionCell record={record} categories={categories} />,
+      render: (_, record) => {
+        const permission = getManagePermission(record)
+        return (
+          <ActionCell
+            record={record}
+            categories={modalCategories}
+            canManage={permission.canManage}
+            disabledReason={permission.reason}
+          />
+        )
+      },
     },
   ]
 
   // Render grid view
   const renderGridView = () => {
-    if (filteredQuestions.length === 0) {
+    if (initialQuestions.length === 0) {
       return (
         <div className='text-center py-12'>
           <Spin spinning={loading} />
@@ -223,11 +372,12 @@ export default function QuestionBankClient({
 
     return (
       <Row gutter={[16, 16]}>
-        {filteredQuestions.map((question) => (
+        {initialQuestions.map((question) => (
           <Col xs={24} sm={12} lg={8} xl={6} key={question.id}>
             <Card
               hoverable
               className='h-full hover:shadow-lg transition-shadow'
+              onClick={() => openPreview(question)}
               extra={
                 <Tag color={question.type === 'multiple_choice' ? 'cyan' : 'purple'}>
                   {getTypeLabel(question.type)}
@@ -257,8 +407,18 @@ export default function QuestionBankClient({
                   </div>
                 )}
               </div>
-              <div className='mt-4 flex gap-2'>
-                <ActionCell record={question} categories={categories} />
+              <div className='mt-4 flex gap-2' onClick={(e) => e.stopPropagation()}>
+                {(() => {
+                  const permission = getManagePermission(question)
+                  return (
+                    <ActionCell
+                      record={question}
+                      categories={modalCategories}
+                      canManage={permission.canManage}
+                      disabledReason={permission.reason}
+                    />
+                  )
+                })()}
               </div>
             </Card>
           </Col>
@@ -269,8 +429,6 @@ export default function QuestionBankClient({
 
   return (
     <>
-      {contextHolder}
-
       {/* Page Header */}
       <div className='mb-8'>
         <h1 className='text-4xl font-bold bg-gradient-to-r from-blue-600 to-blue-900 bg-clip-text text-transparent mb-4'>
@@ -313,7 +471,7 @@ export default function QuestionBankClient({
               </Text>
               <Select
                 value={selectedType}
-                onChange={setSelectedType}
+                onChange={handleTypeChange}
                 options={[
                   { label: 'Tất cả', value: 'all' },
                   { label: 'Single Choice', value: 'single_choice' },
@@ -330,7 +488,7 @@ export default function QuestionBankClient({
               </Text>
               <Select
                 value={selectedCategory}
-                onChange={setSelectedCategory}
+                onChange={handleCategoryChange}
                 options={[
                   { label: 'Tất cả', value: 'all' },
                   ...categories.map((cat) => ({
@@ -349,7 +507,7 @@ export default function QuestionBankClient({
               </Text>
               <Select
                 value={sortOrder}
-                onChange={setSortOrder}
+                onChange={handleSortChange}
                 options={[
                   { label: 'Mới nhất', value: 'newest' },
                   { label: 'Cũ nhất', value: 'oldest' },
@@ -402,12 +560,16 @@ export default function QuestionBankClient({
             <div className='p-6'>
               <Table
                 columns={columns}
-                dataSource={filteredQuestions}
+                dataSource={initialQuestions}
                 rowKey='id'
                 pagination={{
-                  pageSize: 10,
-                  total: filteredQuestions.length,
-                  showSizeChanger: false,
+                  current: currentPage,
+                  pageSize,
+                  total: totalItems,
+                  showSizeChanger: true,
+                  pageSizeOptions: ['10', '20', '50', '100'],
+                  onChange: handleTablePaginationChange,
+                  onShowSizeChange: handleTablePaginationChange,
                   showTotal: (total) => `Tổng cộng ${total} câu hỏi`,
                 }}
                 bordered
@@ -419,6 +581,97 @@ export default function QuestionBankClient({
           )}
         </Spin>
       </div>
+
+      <Modal
+        title='Chi tiết câu hỏi'
+        open={isPreviewOpen}
+        onCancel={() => {
+          setIsPreviewOpen(false)
+          setPreviewQuestion(null)
+          setPreviewDetail(null)
+        }}
+        footer={null}
+        width={720}
+      >
+        {previewQuestion && (
+          <div className='space-y-4'>
+            <div>
+              <Text type='secondary'>Nội dung</Text>
+              <p className='mt-1 whitespace-pre-wrap text-gray-900'>
+                {previewQuestion.question_text}
+              </p>
+            </div>
+            <div className='flex gap-2'>
+              <Tag color='blue'>{previewQuestion.name}</Tag>
+              <Tag
+                color={
+                  previewQuestion.type === 'multiple_choice' ? 'cyan' : 'purple'
+                }
+              >
+                {getTypeLabel(previewQuestion.type)}
+              </Tag>
+            </div>
+            {previewQuestion.explanation && (
+              <div>
+                <Text type='secondary'>Giải thích</Text>
+                <p className='mt-1 whitespace-pre-wrap text-gray-800'>
+                  {previewQuestion.explanation}
+                </p>
+              </div>
+            )}
+
+            <div>
+              <Text type='secondary'>Đáp án</Text>
+              <Spin spinning={isPreviewLoading}>
+                {(() => {
+                  const options = parseOptions(previewDetail?.options)
+                  const correctAnswers = parseCorrectAnswers(
+                    previewDetail?.correct_answer
+                  )
+
+                  if (options.length === 0) {
+                    return (
+                      <p className='mt-1 text-gray-500'>
+                        Không có dữ liệu đáp án để hiển thị.
+                      </p>
+                    )
+                  }
+
+                  return (
+                    <div className='mt-2 space-y-2'>
+                      {options.map((option, index) => {
+                        const isCorrect = correctAnswers.includes(index)
+                        const optionLabel = String.fromCharCode(65 + index)
+
+                        return (
+                          <div
+                            key={`${previewQuestion.id}-${index}`}
+                            className={`rounded border px-3 py-2 ${
+                              isCorrect
+                                ? 'border-green-300 bg-green-50'
+                                : 'border-gray-200 bg-white'
+                            }`}
+                          >
+                            <div className='flex items-center justify-between gap-3'>
+                              <span className='font-medium text-gray-700'>
+                                {optionLabel}.
+                              </span>
+                              {isCorrect && <Tag color='green'>Đáp án đúng</Tag>}
+                            </div>
+                            <p className='mt-1 whitespace-pre-wrap text-gray-900'>
+                              {option}
+                            </p>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )
+                })()}
+              </Spin>
+            </div>
+          </div>
+        )}
+      </Modal>
     </>
   )
 }
