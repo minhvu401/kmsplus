@@ -11,18 +11,17 @@ import {
   Dropdown,
   Spin,
 } from "antd"
-import {
-  BellOutlined,
-  UserOutlined,
-  MessageOutlined,
-} from "@ant-design/icons"
+import { BellOutlined, UserOutlined, MessageOutlined } from "@ant-design/icons"
 import { signOut } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { PageRoute } from "@/enum/page-route.enum"
 import LogoutIcon from "@/components/icon/LogoutIcon"
+import LoadingOverlay from "@/components/LoadingOverlay"
 import { logoutAction } from "@/action/auth/authActions"
 import useUserStore from "@/store/useUserStore"
+import useLanguageStore from "@/store/useLanguageStore"
 import LanguageToggle from "@/components/LanguageToggle"
+import { t } from "@/lib/i18n"
 
 const { Header } = Layout
 const { Text } = Typography
@@ -59,10 +58,12 @@ export default function AppHeader({ collapsed }: HeaderProps) {
     token: { colorBgContainer },
   } = theme.useToken()
   const { user, clearUser, fetchUser } = useUserStore()
+  const { language } = useLanguageStore()
   const [notifications, setNotifications] = useState<NotificationItem[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [loadingNotifications, setLoadingNotifications] = useState(false)
   const [notificationOpen, setNotificationOpen] = useState(false)
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
 
   // const [user, setUser] = useState<UserType | null>(null)
 
@@ -90,16 +91,17 @@ export default function AppHeader({ collapsed }: HeaderProps) {
   ]
 
   const HandleLogout = async () => {
+    setIsLoggingOut(true)
     try {
       // Clear user from store FIRST (before redirecting)
       clearUser()
-      
+
       // Then call logoutAction to delete cookies
       await logoutAction()
-      
+
       // Finally call NextAuth signOut to clear NextAuth cookies
       await signOut({ redirect: false })
-      
+
       // Redirect to login
       router.push(PageRoute.LOGIN)
     } catch (error) {
@@ -243,7 +245,10 @@ export default function AppHeader({ collapsed }: HeaderProps) {
 
     window.addEventListener("notifications:refresh", handleNotificationsRefresh)
     return () => {
-      window.removeEventListener("notifications:refresh", handleNotificationsRefresh)
+      window.removeEventListener(
+        "notifications:refresh",
+        handleNotificationsRefresh
+      )
     }
   }, [])
 
@@ -327,56 +332,62 @@ export default function AppHeader({ collapsed }: HeaderProps) {
   // }, [])
 
   return (
-    <Header
-      style={{
-        padding: "0 24px",
-        background: colorBgContainer,
-        display: "flex",
-        justifyContent: "flex-end",
-        alignItems: "center",
-        borderBottom: "1px solid #f0f0f0",
-      }}
-    >
-      <Space size="middle">
-        {/* <WarningOutlined style={{ fontSize: "18px", color: "#f5222d" }} /> */}
-        <MessageOutlined style={{ fontSize: "18px" }} />
-        <Dropdown
-          trigger={["hover"]}
-          placement="bottomRight"
-          popupRender={() => notificationDropdown}
-          open={notificationOpen}
-          onOpenChange={setNotificationOpen}
-        >
-          <Badge count={unreadCount} size="small" overflowCount={99}>
-            <BellOutlined style={{ fontSize: "18px", cursor: "pointer" }} />
-          </Badge>
-        </Dropdown>
-        <LanguageToggle />
-        <Dropdown
-          menu={{ items: profileItems }}
-          trigger={["click"]}
-          placement="bottomRight"
-        >
-          <Flex
-            vertical={false}
-            className="cursor-pointer flex items-center gap-2"
+    <>
+      <Header
+        style={{
+          padding: "0 24px",
+          background: colorBgContainer,
+          display: "flex",
+          justifyContent: "flex-end",
+          alignItems: "center",
+          borderBottom: "1px solid #f0f0f0",
+        }}
+      >
+        <Space size="middle">
+          {/* <WarningOutlined style={{ fontSize: "18px", color: "#f5222d" }} /> */}
+          <MessageOutlined style={{ fontSize: "18px" }} />
+          <Dropdown
+            trigger={["hover"]}
+            placement="bottomRight"
+            popupRender={() => notificationDropdown}
+            open={notificationOpen}
+            onOpenChange={setNotificationOpen}
           >
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-sky-400 flex items-center justify-center text-white text-xs font-medium">
-              {user?.avatar_url ? (
-                <img
-                  src={user.avatar_url}
-                  alt={user.full_name || "User"}
-                  className="w-full h-full rounded-full object-cover"
-                />
-              ) : (
-                getUserInitials(user?.full_name)
-              )}
-            </div>
-            <Text strong>{user?.full_name}</Text>
-          </Flex>
-        </Dropdown>
-      </Space>
-    </Header>
+            <Badge count={unreadCount} size="small" overflowCount={99}>
+              <BellOutlined style={{ fontSize: "18px", cursor: "pointer" }} />
+            </Badge>
+          </Dropdown>
+          <LanguageToggle />
+          <Dropdown
+            menu={{ items: profileItems }}
+            trigger={["click"]}
+            placement="bottomRight"
+          >
+            <Flex
+              vertical={false}
+              className="cursor-pointer flex items-center gap-2"
+            >
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-sky-400 flex items-center justify-center text-white text-xs font-medium">
+                {user?.avatar_url ? (
+                  <img
+                    src={user.avatar_url}
+                    alt={user.full_name || "User"}
+                    className="w-full h-full rounded-full object-cover"
+                  />
+                ) : (
+                  getUserInitials(user?.full_name)
+                )}
+              </div>
+              <Text strong>{user?.full_name}</Text>
+            </Flex>
+          </Dropdown>
+        </Space>
+      </Header>
+      <LoadingOverlay
+        message={t("auth.returning_to_login", language)}
+        visible={isLoggingOut}
+      />
+    </>
   )
 }
 

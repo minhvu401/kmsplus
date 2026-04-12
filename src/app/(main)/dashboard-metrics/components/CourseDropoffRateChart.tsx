@@ -53,7 +53,9 @@ export default function CourseDropoffRateChart() {
           <Spin />
         </div>
       ) : data.length === 0 ? (
-        <div className="text-center text-gray-400 py-10">Chưa có dữ liệu</div>
+        <div className="text-center text-gray-400 py-10">
+          {t("dashboard.metrics.no_data", language)}
+        </div>
       ) : (
         <ResponsiveContainer width="100%" height={400}>
           <BarChart
