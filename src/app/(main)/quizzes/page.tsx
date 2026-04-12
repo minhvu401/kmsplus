@@ -140,7 +140,7 @@ export default function QuizzesPage() {
   const [hasActiveFilters, setHasActiveFilters] = useState(false)
   const [isQueryHydrated, setIsQueryHydrated] = useState(false)
   const [deleteGuards, setDeleteGuards] = useState<
-    Record<number, { canDelete: boolean; reason?: string }>
+    Record<number, { canDelete: boolean; reason?: string; isUsedInCourse: boolean }>
   >({})
 
   useEffect(() => {
@@ -340,7 +340,8 @@ export default function QuizzesPage() {
       align: "center" as const,
       render: (_: any, record: Quiz) => {
         const guard = deleteGuards[record.id]
-        const canDelete = guard?.canDelete ?? false
+        const isUsedInCourse = guard?.isUsedInCourse ?? false
+        const canDeleteLocal = !isUsedInCourse
         const deleteReason = guard?.reason || t.cannotDeleteDefault
 
         return (
@@ -351,7 +352,7 @@ export default function QuizzesPage() {
                 title={t.viewEdit}
               />
             </Link>
-            {canDelete ? (
+            {canDeleteLocal ? (
               <Popconfirm
                 title={t.deleteTitle}
                 description={t.deleteConfirm}
@@ -554,9 +555,9 @@ export default function QuizzesPage() {
                     <Col xs={24} sm={12} lg={8} xl={6} key={quiz.id}>
                       {(() => {
                         const guard = deleteGuards[quiz.id]
-                        const canDelete = guard?.canDelete ?? false
-                        const deleteReason =
-                          guard?.reason || "Cannot delete this quiz"
+                        const isUsedInCourse = guard?.isUsedInCourse ?? false
+                        const canDeleteLocal = !isUsedInCourse
+                        const deleteReason = guard?.reason || "Cannot delete this quiz"
 
                         return (
                       <Card
@@ -632,16 +633,27 @@ export default function QuizzesPage() {
                               {t.viewEdit}
                             </Button>
                           </Link>
-                          <Popconfirm
-                            title={t.deleteTitle}
-                            description={t.deleteConfirm}
-                            onConfirm={() => handleDelete(quiz.id)}
-                            okText={t.yes}
-                            cancelText={t.no}
-                            okButtonProps={{ danger: true }}
-                            disabled={!canDelete}
-                          >
-                            <Tooltip title={!canDelete ? deleteReason : t.deleteTitle}>
+                          {canDeleteLocal ? (
+                            <Popconfirm
+                              title={t.deleteTitle}
+                              description={t.deleteConfirm}
+                              onConfirm={() => handleDelete(quiz.id)}
+                              okText={t.yes}
+                              cancelText={t.no}
+                              okButtonProps={{ danger: true }}
+                            >
+                              <Button
+                                type="text"
+                                danger
+                                size="small"
+                                icon={<DeleteOutlined />}
+                                className="w-full"
+                              >
+                                {t.delete}
+                              </Button>
+                            </Popconfirm>
+                          ) : (
+                            <Tooltip title={deleteReason}>
                               <span className="flex-1">
                                 <Button
                                   type="text"
@@ -649,13 +661,13 @@ export default function QuizzesPage() {
                                   size="small"
                                   icon={<DeleteOutlined />}
                                   className="w-full"
-                                  disabled={!canDelete}
+                                  disabled
                                 >
                                   {t.delete}
                                 </Button>
                               </span>
                             </Tooltip>
-                          </Popconfirm>
+                          )}
                         </div>
                       </Card>
                         )

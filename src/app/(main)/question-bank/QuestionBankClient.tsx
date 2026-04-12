@@ -339,14 +339,8 @@ export default function QuestionBankClient({
       }
     }
 
-    if (Number(question.creator_id) === Number(currentUserId)) {
-      return { canManage: true, reason: '' }
-    }
-
-    return {
-      canManage: false,
-      reason: text.creatorOnly,
-    }
+    // Allow any authenticated user to manage questions (owner-only rule removed).
+    return { canManage: true, reason: '' }
   }
 
   // Table columns

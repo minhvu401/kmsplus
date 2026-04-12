@@ -352,13 +352,6 @@ export default function QuizDetailPage() {
   }
 
   const handleEdit = () => {
-    if (!isOwnerOrAdmin) {
-      message.warning(
-        t.ownerOnly
-      )
-      return
-    }
-
     if (isQuizUsedByCourse) {
       message.warning(t.usedInCourseLock)
       return
@@ -369,13 +362,6 @@ export default function QuizDetailPage() {
   }
 
   const handleSave = async (values: any) => {
-    if (!isOwnerOrAdmin) {
-      message.warning(
-        t.ownerOnly
-      )
-      return
-    }
-
     try {
       setIsSaving(true)
 
@@ -422,17 +408,8 @@ export default function QuizDetailPage() {
   }
 
   const handleAddQuestions = async (values: any) => {
-    if (!isOwnerOrAdmin) {
-      message.warning(
-        t.ownerOnly
-      )
-      return
-    }
-
     if (isQuizUsedByCourse) {
-      message.warning(
-        t.usedInCourseLock
-      )
+      message.warning(t.usedInCourseLock)
       return
     }
 
@@ -477,24 +454,13 @@ export default function QuizDetailPage() {
   }
 
   const handleRemoveQuestion = async (questionId: number) => {
-    if (!isOwnerOrAdmin) {
-      message.warning(
-        t.ownerOnly
-      )
-      return
-    }
-
     if (isQuizUsedByCourse) {
-      message.warning(
-        t.usedInCourseLock
-      )
+      message.warning(t.usedInCourseLock)
       return
     }
 
     if (questions.length <= MIN_QUIZ_QUESTIONS) {
-      message.warning(
-        t.minQuestionsWarning
-      )
+      message.warning(t.minQuestionsWarning)
       return
     }
 
@@ -517,17 +483,8 @@ export default function QuizDetailPage() {
   }
 
   const handleOpenCreateQuestionModal = () => {
-    if (!isOwnerOrAdmin) {
-      message.warning(
-        t.ownerOnly
-      )
-      return
-    }
-
     if (isQuizUsedByCourse) {
-      message.warning(
-        t.usedInCourseLock
-      )
+      message.warning(t.usedInCourseLock)
       return
     }
 
@@ -694,9 +651,7 @@ export default function QuizDetailPage() {
         <Popconfirm
           title="Remove Question"
           description={
-            !isOwnerOrAdmin
-              ? mutationLockReason
-              : isQuizUsedByCourse
+            isQuizUsedByCourse
               ? "Cannot remove. This quiz is already used in a course."
               : questions.length <= MIN_QUIZ_QUESTIONS
               ? `Cannot remove. Quiz must keep at least ${MIN_QUIZ_QUESTIONS} questions.`
@@ -706,17 +661,11 @@ export default function QuizDetailPage() {
           cancelText="Cancel"
           okButtonProps={{ danger: true }}
           onConfirm={() => handleRemoveQuestion(record.question_id)}
-          disabled={
-            !isOwnerOrAdmin ||
-            isQuizUsedByCourse ||
-            questions.length <= MIN_QUIZ_QUESTIONS
-          }
+          disabled={isQuizUsedByCourse || questions.length <= MIN_QUIZ_QUESTIONS}
         >
           <Tooltip
             title={
-              !isOwnerOrAdmin
-                ? mutationLockReason
-                : isQuizUsedByCourse
+              isQuizUsedByCourse
                 ? "Quiz is used in a course"
                 : questions.length <= MIN_QUIZ_QUESTIONS
                 ? `Minimum ${MIN_QUIZ_QUESTIONS} questions required`
@@ -729,11 +678,7 @@ export default function QuizDetailPage() {
               size="small"
               icon={<DeleteOutlined />}
               style={{ pointerEvents: "auto" }}
-              disabled={
-                !isOwnerOrAdmin ||
-                isQuizUsedByCourse ||
-                questions.length <= MIN_QUIZ_QUESTIONS
-              }
+              disabled={isQuizUsedByCourse || questions.length <= MIN_QUIZ_QUESTIONS}
             />
           </Tooltip>
         </Popconfirm>
@@ -748,18 +693,10 @@ export default function QuizDetailPage() {
       label: q.title,
     }))
 
-  const isEditDisabled = isQuizUsedByCourse || !isOwnerOrAdmin
-  const isQuestionActionsDisabled = isQuizUsedByCourse || !isOwnerOrAdmin
-  const editTooltip = !isOwnerOrAdmin
-    ? mutationLockReason
-    : isQuizUsedByCourse
-      ? t.editDisabledUsedCourse
-      : t.editQuiz
-  const questionActionsTooltip = !isOwnerOrAdmin
-    ? mutationLockReason
-    : isQuizUsedByCourse
-      ? t.usedInCourseLock
-      : undefined
+  const isEditDisabled = isQuizUsedByCourse
+  const isQuestionActionsDisabled = isQuizUsedByCourse
+  const editTooltip = isQuizUsedByCourse ? t.editDisabledUsedCourse : t.editQuiz
+  const questionActionsTooltip = isQuizUsedByCourse ? t.usedInCourseLock : undefined
 
   return (
     <main className="min-h-screen bg-gradient-to-r from-gray-50 via-blue-50 to-indigo-50 p-8">

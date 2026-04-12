@@ -80,7 +80,7 @@ export async function getQuizDeleteGuards(quizIds: number[]) {
   )
 
   if (normalizedQuizIds.length === 0) {
-    return {} as Record<number, { canDelete: boolean; reason?: string }>
+    return {} as Record<number, { canDelete: boolean; reason?: string; isUsedInCourse: boolean }>
   }
 
   const isSystemAdmin =
@@ -131,7 +131,7 @@ export async function getQuizDeleteGuards(quizIds: number[]) {
         WHERE q.id = ANY(${normalizedQuizIds})
       `
 
-  const guardMap: Record<number, { canDelete: boolean; reason?: string }> = {}
+  const guardMap: Record<number, { canDelete: boolean; reason?: string; isUsedInCourse: boolean }> = {}
 
   for (const row of rows as any[]) {
     const quizId = Number(row.id)
@@ -152,6 +152,7 @@ export async function getQuizDeleteGuards(quizIds: number[]) {
     guardMap[quizId] = {
       canDelete,
       reason,
+      isUsedInCourse,
     }
   }
 
