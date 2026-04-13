@@ -13,20 +13,77 @@ import {
 } from "@/service/user.service"
 import { revalidatePath } from "next/cache"
 
+type AuthPayload = {
+  email?: string
+  user?: {
+    email?: string
+  }
+} | null
+
+function getAuthenticatedEmail(payload: AuthPayload): string | null {
+  return payload?.user?.email ?? payload?.email ?? null
+}
+
 /**
  * Get current logged in user
+ * Works with both NextAuth and JWT token authentication
  */
 export async function getCurrentUserInfor() {
-  await requireAuth()
-  const user = await getCurrentUserInforAction()
-  return user
+  try {
+    // Try current auth session first
+    const authPayload = (await getCurrentUser()) as AuthPayload
+    const email = getAuthenticatedEmail(authPayload)
+    if (email) {
+      try {
+        const user = await getUserByEmailAction(email)
+        if (user) {
+          return user
+        }
+        // If user not found in DB, don't fall back to JWT - just return null
+        return null
+      } catch (error) {
+        console.error("Error fetching user by email from auth session:", error)
+        // If auth session exists, don't try JWT fallback
+        // Return null instead of throwing
+        return null
+      }
+    }
+
+    // Only try JWT token if NO NextAuth session exists
+    try {
+      await requireAuth()
+      const user = await getCurrentUserInforAction()
+      return user
+    } catch (error) {
+      console.error("Error in JWT auth fallback:", error)
+      // If JWT also fails, return null instead of throwing
+      return null
+    }
+  } catch (error) {
+    console.error("Error in getCurrentUserInfor:", error)
+    return null
+  }
 }
 
 /**
  * Get current user role
+ * Works with both NextAuth and JWT authentication
  */
 export async function getUserRoleAction(): Promise<string | null> {
   try {
+    // Try current auth session first
+    const authPayload = (await getCurrentUser()) as AuthPayload
+    const email = getAuthenticatedEmail(authPayload)
+    if (email) {
+      const user = await getUserByEmailAction(email)
+      if (user) {
+        // Get user's role from database
+        // This would typically join with user_roles table
+        return user.role ?? null
+      }
+    }
+
+    // Fallback to JWT token
     const cookieStore = await cookies()
     const token = cookieStore.get("token")?.value
 
@@ -74,7 +131,7 @@ export async function createUser(formData: FormData) {
   const result = await createUserAction(userData)
 
   if (result.success) {
-    revalidatePath("/dashboard/users")
+    revalidatePath("/user-management")
   }
 
   return result
@@ -95,7 +152,7 @@ export async function updateUser(email: string, formData: FormData) {
   const result = await updateUserAction(email, updateData)
 
   if (result.success) {
-    revalidatePath("/dashboard/users")
+    revalidatePath("/user-management")
     revalidatePath("/profile")
   }
 
@@ -131,7 +188,7 @@ export async function deleteUser(email: string) {
   const result = await deleteUserAction(email)
 
   if (result.success) {
-    revalidatePath("/dashboard/users")
+    revalidatePath("/user-management")
   }
 
   return result

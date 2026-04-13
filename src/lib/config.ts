@@ -12,6 +12,23 @@ const envSchema = z.object({
     .string()
     .min(32, "JWT_SECRET must be at least 32 characters for security"),
 
+  // Gemini AI
+  GEMINI_API_KEY: z
+    .string()
+    .min(1, "GEMINI_API_KEY is required")
+    .optional()
+    .default(""),
+
+  // Redis (Upstash)
+  UPSTASH_REDIS_REST_URL: z
+    .string()
+    .url("UPSTASH_REDIS_REST_URL must be a valid URL")
+    .optional(),
+  UPSTASH_REDIS_REST_TOKEN: z
+    .string()
+    .min(1, "UPSTASH_REDIS_REST_TOKEN is required")
+    .optional(),
+
   // Node Environment
   NODE_ENV: z
     .enum(["development", "production", "test"])
@@ -27,6 +44,9 @@ function validateEnv() {
     const parsed = envSchema.parse({
       DATABASE_URL: process.env.DATABASE_URL,
       JWT_SECRET: process.env.JWT_SECRET,
+      GEMINI_API_KEY: process.env.GEMINI_API_KEY,
+      UPSTASH_REDIS_REST_URL: process.env.UPSTASH_REDIS_REST_URL,
+      UPSTASH_REDIS_REST_TOKEN: process.env.UPSTASH_REDIS_REST_TOKEN,
       NODE_ENV: process.env.NODE_ENV,
     })
 

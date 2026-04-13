@@ -3,7 +3,7 @@
 
 "use client"
 
-import React, { useState } from "react"
+import React, { useState, useEffect, useMemo } from "react"
 import Link from "next/link"
 import {
   Table,
@@ -13,8 +13,10 @@ import {
   Button,
   Input,
   Select,
-  Avatar,
   Pagination,
+  Skeleton,
+  Empty,
+  message,
 } from "antd"
 import type { ColumnsType } from "antd/es/table"
 import {
@@ -26,140 +28,156 @@ import {
   CheckCircle,
   TrendingUp,
 } from "lucide-react"
-// 👇 1. IMPORT ACTION THẬT
 import { getPersonalHistory } from "@/action/progress/progressAction"
-import { useEffect } from "react" // Import thêm useEffec
 
-// --- 1. MOCK DATA (Dữ liệu giả lập theo ảnh) ---
-const MOCK_STATS = [
-  {
-    title: "Total Enrolled",
-    value: 12,
-    sub: "+2 this month",
-    icon: <BookOpen className="text-blue-600" size={24} />,
-    bg: "bg-blue-50",
-    text: "text-blue-600",
-  },
-  {
-    title: "Courses Completed",
-    value: 8,
-    sub: "66% completion rate",
-    icon: <CheckCircle className="text-green-600" size={24} />,
-    bg: "bg-green-50",
-    text: "text-green-600",
-  },
-  {
-    title: "Avg. Score",
-    value: "94%",
-    sub: "Top 5% of learners",
-    icon: <TrendingUp className="text-purple-600" size={24} />,
-    bg: "bg-purple-50",
-    text: "text-purple-600",
-  },
-]
+// Định nghĩa kiểu dữ liệu trả về từ API (khớp với câu SQL trong service)
+interface HistoryItem {
+  enrollment_id: number
+  enrolled_at: string
+  progress_percentage: number
+  status: string
+  completed_at: string | null
+  course_id: number
+  course_name: string
+  thumbnail_url: string
+}
 
-const MOCK_COURSES = [
-  {
-    id: 1,
-    title: "Cybersecurity Awareness 101",
-    category: "Security Compliance",
-    enrolledOn: "Oct 12, 2023",
-    progress: 100,
-    status: "completed",
-    image: "https://api.dicebear.com/7.x/icons/svg?seed=Security", // Ảnh giả
-  },
-  {
-    id: 2,
-    title: "Advanced Excel Macros",
-    category: "Technical Skills",
-    enrolledOn: "Nov 01, 2023",
-    progress: 45,
-    status: "in_progress",
-    image: "https://api.dicebear.com/7.x/icons/svg?seed=Excel",
-  },
-  {
-    id: 3,
-    title: "Workplace Safety Standards",
-    category: "Health & Safety",
-    enrolledOn: "Jan 15, 2024",
-    progress: 10,
-    status: "in_progress",
-    image: "https://api.dicebear.com/7.x/icons/svg?seed=Safety",
-  },
-  {
-    id: 4,
-    title: "Emotional Intelligence",
-    category: "Soft Skills",
-    enrolledOn: "Sep 20, 2023",
-    progress: 100,
-    status: "completed",
-    image: "https://api.dicebear.com/7.x/icons/svg?seed=Emotional",
-  },
-  {
-    id: 5,
-    title: "Marketing Fundamentals",
-    category: "Marketing",
-    enrolledOn: "Aug 05, 2023",
-    progress: 100,
-    status: "completed",
-    image: "https://api.dicebear.com/7.x/icons/svg?seed=Marketing",
-  },
-]
-
-// --- 2. COMPONENT CHÍNH ---
 export default function PersonalHistoryPage() {
-  const [data, setData] = useState(MOCK_COURSES) // Dùng dữ liệu giả
+  const [loading, setLoading] = useState(true)
+  const [data, setData] = useState<HistoryItem[]>([])
+  const [searchText, setSearchText] = useState("")
+  const [statusFilter, setStatusFilter] = useState("all")
 
-  // Cấu hình cột cho bảng
-  const columns: ColumnsType<(typeof MOCK_COURSES)[0]> = [
+  // --- 1. FETCH DỮ LIỆU TỪ SERVER ---
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const res = await getPersonalHistory()
+        if (res.success && Array.isArray(res.data)) {
+          setData(res.data as HistoryItem[])
+        } else {
+          // Nếu lỗi hoặc không có data, set mảng rỗng để không crash
+          setData([])
+          if (res.error) message.error(res.error)
+        }
+      } catch (error) {
+        console.error("Failed to fetch history", error)
+        message.error("Không thể tải dữ liệu học tập")
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchData()
+  }, [])
+
+  // --- 2. TÍNH TOÁN THỐNG KÊ (REALTIME) ---
+  const stats = useMemo(() => {
+    const totalEnrolled = data.length
+    const completedCourses = data.filter((c) => c.status === "completed").length
+
+    // Tính % trung bình của tất cả khóa học
+    const totalProgress = data.reduce(
+      (acc, curr) => acc + (curr.progress_percentage || 0),
+      0
+    )
+    const avgScore =
+      totalEnrolled > 0 ? Math.round(totalProgress / totalEnrolled) : 0
+
+    return [
+      {
+        title: "Tổng số khóa học",
+        value: totalEnrolled,
+        sub: "Truy cập trọn đời",
+        icon: <BookOpen className="text-blue-600" size={24} />,
+        bg: "bg-blue-50",
+        text: "text-blue-600",
+      },
+      {
+        title: "Đã hoàn thành",
+        value: completedCourses,
+        sub: `${totalEnrolled > 0 ? Math.round((completedCourses / totalEnrolled) * 100) : 0}% tỷ lệ hoàn thành`,
+        icon: <CheckCircle className="text-blue-600" size={24} />,
+        bg: "bg-blue-50",
+        text: "text-blue-600",
+      },
+      {
+        title: "Tiến độ trung bình",
+        value: `${avgScore}%`,
+        sub: "Tiếp tục học nhé!",
+        icon: <TrendingUp className="text-purple-600" size={24} />,
+        bg: "bg-purple-50",
+        text: "text-purple-600",
+      },
+    ]
+  }, [data])
+
+  // --- 3. FILTER & SEARCH CLIENT-SIDE ---
+  const filteredData = data.filter((item) => {
+    const matchesSearch = item.course_name
+      .toLowerCase()
+      .includes(searchText.toLowerCase())
+    const matchesStatus =
+      statusFilter === "all" ? true : item.status === statusFilter
+    return matchesSearch && matchesStatus
+  })
+
+  // --- 4. CẤU HÌNH CỘT (MAPPING DB FIELDS) ---
+  const columns: ColumnsType<HistoryItem> = [
     {
-      title: "COURSE NAME",
-      dataIndex: "title",
-      key: "title",
+      title: "TÊN KHÓA HỌC",
+      dataIndex: "course_name", // Khớp với SQL: c.title as course_name
+      key: "course_name",
       width: 350,
       render: (text, record) => (
         <div className="flex items-center gap-4 py-2">
           <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center overflow-hidden border border-gray-200">
-            <img
-              src={record.image}
-              alt={text}
-              className="w-8 h-8 object-cover"
-            />
+            {record.thumbnail_url ? (
+              <img
+                src={record.thumbnail_url}
+                alt={text}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <BookOpen size={20} className="text-gray-400" />
+            )}
           </div>
           <div>
             <Link
-              href={`/courses/${record.id}`}
-              className="font-bold text-gray-800 hover:text-green-600 text-base block mb-0.5"
+              href={`/courses/${record.course_id}`}
+              className="font-bold text-gray-800 hover:text-blue-600 text-base block mb-0.5 line-clamp-1"
             >
               {text}
             </Link>
+            {/* Giả lập category vì SQL chưa join bảng categories, bạn có thể update SQL sau */}
             <span className="text-xs text-gray-400 font-medium bg-gray-100 px-2 py-0.5 rounded-full">
-              {record.category}
+              Khóa học tổng quan
             </span>
           </div>
         </div>
       ),
     },
     {
-      title: "ENROLLED ON",
-      dataIndex: "enrolledOn",
-      key: "enrolledOn",
+      title: "NGÀY THAM GIA",
+      dataIndex: "enrolled_at", // Khớp với SQL
+      key: "enrolled_at",
       className: "text-gray-500 font-medium",
+      render: (date) =>
+        date ? new Date(date).toLocaleDateString("vi-VN") : "--", // Format ngày, xử lý TH null
     },
     {
-      title: "PROGRESS",
-      dataIndex: "progress",
-      key: "progress",
+      title: "TIẾN ĐỘ",
+      dataIndex: "progress_percentage", // Khớp với SQL
+      key: "progress_percentage",
       width: 200,
       render: (percent) => (
         <div className="pr-4">
           <div className="flex justify-between text-xs mb-1 font-semibold text-gray-600">
-            <span>{percent}%</span>
+            <span>{Math.round(percent)}%</span>
           </div>
           <Progress
-            percent={percent}
+            percent={Math.round(percent)}
             showInfo={false}
-            strokeColor={percent === 100 ? "#10b981" : "#3b82f6"}
+            strokeColor="#3b82f6"
             trailColor="#e5e7eb"
             size="small"
             className="mb-0"
@@ -168,50 +186,76 @@ export default function PersonalHistoryPage() {
       ),
     },
     {
-      title: "STATUS",
+      title: "TRẠNG THÁI",
       dataIndex: "status",
-      key: "status",
       render: (status) => {
+        if (status === "assigned") {
+          return (
+            <Tag
+              color="error"
+              className="bg-red-50 text-red-600 rounded-full border-0 font-semibold px-3 py-1"
+            >
+              🚨 Bắt buộc học
+            </Tag>
+          )
+        }
         const isCompleted = status === "completed"
         return (
           <Tag
-            color={isCompleted ? "success" : "warning"}
+            color={isCompleted ? "processing" : "warning"}
             className={`px-3 py-1 rounded-full border-0 font-semibold flex items-center gap-1 w-fit ${
               isCompleted
-                ? "bg-green-50 text-green-600"
+                ? "bg-blue-50 text-blue-600"
                 : "bg-yellow-50 text-yellow-600"
             }`}
           >
             <span
-              className={`w-1.5 h-1.5 rounded-full ${isCompleted ? "bg-green-600" : "bg-yellow-600"}`}
+              className={`w-1.5 h-1.5 rounded-full ${
+                isCompleted ? "bg-blue-600" : "bg-yellow-600"
+              }`}
             ></span>
-            {isCompleted ? "Completed" : "In Progress"}
+            {isCompleted ? "Hoàn thành" : "Đang học"}
           </Tag>
         )
       },
     },
     {
-      title: "ACTION",
+      title: "THAO TÁC",
       key: "action",
       align: "right",
       render: (_, record) => {
+        // Nếu là khóa học Bắt buộc, đổi chữ nút bấm
+        if (record.status === "assigned") {
+          return (
+            <Link href={`/courses/${record.course_id}`}>
+              <Button
+                type="primary"
+                danger
+                className="bg-red-500 flex items-center gap-2 border-none shadow-md"
+              >
+                Bắt Đầu Ngay <PlayCircle size={16} />
+              </Button>
+            </Link>
+          )
+        }
         if (record.status === "completed") {
           return (
             <Button
               icon={<Award size={16} />}
-              className="text-gray-600 border-gray-300 hover:!text-green-600 hover:!border-green-600 flex items-center gap-2"
+              className="text-gray-600 border-gray-300 hover:!text-blue-600 hover:!border-blue-600 flex items-center gap-2"
+              onClick={() => message.info("Tính năng chứng chỉ sắp ra mắt!")}
             >
-              Certificate
+              Chứng chỉ
             </Button>
           )
         }
         return (
-          <Link href={`/courses/${record.id}`}>
+          <Link href={`/courses/${record.course_id}/learning`}>
             <Button
               type="primary"
-              className="bg-green-500 hover:!bg-green-600 border-none shadow-md flex items-center gap-2"
+              className="bg-blue-600 hover:!bg-blue-700 border-none shadow-md flex items-center gap-2"
             >
-              Continue <PlayCircle size={16} />
+              Tiếp tục <PlayCircle size={16} />
             </Button>
           </Link>
         )
@@ -226,60 +270,69 @@ export default function PersonalHistoryPage() {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
             <h1 className="text-2xl font-bold text-gray-900 mb-1">
-              Personal Learning History
+              Learning History
             </h1>
             <p className="text-gray-500">
-              Track your progress, view enrollments, and access completion
-              certificates.
+              Theo dõi tiến độ, xem các khóa học đã tham gia và truy cập chứng
+              chỉ khi hoàn thành.
             </p>
           </div>
           <Button
             type="primary"
             icon={<Download size={18} />}
-            className="bg-green-500 hover:!bg-green-600 h-10 px-5 border-none shadow-sm font-medium"
+            // ✅ Đổi màu nền và hover cho nút Export Report
+            className="bg-blue-600 hover:!bg-blue-700 h-10 px-5 border-none shadow-sm font-medium"
           >
-            Export Report
+            Xuất báo cáo
           </Button>
         </div>
 
         {/* STATS CARDS */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {MOCK_STATS.map((stat, idx) => (
-            <Card
-              key={idx}
-              bordered={false}
-              className="shadow-sm rounded-xl hover:shadow-md transition-shadow"
-            >
-              <div className="flex items-start justify-between">
-                <div>
-                  <div
-                    className={`w-12 h-12 rounded-lg ${stat.bg} flex items-center justify-center mb-4`}
-                  >
-                    {stat.icon}
+          {loading
+            ? // Skeleton loading cho Cards
+              [1, 2, 3].map((i) => (
+                <Card key={i} bordered={false} className="shadow-sm rounded-xl">
+                  <Skeleton active avatar paragraph={{ rows: 1 }} />
+                </Card>
+              ))
+            : stats.map((stat, idx) => (
+                <Card
+                  key={idx}
+                  bordered={false}
+                  className="shadow-sm rounded-xl hover:shadow-md transition-shadow"
+                >
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <div
+                        className={`w-12 h-12 rounded-lg ${stat.bg} flex items-center justify-center mb-4`}
+                      >
+                        {stat.icon}
+                      </div>
+                      <h3 className="text-gray-500 font-medium text-sm uppercase tracking-wide">
+                        {stat.title}
+                      </h3>
+                      <div className="flex items-end gap-2 mt-1">
+                        <span className="text-3xl font-bold text-gray-900">
+                          {stat.value}
+                        </span>
+                      </div>
+                      <p className={`text-xs font-semibold mt-2 ${stat.text}`}>
+                        {stat.sub}
+                      </p>
+                    </div>
                   </div>
-                  <h3 className="text-gray-500 font-medium text-sm uppercase tracking-wide">
-                    {stat.title}
-                  </h3>
-                  <div className="flex items-end gap-2 mt-1">
-                    <span className="text-3xl font-bold text-gray-900">
-                      {stat.value}
-                    </span>
+                  <div className="mt-4 h-1 w-full bg-gray-100 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full ${stat.text.replace(
+                        "text",
+                        "bg"
+                      )}`}
+                      style={{ width: "70%" }}
+                    ></div>
                   </div>
-                  <p className={`text-xs font-semibold mt-2 ${stat.text}`}>
-                    {stat.sub}
-                  </p>
-                </div>
-                {/* Có thể thêm chart nhỏ ở đây nếu muốn giống y hệt ảnh */}
-              </div>
-              {/* Fake progress bar dưới cùng card */}
-              <div className="mt-4 h-1 w-full bg-gray-100 rounded-full overflow-hidden">
-                <div
-                  className={`h-full rounded-full ${stat.text.replace("text", "bg")}`}
-                  style={{ width: "70%" }}
-                ></div>
-              </div>
-            </Card>
-          ))}
+                </Card>
+              ))}
         </div>
 
         {/* FILTERS & SEARCH */}
@@ -288,43 +341,23 @@ export default function PersonalHistoryPage() {
             <Select
               defaultValue="all"
               className="w-32"
+              onChange={setStatusFilter}
               options={[
-                { value: "all", label: "Status: All" },
-                { value: "completed", label: "Completed" },
-                { value: "progress", label: "In Progress" },
+                { value: "all", label: "Tất cả" },
+                { value: "completed", label: "Hoàn thành" },
+                { value: "in_progress", label: "Đang học" },
+                { value: "assigned", label: "Bắt buộc" },
               ]}
             />
-            <Select
-              defaultValue="6months"
-              className="w-40"
-              options={[
-                { value: "6months", label: "Date: Last 6 Months" },
-                { value: "year", label: "Date: Last Year" },
-              ]}
-            />
-            <Select
-              defaultValue="all_cat"
-              className="w-40"
-              options={[
-                { value: "all_cat", label: "Category: All" },
-                { value: "tech", label: "Technical" },
-              ]}
-            />
+            {/* Các filter khác có thể thêm sau nếu API hỗ trợ */}
           </div>
 
           <div className="flex items-center gap-3 w-full md:w-auto">
-            <span className="text-xs text-gray-400 font-medium uppercase">
-              Sort by:
-            </span>
-            <Select
-              defaultValue="recent"
-              variant="borderless"
-              className="font-semibold text-gray-700 w-32"
-              options={[{ value: "recent", label: "Most Recent" }]}
-            />
             <div className="relative">
               <Input
-                placeholder="Search courses..."
+                placeholder="Tìm kiếm khóa học..."
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
                 prefix={<Search size={16} className="text-gray-400" />}
                 className="rounded-lg w-full md:w-64 bg-gray-50 border-gray-200 hover:bg-white focus:bg-white transition-colors"
               />
@@ -336,24 +369,22 @@ export default function PersonalHistoryPage() {
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
           <Table
             columns={columns}
-            dataSource={data}
-            rowKey="id"
-            pagination={false}
+            dataSource={filteredData}
+            // ✅ ĐÃ SỬA LỖI KEY BỊ TRÙNG Ở ĐÂY
+            rowKey={(record) => `${record.enrollment_id}_${record.course_id}`}
+            loading={loading}
+            pagination={{
+              pageSize: 5,
+              showSizeChanger: false,
+              total: filteredData.length,
+              showTotal: (total, range) =>
+                `Hiển thị ${range[0]}-${range[1]} trong tổng ${total} khóa học`,
+            }}
+            locale={{
+              emptyText: <Empty description="Bạn chưa tham gia khóa học nào" />,
+            }}
             className="custom-history-table"
           />
-
-          {/* Custom Pagination Footer giống ảnh */}
-          <div className="p-4 border-t border-gray-100 flex justify-between items-center">
-            <span className="text-sm text-gray-500">
-              Showing 1-5 of 12 courses
-            </span>
-            <Pagination
-              defaultCurrent={1}
-              total={12}
-              pageSize={5}
-              showSizeChanger={false}
-            />
-          </div>
         </div>
       </div>
     </div>
