@@ -1,3 +1,5 @@
+// Sửa create-user-form.tsx - loại bỏ max-w-2xl wrapper
+// src/components/forms/create-user-form.tsx
 "use client"
 
 import { useState, useActionState, startTransition, useEffect } from "react"
@@ -7,28 +9,31 @@ import {
   Select,
   Button,
   Typography,
-  Flex,
-  Divider,
+  Space,
   message,
 } from "antd"
 import {
   UserManagementState,
   createUserByAdminAction,
 } from "@/action/user/userManagementActions"
-import { RoleConfig, Role } from "@/enum/role.enum"
+import { RoleConfig } from "@/enum/role.enum"
+import { t } from "@/lib/i18n"
+import useLanguageStore from "@/store/useLanguageStore"
 
-const { Text, Title } = Typography
-const { TextArea } = Input
+const { Text } = Typography
 
 interface CreateUserFormProps {
   roles: { id: number; name: string }[]
+  departments: { id: number; name: string }[]
   onSuccess?: () => void
 }
 
 export default function CreateUserForm({
   roles,
+  departments,
   onSuccess,
 }: CreateUserFormProps) {
+  const { language } = useLanguageStore()
   const [form] = Form.useForm()
   const [isLoading, setIsLoading] = useState(false)
 
@@ -67,6 +72,7 @@ export default function CreateUserForm({
     formData.append("password", values.password)
     formData.append("fullName", values.fullName)
     formData.append("roleId", values.roleId)
+    formData.append("departmentId", values.departmentId)
 
     startTransition(() => {
       createUserAction(formData)
@@ -75,96 +81,90 @@ export default function CreateUserForm({
     setIsLoading(false)
   }
 
-  // Get role label for display
-  const getRoleLabel = (value: string | number) => {
-    const roleEntry = Object.entries(RoleConfig).find(
-      ([_, config]) => config.id === Number(value)
-    )
-    return roleEntry ? roleEntry[1].label : ""
-  }
-
   return (
-    <Flex
-      justify="center"
-      align="center"
-      style={{ width: "100%", minHeight: "600px" }}
-    >
-      <Flex vertical gap={15} style={{ width: "100%", maxWidth: "600px" }}>
-        <Title level={4} style={{ color: "#1677ff", marginBottom: 0 }}>
-          Create New User Account
-        </Title>
-
-        <Divider style={{ margin: "8px 0 16px" }} />
-
-        <Form
-          form={form}
-          layout="vertical"
-          style={{ width: "100%" }}
-          onFinish={handleSubmit}
+    <div style={{ width: "100%", maxWidth: "600px" }}>
+      <Form
+        form={form}
+        layout="vertical"
+        onFinish={handleSubmit}
+        autoComplete="off"
+      >
+        {/* Email Field */}
+        <Form.Item
+          label={t("form.label_email", language)}
+          name="email"
+          rules={[
+            { required: true, message: t("form.validation_email_required", language) },
+            { type: "email", message: t("form.validation_email_invalid", language) },
+          ]}
+          help={state.errors?.email?.[0]}
+          validateStatus={state.errors?.email ? "error" : ""}
         >
-          {/* Email Field */}
-          <Form.Item
-            label={<Text strong>Email Address:</Text>}
-            name="email"
-            rules={[
-              { required: true, message: "Please enter email address" },
-              { type: "email", message: "Please enter a valid email address" },
-            ]}
-            help={state.errors?.email?.[0]}
-            validateStatus={state.errors?.email ? "error" : ""}
-          >
-            <Input
-              placeholder="user@company.com"
-              type="email"
-              size="large"
-              disabled={isLoading}
-            />
-          </Form.Item>
+          <Input
+            size="middle"
+            placeholder={t("form.placeholder_email", language)}
+            type="email"
+            disabled={isLoading}
+            autoComplete="off"
+            className="rounded-md"
+          />
+        </Form.Item>
 
-          {/* Password Field */}
-          <Form.Item
-            label={<Text strong>Password:</Text>}
-            name="password"
-            rules={[
-              { required: true, message: "Please enter password" },
-              { min: 6, message: "Password must be at least 6 characters" },
-            ]}
-            help={state.errors?.password?.[0]}
-            validateStatus={state.errors?.password ? "error" : ""}
-          >
-            <Input.Password
-              placeholder="At least 6 characters"
-              size="large"
-              disabled={isLoading}
-            />
-          </Form.Item>
+        {/* Password Field */}
+        <Form.Item
+          label={t("form.label_password", language)}
+          name="password"
+          rules={[
+            { required: true, message: t("form.validation_password_required", language) },
+            { min: 6, message: t("form.validation_password_min", language) },
+          ]}
+          help={state.errors?.password?.[0]}
+          validateStatus={state.errors?.password ? "error" : ""}
+        >
+          <Input.Password
+            size="middle"
+            placeholder={t("form.placeholder_password", language)}
+            disabled={isLoading}
+            autoComplete="new-password"
+            className="rounded-md"
+          />
+        </Form.Item>
 
-          {/* Full Name Field */}
-          <Form.Item
-            label={<Text strong>Full Name:</Text>}
-            name="fullName"
-            rules={[
-              { required: true, message: "Please enter full name" },
-              { min: 2, message: "Full name must be at least 2 characters" },
-            ]}
-            help={state.errors?.fullName?.[0]}
-            validateStatus={state.errors?.fullName ? "error" : ""}
-          >
-            <Input placeholder="John Doe" size="large" disabled={isLoading} />
-          </Form.Item>
+        {/* Full Name Field */}
+        <Form.Item
+          label={t("form.label_full_name", language)}
+          name="fullName"
+          rules={[
+            { required: true, message: t("form.validation_fullname_required", language) },
+            { min: 2, message: t("form.validation_fullname_min", language) },
+          ]}
+          help={state.errors?.fullName?.[0]}
+          validateStatus={state.errors?.fullName ? "error" : ""}
+        >
+          <Input
+            size="middle"
+            placeholder={t("form.placeholder_full_name", language)}
+            disabled={isLoading}
+            className="rounded-md"
+          />
+        </Form.Item>
 
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Role Field */}
           <Form.Item
-            label={<Text strong>Role:</Text>}
+            label={t("form.label_role", language)}
             name="roleId"
-            rules={[{ required: true, message: "Please select a role" }]}
+            rules={[
+              { required: true, message: t("form.validation_role_required", language) },
+            ]}
             help={state.errors?.roleId?.[0]}
             validateStatus={state.errors?.roleId ? "error" : ""}
           >
             <Select
-              placeholder="Select a role for the user"
-              size="large"
+              size="middle"
+              placeholder={t("form.placeholder_role", language)}
               disabled={isLoading}
+              className="rounded-md"
               options={Object.entries(RoleConfig).map(([_, config]) => ({
                 label: config.label,
                 value: config.id,
@@ -172,22 +172,50 @@ export default function CreateUserForm({
             />
           </Form.Item>
 
-          {/* Submit Buttons */}
-          <Flex gap={8} justify="center" style={{ marginTop: "24px" }}>
-            <Button size="large" onClick={() => form.resetFields()}>
-              Reset
+          {/* Department Field */}
+          <Form.Item
+            label={t("form.label_department", language)}
+            name="departmentId"
+            rules={[
+              {
+                required: true,
+                message: t("form.validation_department_required", language),
+              },
+            ]}
+            help={state.errors?.departmentId?.[0]}
+            validateStatus={state.errors?.departmentId ? "error" : ""}
+          >
+            <Select
+              size="middle"
+              placeholder={t("form.placeholder_department", language)}
+              disabled={isLoading}
+              className="rounded-md"
+              options={departments.map((department) => ({
+                label: department.name,
+                value: department.id,
+              }))}
+            />
+          </Form.Item>
+        </div>
+
+        {/* Submit Buttons */}
+        <Form.Item className="mt-4">
+          <Space className="w-full flex justify-end">
+            <Button size="middle" onClick={() => form.resetFields()}>
+              {t("form.btn_reset", language)}
             </Button>
             <Button
+              size="middle"
               type="primary"
-              size="large"
               htmlType="submit"
               loading={isLoading}
+              className="px-8"
             >
-              Create User
+              {t("form.btn_create_user", language)}
             </Button>
-          </Flex>
-        </Form>
-      </Flex>
-    </Flex>
+          </Space>
+        </Form.Item>
+      </Form>
+    </div>
   )
 }

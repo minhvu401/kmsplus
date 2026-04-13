@@ -1,102 +1,165 @@
-'use client';
+"use client"
 
-import { useState, useActionState, startTransition } from 'react';
-import { Form, Input, Select, Button, Typography, Flex, Modal, Divider } from 'antd';
-import { State, createAnswer } from '@/action/question/questionActions';
+import { useState, useActionState, startTransition, useEffect } from "react"
+import { Form, Input, Select, Button, Typography, Flex, message } from "antd"
+import { State, createAnswer } from "@/action/question/questionActions"
+import { useRouter } from "next/navigation"
+import RichTextEditor from "@/components/ui/RichTextEditor"
 
-const { Text } = Typography;
-const { TextArea } = Input;
+const { Text } = Typography
+
+// Wrapper component for Ant Design Form integration
+interface ContentEditorProps {
+  value?: string
+  onChange?: (value: string) => void
+  placeholder?: string
+}
+
+function ContentEditor({
+  value = "",
+  onChange,
+  placeholder,
+}: ContentEditorProps) {
+  return (
+    <RichTextEditor
+      value={value}
+      onChange={(val) => onChange?.(val)}
+      placeholder={placeholder}
+      size="compact"
+    />
+  )
+}
 
 export default function CreateAnswerForm({
-    userId,
-    questionId,
+  userId,
+  questionId,
 }: {
-    userId: number;
-    questionId: number;
+  userId: number
+  questionId: number
 }) {
-    const [form] = Form.useForm();
-    const [isSubmitVisible, setSubmitVisible] = useState(false);
-    const [contentCount, setContentCount] = useState(0);
+  const [form] = Form.useForm()
+  const [contentCount, setContentCount] = useState(0)
+  const [messageApi, contextHolder] = message.useMessage()
+  const router = useRouter()
 
-    const initialState: State = { message: null, errors: {} };
-    const [state, createAnswerAction] = useActionState(createAnswer, initialState);
+  const initialState: State = { message: null, errors: {} }
+  const [state, createAnswerAction, isCreatingAnswer] = useActionState(
+    createAnswer,
+    initialState
+  )
 
-    const handleSubmit = () => {
-        setSubmitVisible(false);
-        form.submit();
-    };
+  useEffect(() => {
+    if (!state?.message) return
 
-    return (
-        <>
-            <Flex vertical gap={16} style={{ width: '1100px', background: '#fff' }}>
-                <Form
-                    form={form}
-                    layout="vertical"
-                    style={{ width: '100%' }}
-                    onFinish={async (values) => {
-                        const formData = new FormData();
-                        formData.append('user_id', String(userId));
-                        formData.append('question_id', String(questionId));
-                        formData.append('content', values.content);
+    if (state.message === "Answer created successfully") {
+      form.resetFields()
+      setContentCount(0)
+      messageApi.success("Your answer has been posted successfully.")
+      startTransition(() => {
+        router.refresh()
+      })
+      return
+    }
 
-                        startTransition(() => {
-                            createAnswerAction(formData);
-                        });
-                    }}
-                >
+    const errorDetails = state.errors
+      ? Object.values(state.errors).flat().filter(Boolean).join(" | ")
+      : ""
 
-                    <Form.Item
-                        name="content"
-                        rules={[{ required: true, message: 'Please provide more details' },
-                        { min: 15, message: 'Answers must be at least 15 characters' }
-                        ]}
-                    >
-                        <TextArea
-                            rows={4}
-                            placeholder="Enter your answer here..."
-                            maxLength={600}
-                            onChange={(e) => {
-                                setContentCount(e.target.value.length);
-                            }}
-                            style={{ resize: 'none' }}
-                        />
-                    </Form.Item>
-                    <Text type="secondary">Character limit {contentCount} / 600</Text>
-                    <Flex justify="end" gap={16} style={{ marginTop: 2 }}>
-                        <Button type="primary" size="large" onClick={() => setSubmitVisible(true)}>
-                            Submit
-                        </Button>
-                    </Flex>
+    if (errorDetails) {
+      messageApi.error(errorDetails)
+      return
+    }
 
-                    {state.message && (
-                        <>
-                            <Text type="danger" style={{ display: 'block', marginTop: 2 }}>
-                                {state.message}
-                            </Text>
-                            {state.errors?.content?.map((err) => (
-                                <Text key={err} type="danger" style={{ display: 'block' }}>- {err}</Text>
-                            ))}
-                        </>
-                    )}
-                </Form>
-            </Flex>
+    if (
+      state.message === "Missing or invalid fields. Failed to create answer."
+    ) {
+      return
+    }
 
+    messageApi.error(state.message)
+  }, [state, messageApi, form, router])
 
-            <Modal
-                title="Confirmation"
-                open={isSubmitVisible}
-                onCancel={() => setSubmitVisible(false)}
-                footer={[
-                    <Button key="cancel" onClick={() => setSubmitVisible(false)}>
-                        Cancel
-                    </Button>,
-                    <Button key="submit" type="primary" onClick={handleSubmit}>
-                        Submit
-                    </Button>,
-                ]}
+  return (
+    <>
+      {contextHolder}
+      <Flex
+        vertical
+        gap={8}
+        style={{ width: "100%", maxWidth: 900, background: "#fff" }}
+      >
+        <Form
+          form={form}
+          layout="vertical"
+          style={{ width: "100%" }}
+          onFinish={async (values) => {
+            const formData = new FormData()
+            formData.append("user_id", String(userId))
+            formData.append("question_id", String(questionId))
+            formData.append("content", values.content)
+
+            startTransition(() => {
+              createAnswerAction(formData)
+            })
+          }}
+        >
+          <Form.Item
+            name="content"
+            style={{ marginBottom: 8 }}
+            getValueFromEvent={(val: string) => {
+              // Strip HTML tags to count plain text characters
+              const plainText = val
+                ? val
+                    .replace(/<[^>]*>/g, "")
+                    .replace(/&nbsp;/g, " ")
+                    .trim()
+                : ""
+              setContentCount(plainText.length)
+              return val
+            }}
+            rules={[
+              { required: true, message: "Please provide more details" },
+              {
+                validator: (_, value) => {
+                  // Only validate length if user has entered content
+                  if (!value) {
+                    return Promise.resolve() // Let required rule handle empty case
+                  }
+                  // Strip HTML tags to get plain text for validation
+                  const plainText = value
+                    .replace(/<[^>]*>/g, "")
+                    .replace(/&nbsp;/g, " ")
+                    .trim()
+                  if (plainText.length > 0 && plainText.length < 15) {
+                    return Promise.reject(
+                      "Answers must be at least 15 characters"
+                    )
+                  }
+                  return Promise.resolve()
+                },
+              },
+            ]}
+          >
+            <ContentEditor placeholder="Enter your answer here..." />
+          </Form.Item>
+
+          <Flex justify="space-between" align="center">
+            <Text type="secondary">Character limit {contentCount} / 600</Text>
+            <Button
+              type="primary"
+              size="large"
+              htmlType="submit"
+              loading={isCreatingAnswer}
+              disabled={contentCount < 15}
+              style={{
+                opacity: contentCount < 15 ? 0.5 : 1,
+                cursor: contentCount < 15 ? "not-allowed" : "pointer",
+              }}
             >
-                <Text>Are you sure you want to submit this answer?</Text>
-            </Modal>
-        </>
-    );
+              Send
+            </Button>
+          </Flex>
+        </Form>
+      </Flex>
+    </>
+  )
 }

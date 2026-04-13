@@ -6,13 +6,13 @@ import bcrypt from "bcryptjs"
 import { cookies } from "next/headers"
 
 /**
- * Type cho User response
+ * Type cho User response hiiiii
  */
 export type User = {
   id: string
   email: string
   full_name: string | null
-  // role?: string
+  role?: string
   avatar_url?: string
   created_at?: Date
 }
@@ -34,10 +34,9 @@ export async function getAllUsersAction(): Promise<User[]> {
   const users = await sql`
     SELECT id, email, full_name
     FROM users 
-    WHERE is_deleted = false OR is_deleted IS NULL
+    WHERE status = 'active'
     ORDER BY created_at DESC
   `
-  console.log("Fetched users:", users) // Debug log
   return users as User[]
 }
 
@@ -49,9 +48,18 @@ export async function getUserByEmailAction(
   email: string
 ): Promise<User | null> {
   const users = await sql`
-    SELECT id, email, full_name, created_at 
-    FROM users 
-    WHERE email = ${email} AND (is_deleted = false OR is_deleted IS NULL)
+    SELECT 
+      u.id, 
+      u.email, 
+      u.full_name, 
+      u.avatar_url,
+      u.created_at,
+      r.name as role
+    FROM users u
+    LEFT JOIN user_roles ur ON u.id = ur.user_id
+    LEFT JOIN roles r ON ur.role_id = r.id
+    WHERE u.email = ${email} AND u.status = 'active'
+    LIMIT 1
   `
   return users.length > 0 ? (users[0] as User) : null
 }
@@ -69,9 +77,18 @@ export async function getCurrentUserInforAction(): Promise<User | null> {
     const id = decoded.id
 
     const users = await sql`
-      SELECT email, full_name, avatar_url, created_at 
-      FROM users 
-      WHERE id = ${id} AND (is_deleted = false OR is_deleted IS NULL)
+      SELECT 
+        u.id, 
+        u.email, 
+        u.full_name, 
+        u.avatar_url, 
+        u.created_at,
+        r.name as role
+      FROM users u
+      LEFT JOIN user_roles ur ON u.id = ur.user_id
+      LEFT JOIN roles r ON ur.role_id = r.id
+      WHERE u.id = ${id} AND u.status = 'active'
+      LIMIT 1
     `
     return users.length > 0 ? (users[0] as User) : null
   } catch (error) {
@@ -82,9 +99,9 @@ export async function getCurrentUserInforAction(): Promise<User | null> {
 
 export async function getUserDetail(id: string): Promise<User | null> {
   const users = await sql`
-    SELECT  email, full_name, avatar_url, created_at 
+    SELECT id, email, full_name, avatar_url, created_at 
     FROM users 
-    WHERE id = ${id} AND (is_deleted = false OR is_deleted IS NULL)
+    WHERE id = ${id} AND status = 'active'
   `
   return users.length > 0 ? (users[0] as User) : null
 }
@@ -107,7 +124,7 @@ export async function getCurrentUserProfileAction(): Promise<User | null> {
     const users = await sql`
       SELECT id, email, full_name, avatar_url, created_at 
       FROM users 
-      WHERE id = ${id} AND (is_deleted = false OR is_deleted IS NULL)
+      WHERE id = ${id} AND status = 'active'
     `
     return users.length > 0 ? (users[0] as User) : null
   } catch (error) {
@@ -233,7 +250,7 @@ export async function updateUserProfileAction(updateData: {
     const users = await sql`
       SELECT full_name, avatar_url
       FROM users 
-      WHERE id = ${id} AND (is_deleted = false OR is_deleted IS NULL)
+      WHERE id = ${id} AND status = 'active'
     `
 
     if (users.length === 0) {
@@ -297,7 +314,7 @@ export async function updateUserPasswordAction(passwordData: {
     const users = await sql`
       SELECT id, email, password_hash
       FROM users 
-      WHERE id = ${id} AND (is_deleted = false OR is_deleted IS NULL)
+      WHERE id = ${id} AND status = 'active'
     `
 
     if (users.length === 0) {
@@ -363,7 +380,7 @@ export async function deleteUserAction(
 
     await sql`
       UPDATE users 
-      SET is_deleted = true, deleted_at = NOW()
+      SET status = 'inactive'
       WHERE email = ${email}
     `
 

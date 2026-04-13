@@ -2,7 +2,17 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { Button, Spin, message, Input, Form, Select, Modal, Checkbox } from "antd"
+import {
+  Button,
+  Spin,
+  message,
+  Input,
+  Form,
+  Select,
+  Modal,
+  Checkbox,
+  InputNumber,
+} from "antd"
 import {
   ArrowLeftOutlined,
   ArrowRightOutlined,
@@ -10,16 +20,15 @@ import {
   ExclamationCircleOutlined,
   PlusOutlined,
   DeleteOutlined,
+  WarningOutlined,
 } from "@ant-design/icons"
 import useUserStore from "@/store/useUserStore"
+import useLanguageStore from "@/store/useLanguageStore"
+import { t } from "@/lib/i18n"
 import { sanitizeTitle, sanitizeDescription } from "@/utils/sanitize"
 
-const steps = [
-  "Thông Tin Cơ Bản",
-  "Cấu Hình Quiz",
-  "Thêm Câu Hỏi",
-  "Xem Lại & Công Bố",
-]
+// Constants
+const TOTAL_QUIZ_POINTS = 100 // Tổng điểm quiz cố định
 
 interface QuizPayload {
   course_id: number
@@ -30,6 +39,8 @@ interface QuizPayload {
   passing_score?: number
   max_attempts?: number
   questions?: Question[]
+  targetType?: "PUBLIC" | "DEPARTMENTS"
+  targetDeptIds?: number[]
 }
 
 interface StepErrors {
@@ -53,14 +64,14 @@ interface AddQuestionsModalState {
 
 /**
  * Create Quiz Page with Multi-Step Form
- * 
+ *
  * User Stories Implementation:
  * [US-01] Basic Metadata: Nhập Tên bài thi (Title), Mô tả (Description)
  * [US-02] Set Duration: Cài đặt thời gian làm bài (phút)
  * [US-03] Pass Criteria: Cài đặt Passing Score (Điểm đạt)
  * [US-04] Max Attempts: Cài đặt số lần được phép làm lại bài thi
  * [US-06] Add from Bank: Mở popup Question Bank, chọn nhiều câu hỏi để add
- * 
+ *
  * Acceptance Criteria:
  * AC1: Trường Title là bắt buộc (Required)
  * AC2: Trường Description là tùy chọn (Optional)
@@ -70,6 +81,13 @@ interface AddQuestionsModalState {
 export default function CreateQuizPage() {
   const router = useRouter()
   const { user } = useUserStore()
+  const language = useLanguageStore((state) => state.language)
+
+  const steps = [
+    t("quiz.step_basic_info", language),
+    t("quiz.step_add_questions", language),
+    t("quiz.step_review_publish", language),
+  ]
 
   const [form] = Form.useForm()
   const [current, setCurrent] = useState(0)
@@ -92,6 +110,8 @@ export default function CreateQuizPage() {
     passing_score: 80,
     max_attempts: 3,
     questions: [],
+    targetType: "PUBLIC",
+    targetDeptIds: [],
   })
 
   // Modal state for adding questions
@@ -102,6 +122,11 @@ export default function CreateQuizPage() {
     selectedQuestionIds: [],
   })
 
+  // State for departments
+  const [departments, setDepartments] = useState<
+    Array<{ id: number; name: string }>
+  >([])
+
   // ============================================
   // VALIDATION LOGIC
   // ============================================
@@ -110,45 +135,74 @@ export default function CreateQuizPage() {
     const newErrors: StepErrors = {}
 
     if (!payload.title || !payload.title.trim()) {
-      newErrors.title = "Vui lòng nhập tên bài thi"
+      newErrors.title = t("quiz.validation_title_required", language)
     } else if (payload.title.length < 10) {
-      newErrors.title = "Tên bài thi không được ít hơn 10 ký tự"
+      newErrors.title = t("quiz.validation_title_min", language)
     } else if (payload.title.length > 255) {
-      newErrors.title = "Tên bài thi không vượt quá 255 ký tự"
+      newErrors.title = t("quiz.validation_title_max", language)
     }
 
     if (payload.description && payload.description.length > 1000) {
-      newErrors.description = "Mô tả không vượt quá 1000 ký tự"
+      newErrors.description = t("quiz.validation_description_max", language)
     }
 
     if (
       payload.time_limit_minutes !== undefined &&
       (payload.time_limit_minutes < 0 || payload.time_limit_minutes > 1440)
     ) {
-      newErrors.time_limit_minutes = "Thời gian làm bài phải từ 0 đến 1440 phút"
+      newErrors.time_limit_minutes = t("quiz.validation_duration_range", language)
     }
 
     if (
       payload.passing_score !== undefined &&
       (payload.passing_score <= 0 || payload.passing_score > 100)
     ) {
-      newErrors.passing_score = "Điểm đạt phải từ 1 đến 100"
+      newErrors.passing_score = t("quiz.validation_passing_score_range", language)
     }
 
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
 
+  // ============================================
+  // LOAD DEPARTMENTS ON MOUNT
+  // ============================================
+
+  useEffect(() => {
+    const loadDepartments = async () => {
+      try {
+        const { getAllDepartments } =
+          await import("@/action/department/departmentActions")
+        const deptData = await getAllDepartments()
+        setDepartments(deptData)
+      } catch (error) {
+        console.error("Failed to load departments:", error)
+        message.error(t("quiz.load_dept_error", language))
+      }
+    }
+
+    loadDepartments()
+  }, [language])
+
   const validateStep2 = (): boolean => {
+    // Require at least 10 questions
+    if (!payload.questions || payload.questions.length === 0) {
+      message.error(t("quiz.validation_no_questions", language))
+      return false
+    }
+
+    if (payload.questions.length < 10) {
+      message.error(
+        `${t("quiz.validation_questions_count", language)} (${t("common.current", language)}: ${payload.questions.length} ${t("quiz.questions_unit", language)})`
+      )
+      return false
+    }
+
     return true
   }
 
   const validateStep3 = (): boolean => {
-    // Require at least one question
-    if (!payload.questions || payload.questions.length === 0) {
-      message.error("Vui lòng thêm ít nhất một câu hỏi")
-      return false
-    }
+    // Step 3 là review & publish, không cần validate thêm
     return true
   }
 
@@ -164,8 +218,6 @@ export default function CreateQuizPage() {
         return validateStep2()
       case 2:
         return validateStep3()
-      case 3:
-        return validateStep4()
       default:
         return false
     }
@@ -224,23 +276,11 @@ export default function CreateQuizPage() {
     }
   }
 
-  const handlePassingScoreChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value
-
-    if (value === "") {
-      setPayload((prev) => ({
-        ...prev,
-        passing_score: 80,
-      }))
-    } else {
-      const numValue = parseInt(value, 10)
-      if (!isNaN(numValue) && numValue > 0 && numValue <= 100) {
-        setPayload((prev) => ({
-          ...prev,
-          passing_score: numValue,
-        }))
-      }
-    }
+  const handlePassingScoreChange = (value: number | null) => {
+    setPayload((prev) => ({
+      ...prev,
+      passing_score: value === null ? 80 : value,
+    }))
 
     if (errors.passing_score) {
       validateStep1()
@@ -276,15 +316,19 @@ export default function CreateQuizPage() {
    * - Hỗ trợ search
    */
   const handleOpenAddQuestionsModal = async () => {
+    // Get IDs of questions already in the quiz
+    const existingQuestionIds = (payload.questions || []).map((q) => q.id)
+
     setModalState((prev) => ({
       ...prev,
       visible: true,
       loading: true,
-      selectedQuestionIds: [],
+      selectedQuestionIds: existingQuestionIds, // Pre-select existing questions
     }))
     try {
       // Import từ action/question-bank/questionBankActions
-      const { getQuestions } = await import("@/action/question-bank/questionBankActions")
+      const { getQuestions } =
+        await import("@/action/question-bank/questionBankActions")
 
       // Gọi action để lấy danh sách câu hỏi
       const response = await getQuestions(1, 1000) // Lấy 1000 câu hỏi đầu tiên
@@ -305,7 +349,7 @@ export default function CreateQuizPage() {
           loading: false,
         }))
       } else {
-        message.warning("Không có câu hỏi nào trong kho dữ liệu")
+        message.warning(t("quiz.no_questions_in_bank", language))
         setModalState((prev) => ({
           ...prev,
           loading: false,
@@ -313,20 +357,21 @@ export default function CreateQuizPage() {
       }
     } catch (error) {
       console.error("Failed to load questions:", error)
-      message.error("Không thể tải danh sách câu hỏi")
+      message.error(t("quiz.load_questions_error", language))
       setModalState((prev) => ({
         ...prev,
         loading: false,
       }))
     }
-
   }
   /**
- * Filter câu hỏi theo search query
- */
-  const filteredQuestions = modalState.questions.filter((question) =>
-    question.text.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (question.description && question.description.toLowerCase().includes(searchQuery.toLowerCase()))
+   * Filter câu hỏi theo search query
+   */
+  const filteredQuestions = modalState.questions.filter(
+    (question) =>
+      question.text.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (question.description &&
+        question.description.toLowerCase().includes(searchQuery.toLowerCase()))
   )
   /**
    * Đóng modal thêm câu hỏi
@@ -340,10 +385,10 @@ export default function CreateQuizPage() {
   }
 
   /**
- * Xử lý chọn/bỏ chọn câu hỏi
- * - AC2: Cho phép check nhiều câu hỏi
- * - Fix: Cho phép deselect bằng cách click lại
- */
+   * Xử lý chọn/bỏ chọn câu hỏi
+   * - AC2: Cho phép check nhiều câu hỏi
+   * - Fix: Cho phép deselect bằng cách click lại
+   */
   const handleQuestionSelect = (questionId: number) => {
     setModalState((prev) => {
       const isCurrentlySelected = prev.selectedQuestionIds.includes(questionId)
@@ -358,22 +403,120 @@ export default function CreateQuizPage() {
   }
 
   /**
-   * [US-06] Scenario 1: Bấm "Add Selected" thêm câu hỏi vào bài thi
-   * [US-06] Scenario 2: Tránh trùng lặp - câu đã chọn sẽ bị disable
+   * [US-06] Scenario 1: Bấm "Add Selected" cập nhật danh sách câu hỏi
+   *
+   * Logic:
+   * - Những câu được select trong modal → giữ lại trong quiz
+   * - Những câu bị deselect trong modal → xóa khỏi quiz
    */
   const handleAddSelectedQuestions = () => {
-    const newQuestions = modalState.questions.filter((q) =>
+    // Get the questions that are currently selected in the modal
+    const selectedQuestions = modalState.questions.filter((q) =>
       modalState.selectedQuestionIds.includes(q.id)
     )
 
+    // Simply replace payload.questions with selected questions
     setPayload((prev) => ({
       ...prev,
-      questions: [...(prev.questions || []), ...newQuestions],
+      questions: selectedQuestions,
     }))
 
-    message.success(`Đã thêm ${newQuestions.length} câu hỏi`)
+    message.success(`Cập nhật ${selectedQuestions.length} câu hỏi`)
     handleCloseAddQuestionsModal()
   }
+
+  // State để tracking drag
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
+
+  /**
+   * [US-08] Drag & Drop handlers - Enhanced with drop zone highlighting
+   */
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    setDraggedIndex(index)
+    e.dataTransfer!.effectAllowed = "move"
+    e.dataTransfer!.setData("text/html", e.currentTarget.innerHTML)
+  }
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault()
+    e.dataTransfer!.dropEffect = "move"
+    setDragOverIndex(index)
+  }
+
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault()
+  }
+
+  const handleDragLeave = (e: React.DragEvent, index: number) => {
+    // Only clear dragOverIndex if leaving the specific item
+    if (dragOverIndex === index) {
+      setDragOverIndex(null)
+    }
+  }
+
+  const handleDrop = (e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault()
+    e.stopPropagation()
+
+    setDragOverIndex(null)
+
+    if (draggedIndex === null || draggedIndex === dropIndex) {
+      setDraggedIndex(null)
+      return
+    }
+
+    // Reorder questions
+    setPayload((prev) => {
+      const newQuestions = [...(prev.questions || [])]
+      if (
+        draggedIndex < newQuestions.length &&
+        dropIndex <= newQuestions.length
+      ) {
+        const draggedQuestion = newQuestions[draggedIndex]
+
+        // Remove from old position
+        newQuestions.splice(draggedIndex, 1)
+        // Insert at new position
+        newQuestions.splice(dropIndex, 0, draggedQuestion)
+
+        return {
+          ...prev,
+          questions: newQuestions,
+        }
+      }
+      return prev
+    })
+
+    setDraggedIndex(null)
+    message.success(t("quiz.reorder_success", language))
+  }
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null)
+    setDragOverIndex(null)
+  }
+
+  /**
+   * [US-09] Calculate total score and points per question
+   * Business Rule:
+   * - TotalScore = 100 (fixed)
+   * - PointsPerQuestion = 100 / Count(questions)
+   */
+  const calculateTotalScore = (): number => {
+    return TOTAL_QUIZ_POINTS
+  }
+
+  const calculatePointsPerQuestion = (): number => {
+    const questionCount = payload.questions?.length || 0
+    if (questionCount === 0) return 0
+    return TOTAL_QUIZ_POINTS / questionCount
+  }
+
+  const totalScore = calculateTotalScore()
+  const pointsPerQuestion = calculatePointsPerQuestion()
+  const passingScore = payload.passing_score || 80
+  const isPassingScoreValid = passingScore <= totalScore
 
   /**
    * Xóa câu hỏi khỏi bài thi
@@ -383,7 +526,7 @@ export default function CreateQuizPage() {
       ...prev,
       questions: (prev.questions || []).filter((q) => q.id !== questionId),
     }))
-    message.success("Đã xóa câu hỏi")
+    message.success(t("quiz.delete_question_success", language))
   }
 
   // ============================================
@@ -394,7 +537,7 @@ export default function CreateQuizPage() {
     const isValid = validateCurrentStep()
 
     if (!isValid) {
-      message.error("Vui lòng hoàn thành các trường bắt buộc")
+      message.error(t("quiz.validation_incomplete_fields", language))
       return
     }
 
@@ -406,6 +549,7 @@ export default function CreateQuizPage() {
 
     if (current < steps.length - 1) {
       setCurrent(current + 1)
+      setErrors({}) // Clear errors when moving to next step
     }
   }
 
@@ -417,18 +561,22 @@ export default function CreateQuizPage() {
   }
 
   const handleSubmit = async () => {
-    if (!stepValid.every((v) => v)) {
-      message.error("Vui lòng hoàn thành tất cả các bước")
+    // Only check step 0 and 1, step 2 is final review step
+    if (!stepValid[0] || !stepValid[1]) {
+      console.warn("[handleSubmit] Step validation failed:", stepValid)
+      message.error(t("quiz.validation_incomplete_steps", language))
       return
     }
 
     if (!user?.id) {
-      message.error("User ID not found")
+      console.warn("[handleSubmit] User not found")
+      message.error(t("quiz.user_not_found", language))
       return
     }
 
     if (!payload.course_id) {
-      message.error("Course ID is required")
+      console.warn("[handleSubmit] Course ID not found")
+      message.error(t("quiz.course_required", language))
       return
     }
 
@@ -464,13 +612,16 @@ export default function CreateQuizPage() {
 
       if (!response.ok) {
         const errorData = await response.json()
-        throw new Error(errorData.message || "Failed to create quiz")
+        console.error("[handleSubmit] API error:", errorData)
+        throw new Error(errorData.error || "Failed to create quiz")
       }
 
-      message.success("Tạo bài thi thành công!")
+      const responseData = await response.json()
+      console.log("[handleSubmit] Success:", responseData)
+      message.success(t("quiz.create_success", language))
       router.push("/quizzes")
     } catch (error) {
-      console.error(error)
+      console.error("[handleSubmit] Error:", error)
       const errorMsg = error instanceof Error ? error.message : "Unknown error"
       message.error(`Lỗi khi tạo bài thi: ${errorMsg}`)
     } finally {
@@ -486,7 +637,7 @@ export default function CreateQuizPage() {
     <div className="max-w-4xl mx-auto py-6 px-4">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Tạo Bài Thi Mới</h1>
+        <h1 className="text-3xl font-bold mb-2">{t("quiz.create_title", language)}</h1>
         <p className="text-gray-600">
           Bước {current + 1} / {steps.length}
         </p>
@@ -509,16 +660,18 @@ export default function CreateQuizPage() {
                 className="w-full"
               >
                 <div
-                  className={`flex flex-col items-center gap-2 ${index > current ? "opacity-50 cursor-not-allowed" : ""
-                    }`}
+                  className={`flex flex-col items-center gap-2 ${
+                    index > current ? "opacity-50 cursor-not-allowed" : ""
+                  }`}
                 >
                   <div
-                    className={`w-10 h-10 rounded-full flex items-center justify-center font-bold transition-all ${index === current
-                      ? "bg-blue-600 text-white ring-2 ring-blue-300"
-                      : stepValid[index]
-                        ? "bg-green-500 text-white"
-                        : "bg-gray-300 text-gray-600"
-                      }`}
+                    className={`w-10 h-10 rounded-full flex items-center justify-center font-bold transition-all ${
+                      index === current
+                        ? "bg-blue-600 text-white ring-2 ring-blue-300"
+                        : stepValid[index]
+                          ? "bg-green-500 text-white"
+                          : "bg-gray-300 text-gray-600"
+                    }`}
                   >
                     {stepValid[index] ? <CheckCircleOutlined /> : index + 1}
                   </div>
@@ -530,8 +683,9 @@ export default function CreateQuizPage() {
 
               {index < steps.length - 1 && (
                 <div
-                  className={`h-1 mt-3 rounded transition-colors ${stepValid[index] ? "bg-green-500" : "bg-gray-300"
-                    }`}
+                  className={`h-1 mt-3 rounded transition-colors ${
+                    stepValid[index] ? "bg-green-500" : "bg-gray-300"
+                  }`}
                 />
               )}
             </div>
@@ -546,14 +700,14 @@ export default function CreateQuizPage() {
           {current === 0 && (
             <div>
               <h2 className="text-2xl font-semibold mb-6">
-                Thông Tin Cơ Bản Bài Thi
+                {t("quiz.step_basic_info", language)}
               </h2>
 
               <Form form={form} layout="vertical" className="space-y-6">
                 <Form.Item
                   label={
                     <span>
-                      Tên Bài Thi{" "}
+                      {t("quiz.label_title", language)}{" "}
                       <span className="text-red-500 font-bold">*</span>
                     </span>
                   }
@@ -573,7 +727,7 @@ export default function CreateQuizPage() {
                 </Form.Item>
 
                 <Form.Item
-                  label="Mô Tả (Tùy Chọn)"
+                  label={t("quiz.label_description", language)}
                   validateStatus={errors.description ? "error" : ""}
                   help={errors.description}
                 >
@@ -590,7 +744,7 @@ export default function CreateQuizPage() {
                 </Form.Item>
 
                 <Form.Item
-                  label="Thời Gian Làm Bài (phút)"
+                  label={t("quiz.label_duration", language)}
                   validateStatus={errors.time_limit_minutes ? "error" : ""}
                   help={errors.time_limit_minutes}
                 >
@@ -608,7 +762,7 @@ export default function CreateQuizPage() {
                       style={{ flex: 1 }}
                     />
                     {payload.time_limit_minutes === 0 ||
-                      payload.time_limit_minutes === undefined ? (
+                    payload.time_limit_minutes === undefined ? (
                       <span className="text-green-600 font-medium whitespace-nowrap text-sm bg-green-50 px-3 py-2 rounded">
                         🔓 Unlimited
                       </span>
@@ -621,15 +775,14 @@ export default function CreateQuizPage() {
                 </Form.Item>
 
                 <Form.Item
-                  label="Điểm Đạt (Passing Score)"
+                  label={t("quiz.label_passing_score", language)}
                   validateStatus={errors.passing_score ? "error" : ""}
                   help={errors.passing_score}
                 >
                   <div className="flex gap-3 items-center">
-                    <Input
-                      type="number"
+                    <InputNumber
                       placeholder="VD: 50"
-                      value={payload.passing_score || ""}
+                      value={payload.passing_score || 80}
                       onChange={handlePassingScoreChange}
                       onBlur={handleBlur}
                       min={1}
@@ -637,6 +790,8 @@ export default function CreateQuizPage() {
                       size="large"
                       status={errors.passing_score ? "error" : ""}
                       style={{ flex: 1 }}
+                      stringMode={false}
+                      precision={0}
                     />
                     <span className="text-blue-600 font-medium whitespace-nowrap text-sm bg-blue-50 px-3 py-2 rounded">
                       📊 {payload.passing_score || 80}%
@@ -658,7 +813,8 @@ export default function CreateQuizPage() {
                       { label: "1", value: 1 },
                       { label: "2", value: 2 },
                       { label: "3", value: 3 },
-                      { label: "Không giới hạn", value: null },
+                      { label: "5", value: 5 },
+                      { label: "Không giới hạn", value: 999 },
                     ]}
                   />
                 </Form.Item>
@@ -686,20 +842,10 @@ export default function CreateQuizPage() {
             </div>
           )}
 
-          {/* STEP 2: Cấu Hình Quiz */}
+          {/* STEP 2: Thêm Câu Hỏi */}
           {current === 1 && (
             <div>
-              <h2 className="text-2xl font-semibold mb-6">Cấu Hình Quiz</h2>
-              <p className="text-gray-500">
-                Tính năng này sẽ được phát triển trong các bước tiếp theo.
-              </p>
-            </div>
-          )}
-
-          {/* STEP 3: Thêm Câu Hỏi */}
-          {current === 2 && (
-            <div>
-              <h2 className="text-2xl font-semibold mb-6">Thêm Câu Hỏi</h2>
+              <h2 className="text-2xl font-semibold mb-6">{t("quiz.step_add_questions", language)}</h2>
 
               <Button
                 type="primary"
@@ -708,35 +854,115 @@ export default function CreateQuizPage() {
                 onClick={handleOpenAddQuestionsModal}
                 className="mb-6"
               >
-                Thêm Câu Hỏi Từ Kho
+                {t("quiz.btn_add_from_bank", language)}
               </Button>
 
               {/* Danh sách câu hỏi đã chọn */}
               {payload.questions && payload.questions.length > 0 ? (
                 <div className="space-y-3">
-                  <p className="font-medium">
-                    Câu hỏi đã chọn ({payload.questions.length}):
-                  </p>
+                  <div className="flex items-center justify-between">
+                    <p className="font-medium">
+                      {t("quiz.selected_questions_label", language)} ({payload.questions.length}):
+                    </p>
+                    {payload.questions.length < 10 && (
+                      <p className="text-sm text-red-600 font-medium">
+                        Cần thêm ít nhất {10 - payload.questions.length} câu nữa
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Total Score Info Bar */}
+                  <div
+                    className={`p-4 rounded border-l-4 mb-4 ${
+                      isPassingScoreValid
+                        ? "bg-green-50 border-l-green-500"
+                        : "bg-yellow-50 border-l-yellow-500"
+                    }`}
+                  >
+                    <div className="flex items-start gap-3">
+                      {isPassingScoreValid ? (
+                        <CheckCircleOutlined className="text-green-600 mt-0.5" />
+                      ) : (
+                        <WarningOutlined className="text-yellow-600 mt-0.5" />
+                      )}
+                      <div className="flex-1">
+                        <p
+                          className={`font-medium ${
+                            isPassingScoreValid
+                              ? "text-green-900"
+                              : "text-yellow-900"
+                          }`}
+                        >
+                          Tổng điểm bài thi:{" "}
+                          <span className="text-lg">{totalScore}</span> điểm
+                        </p>
+                        <p className="text-sm text-gray-700 mt-1">
+                          ({payload.questions.length} câu ×{" "}
+                          {pointsPerQuestion.toFixed(2)} điểm/câu)
+                        </p>
+                        {!isPassingScoreValid && (
+                          <p className="text-sm text-yellow-800 mt-2">
+                            ⚠️ Điểm đạt ({passingScore}%) vượt quá tổng điểm (
+                            {totalScore}). Vui lòng cân đối lại!
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
                   {payload.questions.map((question, index) => (
                     <div
                       key={question.id}
-                      className="flex items-center justify-between p-3 bg-blue-50 border border-blue-200 rounded"
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, index)}
+                      onDragOver={(e) => handleDragOver(e, index)}
+                      onDragEnter={handleDragEnter}
+                      onDragLeave={(e) => handleDragLeave(e, index)}
+                      onDrop={(e) => handleDrop(e, index)}
+                      onDragEnd={handleDragEnd}
+                      className={`flex items-start justify-between p-4 rounded-lg border-2 transition-all cursor-move gap-3 ${
+                        draggedIndex === index
+                          ? "bg-blue-100 border-blue-500 opacity-60 shadow-md"
+                          : dragOverIndex === index
+                            ? "bg-blue-100 border-blue-500 shadow-lg ring-2 ring-blue-300"
+                            : "bg-white border-gray-300 hover:border-blue-400 hover:shadow-sm"
+                      }`}
                     >
-                      <div>
-                        <p className="font-medium">
-                          {index + 1}. {question.text}
-                        </p>
-                        {question.description && (
-                          <p className="text-sm text-gray-600">
-                            {question.description}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-gray-600 text-lg min-w-fit">
+                            {index + 1}.
+                          </span>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-gray-900 break-words">
+                              {question.text}
+                            </p>
+                            {question.description && (
+                              <p className="text-sm text-gray-600 mt-1 break-words">
+                                {question.description}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        {draggedIndex === index && (
+                          <p className="text-xs text-blue-600 mt-2 font-medium">
+                            ⬆️ Kéo để sắp xếp, thả lên vị trí muốn di chuyển tới
                           </p>
                         )}
+                        {dragOverIndex === index &&
+                          draggedIndex !== null &&
+                          draggedIndex !== index && (
+                            <p className="text-xs text-green-600 mt-2 font-medium">
+                              ✓ Thả ở đây để đặt câu hỏi vào vị trí này
+                            </p>
+                          )}
                       </div>
                       <Button
                         type="text"
                         danger
                         icon={<DeleteOutlined />}
                         onClick={() => handleRemoveQuestion(question.id)}
+                        className="shrink-0"
                       />
                     </div>
                   ))}
@@ -752,15 +978,12 @@ export default function CreateQuizPage() {
 
               {/* Add Questions Modal */}
               <Modal
-                title="Thêm Câu Hỏi Từ Kho Dữ Liệu"
+                title={t("quiz.modal_title_add_questions", language)}
                 open={modalState.visible}
                 onCancel={handleCloseAddQuestionsModal}
                 width={900}
                 footer={[
-                  <Button
-                    key="cancel"
-                    onClick={handleCloseAddQuestionsModal}
-                  >
+                  <Button key="cancel" onClick={handleCloseAddQuestionsModal}>
                     Hủy
                   </Button>,
                   <Button
@@ -790,23 +1013,25 @@ export default function CreateQuizPage() {
                     <div className="space-y-2 max-h-96 overflow-y-auto border border-gray-200 rounded p-4 bg-gray-50">
                       {filteredQuestions.length > 0 ? (
                         filteredQuestions.map((question) => {
-                          const isSelected = modalState.selectedQuestionIds.includes(
-                            question.id
-                          )
+                          const isSelected =
+                            modalState.selectedQuestionIds.includes(question.id)
 
                           return (
                             <div
                               key={question.id}
                               onClick={() => handleQuestionSelect(question.id)}
-                              className={`p-3 border rounded-lg cursor-pointer transition-all ${isSelected
-                                ? "bg-blue-100 border-blue-400 shadow-sm"
-                                : "bg-white hover:bg-blue-50 border-gray-200 hover:border-blue-300"
-                                }`}
+                              className={`p-3 border rounded-lg cursor-pointer transition-all ${
+                                isSelected
+                                  ? "bg-blue-100 border-blue-400 shadow-sm"
+                                  : "bg-white hover:bg-blue-50 border-gray-200 hover:border-blue-300"
+                              }`}
                             >
                               <div className="flex gap-3">
                                 <Checkbox
                                   checked={isSelected}
-                                  onChange={() => handleQuestionSelect(question.id)}
+                                  onChange={() =>
+                                    handleQuestionSelect(question.id)
+                                  }
                                   onClick={(e) => e.stopPropagation()}
                                 />
                                 <div className="flex-1 min-w-0">
@@ -842,62 +1067,167 @@ export default function CreateQuizPage() {
             </div>
           )}
 
-          {/* STEP 4: Xem Lại & Công Bố */}
-          {current === 3 && (
+          {/* STEP 3: Xem Lại & Công Bố */}
+          {current === 2 && (
             <div>
-              <h2 className="text-2xl font-semibold mb-6">Xem Lại & Công Bố</h2>
+              <h2 className="text-2xl font-semibold mb-6">{t("quiz.step_review_publish", language)}</h2>
               <div className="space-y-4 bg-gray-50 p-4 rounded">
                 <div>
-                  <p className="text-sm text-gray-600">Tên bài thi:</p>
+                  <p className="text-sm text-gray-600">{t("quiz.review_label_title", language)}</p>
                   <p className="text-lg font-semibold">{payload.title}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">Mô tả:</p>
+                  <p className="text-sm text-gray-600">{t("quiz.review_label_description", language)}</p>
                   <p className="text-lg">
-                    {payload.description || "(Không có)"}
+                    {payload.description || t("quiz.empty_value", language)}
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">Thời gian làm bài:</p>
+                  <p className="text-sm text-gray-600">{t("quiz.review_label_time_limit", language)}</p>
                   <p className="text-lg">
                     {payload.time_limit_minutes === 0 ||
-                      payload.time_limit_minutes === undefined
+                    payload.time_limit_minutes === undefined
                       ? "Không giới hạn"
-                      : `${payload.time_limit_minutes} phút`}
+                      : `${payload.time_limit_minutes} ${t("common.minutes", language)}`}
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">Điểm đạt:</p>
+                  <p className="text-sm text-gray-600">{t("quiz.review_label_passing_score", language)}</p>
                   <p className="text-lg">{payload.passing_score || 80}%</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">Số lần làm bài:</p>
+                  <p className="text-sm text-gray-600">{t("quiz.review_label_max_attempts", language)}</p>
                   <p className="text-lg">
                     {payload.max_attempts === undefined
                       ? "Không giới hạn"
-                      : `${payload.max_attempts} lần`}
+                      : `${payload.max_attempts} ${t("common.times", language)}`}
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">Số câu hỏi:</p>
+                  <p className="text-sm text-gray-600">{t("quiz.review_label_questions_count", language)}</p>
                   <p className="text-lg">
-                    {payload.questions?.length || 0} câu
+                    {payload.questions?.length || 0} {t("quiz.questions_unit", language)}
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">Trạng thái:</p>
+                  <p className="text-sm text-gray-600">{t("quiz.review_label_status", language)}</p>
                   <p className="text-lg font-semibold capitalize">
-                    {payload.status === "draft" ? "Nháp" : payload.status}
+                    {payload.status === "draft" ? t("quiz.status_draft", language) : payload.status}
                   </p>
+                </div>
+              </div>
+
+              {/* Phân Phối Bài Thi */}
+              <div className="mt-8">
+                <h3 className="text-lg font-semibold mb-4">
+                  {t("quiz.distribution_title", language)}
+                </h3>
+                <div className="space-y-4 bg-blue-50 p-4 rounded border border-blue-200">
+                  {/* Radio Button: Public / Departments */}
+                  <Form layout="vertical">
+                    <Form.Item label={t("quiz.label_target_type", language)}>
+                      <div className="space-y-3">
+                        <label className="flex items-center cursor-pointer p-3 bg-white rounded border border-gray-200 hover:border-blue-400">
+                          <input
+                            type="radio"
+                            name="targetType"
+                            value="PUBLIC"
+                            checked={payload.targetType === "PUBLIC"}
+                            onChange={() => {
+                              setPayload((prev) => ({
+                                ...prev,
+                                targetType: "PUBLIC",
+                                targetDeptIds: [],
+                              }))
+                            }}
+                            className="w-4 h-4"
+                          />
+                          <span className="ml-3">
+                            <p className="font-medium">
+                              {t("quiz.target_public_company", language)}
+                            </p>
+                            <p className="text-sm text-gray-600">
+                              {t("quiz.target_public_desc", language)}
+                            </p>
+                          </span>
+                        </label>
+
+                        <label className="flex items-center cursor-pointer p-3 bg-white rounded border border-gray-200 hover:border-blue-400">
+                          <input
+                            type="radio"
+                            name="targetType"
+                            value="DEPARTMENTS"
+                            checked={payload.targetType === "DEPARTMENTS"}
+                            onChange={() => {
+                              setPayload((prev) => ({
+                                ...prev,
+                                targetType: "DEPARTMENTS",
+                              }))
+                            }}
+                            className="w-4 h-4"
+                          />
+                          <span className="ml-3">
+                            <p className="font-medium">{t("quiz.target_specific_departments", language)}</p>
+                            <p className="text-sm text-gray-600">
+                              {t("quiz.target_departments_desc", language)}
+                            </p>
+                          </span>
+                        </label>
+                      </div>
+                    </Form.Item>
+
+                    {/* Department Select - Show only when DEPARTMENTS is selected */}
+                    {payload.targetType === "DEPARTMENTS" && (
+                      <Form.Item label={t("quiz.label_target_depts", language)} required>
+                        <Select
+                          mode="multiple"
+                          placeholder={t("quiz.placeholder_select_depts", language)}
+                          value={payload.targetDeptIds || []}
+                          onChange={(selectedIds) => {
+                            setPayload((prev) => ({
+                              ...prev,
+                              targetDeptIds: selectedIds,
+                            }))
+                          }}
+                          options={departments.map((dept) => ({
+                            label: dept.name,
+                            value: dept.id,
+                          }))}
+                        />
+                      </Form.Item>
+                    )}
+
+                    {/* Display selected distribution */}
+                    <div className="mt-4 p-3 bg-white rounded border border-gray-200">
+                      {payload.targetType === "PUBLIC" ? (
+                        <p className="text-sm text-gray-700">
+                          ✓ <strong>{t("quiz.distribution_public_label", language)}</strong> {t("quiz.distribution_public_all_employees", language)}
+                        </p>
+                      ) : (
+                        <p className="text-sm text-gray-700">
+                          ✓ <strong>{t("quiz.label_target_depts", language)}:</strong>{" "}
+                          {payload.targetDeptIds &&
+                          payload.targetDeptIds.length > 0
+                            ? departments
+                                .filter((d) =>
+                                  payload.targetDeptIds?.includes(d.id)
+                                )
+                                .map((d) => d.name)
+                                .join(", ")
+                            : t("quiz.no_depts_selected", language)}
+                        </p>
+                      )}
+                    </div>
+                  </Form>
                 </div>
               </div>
             </div>
           )}
         </div>
-      </Spin >
+      </Spin>
 
       {/* Navigation Buttons */}
-      < div className="mt-8 flex items-center justify-between gap-4" >
+      <div className="mt-8 flex items-center justify-between gap-4">
         <Button
           onClick={handlePrev}
           disabled={current === 0}
@@ -914,7 +1244,11 @@ export default function CreateQuizPage() {
               onClick={handleNext}
               icon={<ArrowRightOutlined />}
               size="large"
-              disabled={Object.keys(errors).length > 0}
+              disabled={
+                current === 1
+                  ? (payload.questions?.length || 0) < 10
+                  : Object.keys(errors).length > 0
+              }
             >
               Tiếp Theo
             </Button>
@@ -925,7 +1259,9 @@ export default function CreateQuizPage() {
               onClick={handleSubmit}
               loading={loading}
               disabled={
-                !stepValid.every((v) => v) || Object.keys(errors).length > 0
+                !stepValid[0] ||
+                !stepValid[1] ||
+                (payload.questions?.length || 0) < 10
               }
               size="large"
             >
@@ -933,7 +1269,7 @@ export default function CreateQuizPage() {
             </Button>
           )}
         </div>
-      </div >
-    </div >
+      </div>
+    </div>
   )
 }

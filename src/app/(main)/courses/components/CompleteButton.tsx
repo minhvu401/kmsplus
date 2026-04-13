@@ -3,7 +3,7 @@
 
 import { useState } from "react"
 import { Button, message, Tooltip } from "antd"
-import { CheckCircleOutlined, CheckCircleFilled } from "@ant-design/icons"
+import { CheckCircleFilled, CheckOutlined } from "@ant-design/icons"
 import { updateProgress } from "@/action/progress/progressAction"
 import { useRouter } from "next/navigation"
 
@@ -12,6 +12,7 @@ interface CompleteButtonProps {
   itemId: number
   itemType: "lesson" | "quiz"
   initialCompleted: boolean
+  onCompleted?: () => void
 }
 
 export default function CompleteButton({
@@ -19,6 +20,7 @@ export default function CompleteButton({
   itemId,
   itemType,
   initialCompleted,
+  onCompleted,
 }: CompleteButtonProps) {
   const [isCompleted, setIsCompleted] = useState(initialCompleted)
   const [loading, setLoading] = useState(false)
@@ -32,10 +34,20 @@ export default function CompleteButton({
     try {
       const res = await updateProgress(courseId, itemId, itemType)
 
-      if (res.success) {
+      if (res.success && "progressPercentage" in res) {
+        // 1. Cập nhật UI ngay lập tức để user thấy thay đổi
         setIsCompleted(true)
-        message.success(`Great job! Course progress: ${res.progress}%`)
-        router.refresh() // Refresh để cập nhật thanh tiến độ bên ngoài (nếu có)
+        message.success(
+          `Great job! Course progress: ${res.progressPercentage}%`
+        )
+
+        // 2. Gọi callback để LearningClient cập nhật state ngay lập tức
+        if (onCompleted) {
+          onCompleted()
+        }
+
+        // 3. Refresh server để đồng bộ data
+        router.refresh()
       } else {
         message.error(res.error || "Failed to update progress")
       }
@@ -47,18 +59,19 @@ export default function CompleteButton({
     }
   }
 
+  // Style chung cho cả 2 trạng thái
+  const commonClasses =
+    "h-12 px-8 rounded-full font-semibold text-base shadow-sm transition-all transform hover:scale-105 min-w-[240px]"
+
   // 1. Trạng thái ĐÃ HOÀN THÀNH
   if (isCompleted) {
     return (
-      <Tooltip title="You have completed this lesson">
-        <Button
-          type="default"
-          className="bg-green-50 text-green-600 border-green-200 hover:!text-green-700 hover:!border-green-300 font-medium px-6 h-10"
-          icon={<CheckCircleFilled />}
-        >
-          Completed
-        </Button>
-      </Tooltip>
+      <Button
+        className={`${commonClasses} bg-green-50 text-green-600 border-green-200 hover:!bg-green-100 hover:!text-green-700 hover:!border-green-300`}
+        icon={<CheckCircleFilled />}
+      >
+        Completed
+      </Button>
     )
   }
 
@@ -68,8 +81,8 @@ export default function CompleteButton({
       type="primary"
       loading={loading}
       onClick={handleComplete}
-      className="bg-blue-600 hover:!bg-blue-500 font-medium px-6 h-10 shadow-md"
-      icon={<CheckCircleOutlined />}
+      className={`${commonClasses} bg-blue-600 hover:!bg-blue-700 border-none`}
+      icon={<CheckOutlined />}
     >
       Mark as Complete
     </Button>

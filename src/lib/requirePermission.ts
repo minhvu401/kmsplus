@@ -1,59 +1,42 @@
 /**
  * Permission & Role validation utilities for Server Actions
- * Dùng để validate quyền của user trước khi thực hiện action
+ * Now uses dynamic database-driven permissions instead of hardcoded config
  */
-
 import { requireAuth, getUserRole } from "@/lib/auth"
 import { Role } from "@/enum/role.enum"
 import { Permission } from "@/enum/permission.enum"
 import {
-  hasPermission,
-  hasAllPermissions,
-  hasAnyPermission,
-} from "@/config/RolePermission.config"
+  hasPermissionDynamic,
+  hasAllPermissionsDynamic,
+  hasAnyPermissionDynamic,
+} from "@/service/rolePermission.service"
 import { AuthUser } from "./auth"
 
-/**
- * Require user có quyền cụ thể
- * @param permission - Permission cần check
- * @example
- * export async function createArticleAction(data: any) {
- *   const user = await requirePermission(Permission.CREATE_ARTICLE)
- *   // ... thực hiện logic
- * }
- */
 export async function requirePermission(
   permission: Permission
 ): Promise<AuthUser> {
   const user = await requireAuth()
   const userRole = user.role as Role
 
-  if (!hasPermission(userRole, permission)) {
+  const hasPermissionFlag = await hasPermissionDynamic(userRole, permission)
+  if (!hasPermissionFlag) {
     throw new Error(`Unauthorized: Missing permission '${permission}'`)
   }
 
   return user
 }
 
-/**
- * Require user có TẤT CẢ quyền được yêu cầu
- * @param permissions - Danh sách permissions cần check
- * @example
- * export async function updateArticleAction(data: any) {
- *   const user = await requireAllPermissions([
- *     Permission.UPDATE_ARTICLE,
- *     Permission.APPROVE_ARTICLE
- *   ])
- *   // ...
- * }
- */
 export async function requireAllPermissions(
   permissions: Permission[]
 ): Promise<AuthUser> {
   const user = await requireAuth()
   const userRole = user.role as Role
 
-  if (!hasAllPermissions(userRole, permissions)) {
+  const hasPermissionsFlag = await hasAllPermissionsDynamic(
+    userRole,
+    permissions
+  )
+  if (!hasPermissionsFlag) {
     throw new Error(
       `Unauthorized: Missing required permissions [${permissions.join(", ")}]`
     )
@@ -62,25 +45,14 @@ export async function requireAllPermissions(
   return user
 }
 
-/**
- * Require user có ÍT NHẤT MỘT trong các quyền được yêu cầu
- * @param permissions - Danh sách permissions để check
- * @example
- * export async function moderateArticleAction(data: any) {
- *   const user = await requireAnyPermission([
- *     Permission.APPROVE_ARTICLE,
- *     Permission.DELETE_ARTICLE
- *   ])
- *   // ...
- * }
- */
 export async function requireAnyPermission(
   permissions: Permission[]
 ): Promise<AuthUser> {
   const user = await requireAuth()
   const userRole = user.role as Role
 
-  if (!hasAnyPermission(userRole, permissions)) {
+  const hasPermissionFlag = await hasAnyPermissionDynamic(userRole, permissions)
+  if (!hasPermissionFlag) {
     throw new Error(
       `Unauthorized: Must have at least one of these permissions [${permissions.join(", ")}]`
     )
@@ -89,15 +61,6 @@ export async function requireAnyPermission(
   return user
 }
 
-/**
- * Require user có role cụ thể
- * @param role - Role cần check
- * @example
- * export async function deleteUserAction(id: string) {
- *   const user = await requireRole(Role.ADMIN)
- *   // ...
- * }
- */
 export async function requireRole(role: Role): Promise<AuthUser> {
   const user = await requireAuth()
   const userRole = user.role as Role
@@ -109,14 +72,6 @@ export async function requireRole(role: Role): Promise<AuthUser> {
   return user
 }
 
-/**
- * Require user là ADMIN
- * @example
- * export async function deleteUserAction(id: string) {
- *   const user = await requireAdmin()
- *   // ...
- * }
- */
 export async function requireAdmin(): Promise<AuthUser> {
   return requireRole(Role.ADMIN)
 }

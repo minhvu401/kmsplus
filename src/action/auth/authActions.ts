@@ -36,7 +36,7 @@ export async function loginAction(
 
   const { email, password } = parsed.data
 
-  // Kiểm tra user tồn tại và lấy role
+  // Kiểm tra user tồn tại
   const users = await sql`
     SELECT 
       u.id, 
@@ -44,7 +44,8 @@ export async function loginAction(
       u.full_name, 
       u.avatar_url, 
       u.created_at, 
-      u.password_hash, 
+      u.password_hash,
+      u.status,
       r.name as role_name
     FROM users u
     LEFT JOIN user_roles ur ON u.id = ur.user_id
@@ -55,6 +56,11 @@ export async function loginAction(
   const user = users[0]
   if (!user) {
     return { success: false, message: "Email not found" }
+  }
+
+  // Kiểm tra trạng thái tài khoản
+  if (user.status !== "active") {
+    return { success: false, message: "Tài khoản đã bị vô hiệu" }
   }
 
   // Kiểm tra mật khẩu
@@ -71,14 +77,11 @@ export async function loginAction(
     }
   }
 
-  // Tạo token (kèm role)
-  const userRole = user.role_name || "EMPLOYEE" // Default là EMPLOYEE nếu không có role
-  console.log(`[LOGIN] User: ${user.email}, Role: ${userRole}`)
-
+  // Tạo token (bao gồm role)
   const token = await signToken({
     id: user.id,
     email: user.email,
-    role: userRole,
+    role: user.role_name, // Thêm role vào token
   })
 
   // Set cookie
@@ -91,7 +94,7 @@ export async function loginAction(
     maxAge: 60 * 60 * 24, // 1 day
   })
 
-  // console.log("User logged in:", token)
+  // ("User logged in:", token)
 
   return {
     success: true,
@@ -109,11 +112,95 @@ export async function loginAction(
 export async function logoutAction() {
   try {
     const cookieStore = await cookies()
+
+    // Delete custom JWT token
     cookieStore.delete("token")
+
+    // Delete NextAuth session cookies (multiple possible names for v5)
+    cookieStore.delete("next-auth.session-token")
+    cookieStore.delete("authjs.session-token")
+    cookieStore.delete("__Secure-next-auth.session-token")
+    cookieStore.delete("__Secure-authjs.session-token")
 
     const { clearUser } = useUserStore.getState() // Lấy phương thức clearUser từ store
     clearUser()
 
     // redirect(PageRoute.LOGIN)
-  } catch (error) {}
+  } catch (error) {
+    console.error("Error in logoutAction:", error)
+  }
+}
+
+export type ForgotPasswordState = {
+  success: boolean
+  message: string
+  errors?: Record<string, string[]>
+}
+
+export async function forgotPasswordAction(
+  formData: FormData
+): Promise<ForgotPasswordState> {
+  try {
+    const email = formData.get("email") as string
+    const password = formData.get("password") as string
+    const confirmPassword = formData.get("confirmPassword") as string
+
+    // Validate inputs
+    if (!email || !password || !confirmPassword) {
+      return {
+        success: false,
+        message: "Vui lòng điền tất cả các trường",
+      }
+    }
+
+    if (password !== confirmPassword) {
+      return {
+        success: false,
+        message: "Mật khẩu không khớp",
+      }
+    }
+
+    if (password.length < 6) {
+      return {
+        success: false,
+        message: "Mật khẩu phải có ít nhất 6 ký tự",
+      }
+    }
+
+    // Check if user exists
+    const users = await sql`
+      SELECT id, email FROM users WHERE email = ${email.toLowerCase()} AND is_deleted = false
+    `
+
+    if (!users || users.length === 0) {
+      return {
+        success: false,
+        message: "Email không tồn tại trong hệ thống",
+      }
+    }
+
+    const userId = users[0].id
+
+    // Hash new password
+    const bcrypt = require("bcryptjs")
+    const hashedPassword = await bcrypt.hash(password, 10)
+
+    // Update password
+    await sql`
+      UPDATE users 
+      SET password_hash = ${hashedPassword}
+      WHERE id = ${userId}
+    `
+
+    return {
+      success: true,
+      message: "Mật khẩu đã được đặt lại thành công. Vui lòng đăng nhập lại.",
+    }
+  } catch (error) {
+    console.error("Error in forgotPasswordAction:", error)
+    return {
+      success: false,
+      message: "Có lỗi xảy ra. Vui lòng thử lại.",
+    }
+  }
 }
