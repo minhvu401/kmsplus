@@ -3,6 +3,11 @@
 import { revalidatePath } from "next/cache"
 import { sql } from "@/lib/database"
 import { getCurrentUser } from "@/lib/auth"
+import {
+  requirePermission,
+  requireAnyPermission,
+} from "@/lib/requirePermission"
+import { Permission } from "@/enum/permission.enum"
 
 export async function fetchCategories() {
   try {
@@ -127,7 +132,8 @@ export async function getDocumentById(id: string) {
     }
 
     if (doc) {
-      doc.attachments = await sql`SELECT * FROM document_attachments WHERE document_id = ${id} ORDER BY created_at ASC`
+      doc.attachments =
+        await sql`SELECT * FROM document_attachments WHERE document_id = ${id} ORDER BY created_at ASC`
     }
     return doc
   } catch (error: any) {
@@ -153,19 +159,6 @@ export async function saveDocument(data: {
     const user = await getCurrentUser()
     if (!user) throw new Error("Chưa đăng nhập hoặc phiên làm việc hết hạn")
 
-    // Lấy thông tin phòng ban của category mà tài liệu này thuộc về
-    const catRecord = await sql`SELECT department_id FROM document_categories WHERE id = ${data.category_id}`
-    const catDeptId = catRecord.length > 0 ? catRecord[0].department_id : null
-
-    // Bảo mật Update/Create file
-    if (user.role !== 'ADMIN') {
-      const userRecord = await sql`SELECT department_id FROM users WHERE id = ${Number(user.id)}`
-      const deptId = userRecord.length > 0 ? userRecord[0].department_id : null
-
-      if (catDeptId !== null && catDeptId !== deptId) {
-        throw new Error("Bạn không có quyền thêm/sửa tài liệu ở danh mục của phòng ban khác")
-      }
-    }
     let result
     if (data.id) {
       const res = await sql`
@@ -187,8 +180,8 @@ export async function saveDocument(data: {
           ${data.title}, 
           ${data.category_id}, 
           ${data.content}, 
-          ${data.status || 'DRAFT'}, 
-          ${data.version || '1.0'}, 
+          ${data.status || "DRAFT"}, 
+          ${data.version || "1.0"}, 
           ${user.id}
         )
         RETURNING *
@@ -209,7 +202,7 @@ export async function saveDocument(data: {
         }
       }
     }
-    
+
     revalidatePath("/documents/management")
     return result
   } catch (error: any) {

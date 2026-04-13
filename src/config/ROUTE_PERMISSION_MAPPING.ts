@@ -61,6 +61,16 @@ export const routePermissionMap: Record<string, Permission[]> = {
     Permission.DELETE_CATEGORY,
   ],
 
+  // Documents
+  "/documents": [Permission.VIEW_DOCUMENT],
+  "/documents/management": [
+    Permission.CREATE_DOCUMENT,
+    Permission.UPDATE_DOCUMENT,
+    Permission.DELETE_DOCUMENT,
+  ],
+  "/documents/[id]": [Permission.VIEW_DOCUMENT],
+  "/documents/category/[categoryId]": [Permission.VIEW_DOCUMENT],
+
   // User Management
   "/user-management": [Permission.MANAGE_USERS],
 

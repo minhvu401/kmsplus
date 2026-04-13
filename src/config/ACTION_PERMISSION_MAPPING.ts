@@ -132,6 +132,17 @@ export const ACTION_PERMISSION_MAPPING = {
     checkItemCompletion: Permission.VIEW_PERSONAL_PROGRESS,
   },
 
+  // ============ DOCUMENTS ACTIONS ============
+  documents: {
+    fetchCategories: Permission.VIEW_DOCUMENT,
+    createCategory: Permission.CREATE_DOCUMENT,
+    fetchDocuments: Permission.VIEW_DOCUMENT,
+    getDocumentById: Permission.VIEW_DOCUMENT,
+    saveDocument: [Permission.CREATE_DOCUMENT, Permission.UPDATE_DOCUMENT], // CREATE for new, UPDATE for existing
+    updateDocumentStatus: Permission.UPDATE_DOCUMENT,
+    deleteDocument: Permission.DELETE_DOCUMENT,
+  },
+
   // ============ QUESTION ACTIONS ============
   question: {
     getAllQuestions: Permission.VIEW_QUESTION_LIST,
