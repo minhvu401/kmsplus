@@ -13,6 +13,7 @@ export type User = {
   email: string
   full_name: string | null
   role?: string
+  department?: string
   avatar_url?: string
   created_at?: Date
 }
@@ -122,9 +123,11 @@ export async function getCurrentUserProfileAction(): Promise<User | null> {
     const id = decoded.id
 
     const users = await sql`
-      SELECT id, email, full_name, avatar_url, created_at 
-      FROM users 
-      WHERE id = ${id} AND status = 'active'
+      SELECT u.id, u.email, u.full_name, u.avatar_url, u.created_at,
+             d.name as department
+      FROM users u
+      LEFT JOIN department d ON u.department_id = d.id
+      WHERE u.id = ${id} AND u.status = 'active'
     `
     return users.length > 0 ? (users[0] as User) : null
   } catch (error) {

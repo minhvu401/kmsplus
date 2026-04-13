@@ -47,6 +47,31 @@ export async function getCommentsByArticleId(
   }
 }
 
+export type CommentRow = {
+  id: number
+  article_id?: number
+  article_title?: string | null
+  content?: string | null
+  created_at?: string | null
+  updated_at?: string | null
+}
+
+export async function getUserCommentsAction(userId: string | number): Promise<CommentRow[]> {
+  try {
+    const rows = await sql`
+      SELECT c.id, c.article_id, a.title AS article_title, c.content, c.created_at, c.updated_at
+      FROM comments c
+      LEFT JOIN articles a ON c.article_id = a.id
+      WHERE c.user_id = ${userId} AND c.deleted_at IS NULL
+      ORDER BY c.created_at DESC
+    `
+    return rows as CommentRow[]
+  } catch (error) {
+    console.error("Error fetching user comments:", error)
+    return []
+  }
+}
+
 export async function createCommentAction(input: {
   article_id: number
   user_id: number

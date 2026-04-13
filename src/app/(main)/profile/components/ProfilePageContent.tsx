@@ -24,7 +24,6 @@ import { useState, useEffect } from "react"
 import ActivityTabContent from "./ActivityTabContent"
 import ProfileForm from "@/components/forms/profile-form"
 import PasswordForm from "@/components/forms/password-form"
-import useUserStore from "@/store/useUserStore"
 import { t } from "@/lib/i18n"
 import useLanguageStore from "@/store/useLanguageStore"
 
@@ -35,12 +34,11 @@ interface UserType {
   department?: string
   role?: string
   avatar_url?: string
-  created_at?: string
+  created_at?: string | Date
 }
 
-export default function ProfilePageContent() {
+export default function ProfilePageContent({ user, counts, questions, answers, comments, enrolledCourses }: { user?: UserType | null, counts?: { questions:number, answers:number, comments:number, courses?:number }, questions?: any[], answers?: any[], comments?: any[], enrolledCourses?: any[] }) {
   const { Title, Text } = Typography
-  const { user } = useUserStore()
   const { language } = useLanguageStore()
   const [isEditMode, setIsEditMode] = useState(false)
   const [isPasswordMode, setIsPasswordMode] = useState(false)
@@ -49,7 +47,11 @@ export default function ProfilePageContent() {
     user
       ? {
           ...user,
-          created_at: user.created_at instanceof Date ? user.created_at.toISOString() : user.created_at,
+          created_at: user.created_at
+            ? typeof user.created_at === "string"
+              ? user.created_at
+              : user.created_at.toISOString()
+            : undefined,
         }
       : null
   )
@@ -58,7 +60,11 @@ export default function ProfilePageContent() {
     if (user) {
       setUserData({
         ...user,
-        created_at: user.created_at instanceof Date ? user.created_at.toISOString() : user.created_at,
+        created_at: user.created_at
+          ? typeof user.created_at === "string"
+            ? user.created_at
+            : user.created_at.toISOString()
+          : undefined,
       })
     }
   }, [user])
@@ -108,7 +114,7 @@ export default function ProfilePageContent() {
               {userData?.full_name?.charAt(0).toUpperCase()}
             </Avatar>
             <div>
-              <Title level={3} className="mb-1">
+              <Title level={3} className="mb-0">
                 {userData?.full_name}
               </Title>
               <Text type="secondary">{userData?.email}</Text>
@@ -122,23 +128,6 @@ export default function ProfilePageContent() {
               )}
             </div>
           </div>
-          {!isEditMode && !isPasswordMode && (
-            <Space>
-              <Button
-                type="primary"
-                icon={<EditOutlined />}
-                onClick={() => setIsEditMode(true)}
-              >
-                {t("profile.edit", language)}
-              </Button>
-              <Button
-                icon={<LockOutlined />}
-                onClick={() => setIsPasswordMode(true)}
-              >
-                {t("profile.change_password", language)}
-              </Button>
-            </Space>
-          )}
         </div>
       </Card>
 
@@ -150,15 +139,6 @@ export default function ProfilePageContent() {
           </Title>
           <Divider />
           <ProfileForm user={userData} onSuccess={handleProfileSuccess} />
-          <div className="mt-4">
-            <Button
-              type="text"
-              danger
-              onClick={() => setIsEditMode(false)}
-            >
-              {t("profile.cancel", language)}
-            </Button>
-          </div>
         </Card>
       )}
 
@@ -242,19 +222,14 @@ export default function ProfilePageContent() {
                       </Row>
                     </div>
                     <Divider />
-                    <Space>
+                    <div style={{ display: "flex", justifyContent: "center" }}>
                       <Button
                         type="primary"
                         onClick={() => setIsEditMode(true)}
                       >
                         {t("profile.edit_profile", language)}
                       </Button>
-                      <Button
-                        onClick={() => setIsPasswordMode(true)}
-                      >
-                        {t("profile.change_password", language)}
-                      </Button>
-                    </Space>
+                    </div>
                   </div>
                 ),
               },
@@ -263,8 +238,8 @@ export default function ProfilePageContent() {
                 key: "activity",
                 icon: <HistoryOutlined />,
                 children: (
-                  <div className="pt-4">
-                    <ActivityTabContent />
+                    <div className="pt-4">
+                    <ActivityTabContent counts={counts} user={userData} questions={questions} answers={answers} comments={comments} enrolledCourses={enrolledCourses} />
                   </div>
                 ),
               },

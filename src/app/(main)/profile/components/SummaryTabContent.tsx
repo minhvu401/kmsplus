@@ -1,73 +1,72 @@
-import {
-  TrophyOutlined,
-  GiftOutlined,
-  LineChartOutlined,
-} from "@ant-design/icons"
-import { Button, Card, Col, Row, Space, Tabs, Typography } from "antd"
+"use client"
 
-export default function SummaryTabContent() {
+import {
+  CommentOutlined,
+  QuestionCircleOutlined,
+  ReadOutlined,
+  CheckCircleOutlined
+} from "@ant-design/icons"
+import { Card, Col, Row, Space, Typography, Spin } from "antd"
+
+type Counts = { questions: number; answers: number; comments: number; courses?: number }
+
+export default function SummaryTabContent({ counts }: { counts?: Counts | null }) {
   const { Title, Text } = Typography
+
+  if (!counts) {
+    return (
+      <div className="p-6 flex justify-center">
+        <Spin />
+      </div>
+    )
+  }
+
   return (
     <div>
       <Title level={4} style={{ marginBottom: "24px" }}>
         Summary
       </Title>
       <Row gutter={[16, 16]}>
-        {/* Card 1: Reputation */}
-        <Col xs={24} md={8}>
+        <Col xs={24} md={6}>
           <Card>
-            <Space
-              direction="vertical"
-              align="center"
-              style={{ width: "100%" }}
-            >
-              <TrophyOutlined style={{ fontSize: "48px", color: "#858585" }} />
-              <Title level={5}>
-                Reputation is how the community thanks you
-              </Title>
-              <Text type="secondary">
-                When users upvote your helpful posts, you'll earn reputation and
-                unlock new privileges.
-              </Text>
+            <Space direction="vertical" align="center" style={{ width: "100%" }}>
+              <QuestionCircleOutlined style={{ fontSize: "48px", color: "#858585" }} />
+              <Title level={4} style={{ margin: 0 }}>{counts.questions}</Title>
+              <Title level={5} style={{ margin: 0 }}>Your Questions</Title>
+              <Text type="secondary">Questions you've posted</Text>
             </Space>
           </Card>
         </Col>
-        {/* Card 2: Earn badges */}
-        <Col xs={24} md={8}>
+
+        <Col xs={24} md={6}>
           <Card>
-            <Space
-              direction="vertical"
-              align="center"
-              style={{ width: "100%" }}
-            >
-              <GiftOutlined style={{ fontSize: "48px", color: "#858585" }} />
-              <Title level={5}>Earn badges for helpful actions</Title>
-              <Text type="secondary" style={{ textAlign: "center" }}>
-                Badges are bits of digital flair that you get when you
-                participate in especially helpful ways.
-              </Text>
-              <Button type="primary" style={{ marginTop: "16px" }}>
-                Take the Tour and earn your first badge
-              </Button>
+            <Space direction="vertical" align="center" style={{ width: "100%" }}>
+              <CheckCircleOutlined style={{ fontSize: "48px", color: "#858585" }} />
+              <Title level={4} style={{ margin: 0 }}>{counts.answers}</Title>
+              <Title level={5} style={{ margin: 0 }}>Your Answers</Title>
+              <Text type="secondary">Answers you've contributed</Text>
             </Space>
           </Card>
         </Col>
-        {/* Card 3: Measure your impact */}
-        <Col xs={24} md={8}>
+
+        <Col xs={24} md={6}>
           <Card>
-            <Space
-              direction="vertical"
-              align="center"
-              style={{ width: "100%" }}
-            >
-              <LineChartOutlined
-                style={{ fontSize: "48px", color: "#858585" }}
-              />
-              <Title level={5}>Measure your impact</Title>
-              <Text type="secondary">
-                Your posts and helpful actions here help hundreds or thousands
-                of people searching for help.
-              </Text>
+            <Space direction="vertical" align="center" style={{ width: "100%" }}>
+              <CommentOutlined style={{ fontSize: "48px", color: "#858585" }} />
+              <Title level={4} style={{ margin: 0 }}>{counts.comments}</Title>
+              <Title level={5} style={{ margin: 0 }}>Your Comments</Title>
+              <Text type="secondary">Comments you've posted</Text>
+            </Space>
+          </Card>
+        </Col>
+
+        <Col xs={24} md={6}>
+          <Card>
+            <Space direction="vertical" align="center" style={{ width: "100%" }}>
+              <ReadOutlined style={{ fontSize: "48px", color: "#858585" }} />
+              <Title level={4} style={{ margin: 0 }}>{counts.courses ?? 0}</Title>
+              <Title level={5} style={{ margin: 0 }}>Enrolled Courses</Title>
+              <Text type="secondary">Courses you're enrolled in</Text>
             </Space>
           </Card>
         </Col>
