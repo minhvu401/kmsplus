@@ -8,6 +8,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "login.feature_1": "Quản lý khóa học & tài liệu",
     "login.feature_2": "Ngân hàng câu hỏi thông minh",
     "login.feature_3": "Kiểm tra & đánh giá trực tuyến",
+    "auth.returning_to_login": "Đang quay lại trang đăng nhập...",
 
     // Header
     "header.notifications": "Thông báo",
@@ -17,6 +18,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "sidebar.courses": "Khóa học",
     "sidebar.quizzes": "Bài kiểm tra",
     "sidebar.articles": "Bài viết",
+    "sidebar.documents": "Tài liệu",
     "sidebar.question_bank": "Ngân hàng câu hỏi",
     "sidebar.questions": "Hỏi đáp",
     "sidebar.qa": "Hỏi & Đáp",
@@ -82,10 +84,6 @@ export const translations: Record<Language, Record<string, string>> = {
     "permission.login": "Đăng nhập",
     "permission.logout": "Đăng xuất",
     "permission.view_profile": "Xem hồ sơ",
-
-    // Auth Messages
-    "auth.returning_to_login": "Đang quay trở lại trang đăng nhập...",
-    "auth.logging_out": "Đang đăng xuất...",
 
     // Permissions - Articles
     "permission.view_article_list": "Xem danh sách bài viết",
@@ -256,15 +254,6 @@ export const translations: Record<Language, Record<string, string>> = {
     "dashboard.metrics.no_mandatory_courses":
       "Không có khóa học bắt buộc sắp hết hạn",
     "dashboard.metrics.no_courses": "Chưa có khóa học nào",
-    "dashboard.metrics.personal_learning_progress": "Tiến độ học tập của tôi",
-    "dashboard.metrics.no_data": "Chưa có dữ liệu",
-    "dashboard.metrics.contributor_type": "Người đóng góp",
-    "dashboard.metrics.learner_type": "Người học",
-    "dashboard.metrics.due_date": "Hạn:",
-    "dashboard.metrics.overdue": "Quá hạn",
-    "dashboard.metrics.days_left": "Còn",
-    "dashboard.metrics.contributors_tab": "👥 Người đóng góp",
-    "dashboard.metrics.learners_tab": "🎓 Người học xuất sắc",
 
     // User Management
     "user.table_email": "Email",
@@ -443,6 +432,35 @@ export const translations: Record<Language, Record<string, string>> = {
     "form.btn_reset": "Xóa",
     "form.btn_create_user": "Tạo người dùng",
 
+    // User Management
+    "user_mgmt.page_title": "Quản lý người dùng",
+    "user_mgmt.page_subtitle": "Quản lý tài khoản người dùng trong hệ thống",
+    "user_mgmt.tab_create": "Tạo tài khoản",
+    "user_mgmt.tab_manage": "Quản lý người dùng",
+    "user_mgmt.tab_assign_hod": "Phân công trưởng phòng",
+    "user_mgmt.search_placeholder": "Tìm kiếm theo email hoặc tên...",
+    "user_mgmt.filter_role": "Vai trò",
+    "user_mgmt.filter_role_placeholder": "Chọn vai trò...",
+    "user_mgmt.filter_department": "Phòng ban",
+    "user_mgmt.filter_department_placeholder": "Chọn phòng ban...",
+    "user_mgmt.btn_clear_filters": "Xóa bộ lọc",
+    "user_mgmt.btn_refresh": "Làm mới",
+    "user_mgmt.no_departments": "Không có phòng ban để hiển thị",
+    "user_mgmt.label_department": "Phòng ban",
+    "user_mgmt.label_current_hod": "Trưởng phòng hiện tại",
+    "user_mgmt.unassigned": "Chưa phân công",
+    "user_mgmt.btn_reassign": "Đổi",
+    "user_mgmt.btn_assign": "Phân công",
+    "user_mgmt.modal_title_assign_hod": "Phân công trưởng phòng",
+    "user_mgmt.modal_label_department": "Phòng ban",
+    "user_mgmt.modal_select_hod": "Chọn trưởng phòng",
+    "user_mgmt.modal_no_managers":
+      "Không có Training Manager thuộc phòng ban này",
+    "user_mgmt.msg_success": "Cập nhật thành công",
+    "user_mgmt.msg_select_hod": "Vui lòng chọn trưởng phòng",
+    "user_mgmt.msg_failed": "Không thể cập nhật trưởng phòng",
+    "user_mgmt.msg_fetch_failed": "Không thể tải danh sách",
+
     // Common
     "common.save": "Lưu",
     "common.cancel": "Hủy",
@@ -454,6 +472,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "login.feature_1": "Course & Document Management",
     "login.feature_2": "Smart Question Bank",
     "login.feature_3": "Online Testing & Assessment",
+    "auth.returning_to_login": "Returning to login page...",
 
     // Header
     "header.notifications": "Notifications",
@@ -463,6 +482,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "sidebar.courses": "Courses",
     "sidebar.quizzes": "Quizzes",
     "sidebar.articles": "Articles",
+    "sidebar.documents": "Documents",
     "sidebar.question_bank": "Question Bank",
     "sidebar.questions": "Questions",
     "sidebar.qa": "Q&A",
@@ -528,10 +548,6 @@ export const translations: Record<Language, Record<string, string>> = {
     "permission.login": "Login",
     "permission.logout": "Logout",
     "permission.view_profile": "View Profile",
-
-    // Auth Messages
-    "auth.returning_to_login": "Returning to login page...",
-    "auth.logging_out": "Logging out...",
 
     // Permissions - Articles
     "permission.view_article_list": "View Article List",
@@ -700,15 +716,6 @@ export const translations: Record<Language, Record<string, string>> = {
     "dashboard.metrics.answers": "Answers",
     "dashboard.metrics.no_mandatory_courses": "No mandatory courses due soon",
     "dashboard.metrics.no_courses": "No courses yet",
-    "dashboard.metrics.personal_learning_progress": "My Learning Progress",
-    "dashboard.metrics.no_data": "No data yet",
-    "dashboard.metrics.contributor_type": "Contributor",
-    "dashboard.metrics.learner_type": "Learner",
-    "dashboard.metrics.due_date": "Due:",
-    "dashboard.metrics.overdue": "Overdue",
-    "dashboard.metrics.days_left": "Only",
-    "dashboard.metrics.contributors_tab": "👥 Contributors",
-    "dashboard.metrics.learners_tab": "🎓 Top Learners",
 
     // User Management
     "user.table_email": "Email",
@@ -887,6 +894,35 @@ export const translations: Record<Language, Record<string, string>> = {
     // Form Buttons
     "form.btn_reset": "Reset",
     "form.btn_create_user": "Create User",
+
+    // User Management
+    "user_mgmt.page_title": "User Management",
+    "user_mgmt.page_subtitle": "Manage user accounts in the system",
+    "user_mgmt.tab_create": "Create Account",
+    "user_mgmt.tab_manage": "Manage Users",
+    "user_mgmt.tab_assign_hod": "Assign Head of Department",
+    "user_mgmt.search_placeholder": "Search by email or name...",
+    "user_mgmt.filter_role": "Role",
+    "user_mgmt.filter_role_placeholder": "Select roles...",
+    "user_mgmt.filter_department": "Department",
+    "user_mgmt.filter_department_placeholder": "Select departments...",
+    "user_mgmt.btn_clear_filters": "Clear filters",
+    "user_mgmt.btn_refresh": "Refresh",
+    "user_mgmt.no_departments": "No departments to display",
+    "user_mgmt.label_department": "Department",
+    "user_mgmt.label_current_hod": "Current Head of Department",
+    "user_mgmt.unassigned": "Unassigned",
+    "user_mgmt.btn_reassign": "Reassign",
+    "user_mgmt.btn_assign": "Assign",
+    "user_mgmt.modal_title_assign_hod": "Assign Head of Department",
+    "user_mgmt.modal_label_department": "Department",
+    "user_mgmt.modal_select_hod": "Select head of department",
+    "user_mgmt.modal_no_managers":
+      "No Training Manager found in this department",
+    "user_mgmt.msg_success": "Updated successfully",
+    "user_mgmt.msg_select_hod": "Please select a head of department",
+    "user_mgmt.msg_failed": "Failed to update head of department",
+    "user_mgmt.msg_fetch_failed": "Failed to fetch data",
 
     // Common
     "common.save": "Save",

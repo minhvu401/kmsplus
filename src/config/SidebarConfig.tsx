@@ -75,6 +75,15 @@ const createEmployeeSidebarItems = (
       route: PageRoute.ARTICLES,
       onClick: () => navigate(PageRoute.ARTICLES),
     },
+    // Documents
+    {
+      key: "/documents",
+      icon: <BookOutlined />,
+      label: t("sidebar.documents", language),
+      title: "Documents - Company Policies & Guidelines",
+      route: "/documents",
+      onClick: () => navigate("/documents"),
+    },
     {
       type: "divider",
     },
@@ -249,6 +258,15 @@ const createTrainingManagerSidebarItems = (
       route: PageRoute.ARTICLES,
       onClick: () => navigate(PageRoute.ARTICLES),
     },
+    // Documents
+    {
+      key: "/documents",
+      icon: <BookOutlined />,
+      label: t("sidebar.documents", language),
+      title: "Documents - Company Policies & Guidelines",
+      route: "/documents",
+      onClick: () => navigate("/documents"),
+    },
     // Q&A
     {
       key: PageRoute.QUESTIONS,
@@ -304,6 +322,15 @@ const createTrainingManagerSidebarItems = (
       title: byLang(language, "Quản lý bài viết - Tạo/Cập nhật/Xóa bài viết", "Article Management - Create/Update/Delete Articles"),
       route: PageRoute.ARTICLE_MANAGEMENT,
       onClick: () => navigate(PageRoute.ARTICLE_MANAGEMENT),
+    },
+    // Document Management (Wiki)
+    {
+      key: PageRoute.DOCUMENT_MANAGEMENT,
+      icon: <FileTextOutlined />,
+      label: "Document Management",
+      title: "Internal Wiki & Policies",
+      route: PageRoute.DOCUMENT_MANAGEMENT,
+      onClick: () => navigate(PageRoute.DOCUMENT_MANAGEMENT),
     },
     // Quiz Management
     {
@@ -466,6 +493,15 @@ const createSystemAdminSidebarItems = (
       title: byLang(language, "Quản lý bài viết - Tạo/Cập nhật/Xóa bài viết", "Article Management - Create/Update/Delete Articles"),
       route: PageRoute.ARTICLE_MANAGEMENT,
       onClick: () => navigate(PageRoute.ARTICLE_MANAGEMENT),
+    },
+    // Document Management (Wiki)
+    {
+      key: PageRoute.DOCUMENT_MANAGEMENT,
+      icon: <FileTextOutlined />,
+      label: "Document Management",
+      title: "Internal Wiki & Policies",
+      route: PageRoute.DOCUMENT_MANAGEMENT,
+      onClick: () => navigate(PageRoute.DOCUMENT_MANAGEMENT),
     },
     // Quiz Management
     {

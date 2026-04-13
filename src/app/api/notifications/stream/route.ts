@@ -1,4 +1,4 @@
-import { requireAuth } from "@/lib/auth"
+import { getCurrentUser } from "@/lib/auth"
 import { subscribeUserNotifications } from "@/lib/notification-realtime"
 
 export const runtime = "nodejs"
@@ -6,7 +6,10 @@ export const dynamic = "force-dynamic"
 
 export async function GET(request: Request) {
   try {
-    const currentUser = await requireAuth()
+    const currentUser = await getCurrentUser()
+    if (!currentUser) {
+      return new Response("Unauthorized", { status: 401 })
+    }
     const userId = Number(currentUser.id)
 
     const encoder = new TextEncoder()
