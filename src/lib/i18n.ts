@@ -8,6 +8,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "login.feature_1": "Quản lý khóa học & tài liệu",
     "login.feature_2": "Ngân hàng câu hỏi thông minh",
     "login.feature_3": "Kiểm tra & đánh giá trực tuyến",
+    "auth.returning_to_login": "Đang quay lại trang đăng nhập...",
 
     // Header
     "header.notifications": "Thông báo",
@@ -45,13 +46,14 @@ export const translations: Record<Language, Record<string, string>> = {
     "profile.protect_account_desc":
       "Sử dụng mật khẩu mạnh và cập nhật thường xuyên để bảo vệ tài khoản của bạn.",
     "profile.cancel": "Hủy bỏ",
-    
+
     // Profile Activity Tab
     "profile.activity_answers_empty": "Bạn chưa trả lời câu hỏi nào.",
     "profile.activity_questions_empty": "Bạn chưa đặt câu hỏi nào.",
     "profile.activity_tags_placeholder": "Nội dung thẻ (Tags).",
     "profile.activity_badges_placeholder": "Nội dung huy hiệu (Badges).",
-    "profile.activity_reputation_placeholder": "Nội dung điểm uy tín (Reputation).",
+    "profile.activity_reputation_placeholder":
+      "Nội dung điểm uy tín (Reputation).",
     "profile.tab_summary": "Tổng hợp",
     "profile.tab_answers": "Câu trả lời",
     "profile.tab_questions": "Câu hỏi",
@@ -267,12 +269,15 @@ export const translations: Record<Language, Record<string, string>> = {
     "user.form_department": "Phòng ban",
     "user.search_placeholder": "Tìm kiếm theo email hoặc tên...",
     "user.confirm_deactivate": "Vô hiệu hóa tài khoản",
-    "user.confirm_deactivate_msg": "Bạn có chắc chắn muốn vô hiệu hóa tài khoản này không?",
+    "user.confirm_deactivate_msg":
+      "Bạn có chắc chắn muốn vô hiệu hóa tài khoản này không?",
     "user.confirm_activate": "Kích hoạt tài khoản",
-    "user.confirm_activate_msg": "Bạn có chắc chắn muốn kích hoạt tài khoản này không?",
+    "user.confirm_activate_msg":
+      "Bạn có chắc chắn muốn kích hoạt tài khoản này không?",
     "user.updated_success": "Cập nhật người dùng thành công",
     "user.cannot_edit_own": "Bạn không thể chỉnh sửa tài khoản của chính mình",
-    "user.cannot_deactivate_admin": "Quản trị viên hệ thống không thể tự vô hiệu hóa",
+    "user.cannot_deactivate_admin":
+      "Quản trị viên hệ thống không thể tự vô hiệu hóa",
 
     // Quiz Management
     "quiz.step_basic_info": "Thông tin cơ bản",
@@ -292,18 +297,20 @@ export const translations: Record<Language, Record<string, string>> = {
     "quiz.btn_publish": "Công bố",
     "quiz.btn_save_draft": "Lưu bản nháp",
     "quiz.published_success": "Bài kiểm tra đã được công bố thành công",
-    
+
     // Quiz Validation Messages
     "quiz.validation_title_required": "Vui lòng nhập tên bài thi",
     "quiz.validation_title_min": "Tên bài thi không được ít hơn 10 ký tự",
     "quiz.validation_title_max": "Tên bài thi không vượt quá 255 ký tự",
     "quiz.validation_description_max": "Mô tả không vượt quá 1000 ký tự",
-    "quiz.validation_duration_range": "Thời gian làm bài phải từ 0 đến 1440 phút",
+    "quiz.validation_duration_range":
+      "Thời gian làm bài phải từ 0 đến 1440 phút",
     "quiz.validation_passing_score_range": "Điểm đạt phải từ 1 đến 100",
     "quiz.validation_questions_count": "Bạn cần thêm ít nhất 10 câu hỏi",
-    "quiz.validation_incomplete_fields": "Vui lòng hoàn thành các trường bắt buộc",
+    "quiz.validation_incomplete_fields":
+      "Vui lòng hoàn thành các trường bắt buộc",
     "quiz.validation_incomplete_steps": "Vui lòng hoàn thành tất cả các bước",
-    
+
     // Quiz Messages
     "quiz.load_dept_error": "Không thể tải danh sách phòng ban",
     "quiz.no_questions_in_bank": "Không có câu hỏi nào trong kho dữ liệu",
@@ -313,7 +320,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "quiz.create_success": "Tạo bài thi thành công!",
     "quiz.user_not_found": "User ID not found",
     "quiz.course_required": "Course ID is required",
-    
+
     // Quiz Form Labels
     "quiz.label_duration": "Thời Gian Làm Bài (phút)",
     "quiz.label_max_attempts": "Số Lần Làm Lại",
@@ -379,7 +386,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "common.close": "Đóng",
     "common.minutes": "phút",
     "common.times": "lần",
-    
+
     // Quiz Common
     "quiz.questions_unit": "câu",
 
@@ -392,7 +399,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "form.full_name": "Họ và tên",
     "form.password": "Mật khẩu",
     "form.confirm_password": "Xác nhận mật khẩu",
-    
+
     // Form Labels & Placeholders - User Creation
     "form.label_email": "Địa chỉ email",
     "form.label_password": "Mật khẩu",
@@ -404,7 +411,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "form.placeholder_full_name": "Ví dụ: Nguyễn Văn A",
     "form.placeholder_role": "Chọn vai trò cho người dùng",
     "form.placeholder_department": "Chọn phòng ban",
-    
+
     // Form Validation Messages
     "form.validation_email_required": "Vui lòng nhập email",
     "form.validation_email_invalid": "Vui lòng nhập email hợp lệ",
@@ -414,10 +421,39 @@ export const translations: Record<Language, Record<string, string>> = {
     "form.validation_fullname_min": "Họ và tên phải có ít nhất 2 ký tự",
     "form.validation_role_required": "Vui lòng chọn vai trò",
     "form.validation_department_required": "Vui lòng chọn phòng ban",
-    
+
     // Form Buttons
     "form.btn_reset": "Xóa",
     "form.btn_create_user": "Tạo người dùng",
+
+    // User Management
+    "user_mgmt.page_title": "Quản lý người dùng",
+    "user_mgmt.page_subtitle": "Quản lý tài khoản người dùng trong hệ thống",
+    "user_mgmt.tab_create": "Tạo tài khoản",
+    "user_mgmt.tab_manage": "Quản lý người dùng",
+    "user_mgmt.tab_assign_hod": "Phân công trưởng phòng",
+    "user_mgmt.search_placeholder": "Tìm kiếm theo email hoặc tên...",
+    "user_mgmt.filter_role": "Vai trò",
+    "user_mgmt.filter_role_placeholder": "Chọn vai trò...",
+    "user_mgmt.filter_department": "Phòng ban",
+    "user_mgmt.filter_department_placeholder": "Chọn phòng ban...",
+    "user_mgmt.btn_clear_filters": "Xóa bộ lọc",
+    "user_mgmt.btn_refresh": "Làm mới",
+    "user_mgmt.no_departments": "Không có phòng ban để hiển thị",
+    "user_mgmt.label_department": "Phòng ban",
+    "user_mgmt.label_current_hod": "Trưởng phòng hiện tại",
+    "user_mgmt.unassigned": "Chưa phân công",
+    "user_mgmt.btn_reassign": "Đổi",
+    "user_mgmt.btn_assign": "Phân công",
+    "user_mgmt.modal_title_assign_hod": "Phân công trưởng phòng",
+    "user_mgmt.modal_label_department": "Phòng ban",
+    "user_mgmt.modal_select_hod": "Chọn trưởng phòng",
+    "user_mgmt.modal_no_managers":
+      "Không có Training Manager thuộc phòng ban này",
+    "user_mgmt.msg_success": "Cập nhật thành công",
+    "user_mgmt.msg_select_hod": "Vui lòng chọn trưởng phòng",
+    "user_mgmt.msg_failed": "Không thể cập nhật trưởng phòng",
+    "user_mgmt.msg_fetch_failed": "Không thể tải danh sách",
 
     // Common
     "common.save": "Lưu",
@@ -430,6 +466,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "login.feature_1": "Course & Document Management",
     "login.feature_2": "Smart Question Bank",
     "login.feature_3": "Online Testing & Assessment",
+    "auth.returning_to_login": "Returning to login page...",
 
     // Header
     "header.notifications": "Notifications",
@@ -467,7 +504,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "profile.protect_account_desc":
       "Use a strong password and update it regularly to protect your account.",
     "profile.cancel": "Cancel",
-    
+
     // Profile Activity Tab
     "profile.activity_answers_empty": "You haven't answered any questions yet.",
     "profile.activity_questions_empty": "You haven't asked any questions yet.",
@@ -687,12 +724,15 @@ export const translations: Record<Language, Record<string, string>> = {
     "user.form_department": "Department",
     "user.search_placeholder": "Search by email or name...",
     "user.confirm_deactivate": "Deactivate Account",
-    "user.confirm_deactivate_msg": "Are you sure you want to deactivate this account?",
+    "user.confirm_deactivate_msg":
+      "Are you sure you want to deactivate this account?",
     "user.confirm_activate": "Activate Account",
-    "user.confirm_activate_msg": "Are you sure you want to activate this account?",
+    "user.confirm_activate_msg":
+      "Are you sure you want to activate this account?",
     "user.updated_success": "User updated successfully",
     "user.cannot_edit_own": "You cannot edit your own account",
-    "user.cannot_deactivate_admin": "System Administrator cannot deactivate themselves",
+    "user.cannot_deactivate_admin":
+      "System Administrator cannot deactivate themselves",
 
     // Quiz Management
     "quiz.step_basic_info": "Basic Information",
@@ -712,18 +752,21 @@ export const translations: Record<Language, Record<string, string>> = {
     "quiz.btn_publish": "Publish",
     "quiz.btn_save_draft": "Save Draft",
     "quiz.published_success": "Quiz published successfully",
-    
+
     // Quiz Validation Messages
     "quiz.validation_title_required": "Please enter quiz title",
     "quiz.validation_title_min": "Quiz title must be at least 10 characters",
     "quiz.validation_title_max": "Quiz title cannot exceed 255 characters",
-    "quiz.validation_description_max": "Description cannot exceed 1000 characters",
-    "quiz.validation_duration_range": "Time limit must be between 0 and 1440 minutes",
-    "quiz.validation_passing_score_range": "Passing score must be between 1 and 100",
+    "quiz.validation_description_max":
+      "Description cannot exceed 1000 characters",
+    "quiz.validation_duration_range":
+      "Time limit must be between 0 and 1440 minutes",
+    "quiz.validation_passing_score_range":
+      "Passing score must be between 1 and 100",
     "quiz.validation_questions_count": "You need to add at least 10 questions",
     "quiz.validation_incomplete_fields": "Please complete all required fields",
     "quiz.validation_incomplete_steps": "Please complete all steps",
-    
+
     // Quiz Messages
     "quiz.load_dept_error": "Failed to load departments",
     "quiz.no_questions_in_bank": "No questions in question bank",
@@ -733,7 +776,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "quiz.create_success": "Quiz created successfully!",
     "quiz.user_not_found": "User ID not found",
     "quiz.course_required": "Course ID is required",
-    
+
     // Quiz Form Labels
     "quiz.label_duration": "Time Limit (minutes)",
     "quiz.label_max_attempts": "Max Attempts",
@@ -799,7 +842,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "common.close": "Close",
     "common.minutes": "minutes",
     "common.times": "times",
-    
+
     // Quiz Common
     "quiz.questions_unit": "question(s)",
 
@@ -812,7 +855,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "form.full_name": "Full Name",
     "form.password": "Password",
     "form.confirm_password": "Confirm Password",
-    
+
     // Form Labels & Placeholders - User Creation
     "form.label_email": "Email Address",
     "form.label_password": "Password",
@@ -824,7 +867,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "form.placeholder_full_name": "John Doe",
     "form.placeholder_role": "Select a role for the user",
     "form.placeholder_department": "Select a department",
-    
+
     // Form Validation Messages
     "form.validation_email_required": "Please enter email address",
     "form.validation_email_invalid": "Please enter a valid email address",
@@ -834,10 +877,39 @@ export const translations: Record<Language, Record<string, string>> = {
     "form.validation_fullname_min": "Full name must be at least 2 characters",
     "form.validation_role_required": "Please select a role",
     "form.validation_department_required": "Please select a department",
-    
+
     // Form Buttons
     "form.btn_reset": "Reset",
     "form.btn_create_user": "Create User",
+
+    // User Management
+    "user_mgmt.page_title": "User Management",
+    "user_mgmt.page_subtitle": "Manage user accounts in the system",
+    "user_mgmt.tab_create": "Create Account",
+    "user_mgmt.tab_manage": "Manage Users",
+    "user_mgmt.tab_assign_hod": "Assign Head of Department",
+    "user_mgmt.search_placeholder": "Search by email or name...",
+    "user_mgmt.filter_role": "Role",
+    "user_mgmt.filter_role_placeholder": "Select roles...",
+    "user_mgmt.filter_department": "Department",
+    "user_mgmt.filter_department_placeholder": "Select departments...",
+    "user_mgmt.btn_clear_filters": "Clear filters",
+    "user_mgmt.btn_refresh": "Refresh",
+    "user_mgmt.no_departments": "No departments to display",
+    "user_mgmt.label_department": "Department",
+    "user_mgmt.label_current_hod": "Current Head of Department",
+    "user_mgmt.unassigned": "Unassigned",
+    "user_mgmt.btn_reassign": "Reassign",
+    "user_mgmt.btn_assign": "Assign",
+    "user_mgmt.modal_title_assign_hod": "Assign Head of Department",
+    "user_mgmt.modal_label_department": "Department",
+    "user_mgmt.modal_select_hod": "Select head of department",
+    "user_mgmt.modal_no_managers":
+      "No Training Manager found in this department",
+    "user_mgmt.msg_success": "Updated successfully",
+    "user_mgmt.msg_select_hod": "Please select a head of department",
+    "user_mgmt.msg_failed": "Failed to update head of department",
+    "user_mgmt.msg_fetch_failed": "Failed to fetch data",
 
     // Common
     "common.save": "Save",
