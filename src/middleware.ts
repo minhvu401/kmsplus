@@ -50,41 +50,16 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith(route)
   )
 
-  // Nếu đã login và đang ở trang login (không có callbackUrl) → redirect về dashboard
-  if (
-    isAuthenticated &&
-    pathname === PageRoute.LOGIN &&
-    !search.includes("callbackUrl")
-  ) {
-    try {
-      // If custom token exists, verify it
-      if (token) {
-        await verifyToken(token)
-      }
-      // If NextAuth token exists, just allow (NextAuth will validate it)
-      return NextResponse.redirect(
-        new URL(PageRoute.DASHBOARD_METRICS, request.url)
-      )
-    } catch (error) {
-      // Token invalid → xóa cookie
-      const response = NextResponse.next()
-      response.cookies.delete("token")
-      return response
-    }
-  }
-
-  // Nếu chưa login và truy cập protected route → redirect về login
-  if (isProtectedRoute && !isAuthenticated) {
-    const loginUrl = new URL(PageRoute.LOGIN, request.url)
-    loginUrl.searchParams.set("callbackUrl", pathname)
-    return NextResponse.redirect(loginUrl)
-  }
-
   // Nếu có custom token nhưng truy cập protected route → verify token + check permission
   if (isProtectedRoute && token) {
     try {
       const decoded = await verifyToken(token)
       const userRole = decoded.role as Role
+
+      // CHẶN: Nếu là Employee nhưng cố vào Dashboard Metrics
+      if (userRole === Role.EMPLOYEE && pathname === PageRoute.DASHBOARD_METRICS) {
+        return NextResponse.redirect(new URL("/history", request.url))
+      }
 
       // Lấy permissions yêu cầu cho route hiện tại
       const requiredPermissions = getRequiredPermissionsForRoute(pathname)
@@ -98,8 +73,9 @@ export async function middleware(request: NextRequest) {
 
         if (!hasPermission) {
           // User không có quyền truy cập route này
+          const fallbackUrl = userRole === Role.EMPLOYEE ? "/history" : PageRoute.DASHBOARD_METRICS
           return NextResponse.redirect(
-            new URL(PageRoute.DASHBOARD_METRICS, request.url)
+            new URL(fallbackUrl, request.url)
           )
         }
       }
@@ -113,6 +89,22 @@ export async function middleware(request: NextRequest) {
       response.cookies.delete("token")
       return response
     }
+  }
+
+  // Nếu đã login và đang ở trang login (không có callbackUrl) → redirect về dashboard
+  if (
+    isAuthenticated &&
+    pathname === PageRoute.LOGIN &&
+    !search.includes("callbackUrl")
+  ) {
+    return NextResponse.redirect(new URL(PageRoute.DASHBOARD_METRICS, request.url))
+  }
+
+  // Nếu chưa login và truy cập protected route → redirect về login
+  if (isProtectedRoute && !isAuthenticated) {
+    const loginUrl = new URL(PageRoute.LOGIN, request.url)
+    loginUrl.searchParams.set("callbackUrl", pathname)
+    return NextResponse.redirect(loginUrl)
   }
 
   // Nếu có NextAuth token → cho qua (NextAuth will handle validation)

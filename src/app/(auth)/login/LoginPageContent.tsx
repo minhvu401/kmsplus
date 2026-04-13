@@ -116,7 +116,26 @@ export default function LoginPageContent() {
             <LoginForm
               callbackUrl={searchParams?.get("callbackUrl")}
               onForgotPassword={() => setShowForgot(true)}
-              onSuccess={() => {
+              onSuccess={async () => {
+                try {
+                  // Lấy thông tin user vừa đăng nhập xong để kiểm tra Role
+                  const response = await fetch("/api/auth/me")
+                  if (response.ok) {
+                    const data = await response.json()
+                    const userRole = data.role || data.user?.role
+                    
+                    // Nếu là Employee thì đổi đường dẫn mặc định thành lịch sử học tập
+                    if (userRole === "EMPLOYEE") {
+                      window.location.replace("/history")
+                      return                    
+                    }
+                  }
+                } catch (error) {
+                  console.error("Lấy thông tin role thất bại", error)
+                }
+
+                // Ưu tiên callbackUrl (nếu user bị đá ra từ 1 trang nào đó), 
+                // nếu không có thì dùng defaultPath vừa kiểm tra ở trên.
                 const cb = searchParams?.get("callbackUrl") || "/dashboard-metrics"
                 window.location.replace(cb)
               }}
