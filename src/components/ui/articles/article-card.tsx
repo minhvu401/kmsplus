@@ -1,6 +1,7 @@
 "use client"
 
 import React from "react"
+import { Avatar } from "antd"
 import { useRouter } from "next/navigation"
 import { MessageOutlined, ClockCircleOutlined } from "@ant-design/icons"
 
@@ -65,16 +66,20 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({
       <div className="p-5">
         {/* Author Section */}
         <div className="flex items-center gap-3 mb-3">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center flex-shrink-0">
-            <span className="text-white text-xs font-bold">
-              {authorName
-                .split(" ")
-                .map((n) => n[0])
-                .join("")
-                .toUpperCase()
-                .slice(0, 2)}
-            </span>
-          </div>
+            <div className="flex-shrink-0">
+              {authorAvatar ? (
+                <Avatar src={authorAvatar} size={32} />
+              ) : (
+                <Avatar size={32} style={{ background: 'linear-gradient(135deg,#60a5fa,#1e40af)', color: '#fff', fontWeight: 700 }}>
+                  {authorName
+                    .split(" ")
+                    .map((n) => n[0])
+                    .join("")
+                    .toUpperCase()
+                    .slice(0, 2)}
+                </Avatar>
+              )}
+            </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-gray-900 truncate">
               {authorName}

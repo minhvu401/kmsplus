@@ -41,6 +41,7 @@ import {
   CloseOutlined,
   SaveOutlined,
   RollbackOutlined,
+  InfoCircleOutlined,
   UploadOutlined,
 } from "@ant-design/icons"
 import ImgCrop from "antd-img-crop"
@@ -61,6 +62,7 @@ import {
   getCurrentUserDetail,
   approveArticle,
   rejectArticle,
+  resubmitArticle,
   type CurrentUserInfo,
 } from "@/action/articles/articlesManagementAction"
 import type { Article, Tag } from "@/service/articles.service"
@@ -74,7 +76,7 @@ if (typeof window !== "undefined") {
   ;(window as any).React = React
 }
 
-const { Text, Title } = Typography
+const { Text, Title, Paragraph } = Typography
 
 function useDebounce(value: string, delay: number) {
   const [debouncedValue, setDebouncedValue] = useState(value)
@@ -207,6 +209,7 @@ export default function ArticleManagement() {
   const [loadingUserInfo, setLoadingUserInfo] = useState(true)
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const [isResubmitMode, setIsResubmitMode] = useState(false)
   const [editingArticleId, setEditingArticleId] = useState<number | null>(null)
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false)
   const [loadingPreviewData, setLoadingPreviewData] = useState(false)
@@ -241,6 +244,7 @@ export default function ArticleManagement() {
   const [editCategoryId, setEditCategoryId] = useState<number | undefined>(
     undefined
   )
+  const [editCategoryName, setEditCategoryName] = useState<string | undefined>(undefined)
 
   // Reject modal states
   const [isRejectModalOpen, setIsRejectModalOpen] = useState(false)
@@ -252,6 +256,9 @@ export default function ArticleManagement() {
   const [approvingArticleId, setApprovingArticleId] = useState<number | null>(
     null
   )
+
+  const [isViewReasonModalOpen, setIsViewReasonModalOpen] = useState(false)
+  const [viewReason, setViewReason] = useState("")
 
   // Approve confirmation modal states
   const [isApproveConfirmOpen, setIsApproveConfirmOpen] = useState(false)
@@ -642,12 +649,30 @@ export default function ArticleManagement() {
         const displayStatus = record.is_deleted ? "archived" : status
         const displayText = formatStatusLabel(displayStatus)
         return (
+        <div className="flex items-center gap-0.2">
           <AntTag
             color={statusColors[displayStatus] || "default"}
             className="text-xs font-semibold px-2 py-0.5 rounded-full"
           >
             {displayText}
           </AntTag>
+          {displayStatus === "rejected" && (record as any).reason && (
+            <Tooltip
+              title={
+                language === "vi" ? "Xem lý do từ chối" : "View rejection reason"
+              }
+            >
+              <InfoCircleOutlined
+                className="text-red-600 cursor-pointer hover:text-red-800"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setViewReason((record as any).reason || "")
+                  setIsViewReasonModalOpen(true)
+                }}
+              />
+            </Tooltip>
+          )}
+        </div>
         )
       },
     },
@@ -665,66 +690,108 @@ export default function ArticleManagement() {
       render: (_, record) => {
         const showApproveButtons =
           record.status === "pending" && canApproveArticle()
+
+        // Build the list of visible action buttons
+        const actionButtons: React.ReactNode[] = []
+
+        if (canEditArticle(record)) {
+          actionButtons.push(
+            <Button
+              key="edit"
+              type="text"
+              icon={<EditOutlined />}
+              size="small"
+              style={{ color: "#1677ff" }}
+              onClick={() => openEditModal(Number(record.id))}
+              title="Edit"
+            />
+          )
+        }
+
+        actionButtons.push(
+          <Button
+            key={record.is_deleted ? "restore" : "delete"}
+            type="text"
+            danger={!record.is_deleted}
+            icon={record.is_deleted ? <RollbackOutlined /> : <DeleteOutlined />}
+            size="small"
+            loading={deletingId === Number(record.id)}
+            onClick={(e) => {
+              e.stopPropagation()
+              handleArchiveClick(Number(record.id), !!record.is_deleted)
+            }}
+            title={record.is_deleted ? "Restore" : "Delete"}
+          />
+        )
+
+        // If article is rejected, show a resubmit icon that opens the resubmit/edit modal
+        if (record.status === "rejected") {
+          actionButtons.push(
+            <Button
+              key="resubmit"
+              type="text"
+              size="small"
+              icon={<SendOutlined />}
+              onClick={() => handleResubmitClick(Number(record.id))}
+              title="Resubmit"
+            />
+          )
+        }
+
+        if (showApproveButtons) {
+          actionButtons.push(
+            <Button
+              key="approve"
+              type="text"
+              size="small"
+              style={{ color: "#52c41a" }}
+              onClick={() => handleApproveClick(Number(record.id))}
+              loading={
+                isApprovingArticle &&
+                approveConfirmArticleId === Number(record.id)
+              }
+              title="Approve"
+            >
+              ✓
+            </Button>
+          )
+
+          actionButtons.push(
+            <Button
+              key="reject"
+              type="text"
+              size="small"
+              danger
+              onClick={() => {
+                setRejectingArticleId(Number(record.id))
+                setIsRejectModalOpen(true)
+              }}
+              title="Reject"
+            >
+              ✕
+            </Button>
+          )
+        }
+
+        // If exactly 3 visible icons, render them inline on the same line.
+        if (actionButtons.length === 3) {
+          return <Space size="small">{actionButtons}</Space>
+        }
+
+        // Otherwise keep the current stacked layout (two rows)
         return (
           <Flex vertical gap={2}>
             <Space size="small" wrap>
-              {canEditArticle(record) && (
-                <Button
-                  type="text"
-                  icon={<EditOutlined />}
-                  size="small"
-                  style={{ color: "#1677ff" }}
-                  onClick={() => openEditModal(Number(record.id))}
-                  title="Edit"
-                />
-              )}
-              <Button
-                type="text"
-                danger={!record.is_deleted}
-                icon={
-                  record.is_deleted ? <RollbackOutlined /> : <DeleteOutlined />
-                }
-                size="small"
-                loading={deletingId === Number(record.id)}
-                onClick={(e) => {
-                  e.stopPropagation()
-                  handleArchiveClick(Number(record.id), !!record.is_deleted)
-                }}
-                title={record.is_deleted ? "Restore" : "Delete"}
-              />
+              {actionButtons.slice(0, 2)}
             </Space>
-            {showApproveButtons && (
+            {actionButtons.length > 2 && (
               <Space size="small" wrap>
-                <Button
-                  type="text"
-                  size="small"
-                  style={{ color: "#52c41a" }}
-                  onClick={() => handleApproveClick(Number(record.id))}
-                  loading={
-                    isApprovingArticle &&
-                    approveConfirmArticleId === Number(record.id)
-                  }
-                  title="Approve"
-                >
-                  ✓
-                </Button>
-                <Button
-                  type="text"
-                  size="small"
-                  danger
-                  onClick={() => {
-                    setRejectingArticleId(Number(record.id))
-                    setIsRejectModalOpen(true)
-                  }}
-                  title="Reject"
-                >
-                  ✕
-                </Button>
+                {actionButtons.slice(2)}
               </Space>
             )}
           </Flex>
         )
-      },
+        }
     },
   ]
 
@@ -762,6 +829,15 @@ export default function ArticleManagement() {
     setDeleteConfirmArticleId(articleId)
     setDeleteConfirmIsDeleted(isDeleted)
     setIsDeleteConfirmOpen(true)
+  }
+
+  const handleResubmitClick = async (articleId: number) => {
+    setIsResubmitMode(true)
+    // Open edit modal with article loaded; edit submit will call resubmit when isResubmitMode === true
+    await openEditModal(articleId)
+    // Ensure submit status will be 'pending' when user clicks submit
+    setEditSubmitStatus("pending")
+    editSubmitStatusRef.current = "pending"
   }
 
   const handleDeleteOrRestore = async (
@@ -829,6 +905,7 @@ export default function ArticleManagement() {
         setEditThumbnailUrl(article.thumbnail_url || "")
         setEditSelectedTags(article.tags || [])
         setEditCategoryId(article.category_id || undefined)
+        setEditCategoryName(article.category_name || undefined)
 
         editForm.setFieldsValue({
           title: article.title,
@@ -904,39 +981,72 @@ export default function ArticleManagement() {
     setEditingArticle(true)
 
     try {
-      const formData = new FormData()
-      formData.append("id", String(editingArticleId))
-      formData.append("title", editTitleContent)
-      formData.append("content", editContentValue)
-      formData.append("status", editSubmitStatusRef.current)
-      formData.append("tags", JSON.stringify(editSelectedTags))
-      formData.append(
-        "category_id",
-        values?.categoryId ? String(values.categoryId) : ""
-      )
-      formData.append("image_url", editImageUrl)
-      // New: Add thumbnail from Cloudinary
-      if (editThumbnailUrl) {
-        formData.append("thumbnail_url", editThumbnailUrl)
-      }
+      if (isResubmitMode) {
+        // Call resubmit API action
+        const result = await resubmitArticle(
+          editingArticleId,
+          editTitleContent,
+          editContentValue,
+          editSelectedTags,
+          editCategoryId ?? null,
+          currentUser?.department_id ?? null,
+          editImageUrl || null,
+          editThumbnailUrl || null
+        )
 
-      const result = await updateArticle(formData)
-      if (result.success) {
-        message.success(result.message || "Article updated successfully!")
-        setIsEditModalOpen(false)
-        editForm.resetFields()
-        setEditTitleContent("")
-        setEditContentValue("")
-        setEditImageUrl("")
-        setEditThumbnailUrl("") // Reset thumbnail
-        setEditSelectedTags([])
-        setEditingArticleId(null)
-        setEditSubmitStatus("published")
-        editSubmitStatusRef.current = "published"
-        setEditOriginalStatus(null)
-        await refreshCurrentArticles(false)
+        if (result.success) {
+          message.success(result.message || "Article resubmitted successfully")
+          setIsEditModalOpen(false)
+          editForm.resetFields()
+          setEditTitleContent("")
+          setEditContentValue("")
+          setEditImageUrl("")
+          setEditThumbnailUrl("")
+          setEditSelectedTags([])
+          setEditingArticleId(null)
+          setEditSubmitStatus("published")
+          editSubmitStatusRef.current = "published"
+          setEditOriginalStatus(null)
+          setIsResubmitMode(false)
+          await refreshCurrentArticles(false)
+        } else {
+          message.error(result.message || "Failed to resubmit article")
+        }
       } else {
-        message.error(result.message || "Failed to update article")
+        const formData = new FormData()
+        formData.append("id", String(editingArticleId))
+        formData.append("title", editTitleContent)
+        formData.append("content", editContentValue)
+        formData.append("status", editSubmitStatusRef.current)
+        formData.append("tags", JSON.stringify(editSelectedTags))
+        formData.append(
+          "category_id",
+          values?.categoryId ? String(values.categoryId) : ""
+        )
+        formData.append("image_url", editImageUrl)
+        // New: Add thumbnail from Cloudinary
+        if (editThumbnailUrl) {
+          formData.append("thumbnail_url", editThumbnailUrl)
+        }
+
+        const result = await updateArticle(formData)
+        if (result.success) {
+          message.success(result.message || "Article updated successfully!")
+          setIsEditModalOpen(false)
+          editForm.resetFields()
+          setEditTitleContent("")
+          setEditContentValue("")
+          setEditImageUrl("")
+          setEditThumbnailUrl("") // Reset thumbnail
+          setEditSelectedTags([])
+          setEditingArticleId(null)
+          setEditSubmitStatus("published")
+          editSubmitStatusRef.current = "published"
+          setEditOriginalStatus(null)
+          await refreshCurrentArticles(false)
+        } else {
+          message.error(result.message || "Failed to update article")
+        }
       }
     } catch (error: any) {
       message.error(error?.message || "An error occurred")
@@ -1923,6 +2033,8 @@ export default function ArticleManagement() {
           setEditSubmitStatus("published")
           editSubmitStatusRef.current = "published"
           setEditOriginalStatus(null)
+          setIsResubmitMode(false)
+          setEditCategoryName(undefined)
         }}
         footer={null}
         width={900}
@@ -2123,10 +2235,25 @@ export default function ArticleManagement() {
                 size="large"
                 placeholder="Select a category"
                 loading={loadingCategories}
-                options={editFormCategoriesByDepartment.map((cat) => ({
-                  label: cat.name,
-                  value: cat.id,
-                }))}
+                options={
+                  // Ensure the original category name is included so the Select
+                  // displays the name instead of a raw id when the options
+                  // list isn't populated yet or doesn't include it.
+                  (() => {
+                    const base = editFormCategoriesByDepartment.map((cat) => ({
+                      label: cat.name,
+                      value: cat.id,
+                    }))
+                    if (
+                      editCategoryId !== undefined &&
+                      editCategoryName &&
+                      !base.some((o) => o.value === editCategoryId)
+                    ) {
+                      base.unshift({ label: editCategoryName, value: editCategoryId })
+                    }
+                    return base
+                  })()
+                }
                 optionFilterProp="label"
                 showSearch
                 allowClear
@@ -2213,6 +2340,7 @@ export default function ArticleManagement() {
                     editSubmitStatusRef.current = "published"
                     setEditOriginalStatus(null)
                     setEditCategoryId(undefined)
+                    setIsResubmitMode(false)
                   }}
                   disabled={editingArticle}
                 >
@@ -2325,6 +2453,32 @@ export default function ArticleManagement() {
               </Text>
             </Flex>
           </div>
+        </div>
+      </Modal>
+
+      {/* View Rejection Reason Modal */}
+      <Modal
+        title={language === "vi" ? "Lý do từ chối" : "Rejection Reason"}
+        open={isViewReasonModalOpen}
+        onCancel={() => {
+          setIsViewReasonModalOpen(false)
+          setViewReason("")
+        }}
+        footer={[
+          <Button
+            key="close"
+            onClick={() => {
+              setIsViewReasonModalOpen(false)
+              setViewReason("")
+            }}
+          >
+            {language === "vi" ? "Đóng" : "Close"}
+          </Button>,
+        ]}
+        width={600}
+      >
+        <div className="space-y-4">
+          <Paragraph className="whitespace-pre-wrap">{viewReason || "-"}</Paragraph>
         </div>
       </Modal>
 

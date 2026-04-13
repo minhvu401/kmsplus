@@ -126,14 +126,10 @@ export async function updateProgressService(
       WHERE id = ${enrollment.id}
     `
 
-    // F. Nếu đây là lần đầu tiên item hoàn thành, cập nhật curriculum_items
-    if (isNewCompletion) {
-      await sql`
-        UPDATE curriculum_items
-        SET completed_at = CURRENT_TIMESTAMP
-        WHERE id = ${normalizedItemId}
-      `
-    }
+    // F. Schema change: `curriculum_items.completed_at` removed.
+    // If you need to track per-item completion timestamps, consider
+    // creating a separate `curriculum_item_completions` audit table and
+    // inserting a row here. For now, skip updating curriculum_items.
 
     return { success: true, progressPercentage: newProgressPercentage }
   } catch (error) {

@@ -571,7 +571,8 @@ export default function ArticleDetailPage() {
                     <Text>{comment.content}</Text>
                   </div>
                   {currentUser &&
-                    comment.user_id === String(currentUser.id) && (
+                    (comment.user_id === String(currentUser.id) ||
+                      currentUser.isAdmin) && (
                       <Dropdown
                         menu={{
                           items: [
@@ -608,6 +609,7 @@ export default function ArticleDetailPage() {
                   {new Date(
                     new Date(comment.created_at).getTime()
                   ).toLocaleString("vi-VN", {
+                    timeZone: "UTC",
                     hour12: false,
                     year: "numeric",
                     month: "2-digit",
@@ -720,7 +722,7 @@ export default function ArticleDetailPage() {
                 <span className="inline-flex h-2 w-2 rounded-full bg-gray-400" />
                 <span>
                   {new Date(article.created_at).toLocaleString("vi-VN", {
-                    timeZone: "Asia/Ho_Chi_Minh",
+                    timeZone: "UTC",
                     hour12: false,
                   })}
                 </span>

@@ -240,20 +240,15 @@ export default function ViewArticlePage() {
             )
         : []
 
-      // For non-admin users, filter by department
-      if (userRes && !userRes.isAdmin && userRes.department_id) {
-        normalizedCategoriesTemp = normalizedCategoriesTemp.filter(
-          (c) =>
-            c.department_id === null ||
-            c.department_id === userRes.department_id
-        )
-      }
+      // Do not restrict categories by user's department here — show all available categories
 
-      // Remove department_id before setting state
-      const normalizedCategories = normalizedCategoriesTemp.map((c) => ({
-        id: c.id,
-        name: c.name,
-      }))
+      // Remove department_id and exclude category with id = 1 before setting state
+      const normalizedCategories = normalizedCategoriesTemp
+        .filter((c: any) => Number(c.id) !== 1)
+        .map((c: any) => ({
+          id: c.id,
+          name: c.name,
+        }))
 
       setTags(tagNames)
       setCategories(normalizedCategories)

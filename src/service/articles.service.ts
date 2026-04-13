@@ -374,6 +374,7 @@ export async function filterByTagAction(
       a.approved_by,
       a.approved_at,
       a.deleted_at,
+      a.reason,
       a.created_at,
       a.updated_at,
       a.is_deleted,

@@ -152,13 +152,87 @@ export async function filterByTagAndCategory(
 }
 
 export async function deleteArticle(id: number) {
-  await requirePermission(Permission.DELETE_ARTICLE)
-  return deleteArticleAction(id)
+  // Allow admins or users with DELETE_ARTICLE permission to delete any article.
+  // If user lacks that permission, allow deletion only when the user is the article's author.
+  const currentUser = await getCurrentUserDetail()
+  if (!currentUser) {
+    return {
+      success: false,
+      message: "Authentication required",
+    }
+  }
+
+  try {
+    await requirePermission(Permission.DELETE_ARTICLE)
+    return deleteArticleAction(id)
+  } catch (err) {
+    // If missing permission, check ownership
+    try {
+      const rows = await sql`
+        SELECT author_id
+        FROM articles
+        WHERE id = ${id}
+        LIMIT 1
+      `
+
+      if (rows.length === 0) {
+        return {
+          success: false,
+          message: "Article not found",
+        }
+      }
+
+      if (Number(rows[0].author_id) === Number(currentUser.id)) {
+        return deleteArticleAction(id)
+      }
+
+      // Re-throw original permission error for non-owners
+      throw err
+    } catch (innerErr: any) {
+      throw innerErr
+    }
+  }
 }
 
 export async function restoreArticle(id: number) {
-  await requirePermission(Permission.DELETE_ARTICLE)
-  return restoreArticleAction(id)
+  // Similar logic to delete: allow admins or users with DELETE_ARTICLE,
+  // otherwise allow restore only if the current user is the original author.
+  const currentUser = await getCurrentUserDetail()
+  if (!currentUser) {
+    return {
+      success: false,
+      message: "Authentication required",
+    }
+  }
+
+  try {
+    await requirePermission(Permission.DELETE_ARTICLE)
+    return restoreArticleAction(id)
+  } catch (err) {
+    try {
+      const rows = await sql`
+        SELECT author_id
+        FROM articles
+        WHERE id = ${id}
+        LIMIT 1
+      `
+
+      if (rows.length === 0) {
+        return {
+          success: false,
+          message: "Article not found",
+        }
+      }
+
+      if (Number(rows[0].author_id) === Number(currentUser.id)) {
+        return restoreArticleAction(id)
+      }
+
+      throw err
+    } catch (innerErr: any) {
+      throw innerErr
+    }
+  }
 }
 
 export async function approveArticle(id: number) {

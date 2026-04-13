@@ -33,6 +33,7 @@ export default function CategoriesManagement() {
   const [filterStatus, setFilterStatus] = useState<'all' | 'published' | 'archived'>('all');
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
+  const [departmentFilter, setDepartmentFilter] = useState<number | null>(null);
   
   const [categories, setCategories] = useState<Category[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -52,16 +53,16 @@ export default function CategoriesManagement() {
 
   useEffect(() => {
     loadCategories();
-  }, [debouncedSearchQuery, filterStatus, sortOrder]);
+  }, [debouncedSearchQuery, filterStatus, sortOrder, departmentFilter]);
 
   useEffect(() => {
     loadDepartments();
   }, []);
 
   useEffect(() => {
-    const active = debouncedSearchQuery !== '' || filterStatus !== 'all';
+    const active = debouncedSearchQuery !== '' || filterStatus !== 'all' || departmentFilter !== null;
     setHasActiveFilters(active);
-  }, [debouncedSearchQuery, filterStatus]);
+  }, [debouncedSearchQuery, filterStatus, departmentFilter]);
 
   const loadCategories = async () => {
     setLoading(true);
@@ -78,6 +79,11 @@ export default function CategoriesManagement() {
         filtered = filtered.filter(cat => !cat.is_deleted);
       } else if (filterStatus === 'archived') {
         filtered = filtered.filter(cat => cat.is_deleted);
+      }
+
+      // Filter by department
+      if (departmentFilter !== null) {
+        filtered = filtered.filter(cat => Number(cat.department_id) === Number(departmentFilter));
       }
 
       // Sort by created_at
@@ -111,13 +117,32 @@ export default function CategoriesManagement() {
   const handleClearFilters = () => {
     setSearchQuery('');
     setFilterStatus('all');
+    setDepartmentFilter(null);
   };
 
   const handleCreateSubmit = async (values: any) => {
     setSubmitting(true);
     try {
+      const newName = (values.name || '').trimEnd();
+
+      // Check duplicate name (trim trailing spaces for comparison)
+      const duplicate = categories.some((cat) =>
+        (cat.name || '').trimEnd().toLowerCase() === newName.toLowerCase()
+      );
+
+      if (duplicate) {
+        createForm.setFields([
+          {
+            name: 'name',
+            errors: ['A category with this name already exists'],
+          },
+        ]);
+        setSubmitting(false);
+        return;
+      }
+
       const formData = new FormData();
-      formData.append('name', values.name);
+      formData.append('name', newName);
       if (values.department_id) {
         formData.append('department_id', values.department_id);
       }
@@ -170,9 +195,28 @@ export default function CategoriesManagement() {
     
     setSubmitting(true);
     try {
+      const newName = (values.name || '').trimEnd();
+
+      // Check duplicate name excluding current editing category
+      const duplicate = categories.some((cat) => {
+        if (Number(cat.id) === Number(editingCategoryId)) return false;
+        return (cat.name || '').trimEnd().toLowerCase() === newName.toLowerCase();
+      });
+
+      if (duplicate) {
+        editForm.setFields([
+          {
+            name: 'name',
+            errors: ['A category with this name already exists'],
+          },
+        ]);
+        setSubmitting(false);
+        return;
+      }
+
       const formData = new FormData();
       formData.append('id', String(editingCategoryId));
-      formData.append('name', values.name);
+      formData.append('name', newName);
       if (values.department_id) {
         formData.append('department_id', values.department_id);
       }
@@ -403,7 +447,7 @@ export default function CategoriesManagement() {
           />
 
           {/* Filters Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
             <div className="flex flex-col">
               <Text type="secondary" className="text-sm font-medium mb-2">
                 Status
@@ -434,6 +478,23 @@ export default function CategoriesManagement() {
                 ]}
                 size="middle"
                 className="w-full"
+              />
+            </div>
+
+            <div className="flex flex-col">
+              <Text type="secondary" className="text-sm font-medium mb-2">
+                Department
+              </Text>
+              <Select
+                value={departmentFilter ?? undefined}
+                onChange={(val) => setDepartmentFilter(val ?? null)}
+                options={[{ label: 'All Departments', value: undefined }, ...getDepartmentOptions()]}
+                size="middle"
+                className="w-full"
+                placeholder="All Departments"
+                allowClear
+                showSearch
+                optionFilterProp="label"
               />
             </div>
 
@@ -639,7 +700,10 @@ export default function CategoriesManagement() {
               { max: 255, message: 'Name must be less than 255 characters' },
             ]}
           >
-            <Input placeholder="Enter category name" />
+            <Input
+              placeholder="Enter category name"
+              onChange={() => createForm.setFields([{ name: 'name', errors: [] }])}
+            />
           </Form.Item>
 
           <Form.Item
@@ -682,12 +746,16 @@ export default function CategoriesManagement() {
               { max: 255, message: 'Name must be less than 255 characters' },
             ]}
           >
-            <Input placeholder="Enter category name" />
+            <Input
+              placeholder="Enter category name"
+              onChange={() => editForm.setFields([{ name: 'name', errors: [] }])}
+            />
           </Form.Item>
 
           <Form.Item
-            label="Department (Optional)"
+            label="Department"
             name="department_id"
+            rules={[{ required: true, message: 'Please select department' }]}
           >
             <Select
               placeholder="Select department"
@@ -695,6 +763,7 @@ export default function CategoriesManagement() {
               showSearch
               optionFilterProp="label"
               options={getDepartmentOptions()}
+              onChange={() => editForm.setFields([{ name: 'department_id', errors: [] }])}
             />
           </Form.Item>
         </Form>
