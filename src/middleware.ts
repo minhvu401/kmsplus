@@ -106,10 +106,38 @@ export async function middleware(request: NextRequest) {
     loginUrl.searchParams.set("callbackUrl", pathname)
     return NextResponse.redirect(loginUrl)
   }
+  if (
+    isAuthenticated &&
+    pathname === PageRoute.LOGIN &&
+    !search.includes("callbackUrl")
+  ) {
+    return NextResponse.redirect(new URL(PageRoute.DASHBOARD_METRICS, request.url))
+  }
 
-  // Nếu có NextAuth token → cho qua (NextAuth will handle validation)
+  // Nếu chưa login và truy cập protected route → redirect về login
+  if (isProtectedRoute && !isAuthenticated) {
+    const loginUrl = new URL(PageRoute.LOGIN, request.url)
+    loginUrl.searchParams.set("callbackUrl", pathname)
+    return NextResponse.redirect(loginUrl)
+  }
+
+  // Nếu có NextAuth token → cần get user info từ session để check permission
   if (isProtectedRoute && nextAuthToken) {
-    return NextResponse.next()
+    try {
+      // Lấy user info từ NextAuth session
+      // NextAuth user info được lưu trong session cookie
+      // Tuy nhiên, để đơn giản, bạn có thể:
+      // 1. Lấy user info từ API route riêng
+      // 2. Hoặc sử dụng getSession() từ next-auth/react
+      // Tạm thời, cho qua - backend sẽ check permission trong Server Actions
+      return NextResponse.next()
+    } catch (error: any) {
+      // Nếu có lỗi → redirect về login
+      const loginUrl = new URL(PageRoute.LOGIN, request.url)
+      loginUrl.searchParams.set("reason", "session_error")
+      const response = NextResponse.redirect(loginUrl)
+      return response
+    }
   }
 
   // Các route khác → cho qua

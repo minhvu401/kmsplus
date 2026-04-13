@@ -74,6 +74,12 @@ export enum Permission {
   DELETE_CATEGORY = "DELETE_CATEGORY",
   SEARCH_CATEGORY = "SEARCH_CATEGORY",
 
+  // Documents (4)
+  VIEW_DOCUMENT = "VIEW_DOCUMENT",
+  CREATE_DOCUMENT = "CREATE_DOCUMENT",
+  UPDATE_DOCUMENT = "UPDATE_DOCUMENT",
+  DELETE_DOCUMENT = "DELETE_DOCUMENT",
+
   // System Administration (3)
   MONITOR_ACTIVITY = "MONITOR_ACTIVITY",
   VIEW_STATISTICS = "VIEW_STATISTICS",
@@ -393,56 +399,78 @@ export const PermissionConfig = {
     label: "Tìm kiếm danh mục",
   },
 
+  // Documents
+  [Permission.VIEW_DOCUMENT]: {
+    id: 328,
+    name: "view_document",
+    label: "Xem tài liệu",
+  },
+  [Permission.CREATE_DOCUMENT]: {
+    id: 329,
+    name: "create_document",
+    label: "Tạo tài liệu",
+  },
+  [Permission.UPDATE_DOCUMENT]: {
+    id: 330,
+    name: "update_document",
+    label: "Cập nhật tài liệu",
+  },
+  [Permission.DELETE_DOCUMENT]: {
+    id: 331,
+    name: "delete_document",
+    label: "Xóa tài liệu",
+  },
+
   // System Administration
   [Permission.MONITOR_ACTIVITY]: {
-    id: 328,
+    id: 332,
     name: "monitor_activity",
     label: "Giám sát hoạt động",
   },
   [Permission.VIEW_STATISTICS]: {
-    id: 329,
+    id: 333,
     name: "view_statistics",
     label: "Xem thống kê",
   },
   [Permission.EXPORT_DATA]: {
-    id: 330,
+    id: 334,
     name: "export_data",
     label: "Xuất dữ liệu",
   },
 
   // System Settings
   [Permission.LANGUAGE_SETTING]: {
-    id: 331,
+    id: 335,
     name: "language_setting",
     label: "Cài đặt ngôn ngữ",
   },
   [Permission.VIEW_ROLE_PERMISSION]: {
-    id: 332,
+    id: 336,
     name: "view_role_permission",
     label: "Xem quyền vai trò",
   },
   [Permission.EDIT_ROLE_PERMISSION]: {
-    id: 333,
+    id: 337,
     name: "edit_role_permission",
     label: "Chỉnh sửa quyền vai trò",
   },
   [Permission.MODERATE_CONTENT]: {
-    id: 334,
+    id: 338,
     name: "moderate_content",
     label: "Kiểm duyệt nội dung",
   },
   [Permission.AI_EXPLANATION]: {
-    id: 335,
+    id: 339,
     name: "ai_explanation",
     label: "Giải thích AI",
   },
   [Permission.AI_RECOMMENDATION]: {
-    id: 336,
+    id: 340,
     name: "ai_recommendation",
     label: "Gợi ý AI",
   },
   [Permission.MANAGE_SYSTEM]: {
-    id: 337,
+    id: 341,
     name: "manage_system",
     label: "Quản lý hệ thống",
   },

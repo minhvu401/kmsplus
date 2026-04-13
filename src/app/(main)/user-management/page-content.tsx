@@ -15,6 +15,9 @@ import {
   Modal,
   Select,
   message,
+  Input,
+  Divider,
+  Typography,
 } from "antd"
 import {
   ReloadOutlined,
@@ -22,6 +25,8 @@ import {
   TeamOutlined,
   ApartmentOutlined,
   UserOutlined,
+  SearchOutlined,
+  ClearOutlined,
 } from "@ant-design/icons"
 import CreateUserForm from "@/components/forms/create-user-form"
 import UserListTable from "@/components/forms/user-list-table"
@@ -35,6 +40,7 @@ import {
 import { t } from "@/lib/i18n"
 import useLanguageStore from "@/store/useLanguageStore"
 import useUserStore from "@/store/useUserStore"
+import { Role, RoleConfig } from "@/enum/role.enum"
 
 interface User {
   id: string
@@ -42,6 +48,7 @@ interface User {
   full_name: string
   avatar_url?: string
   created_at: Date
+  department_id?: number
   department_name?: string
   role_name?: string
   role_id?: string
@@ -85,6 +92,14 @@ export default function UserManagementPageContent() {
   const [eligibleHeads, setEligibleHeads] = useState<EligibleHeadOption[]>([])
   const [eligibleHeadsLoading, setEligibleHeadsLoading] = useState(false)
 
+  // Filter states
+  const [searchInput, setSearchInput] = useState("")
+  const [selectedRoles, setSelectedRoles] = useState<string[]>([])
+  const [selectedDepartmentsList, setSelectedDepartmentsList] = useState<
+    string[]
+  >([])
+  const [filteredUsers, setFilteredUsers] = useState<User[]>([])
+
   // Fetch users
   const fetchUsers = async () => {
     setLoading(true)
@@ -114,10 +129,7 @@ export default function UserManagementPageContent() {
       setDepartmentRows(rows || [])
     } catch (err: any) {
       setDepartmentError(
-        err?.message ||
-          (language === "vi"
-            ? "Không thể tải danh sách phân công trưởng phòng"
-            : "Failed to fetch head-of-department assignments")
+        err?.message || t("user_mgmt.msg_fetch_failed", language)
       )
     } finally {
       setDepartmentLoading(false)
@@ -129,12 +141,7 @@ export default function UserManagementPageContent() {
       const rows = await getAllDepartments()
       setDepartments(rows || [])
     } catch (err: any) {
-      message.error(
-        err?.message ||
-          (language === "vi"
-            ? "Không thể tải danh sách phòng ban"
-            : "Failed to fetch departments")
-      )
+      message.error(err?.message || t("user_mgmt.msg_fetch_failed", language))
       setDepartments([])
     }
   }
@@ -151,6 +158,13 @@ export default function UserManagementPageContent() {
     )
   }
 
+  // Clear all filters
+  const handleClearFilters = () => {
+    setSearchInput("")
+    setSelectedRoles([])
+    setSelectedDepartmentsList([])
+  }
+
   const openAssignModal = async (department: DepartmentWithHead) => {
     setSelectedDepartment(department)
     setSelectedHeadUserId(
@@ -165,12 +179,7 @@ export default function UserManagementPageContent() {
       setEligibleHeads(rows || [])
     } catch (err: any) {
       setEligibleHeads([])
-      message.error(
-        err?.message ||
-          (language === "vi"
-            ? "Không thể tải danh sách ứng viên trưởng phòng"
-            : "Failed to fetch eligible head candidates")
-      )
+      message.error(err?.message || t("user_mgmt.msg_fetch_failed", language))
     } finally {
       setEligibleHeadsLoading(false)
     }
@@ -181,11 +190,7 @@ export default function UserManagementPageContent() {
   const handleAssignHead = async () => {
     if (!selectedDepartment) return
     if (!selectedHeadUserId) {
-      message.warning(
-        language === "vi"
-          ? "Vui lòng chọn trưởng phòng"
-          : "Please select a head of department"
-      )
+      message.warning(t("user_mgmt.msg_select_hod", language))
       return
     }
 
@@ -197,28 +202,16 @@ export default function UserManagementPageContent() {
       )
 
       if (result.success) {
-        message.success(
-          language === "vi" ? "Cập nhật thành công" : "Updated successfully"
-        )
+        message.success(t("user_mgmt.msg_success", language))
         setAssignModalOpen(false)
         setSelectedDepartment(null)
         setEligibleHeads([])
         await fetchDepartmentsWithHead()
       } else {
-        message.error(
-          result.message ||
-            (language === "vi"
-              ? "Không thể cập nhật trưởng phòng"
-              : "Failed to update head of department")
-        )
+        message.error(result.message || t("user_mgmt.msg_failed", language))
       }
     } catch (err: any) {
-      message.error(
-        err?.message ||
-          (language === "vi"
-            ? "Không thể cập nhật trưởng phòng"
-            : "Failed to update head of department")
-      )
+      message.error(err?.message || t("user_mgmt.msg_failed", language))
     } finally {
       setAssignSubmitting(false)
     }
@@ -231,19 +224,43 @@ export default function UserManagementPageContent() {
     fetchDepartments()
   }, [])
 
-  // Get available roles (hardcoded for now, can be fetched from API)
-  const availableRoles = [
-    { id: 1, name: "Employee" },
-    { id: 2, name: "Contributor" },
-    { id: 3, name: "Training Manager" },
-    { id: 4, name: "Admin" },
-    { id: 5, name: "Dashboard Viewer" },
-  ]
+  // Filter users whenever users data or filters change
+  useEffect(() => {
+    const filtered = users.filter((user) => {
+      // Search filter - check email, full_name
+      const searchLower = searchInput.toLowerCase()
+      const matchesSearch =
+        searchInput === "" ||
+        user.email?.toLowerCase().includes(searchLower) ||
+        user.full_name?.toLowerCase().includes(searchLower)
+
+      // Role filter
+      const matchesRole =
+        selectedRoles.length === 0 ||
+        (user.role_name && selectedRoles.includes(user.role_name))
+
+      // Department filter
+      const matchesDepartment =
+        selectedDepartmentsList.length === 0 ||
+        (user.department_id &&
+          selectedDepartmentsList.includes(String(user.department_id)))
+
+      return matchesSearch && matchesRole && matchesDepartment
+    })
+
+    setFilteredUsers(filtered)
+  }, [users, searchInput, selectedRoles, selectedDepartmentsList])
+
+  // Get available roles from RoleConfig
+  const availableRoles = Object.entries(RoleConfig).map(([key, config]) => ({
+    id: config.id,
+    name: config.name,
+  }))
 
   const tabs = [
     {
       key: "create",
-      label: language === "vi" ? "Tạo tài khoản" : "Create Account",
+      label: t("user_mgmt.tab_create", language),
       icon: <UserAddOutlined />,
       children: (
         <div className="pt-4">
@@ -260,37 +277,114 @@ export default function UserManagementPageContent() {
     },
     {
       key: "manage",
-      label: language === "vi" ? "Quản lý người dùng" : "Manage Users",
+      label: t("user_mgmt.tab_manage", language),
       icon: <TeamOutlined />,
       children: (
         <div className="pt-4">
           <Flex vertical gap={16}>
+            {/* Filter Card */}
+            <div className="bg-white rounded-lg shadow-sm p-5">
+              <div className="space-y-3">
+                {/* Search Bar - Full Width */}
+                <Input.Search
+                  placeholder={t("user_mgmt.search_placeholder", language)}
+                  prefix={<SearchOutlined />}
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  size="middle"
+                  allowClear
+                  enterButton={<SearchOutlined />}
+                  style={{ marginBottom: 12 }}
+                />
+
+                {/* Filters Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="flex flex-col">
+                    <Typography.Text
+                      type="secondary"
+                      className="text-sm font-medium mb-2"
+                    >
+                      {t("user_mgmt.filter_role", language)}
+                    </Typography.Text>
+                    <Select
+                      mode="multiple"
+                      placeholder={t(
+                        "user_mgmt.filter_role_placeholder",
+                        language
+                      )}
+                      value={selectedRoles}
+                      onChange={setSelectedRoles}
+                      showSearch
+                      optionFilterProp="label"
+                      options={availableRoles.map((role) => ({
+                        label: role.name,
+                        value: role.name,
+                      }))}
+                      maxTagCount="responsive"
+                      size="middle"
+                      className="w-full"
+                    />
+                  </div>
+
+                  <div className="flex flex-col">
+                    <Typography.Text
+                      type="secondary"
+                      className="text-sm font-medium mb-2"
+                    >
+                      {t("user_mgmt.filter_department", language)}
+                    </Typography.Text>
+                    <Select
+                      mode="multiple"
+                      placeholder={t(
+                        "user_mgmt.filter_department_placeholder",
+                        language
+                      )}
+                      value={selectedDepartmentsList}
+                      onChange={setSelectedDepartmentsList}
+                      showSearch
+                      optionFilterProp="label"
+                      options={departments.map((dept) => ({
+                        label: dept.name,
+                        value: String(dept.id),
+                      }))}
+                      maxTagCount="responsive"
+                      size="middle"
+                      className="w-full"
+                    />
+                  </div>
+
+                  <div className="flex flex-col justify-end">
+                    <Button
+                      icon={<ClearOutlined />}
+                      onClick={handleClearFilters}
+                      size="middle"
+                    >
+                      {t("user_mgmt.btn_clear_filters", language)}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <Space>
               <Button
                 icon={<ReloadOutlined />}
                 onClick={fetchUsers}
                 loading={loading}
               >
-                {language === "vi" ? "Làm mới" : "Refresh"}
+                {t("user_mgmt.btn_refresh", language)}
               </Button>
             </Space>
 
-            {error && (
-              <Alert
-                message={error}
-                type="error"
-                showIcon
-                closable
-              />
-            )}
+            {error && <Alert message={error} type="error" showIcon closable />}
 
             {loading ? (
               <div className="flex justify-center items-center py-10">
                 <Spin />
               </div>
             ) : (
-              <UserListTable 
-                users={users} 
+              <UserListTable
+                users={filteredUsers}
                 onRefresh={fetchUsers}
                 currentUserId={currentUser?.id}
                 departments={departments}
@@ -302,10 +396,7 @@ export default function UserManagementPageContent() {
     },
     {
       key: "assign-hod",
-      label:
-        language === "vi"
-          ? "Phân công trưởng phòng"
-          : "Assign Head of Department",
+      label: t("user_mgmt.tab_assign_hod", language),
       icon: <ApartmentOutlined />,
       children: (
         <div className="pt-4">
@@ -316,7 +407,7 @@ export default function UserManagementPageContent() {
                 onClick={fetchDepartmentsWithHead}
                 loading={departmentLoading}
               >
-                {language === "vi" ? "Làm mới" : "Refresh"}
+                {t("user_mgmt.btn_refresh", language)}
               </Button>
             </Space>
 
@@ -329,13 +420,7 @@ export default function UserManagementPageContent() {
                 <Spin />
               </div>
             ) : departmentRows.length === 0 ? (
-              <Empty
-                description={
-                  language === "vi"
-                    ? "Không có phòng ban để hiển thị"
-                    : "No departments to display"
-                }
-              />
+              <Empty description={t("user_mgmt.no_departments", language)} />
             ) : (
               <div className="space-y-3">
                 {departmentRows.map((row) => (
@@ -345,7 +430,7 @@ export default function UserManagementPageContent() {
                   >
                     <div>
                       <p className="text-xs text-gray-500">
-                        {language === "vi" ? "Phòng ban" : "Department"}
+                        {t("user_mgmt.label_department", language)}
                       </p>
                       <p className="font-medium text-gray-900">{row.name}</p>
                     </div>
@@ -353,32 +438,26 @@ export default function UserManagementPageContent() {
                     <div className="flex items-center gap-3">
                       <Avatar
                         src={row.head_avatar_url || undefined}
-                        icon={!row.head_avatar_url ? <UserOutlined /> : undefined}
+                        icon={
+                          !row.head_avatar_url ? <UserOutlined /> : undefined
+                        }
                       >
-                        {!row.head_avatar_url ? getInitials(row.head_name) : null}
+                        {!row.head_avatar_url
+                          ? getInitials(row.head_name)
+                          : null}
                       </Avatar>
                       <div className="text-right">
                         <p className="text-xs text-gray-500">
-                          {language === "vi"
-                            ? "Trưởng phòng hiện tại"
-                            : "Current Head of Department"}
+                          {t("user_mgmt.label_current_hod", language)}
                         </p>
                         <p className="font-medium text-gray-900">
-                          {row.head_name ||
-                            (language === "vi" ? "Chưa phân công" : "Unassigned")}
+                          {row.head_name || t("user_mgmt.unassigned", language)}
                         </p>
                       </div>
-                      <Button
-                        size="small"
-                        onClick={() => openAssignModal(row)}
-                      >
+                      <Button size="small" onClick={() => openAssignModal(row)}>
                         {row.head_of_department_id
-                          ? language === "vi"
-                            ? "Đổi"
-                            : "Reassign"
-                          : language === "vi"
-                          ? "Phân công"
-                          : "Assign"}
+                          ? t("user_mgmt.btn_reassign", language)
+                          : t("user_mgmt.btn_assign", language)}
                       </Button>
                     </div>
                   </div>
@@ -401,9 +480,7 @@ export default function UserManagementPageContent() {
               {t("sidebar.user_management", language)}
             </h1>
             <p className="text-gray-600 mt-2">
-              {language === "vi"
-                ? "Quản lý tài khoản người dùng trong hệ thống"
-                : "Manage user accounts in the system"}
+              {t("user_mgmt.page_subtitle", language)}
             </p>
           </div>
         </div>
@@ -411,18 +488,11 @@ export default function UserManagementPageContent() {
 
       {/* Tabs Card */}
       <Card>
-        <Tabs
-          items={tabs}
-          defaultActiveKey="create"
-        />
+        <Tabs items={tabs} defaultActiveKey="create" />
       </Card>
 
       <Modal
-        title={
-          language === "vi"
-            ? "Phân công trưởng phòng"
-            : "Assign Head of Department"
-        }
+        title={t("user_mgmt.modal_title_assign_hod", language)}
         open={assignModalOpen}
         onCancel={() => {
           setAssignModalOpen(false)
@@ -430,13 +500,13 @@ export default function UserManagementPageContent() {
           setEligibleHeads([])
         }}
         onOk={handleAssignHead}
-        okText={language === "vi" ? "Lưu" : "Save"}
-        cancelText={language === "vi" ? "Hủy" : "Cancel"}
+        okText={t("common.save", language)}
+        cancelText={t("common.cancel", language)}
         confirmLoading={assignSubmitting}
       >
         <div className="space-y-3">
           <p className="text-sm text-gray-600">
-            {language === "vi" ? "Phòng ban" : "Department"}: {" "}
+            {t("user_mgmt.modal_label_department", language)}:{" "}
             <span className="font-medium text-gray-900">
               {selectedDepartment?.name || "-"}
             </span>
@@ -444,11 +514,7 @@ export default function UserManagementPageContent() {
 
           <Select
             showSearch
-            placeholder={
-              language === "vi"
-                ? "Chọn trưởng phòng"
-                : "Select head of department"
-            }
+            placeholder={t("user_mgmt.modal_select_hod", language)}
             value={selectedHeadUserId}
             onChange={(value) => setSelectedHeadUserId(value)}
             optionFilterProp="label"
@@ -461,9 +527,7 @@ export default function UserManagementPageContent() {
           />
           {!eligibleHeadsLoading && eligibleHeads.length === 0 && (
             <p className="text-xs text-gray-500">
-              {language === "vi"
-                ? "Không có Training Manager thuộc phòng ban này"
-                : "No Training Manager found in this department"}
+              {t("user_mgmt.modal_no_managers", language)}
             </p>
           )}
         </div>

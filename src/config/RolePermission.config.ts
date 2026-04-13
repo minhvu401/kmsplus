@@ -40,6 +40,8 @@ export const rolePermissionsMap: Record<Role, Permission[]> = {
     Permission.LANGUAGE_SETTING,
     Permission.AI_RECOMMENDATION,
     Permission.AI_EXPLANATION,
+    // Documents - View only
+    Permission.VIEW_DOCUMENT,
   ],
 
   // CONTRIBUTOR: 33 perms - tạo bài viết + câu hỏi (không phê duyệt)
@@ -85,6 +87,8 @@ export const rolePermissionsMap: Record<Role, Permission[]> = {
     Permission.LANGUAGE_SETTING,
     Permission.AI_RECOMMENDATION,
     Permission.AI_EXPLANATION,
+    // Documents - View only
+    Permission.VIEW_DOCUMENT,
   ],
 
   // TRAINING_MANAGER: 56 perms - quản lý khóa học, quiz, phê duyệt bài viết, phân tích AI
@@ -159,6 +163,11 @@ export const rolePermissionsMap: Record<Role, Permission[]> = {
     Permission.MODERATE_CONTENT,
     Permission.AI_RECOMMENDATION,
     Permission.AI_EXPLANATION,
+    // Documents - Full CRUD
+    Permission.VIEW_DOCUMENT,
+    Permission.CREATE_DOCUMENT,
+    Permission.UPDATE_DOCUMENT,
+    Permission.DELETE_DOCUMENT,
   ],
 
   // DIRECTOR: 14 perms - phê duyệt khóa học, xem thống kê
@@ -199,6 +208,11 @@ export const rolePermissionsMap: Record<Role, Permission[]> = {
     Permission.EXPORT_DATA,
     // Settings
     Permission.LANGUAGE_SETTING,
+    // Documents - Full CRUD
+    Permission.VIEW_DOCUMENT,
+    Permission.CREATE_DOCUMENT,
+    Permission.UPDATE_DOCUMENT,
+    Permission.DELETE_DOCUMENT,
   ],
 
   // ADMIN: 69 perms - toàn quyền
@@ -269,6 +283,11 @@ export const rolePermissionsMap: Record<Role, Permission[]> = {
     Permission.UPDATE_CATEGORY,
     Permission.DELETE_CATEGORY,
     Permission.SEARCH_CATEGORY,
+    // Documents - Full CRUD
+    Permission.VIEW_DOCUMENT,
+    Permission.CREATE_DOCUMENT,
+    Permission.UPDATE_DOCUMENT,
+    Permission.DELETE_DOCUMENT,
     // System - Full
     Permission.MONITOR_ACTIVITY,
     Permission.VIEW_STATISTICS,
