@@ -67,8 +67,10 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
 
     const decoded = await verifyToken(token)
     return decoded
-  } catch (error) {
-    console.error("Error getting current user:", error)
+  } catch (error: any) {
+    if (error?.code !== 'ERR_JWT_EXPIRED') {
+      console.error("Error getting current user:", error)
+    }
     return null
   }
 }
