@@ -47,13 +47,13 @@ export async function POST(request: Request) {
     // Upload to Cloudinary
     const result = await cloudinary.uploader.upload(base64, {
       folder: folder,
-      resource_type: 'image',
+      resource_type: 'auto',
     });
 
     return Response.json(
       {
         success: true,
-        message: 'Image uploaded successfully',
+        message: 'File uploaded successfully',
         url: result.url,
         secure_url: result.secure_url,
         public_id: result.public_id,

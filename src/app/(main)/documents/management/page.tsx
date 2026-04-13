@@ -1,0 +1,452 @@
+"use client"
+
+import React, { useEffect, useState } from "react"
+import {
+  Table,
+  Button,
+  Space,
+  Tag,
+  Drawer,
+  Form,
+  Input,
+  Select,
+  Popconfirm,
+  message,
+  notification,
+  Card,
+  Row,
+  Col,
+  Modal,
+  Upload
+} from "antd"
+import { PlusOutlined, EditOutlined, DeleteOutlined, FolderAddOutlined, UploadOutlined } from "@ant-design/icons"
+import type { UploadFile, UploadProps } from 'antd/es/upload/interface'
+import dayjs from "dayjs"
+
+import QuillEditorLazy from "@/components/QuillEditorLazy"
+import { DocumentStatus } from "@/enum/document-status.enum"
+
+import {
+  fetchDocuments,
+  fetchCategories,
+  saveDocument,
+  deleteDocument,
+  getDocumentById,
+  createCategory
+} from "@/action/documents/documentActions"
+import { getAllDepartments } from "@/action/department/departmentActions"
+
+// Types
+interface Category {
+  id: string
+  name: string
+  description?: string
+  parent_id?: string | null
+  department_id?: number | null
+  department_name?: string | null
+}
+
+interface Department {
+  id: number
+  name: string
+}
+
+interface DocumentItem {
+  id: string
+  title: string
+  status: DocumentStatus
+  version: string
+  updated_at: string
+  category_name: string
+  category_id: string
+}
+
+export default function DocumentManagementPage() {
+  // State: dữ liệu Table
+  const [documents, setDocuments] = useState<DocumentItem[]>([])
+  const [categories, setCategories] = useState<Category[]>([])
+  const [loading, setLoading] = useState(true)
+
+  // State: Drawer quản lý tạo/sửa Document
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [fileList, setFileList] = useState<UploadFile[]>([])
+
+  // State: Modal quản lý tạo Danh mục nhanh
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false)
+  const [isCategorySubmitting, setIsCategorySubmitting] = useState(false)
+  const [departments, setDepartments] = useState<Department[]>([])
+
+  // Forms
+  const [docForm] = Form.useForm()
+  const [catForm] = Form.useForm()
+
+  // 1. Khởi tạo: Lấy dữ liệu Documents & Categories & Phòng ban
+  const loadData = async () => {
+    setLoading(true)
+    try {
+      const [docsData, catsData, deptsData] = await Promise.all([
+        fetchDocuments(),
+        fetchCategories(),
+        getAllDepartments()
+      ])
+      
+      setDocuments(docsData)
+      setCategories(catsData)
+      setDepartments(deptsData || [])
+    } catch (error: any) {
+      console.error("Lỗi:", error)
+      message.error("Lỗi khởi tạo dữ liệu: " + error.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadData()
+  }, [])
+
+  // 2. Mở Drawer & Lấy chi tiết nội dung (nếu sửa)
+  const openDrawer = async (docId?: string) => {
+    setEditingId(docId || null)
+    docForm.resetFields()
+    setFileList([])
+    setIsDrawerOpen(true)
+
+    if (docId) {
+      const hideMsg = message.loading("Đang tải dữ liệu...", 0)
+      try {
+        const detail = await getDocumentById(docId)
+        if (detail) {
+          docForm.setFieldsValue({
+            title: detail.title,
+            category_id: detail.category_id,
+            status: detail.status,
+            version: detail.version,
+            content: detail.content,
+          })
+          if (detail.attachments && detail.attachments.length > 0) {
+            setFileList(detail.attachments.map((att: any) => ({
+              uid: String(att.id),
+              name: att.file_name,
+              url: att.file_url,
+              size: att.file_size,
+              type: att.file_type,
+              status: 'done'
+            })))
+          }
+        }
+      } catch (error: any) {
+        message.error(error.message)
+        setIsDrawerOpen(false)
+      } finally {
+        hideMsg()
+      }
+    } else {
+      // Giá trị mặc định khi Thêm mới
+      docForm.setFieldsValue({
+        status: DocumentStatus.DRAFT,
+        version: "1.0"
+      })
+    }
+  }
+
+  // 3. Xử lý Lưu Document
+  const handleSaveDoc = async () => {
+    try {
+      const values = await docForm.validateFields()
+      setIsSubmitting(true)
+      
+      const finalAttachments = fileList.map(f => {
+        if (f.status === 'done' && f.response) {
+          return { file_name: f.name, file_url: f.response.url, file_size: f.response.bytes, file_type: f.response.format }
+        }
+        if (f.status === 'done' && f.url) {
+          return { file_name: f.name, file_url: f.url, file_size: f.size, file_type: f.type }
+        }
+        return null
+      }).filter(Boolean) as any[]
+
+      await saveDocument({
+        id: editingId || undefined,
+        ...values,
+        attachments: finalAttachments
+      })
+      message.success(editingId ? "Cập nhật thành công!" : "Tạo mới thành công!")
+      setIsDrawerOpen(false)
+      loadData() // Refresh Table
+    } catch (error: any) {
+      if (!error.errorFields) message.error(error.message)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  // 4. Xóa Document
+  const handleDeleteDoc = async (id: string) => {
+    try {
+      await deleteDocument(id)
+      message.success("Đã xóa tài liệu")
+      loadData()
+    } catch (error: any) {
+      message.error(error.message)
+    }
+  }
+
+  // 5. Mở & Xử lý Lưu Category
+  const handleSaveCategory = async () => {
+    try {
+      const values = await catForm.validateFields()
+      setIsCategorySubmitting(true)
+      await createCategory(values)
+      notification.success({ message: "T?o danh m?c t�i li?u th�nh c�ng!", description: "Danh m?c v?a m?i du?c th�m th�nh c�ng v� hi?n th? b�n du?i.", placement: "topRight" })
+      setIsCategoryModalOpen(false)
+      catForm.resetFields()
+      // Tải lại danh sách categories để cập nhật vào dropdown
+      const catsData = await fetchCategories()
+      setCategories(catsData)
+    } catch (error: any) {
+      if (!error.errorFields) message.error(error.message)
+    } finally {
+      setIsCategorySubmitting(false)
+    }
+  }
+
+  // Render Table Columns
+  const columns = [
+    {
+      title: "Tiêu đề",
+      dataIndex: "title",
+      key: "title",
+      render: (text: string) => <strong>{text}</strong>
+    },
+    {
+      title: "Danh mục",
+      dataIndex: "category_name",
+      key: "category_name",
+      render: (text: string, record: DocumentItem) => {
+        const cat = categories.find(c => c.id === record.category_id);
+        const deptText = cat?.department_name ? ` (${cat.department_name})` : '';
+        return <Tag color="blue">{text || "Không xác định"}{deptText}</Tag>
+      }
+    },
+    {
+      title: "Phiên bản",
+      dataIndex: "version",
+      key: "version",
+      width: 100
+    },
+    {
+      title: "Trạng thái",
+      dataIndex: "status",
+      key: "status",
+      render: (status: DocumentStatus) => {
+        const colorMap = {
+          [DocumentStatus.DRAFT]: "orange",
+          [DocumentStatus.PUBLISHED]: "green",
+          [DocumentStatus.ARCHIVED]: "red",
+        }
+        return <Tag color={colorMap[status] || "default"}>{status}</Tag>
+      }
+    },
+    {
+      title: "Ngày cập nhật",
+      dataIndex: "updated_at",
+      key: "updated_at",
+      render: (date: string) => dayjs(date).format("DD/MM/YYYY HH:mm")
+    },
+    {
+      title: "Hành động",
+      key: "action",
+      width: 150,
+      render: (_: any, record: DocumentItem) => (
+        <Space>
+          <Button 
+            type="text" 
+            icon={<EditOutlined />} 
+            onClick={() => openDrawer(record.id)} 
+          />
+          <Popconfirm
+            title="Xóa tài liệu này?"
+            description="Hành động này không thể hoàn tác"
+            onConfirm={() => handleDeleteDoc(record.id)}
+            okText="Xóa"
+            cancelText="Hủy"
+          >
+            <Button type="text" danger icon={<DeleteOutlined />} />
+          </Popconfirm>
+        </Space>
+      ),
+    },
+  ]
+
+  return (
+    <div className="p-6 max-w-7xl mx-auto space-y-6 animate-fade-in">
+      <div className="flex justify-between items-center mb-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-800">Quản trị Tri thức Nội bộ (Wiki)</h1>
+          <p className="text-gray-500">Quản lý quy định, chính sách và tài liệu công ty.</p>
+        </div>
+        <Space>
+          <Button 
+            icon={<FolderAddOutlined />} 
+            onClick={() => setIsCategoryModalOpen(true)}
+          >
+            Thêm danh mục
+          </Button>
+          <Button 
+            type="primary" 
+            icon={<PlusOutlined />} 
+            onClick={() => openDrawer()}
+          >
+            Thêm tài liệu mới
+          </Button>
+        </Space>
+      </div>
+
+      <Card className="shadow-sm rounded-lg overflow-hidden">
+        <Table
+          columns={columns}
+          dataSource={documents}
+          loading={loading}
+          rowKey="id"
+          pagination={{ pageSize: 10 }}
+        />
+      </Card>
+
+      {/* DRAWER: Tạo/Sửa Document */}
+      <Drawer
+        title={editingId ? "Chỉnh sửa tài liệu" : "Thêm tài liệu mới"}
+        width={900} /* Rộng hơn vì có Editor */
+        onClose={() => setIsDrawerOpen(false)}
+        open={isDrawerOpen}
+        extra={
+          <Space>
+            <Button onClick={() => setIsDrawerOpen(false)}>Hủy</Button>
+            <Button type="primary" onClick={handleSaveDoc} loading={isSubmitting}>
+              Lưu tài liệu
+            </Button>
+          </Space>
+        }
+      >
+        <Form layout="vertical" form={docForm}>
+          <Row gutter={16}>
+            <Col span={16}>
+              <Form.Item
+                name="title"
+                label="Tiêu đề tài liệu"
+                rules={[{ required: true, message: "Vui lòng nhập tiêu đề" }]}
+              >
+                <Input placeholder="VD: Quy định trang phục 2024..." size="large" />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item
+                name="category_id"
+                label="Danh mục"
+                rules={[{ required: true, message: "Vui lòng chọn danh mục" }]}
+              >
+                <Select
+                  showSearch
+                  placeholder="Chọn danh mục"
+                  options={categories.map(c => ({ label: c.name, value: c.id }))}
+                  size="large"
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Row gutter={16}>
+             <Col span={12}>
+              <Form.Item
+                  name="version"
+                  label="Phiên bản"
+                  rules={[{ required: true }]}
+                >
+                  <Input placeholder="1.0" />
+                </Form.Item>
+             </Col>
+             <Col span={12}>
+              <Form.Item
+                  name="status"
+                  label="Trạng thái"
+                  rules={[{ required: true }]}
+                >
+                  <Select
+                    options={[
+                      { label: "Bản nháp", value: DocumentStatus.DRAFT },
+                      { label: "Đã ban hành", value: DocumentStatus.PUBLISHED },
+                      { label: "Lưu trữ", value: DocumentStatus.ARCHIVED },
+                    ]}
+                  />
+                </Form.Item>
+             </Col>
+          </Row>
+
+          {/* SỬ DỤNG QUILL EDITOR - LAZY IMPORT GÍUP CẢI THIỆN PERFORMANCE */}
+          <Form.Item
+            name="content"
+            label="Nội dung"
+            rules={[{ required: true, message: "Vui lòng nhập nội dung" }]}
+            valuePropName="value"
+          >
+            <QuillEditorLazy value="" onChange={() => {}} height={450} placeholder="Soạn thảo chi tiết..." />
+          </Form.Item>
+
+            <Form.Item label="Đính kèm tệp">
+              <Upload
+                name="file"
+                action="/api/upload/cloudinary"
+                fileList={fileList}
+                onChange={({ fileList: newFileList }) => setFileList(newFileList)}
+                multiple
+              >
+                <Button icon={<UploadOutlined />}>Tải lên tệp (Word, Excel, PDF...)</Button>
+              </Upload>
+            </Form.Item>
+        </Form>
+      </Drawer>
+
+      {/* MODAL: Thêm Danh mục nhanh */}
+      <Modal
+        title="Thêm danh mục tài liệu"
+        open={isCategoryModalOpen}
+        onOk={handleSaveCategory}
+        confirmLoading={isCategorySubmitting}
+        onCancel={() => setIsCategoryModalOpen(false)}
+      >
+        <Form layout="vertical" form={catForm}>
+          <Form.Item
+            name="name"
+            label="Tên danh mục"
+            rules={[{ required: true, message: "Vui lòng nhập tên danh mục" }]}
+          >
+            <Input placeholder="VD: Quy định HR, Chính sách Bảo mật..." />
+          </Form.Item>
+
+          <Form.Item
+            name="department_id"
+            label="Thuộc phòng ban (Tuỳ chọn)"
+            tooltip="Nếu để trống, toàn bộ công ty có thể thấy danh mục tài liệu này."
+          >
+            <Select
+              allowClear
+              showSearch
+              placeholder="Chọn phòng ban..."
+              options={departments.map(d => ({ label: d.name, value: d.id }))}
+              optionFilterProp="label"
+            />
+          </Form.Item>
+
+          <Form.Item
+            name="description"
+            label="Mô tả"
+          >
+            <Input.TextArea rows={3} placeholder="Mô tả công dụng của danh mục này" />
+          </Form.Item>
+        </Form>
+      </Modal>
+    </div>
+  )
+}

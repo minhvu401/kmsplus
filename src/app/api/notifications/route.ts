@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server'
 import { sql } from '@/lib/database'
-import { requireAuth } from '@/lib/auth'
+import { getCurrentUser } from '@/lib/auth'
 
 export async function GET(request: Request) {
   try {
-    const currentUser = await requireAuth()
+    const currentUser = await getCurrentUser()
+    if (!currentUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     const userId = Number(currentUser.id)
     const { searchParams } = new URL(request.url)
     const rawLimit = Number(searchParams.get('limit') || '10')

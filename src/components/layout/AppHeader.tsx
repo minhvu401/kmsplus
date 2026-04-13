@@ -200,13 +200,16 @@ export default function AppHeader({ collapsed }: HeaderProps) {
   }, [user, fetchUser])
 
   useEffect(() => {
+    if (!user) return;
     loadNotifications()
     const interval = setInterval(loadNotifications, 30000)
     return () => clearInterval(interval)
-  }, [])
+  }, [user])
 
   useEffect(() => {
+    if (!user) return;
     let eventSource: EventSource | null = null
+    let retryTimeoutId: NodeJS.Timeout | null = null;
 
     const connect = () => {
       eventSource = new EventSource("/api/notifications/stream", {
@@ -217,26 +220,30 @@ export default function AppHeader({ collapsed }: HeaderProps) {
         loadNotifications()
       })
 
-      eventSource.onerror = () => {
+      eventSource.onerror = (error) => {
         if (eventSource) {
           eventSource.close()
           eventSource = null
         }
 
-        setTimeout(() => {
-          connect()
-        }, 3000)
+        // Ngừng auto-reconnect nếu như thực sự user đã đăng xuất
+        if (useUserStore.getState().user) {
+          retryTimeoutId = setTimeout(() => {
+            connect()
+          }, 5000)
+        }
       }
     }
 
     connect()
 
     return () => {
+      if (retryTimeoutId) clearTimeout(retryTimeoutId);
       if (eventSource) {
         eventSource.close()
       }
     }
-  }, [])
+  }, [user])
 
   useEffect(() => {
     const handleNotificationsRefresh = () => {
