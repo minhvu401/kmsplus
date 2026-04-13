@@ -1,7 +1,18 @@
 "use server"
 
 import { sql } from "@/lib/database"
-import { z } from "zod"
+import type {
+  CreateAnswerDtoType,
+  CreateQuestionDtoType,
+  UpdateAnswerDtoType,
+  UpdateQuestionDtoType,
+} from "@/action/question/dto/question.dto"
+
+export type ActionResult = {
+  success?: boolean
+  message?: string
+  errors?: Record<string, string[] | undefined>
+}
 
 //TYPE FOR 'QUESTION' RESPONSE
 export type Question = {
@@ -17,18 +28,30 @@ export type Question = {
   updated_at: Date
   user_name: string
   category_name: string
-};
+  user_avatar?: string | null
+}
 
 //TYPE FOR 'ANSWER' RESPONSE
 export type Answer = {
   id: number
   question_id: number
   user_id: number
+  parent_id: number | null
   content: string
+  deleted_at?: Date | null
   created_at: Date
   updated_at: Date
   user_name: string
-};
+  user_avatar?: string | null
+}
+
+// TYPE FOR 'TOP SHARER' RESPONSE
+export type TopSharer = {
+  id: number
+  name: string
+  score: number
+  avatar_url?: string | null
+}
 
 // GET ALL QUESTIONS
 export async function getAllQuestionsAction(): Promise<Question[]> {
@@ -37,13 +60,12 @@ export async function getAllQuestionsAction(): Promise<Question[]> {
       questions.id, questions.user_id, questions.category_id, questions.title,
       questions.content, questions.answer_count, questions.is_closed,
       questions.deleted_at, questions.created_at, questions.updated_at,
-      users.name AS user_name, categories.name AS category_name
+      users.name AS user_name, categories.name AS category_name,
+      users.avatar_url AS user_avatar
     FROM questions
     JOIN users ON questions.user_id = users.id
     JOIN categories ON questions.category_id = categories.id
   `
-  // Debug log
-  console.log("Fetched questions:", questions)
 
   return questions as Question[]
 }
@@ -55,7 +77,8 @@ export async function getQuestionDetailsAction(id: string): Promise<Question> {
       questions.id, questions.user_id, questions.category_id, questions.title,
       questions.content, questions.answer_count, questions.is_closed,
       questions.deleted_at, questions.created_at, questions.updated_at,
-      users.full_name AS user_name, categories.name AS category_name
+      users.full_name AS user_name, categories.name AS category_name,
+      users.avatar_url AS user_avatar
     FROM questions
     JOIN users ON questions.user_id = users.id
     JOIN categories ON questions.category_id = categories.id
@@ -65,52 +88,13 @@ export async function getQuestionDetailsAction(id: string): Promise<Question> {
 }
 
 // CREATE QUESTIONS
-// Define validation schema using Zod
-const CreateQuestionSchema = z.object({
-  title: z
-    .string()
-    .trim()
-    .min(3, "Title must be at least 3 characters")
-    .max(150, "Title must be under 150 characters"),
-  content: z.preprocess(
-    (val) => {
-      if (typeof val !== 'string') return val;
-      return val.replace(/\r\n/g, '\n');
-    },
-    z
-      .string()
-      .min(10, "Content must be at least 10 characters")
-      .max(3000, "Content must be under 3000 characters")
-  ),
-  category_id: z
-    .coerce
-    .number()
-    .int()
-    .min(1, "Please select a category"),
-  user_id: z.coerce.number().int(), // or from session later
-})
-
-// Server Action
-export async function createQuestionAction(formData: FormData) {
-  // Validate input
-  const validatedFields = CreateQuestionSchema.safeParse({
-    title: formData.get("title"),
-    content: formData.get("content"),
-    category_id: formData.get("category_id"),
-    user_id: formData.get("user_id"),
-  })
-
-  // Return validation errors if invalid
-  if (!validatedFields.success) {
-    return {
-      errors: validatedFields.error.flatten().fieldErrors,
-      message: "Missing or invalid fields. Failed to create question.",
-    }
-  }
-  const { title, content, category_id, user_id } = validatedFields.data
+export async function createQuestionAction(
+  input: CreateQuestionDtoType
+): Promise<ActionResult> {
+  const { title, content, category_id, user_id } = input
 
   // Timestamp
-  const createdAt = new Date().toLocaleString()
+  const createdAt = new Date().toISOString()
 
   try {
     // Insert question into DB
@@ -138,43 +122,12 @@ export async function createQuestionAction(formData: FormData) {
 }
 
 // UPDATE QUESTIONS
-const UpdateQuestionSchema = z.object({
-  title: z
-    .string()
-    .trim()
-    .min(3, "Title must be at least 3 characters")
-    .max(150, "Title must be under 150 characters"),
-  content: z.preprocess(
-    (val) => {
-      if (typeof val !== 'string') return val;
-      return val.replace(/\r\n/g, '\n');
-    },
-    z
-      .string()
-      .min(10, "Content must be at least 10 characters")
-      .max(3000, "Content must be under 3000 characters")
-  ),
-  category_id: z.coerce.number().int(),
-  id: z.coerce.number().int(),
-})
-export async function updateQuestionAction(formData: FormData) {
-  // Validate form data
-  const validatedFields = UpdateQuestionSchema.safeParse({
-    title: formData.get("title"),
-    content: formData.get("content"),
-    category_id: formData.get("category_id"),
-    id: formData.get("id"),
-  })
+export async function updateQuestionAction(
+  input: UpdateQuestionDtoType
+): Promise<ActionResult> {
+  const { title, content, category_id, id } = input
 
-  if (!validatedFields.success) {
-    return {
-      errors: validatedFields.error.flatten().fieldErrors,
-      message: "Invalid or missing fields. Failed to update question.",
-    }
-  }
-  const { title, content, category_id, id } = validatedFields.data
-
-  const updatedAt = new Date().toLocaleString()
+  const updatedAt = new Date().toISOString()
 
   try {
     await sql`
@@ -201,8 +154,8 @@ export async function updateQuestionAction(formData: FormData) {
 }
 
 // DELETE QUESTIONS
-export async function deleteQuestionAction(id: string) {
-  const deletedAt = new Date().toLocaleString()
+export async function deleteQuestionAction(id: string): Promise<ActionResult> {
+  const deletedAt = new Date().toISOString()
 
   try {
     await sql`
@@ -226,8 +179,8 @@ export async function deleteQuestionAction(id: string) {
 }
 
 // CLOSE QUESTIONS
-export async function closeQuestionAction(id: string) {
-  const closedAt = new Date().toLocaleString()
+export async function closeQuestionAction(id: string): Promise<ActionResult> {
+  const closedAt = new Date().toISOString()
 
   try {
     await sql`
@@ -252,8 +205,8 @@ export async function closeQuestionAction(id: string) {
 }
 
 // OPEN QUESTIONS
-export async function openQuestionAction(id: string) {
-  const openedAt = new Date().toLocaleString()
+export async function openQuestionAction(id: string): Promise<ActionResult> {
+  const openedAt = new Date().toISOString()
 
   try {
     await sql`
@@ -286,56 +239,88 @@ export async function getActiveCategoriesAction(): Promise<Category[]> {
   const result = await sql`
     SELECT 
       c.id AS category_id,
-      c.name AS category_name,
-      p.id AS parent_id,
-      p.name AS parent_name
+      c.name AS category_name
     FROM categories AS c
-    LEFT JOIN categories AS p ON c.parent_id = p.id
     WHERE c.is_deleted = FALSE
     ORDER BY c.id
   `
 
-  const categories: Category[] = result.map((row: any) => {
-    if (row.parent_id) {
-      return {
-        id: row.category_id,
-        name: row.parent_name + " - " + row.category_name,
-      }
-    } else {
-      return {
-        id: row.category_id,
-        name: row.category_name,
-      }
-    }
-  })
+  const categories: Category[] = result.map((row: any) => ({
+    id: row.category_id,
+    name: row.category_name,
+  }))
 
   return categories as Category[]
 }
 
-const QUESTIONS_PER_PAGE = 10
+const DEFAULT_QUESTIONS_PER_PAGE = 10
+
+const normalizeQuestionSearchQuery = (query: string): string => {
+  return query
+    .replace(/\+/g, " ")
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&nbsp;|&#160;/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+}
+
+const buildQuestionSearchCondition = (query: string) => {
+  const rawQuery = query.trim()
+
+  // Empty query should not filter results.
+  if (!rawQuery) {
+    return sql`TRUE`
+  }
+
+  const normalizedQuery = normalizeQuestionSearchQuery(rawQuery)
+
+  // Query that only contains HTML tags/syntax should not match all rich-text rows.
+  if (!normalizedQuery) {
+    return sql`FALSE`
+  }
+
+  const likePattern = `%${normalizedQuery}%`
+
+  return sql`
+    (
+      users.full_name ILIKE ${likePattern} OR
+      users.email ILIKE ${likePattern} OR
+      questions.title ILIKE ${likePattern} OR
+      regexp_replace(
+        regexp_replace(
+          regexp_replace(COALESCE(questions.content, ''), '<[^>]+>', ' ', 'g'),
+          '&nbsp;|&#160;',
+          ' ',
+          'gi'
+        ),
+        '\\s+',
+        ' ',
+        'g'
+      ) ILIKE ${likePattern}
+    )
+  `
+}
+
 // FETCH QUESTIONS PAGES
 export async function fetchQuestionPagesAction(
   query: string,
   category: string,
-  status: string
+  status: string,
+  limit: number = DEFAULT_QUESTIONS_PER_PAGE
 ) {
   try {
-    let sqlQuery = sql`
-      WHERE ( users.full_name ILIKE ${"%" + query + "%"} OR
-       users.email ILIKE ${"%" + query + "%"} OR
-       questions.title ILIKE ${"%" + query + "%"} OR
-       questions.content ILIKE ${"%" + query + "%"})
-    `
+    const searchCondition = buildQuestionSearchCondition(query)
 
-    // Add optional filters dynamically
-    if (category !== "any") {
-      sqlQuery = sql`
-      JOIN categories ON questions.category_id = categories.id
-      ${sqlQuery} 
-      AND categories.id = ${category}
-      `
+    // Build WHERE conditions array
+    const whereConditions: string[] = [`questions.deleted_at IS NULL`]
+
+    // Add category filter
+    const categoryId = parseInt(category, 10)
+    if (category !== "any" && !isNaN(categoryId)) {
+      whereConditions.push(`categories.id = ${categoryId}`)
     }
 
+    // Add status filter
     if (status !== "any") {
       let isClosed
       if (status === "closed") {
@@ -343,7 +328,14 @@ export async function fetchQuestionPagesAction(
       } else if (status === "open") {
         isClosed = false
       }
-      sqlQuery = sql`${sqlQuery} AND questions.is_closed = ${isClosed}`
+      whereConditions.push(`questions.is_closed = ${isClosed}`)
+    }
+
+    // Build full WHERE clause with search condition
+    let whereClause = sql`WHERE ${searchCondition}`
+
+    for (const condition of whereConditions) {
+      whereClause = sql`${whereClause} AND ${sql.unsafe(condition)}`
     }
 
     // Final query
@@ -351,14 +343,17 @@ export async function fetchQuestionPagesAction(
       SELECT COUNT(*) AS count
       FROM questions
       JOIN users ON questions.user_id = users.id
-      ${sqlQuery};
+      JOIN categories ON questions.category_id = categories.id
+      ${whereClause};
     `
 
-    const totalPages = Math.ceil(Number(data[0].count) / QUESTIONS_PER_PAGE)
-    return totalPages
+    const totalItems = Number(data[0].count)
+    const pageSize = Math.max(1, limit || DEFAULT_QUESTIONS_PER_PAGE)
+    const totalPages = Math.ceil(totalItems / pageSize)
+    return { totalItems, totalPages: Math.max(1, totalPages) }
   } catch (error) {
     console.error("Database Error:", error)
-    throw new Error("Failed to fetch total number of invoices.")
+    throw new Error("Failed to fetch total number of questions.")
   }
 }
 
@@ -368,143 +363,113 @@ export async function fetchFilteredQuestionsAction(
   category: string,
   status: string,
   sort: string,
-  currentPage: number
-) {
-  const offset = (currentPage - 1) * QUESTIONS_PER_PAGE
+  currentPage: number,
+  limit: number = DEFAULT_QUESTIONS_PER_PAGE
+): Promise<Question[]> {
+  const pageSize = Math.max(1, limit || DEFAULT_QUESTIONS_PER_PAGE)
+  const offset = (currentPage - 1) * pageSize
 
   try {
-    let sqlQuery = sql`
-      WHERE ( users.full_name ILIKE ${'%' + query + '%'} OR
-       users.email ILIKE ${'%' + query + '%'} OR
-       questions.title ILIKE ${'%' + query + '%'} OR
-       questions.content ILIKE ${'%' + query + '%'})
-      AND questions.deleted_at IS NULL
-    `;
+    const searchCondition = buildQuestionSearchCondition(query)
 
-    // Add optional filters dynamically
-    if (category !== "any") {
-      sqlQuery = sql`
-      ${sqlQuery} 
-      AND categories.id = ${category}
-      `
+    // Build WHERE conditions array
+    const whereConditions: string[] = [`questions.deleted_at IS NULL`]
+
+    // Add category filter
+    const categoryId = parseInt(category, 10)
+    if (category !== "any" && !isNaN(categoryId)) {
+      whereConditions.push(`categories.id = ${categoryId}`)
     }
 
+    // Add status filter
     if (status !== "any") {
-      let isClosed
-      if (status === "closed") {
-        isClosed = true
-      } else if (status === "open") {
-        isClosed = false
-      }
-      sqlQuery = sql`${sqlQuery} AND questions.is_closed = ${isClosed}`
+      const isClosed = status === "closed"
+      whereConditions.push(`questions.is_closed = ${isClosed}`)
     }
 
-    if (sort !== "newest") {
-      sqlQuery = sql`${sqlQuery} ORDER BY questions.answer_count DESC`
-    } else {
-      sqlQuery = sql`${sqlQuery} ORDER BY questions.created_at DESC`
+    // Build full WHERE clause with search condition
+    let whereClause = sql`WHERE ${searchCondition}`
+
+    for (const condition of whereConditions) {
+      whereClause = sql`${whereClause} AND ${sql.unsafe(condition)}`
     }
+
+    // Add sort order
+    const orderClause =
+      sort !== "newest"
+        ? "ORDER BY questions.answer_count DESC"
+        : "ORDER BY questions.created_at DESC"
 
     // Final query
     const result = (await sql`
-      SELECT questions.*, users.full_name AS user_name, categories.name AS category_name
+      SELECT questions.*, users.full_name AS user_name, categories.name AS category_name,
+        users.avatar_url AS user_avatar
       FROM questions
       JOIN users ON questions.user_id = users.id
       JOIN categories ON questions.category_id = categories.id
-      ${sqlQuery}
-      LIMIT ${QUESTIONS_PER_PAGE} OFFSET ${offset};
+      ${whereClause}
+      ${sql.unsafe(orderClause)}
+      LIMIT ${pageSize} OFFSET ${offset};
     `) as Question[]
 
     return result
   } catch (error) {
     console.error("Database Error:", error)
-    throw new Error("Failed to fetch total number of invoices.")
+    throw new Error("Failed to fetch filtered questions.")
   }
 }
 
 // ===================================== ANSWERS =====================================
 
 // GET ANSWERS FOR A QUESTION
-export async function getAnswersForQuestionAction(id: number): Promise<Answer[]> {
-
+export async function getAnswersForQuestionAction(
+  id: number
+): Promise<Answer[]> {
   const result = await sql`
     SELECT 
-      answers.id, answers.question_id, answers.user_id, answers.content,
-      answers.created_at, answers.updated_at,
-      users.full_name AS user_name
+      answers.id, answers.question_id, answers.user_id, answers.parent_id,
+      answers.content, answers.created_at, answers.updated_at,
+      users.full_name AS user_name,
+      users.avatar_url AS user_avatar
     FROM answers
     JOIN users ON answers.user_id = users.id
     WHERE answers.question_id = ${id}
+      AND answers.deleted_at IS NULL
     ORDER BY answers.created_at ASC
   `
 
-  return result as Answer[];
-};
+  return result as Answer[]
+}
 
 export async function getAnswerDetailsAction(id: number): Promise<Answer> {
   const result = await sql`
     SELECT 
-      answers.id, answers.question_id, answers.user_id, answers.content,
-      answers.created_at, answers.updated_at,
-      users.full_name AS user_name
+      answers.id, answers.question_id, answers.user_id, answers.parent_id,
+      answers.content, answers.created_at, answers.updated_at,
+      users.full_name AS user_name,
+      users.avatar_url AS user_avatar
     FROM answers
     JOIN users ON answers.user_id = users.id
     WHERE answers.id = ${id}
+      AND answers.deleted_at IS NULL
   `
   return result[0] as Answer
 }
 
 // CREATE ANSWER
-const CreateAnswerSchema = z.object({
-  content: z.preprocess(
-    (val) => {
-      if (typeof val !== 'string') return val;
-      return val.replace(/\r\n/g, '\n');
-    },
-    z
-      .string()
-      .min(15, "Content must be at least 15 characters")
-      .max(600, "Content must be under 600 characters")
-  ),
-  user_id: z.coerce.number().int(), // or from session later
-  question_id: z.coerce.number().int(),
-})
-
-export async function createAnswerAction(formData: FormData) {
-  const validatedFields = CreateAnswerSchema.safeParse({
-    content: formData.get("content"),
-    user_id: formData.get("user_id"),
-    question_id: formData.get("question_id"),
-  })
-
-  if (!validatedFields.success) {
-    return {
-      errors: validatedFields.error.flatten().fieldErrors,
-      message: "Missing or invalid fields. Failed to create answer.",
-    }
-  }
-
-  const { content, user_id, question_id } = validatedFields.data
-  const createdAt = new Date().toLocaleString()
+export async function createAnswerAction(
+  input: CreateAnswerDtoType
+): Promise<ActionResult> {
+  const { content, user_id, question_id, parent_id } = input
+  const createdAt = new Date().toISOString()
 
   try {
-    // await sql`
-    //   INSERT INTO answers (
-    //     question_id, user_id, content, created_at, updated_at
-    //   ) VALUES (
-    //     ${question_id}, ${user_id}, ${content}, ${createdAt}, ${createdAt}
-    //   )
-
-    //   UPDATE questions
-    //   SET answer_count = answer_count + 1
-    //   WHERE id = ${question_id}
-    // `
     await sql`
       WITH inserted_answer AS (
         INSERT INTO answers (
-          question_id, user_id, content, created_at, updated_at
+          question_id, user_id, parent_id, content, created_at, updated_at
         ) VALUES (
-          ${question_id}, ${user_id}, ${content}, ${createdAt}, ${createdAt}
+          ${question_id}, ${user_id}, ${parent_id ?? null}, ${content}, ${createdAt}, ${createdAt}
         )
         RETURNING question_id
       )
@@ -512,7 +477,6 @@ export async function createAnswerAction(formData: FormData) {
       SET answer_count = answer_count + 1
       WHERE id = (SELECT question_id FROM inserted_answer)
     `
-
   } catch (error) {
     console.error("Error creating answer:", error)
     return {
@@ -528,35 +492,12 @@ export async function createAnswerAction(formData: FormData) {
 }
 
 // UPDATE ANSWER
-const UpdateAnswerSchema = z.object({
-  content: z.preprocess(
-    (val) => {
-      if (typeof val !== 'string') return val;
-      return val.replace(/\r\n/g, '\n');
-    },
-    z
-      .string()
-      .min(15, "Content must be at least 15 characters")
-      .max(600, "Content must be under 600 characters")
-  ),
-  answer_id: z.coerce.number().int(),
-})
-export async function updateAnswerAction(formData: FormData) {
-  // Validate form data
-  const validatedFields = UpdateAnswerSchema.safeParse({
-    content: formData.get("content"),
-    answer_id: formData.get("answer_id"),
-  })
+export async function updateAnswerAction(
+  input: UpdateAnswerDtoType
+): Promise<ActionResult> {
+  const { content, answer_id } = input
 
-  if (!validatedFields.success) {
-    return {
-      errors: validatedFields.error.flatten().fieldErrors,
-      message: "Invalid or missing fields. Failed to update question.",
-    }
-  }
-  const { content, answer_id } = validatedFields.data
-
-  const updatedAt = new Date().toLocaleString()
+  const updatedAt = new Date().toISOString()
 
   try {
     await sql`
@@ -581,12 +522,16 @@ export async function updateAnswerAction(formData: FormData) {
 }
 
 // DELETE ANSWER
-export async function deleteAnswerAction(id: number) {
+export async function deleteAnswerAction(id: number): Promise<ActionResult> {
+  const deletedAt = new Date().toISOString()
+
   try {
     await sql`
       WITH deleted_answer AS (
-        DELETE FROM answers
+        UPDATE answers
+        SET deleted_at = ${deletedAt}
         WHERE id = ${id}
+          AND deleted_at IS NULL
         RETURNING question_id
       )
       UPDATE questions
@@ -594,41 +539,362 @@ export async function deleteAnswerAction(id: number) {
       WHERE id = (SELECT question_id FROM deleted_answer)
     `
   } catch (error) {
-    console.error("Error deleting question:", error)
+    console.error("Error deleting answer:", error)
     return {
-      message: "Database error. Failed to delete question.",
+      message: "Database error. Failed to delete answer.",
     }
   }
 
   return {
-    message: "Question deleted successfully",
+    message: "Answer deleted successfully",
     errors: {},
     success: true,
   }
-};
+}
 
 // FETCH FILTERED ANSWERS
-export async function fetchFilteredAnswersAction(currentPage: number, questionId: number) {
-  const offset = (currentPage - 1) * 5;
+const DEFAULT_ANSWERS_PER_PAGE = 5
+
+// Type for nested reply structure (recursive)
+type NestedReply = Answer & { replies: NestedReply[]; reply_count?: number }
+
+// Type for answers with nested replies (supports 4 levels inline)
+export type AnswerWithReplies = Answer & {
+  replies: NestedReply[]
+  reply_count?: number // Total count of all nested replies
+  has_deep_replies?: boolean // True if there are replies beyond depth 4
+}
+
+// FETCH ANSWER PAGES (paginates top-level answers, also returns total answers including replies)
+export async function fetchAnswerPagesAction(
+  questionId: number,
+  limit: number = DEFAULT_ANSWERS_PER_PAGE
+) {
   try {
     const data = await sql`
-    SELECT
-      a.id,
-      a.question_id,
-      a.user_id,
-      a.content,
-      a.created_at,
-      a.updated_at,
-      u.full_name AS user_name
-    FROM answers a
-    JOIN users u ON a.user_id = u.id
-    WHERE a.question_id = ${questionId}
-    ORDER BY a.created_at DESC
-    LIMIT 5 OFFSET ${offset};
-  `;
-    return data as Answer[];
+      SELECT
+        COUNT(*) FILTER (WHERE parent_id IS NULL) AS top_level_count,
+        COUNT(*) AS total_count
+      FROM answers
+      WHERE question_id = ${questionId}
+        AND deleted_at IS NULL
+    `
+    const totalItems = Number(data[0].top_level_count)
+    const totalAnswerItems = Number(data[0].total_count)
+    const pageSize = Math.max(1, limit || DEFAULT_ANSWERS_PER_PAGE)
+    const totalPages = Math.ceil(totalItems / pageSize)
+    return {
+      totalItems,
+      totalAnswerItems,
+      totalPages: Math.max(1, totalPages),
+    }
   } catch (error) {
     console.error("Database Error:", error)
-    throw new Error("Failed to fetch total number of invoices.")
+    throw new Error("Failed to fetch total number of answers.")
   }
-};
+}
+
+export async function fetchFilteredAnswersAction(
+  currentPage: number,
+  questionId: number,
+  limit: number = DEFAULT_ANSWERS_PER_PAGE,
+  sort: "newest" | "oldest" = "newest"
+): Promise<AnswerWithReplies[]> {
+  const pageSize = Math.max(1, limit || DEFAULT_ANSWERS_PER_PAGE)
+  const offset = (currentPage - 1) * pageSize
+  try {
+    // Fetch top-level answers (parent_id IS NULL) with pagination
+    let topLevelAnswers: Answer[]
+    if (sort === "oldest") {
+      topLevelAnswers = (await sql`
+        SELECT
+          a.id,
+          a.question_id,
+          a.user_id,
+          a.parent_id,
+          a.content,
+          a.created_at,
+          a.updated_at,
+          u.full_name AS user_name,
+          u.avatar_url AS user_avatar
+        FROM answers a
+        JOIN users u ON a.user_id = u.id
+        WHERE a.question_id = ${questionId}
+          AND a.parent_id IS NULL
+          AND a.deleted_at IS NULL
+        ORDER BY a.created_at ASC
+        LIMIT ${pageSize} OFFSET ${offset};
+      `) as Answer[]
+    } else {
+      topLevelAnswers = (await sql`
+        SELECT
+          a.id,
+          a.question_id,
+          a.user_id,
+          a.parent_id,
+          a.content,
+          a.created_at,
+          a.updated_at,
+          u.full_name AS user_name,
+          u.avatar_url AS user_avatar
+        FROM answers a
+        JOIN users u ON a.user_id = u.id
+        WHERE a.question_id = ${questionId}
+          AND a.parent_id IS NULL
+          AND a.deleted_at IS NULL
+        ORDER BY a.created_at DESC
+        LIMIT ${pageSize} OFFSET ${offset};
+      `) as Answer[]
+    }
+
+    if (topLevelAnswers.length === 0) {
+      return []
+    }
+
+    const topLevelIds = topLevelAnswers.map((a) => a.id)
+
+    // Fetch all replies up to 10 levels deep using recursive CTE
+    const allReplies = (await sql`
+      WITH RECURSIVE reply_tree AS (
+        SELECT 
+          a.id, a.question_id, a.user_id, a.parent_id, a.content,
+          a.created_at, a.updated_at, u.full_name AS user_name,
+          u.avatar_url AS user_avatar,
+          1 as depth
+        FROM answers a
+        JOIN users u ON a.user_id = u.id
+        WHERE a.parent_id = ANY(${topLevelIds})
+          AND a.deleted_at IS NULL
+        
+        UNION ALL
+        
+        SELECT 
+          a.id, a.question_id, a.user_id, a.parent_id, a.content,
+          a.created_at, a.updated_at, u.full_name AS user_name,
+          u.avatar_url AS user_avatar,
+          rt.depth + 1
+        FROM answers a
+        JOIN users u ON a.user_id = u.id
+        JOIN reply_tree rt ON a.parent_id = rt.id
+        WHERE rt.depth < 10
+          AND a.deleted_at IS NULL
+      )
+      SELECT * FROM reply_tree
+      ORDER BY created_at ASC;
+    `) as (Answer & { depth: number })[]
+
+    // Get IDs of level 10 replies to check for deeper replies
+    const level10Ids = allReplies.filter((a) => a.depth === 10).map((a) => a.id)
+
+    // Count deeper replies (level 11+) for each top-level answer
+    let hasDeepReplies: Map<number, boolean> = new Map()
+    if (level10Ids.length > 0) {
+      // Check if any level 10 replies have children
+      const deeperExists = await sql`
+        SELECT DISTINCT parent_id
+        FROM answers
+        WHERE parent_id = ANY(${level10Ids})
+          AND deleted_at IS NULL
+      `
+
+      if (deeperExists.length > 0) {
+        // Find which top-level answers have deep replies by tracing back
+        const level10WithChildren = new Set(
+          deeperExists.map((r: any) => r.parent_id)
+        )
+
+        // For each top-level answer, check if any of its descendants at level 10 have children
+        for (const topAnswer of topLevelAnswers) {
+          const hasDeep = allReplies.some((reply) => {
+            if (reply.depth !== 10) return false
+            if (!level10WithChildren.has(reply.id)) return false
+            // Check if this reply is a descendant of topAnswer
+            let current = reply
+            while (current.depth > 1) {
+              const parent = allReplies.find((r) => r.id === current.parent_id)
+              if (!parent) break
+              current = parent
+            }
+            return current.parent_id === topAnswer.id
+          })
+          hasDeepReplies.set(topAnswer.id, hasDeep)
+        }
+      }
+    }
+
+    // Build nested structure for each top-level answer
+    type NestedReply = Answer & { replies: NestedReply[]; reply_count?: number }
+
+    const buildNestedReplies = (parentId: number): NestedReply[] => {
+      return allReplies
+        .filter((a) => a.parent_id === parentId)
+        .map((a) => ({
+          ...a,
+          replies: buildNestedReplies(a.id),
+          reply_count: 0,
+        }))
+    }
+
+    // Calculate total reply count recursively
+    const countReplies = (replies: NestedReply[]): number => {
+      return replies.reduce((sum, r) => sum + 1 + countReplies(r.replies), 0)
+    }
+
+    const answersWithReplies: AnswerWithReplies[] = topLevelAnswers.map(
+      (answer) => {
+        const nestedReplies = buildNestedReplies(answer.id)
+        const totalCount = countReplies(nestedReplies)
+        const hasDeeper = hasDeepReplies.get(answer.id) || false
+
+        return {
+          ...answer,
+          replies: nestedReplies as any,
+          reply_count: totalCount,
+          has_deep_replies: hasDeeper,
+        }
+      }
+    )
+
+    return answersWithReplies
+  } catch (error) {
+    console.error("Database Error:", error)
+    throw new Error("Failed to fetch filtered answers.")
+  }
+}
+
+// Fetch full discussion thread starting from top-level ancestor
+export async function fetchFullDiscussionThreadAction(
+  answerId: number
+): Promise<AnswerWithReplies> {
+  try {
+    // First, find the top-level ancestor (where parent_id IS NULL)
+    const ancestorResult = await sql`
+      WITH RECURSIVE ancestor_tree AS (
+        SELECT id, parent_id, 0 as depth
+        FROM answers
+        WHERE id = ${answerId}
+          AND deleted_at IS NULL
+        
+        UNION ALL
+        
+        SELECT a.id, a.parent_id, at.depth + 1
+        FROM answers a
+        JOIN ancestor_tree at ON a.id = at.parent_id
+        WHERE at.depth < 50
+          AND a.deleted_at IS NULL
+      )
+      SELECT id FROM ancestor_tree
+      WHERE parent_id IS NULL
+      LIMIT 1;
+    `
+
+    if (ancestorResult.length === 0) {
+      throw new Error("Top-level answer not found")
+    }
+
+    const topLevelId = ancestorResult[0].id
+
+    // Fetch the root answer
+    const rootAnswer = (await sql`
+      SELECT
+        a.id,
+        a.question_id,
+        a.user_id,
+        a.parent_id,
+        a.content,
+        a.created_at,
+        a.updated_at,
+        u.full_name AS user_name,
+        u.avatar_url AS user_avatar
+      FROM answers a
+      JOIN users u ON a.user_id = u.id
+      WHERE a.id = ${topLevelId}
+        AND a.deleted_at IS NULL
+    `) as Answer[]
+
+    if (rootAnswer.length === 0) {
+      throw new Error("Answer not found")
+    }
+
+    // Fetch all descendants using recursive CTE
+    const allDescendants = (await sql`
+      WITH RECURSIVE reply_tree AS (
+        SELECT 
+          a.id, a.question_id, a.user_id, a.parent_id, a.content,
+          a.created_at, a.updated_at, u.full_name AS user_name,
+          u.avatar_url AS user_avatar,
+          1 as depth
+        FROM answers a
+        JOIN users u ON a.user_id = u.id
+        WHERE a.parent_id = ${topLevelId}
+          AND a.deleted_at IS NULL
+        
+        UNION ALL
+        
+        SELECT 
+          a.id, a.question_id, a.user_id, a.parent_id, a.content,
+          a.created_at, a.updated_at, u.full_name AS user_name,
+          u.avatar_url AS user_avatar,
+          rt.depth + 1
+        FROM answers a
+        JOIN users u ON a.user_id = u.id
+        JOIN reply_tree rt ON a.parent_id = rt.id
+        WHERE rt.depth < 50
+          AND a.deleted_at IS NULL
+      )
+      SELECT * FROM reply_tree
+      ORDER BY created_at ASC;
+    `) as (Answer & { depth: number })[]
+
+    // Build nested structure recursively
+    type LocalNestedReply = Answer & {
+      replies: LocalNestedReply[]
+      reply_count?: number
+    }
+
+    const buildNestedReplies = (parentId: number): LocalNestedReply[] => {
+      return allDescendants
+        .filter((a) => a.parent_id === parentId)
+        .map((a) => ({
+          ...a,
+          replies: buildNestedReplies(a.id),
+          reply_count: 0,
+        }))
+    }
+
+    return {
+      ...rootAnswer[0],
+      replies: buildNestedReplies(topLevelId),
+      reply_count: allDescendants.length,
+    }
+  } catch (error) {
+    console.error("Database Error:", error)
+    throw new Error("Failed to fetch full discussion thread.")
+  }
+}
+
+// GET TOP KNOWLEDGE SHARERS
+export async function getTopKnowledgeSharers(
+  limit: number = 5
+): Promise<TopSharer[]> {
+  try {
+    const result = await sql`
+      SELECT 
+        users.id, 
+        users.full_name AS name, 
+        users.avatar_url AS avatar_url,
+        COUNT(answers.id) AS score
+      FROM users
+      LEFT JOIN answers ON users.id = answers.user_id AND answers.deleted_at IS NULL
+      WHERE users.deleted_at IS NULL
+      GROUP BY users.id, users.full_name, users.avatar_url
+      HAVING COUNT(answers.id) > 0
+      ORDER BY score DESC
+      LIMIT ${limit}
+    `
+    return result as TopSharer[]
+  } catch (error) {
+    console.error("Database Error:", error)
+    throw new Error("Failed to fetch top knowledge sharers.")
+  }
+}

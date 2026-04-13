@@ -1,17 +1,20 @@
 "use client"
 
-import { useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
+import { signIn } from "next-auth/react"
 import { loginAction } from "@/action/auth/authActions"
 import { getUserRoleAction } from "@/action/user/userActions"
-import { Form, Input, Button, Card, Alert, Checkbox } from "antd"
+import { Form, Input, Button, Alert, Checkbox, Typography, Divider } from "antd"
 import useUserStore from "@/store/useUserStore"
 import {
   EyeInvisibleOutlined,
   EyeTwoTone,
-  MailOutlined,
+  UserOutlined,
+  LockOutlined,
 } from "@ant-design/icons"
 import React from "react"
+
+const { Title, Text } = Typography
 
 interface LoginFormProps {
   callbackUrl?: string | null
@@ -36,6 +39,26 @@ export default function LoginForm({
 
   const [state, setState] = React.useState(initialState)
   const [isLoading, setIsLoading] = React.useState(false)
+  const [isGoogleLoading, setIsGoogleLoading] = React.useState(false)
+
+  const handleGoogleSignIn = async () => {
+    setIsGoogleLoading(true)
+    try {
+      // Let NextAuth handle the full redirect flow
+      const callbackUrl = searchParams?.get("callbackUrl") || "/dashboard-metrics"
+      await signIn("google", {
+        callbackUrl: callbackUrl,
+        redirect: true, // Let NextAuth handle redirect after session is set
+      })
+    } catch (error) {
+      console.error("Google login error:", error)
+      setState((prev) => ({
+        ...prev,
+        message: "Google login failed. Please try again.",
+      }))
+      setIsGoogleLoading(false)
+    }
+  }
 
   const handleSubmit = async (values: {
     email: string
@@ -81,10 +104,9 @@ export default function LoginForm({
           onSuccess()
         } else {
           const url = callbackUrl || searchParams?.get("callbackUrl")
-          window.location.replace(url || "/dashboard?loggedin=true")
+          window.location.replace(url || "/dashboard-metrics?loggedin=true")
         }
       } else if (!result.success && result.message) {
-        // ✅ Báo lỗi ra giao diện
         setState((prev) => ({
           ...prev,
           message: result.message,
@@ -101,144 +123,148 @@ export default function LoginForm({
     }
   }
 
-  // useEffect(() => {
-  //   if (state.success) {
-  //     if (onSuccess) {
-  //       onSuccess()
-  //     } else if (callbackUrl) {
-  //       window.location.replace(callbackUrl)
-  //     } else {
-  //       window.location.replace("/dashboard?loggedin=true")
-  //     }
-  //   }
-  // }, [state.success, onSuccess, callbackUrl])
   return (
-    <Card
-      style={{
-        width: 450,
-        minWidth: 350,
-        maxWidth: "90%",
-        borderRadius: 16,
-        boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
-        margin: "0 16px",
-      }}
-    >
-      <div style={{ textAlign: "center", marginBottom: 32 }}>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 8,
-            marginBottom: 16,
-          }}
-        >
-          <div
-            style={{
-              width: 40,
-              height: 40,
-              background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-              borderRadius: 8,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <MailOutlined style={{ fontSize: 24, color: "white" }} />
-          </div>
-          <div style={{ textAlign: "left" }}>
-            <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>
+    <div className="bg-white rounded-2xl shadow-2xl p-8 w-full">
+      {/* Header */}
+      <div className="text-center mb-8">
+        <div className="flex items-center justify-center gap-3 mb-6">
+          <img 
+            src="/logo.png" 
+            alt="KMSPlus Logo" 
+            className="w-12 h-12 rounded-xl object-contain shadow-lg"
+          />
+          <div className="text-left">
+            <Title level={4} className="!m-0 !text-gray-800">
               KMSPlus
-            </h2>
-            {/* <p style={{ margin: 0, fontSize: 12, color: "#667eea" }}>by bai</p> */}
+            </Title>
+            <Text className="text-xs text-[#1677ff]">
+              Knowledge Management System
+            </Text>
           </div>
         </div>
-        <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0 }}>
-          Chào mừng👋!
-        </h1>
+        <Title level={2} className="!m-0 !text-gray-800 !font-bold">
+          Đăng nhập
+        </Title>
+        <Text className="text-gray-500 mt-2 block">
+          Chào mừng bạn trở lại! Vui lòng đăng nhập để tiếp tục.
+        </Text>
       </div>
+
+      {/* Error Alert */}
       {!state.success && state.message && (
         <Alert
           message={state.message}
           type="error"
           showIcon
-          style={{ marginBottom: 16, borderRadius: 8 }}
+          className="mb-6 rounded-lg"
         />
       )}
+
+      {/* Form */}
       <Form
         form={form}
         layout="vertical"
         onFinish={handleSubmit}
         requiredMark={false}
+        size="large"
       >
         <Form.Item
-          label="Email"
+          label={<span className="font-medium text-gray-700">Email</span>}
           name="email"
           rules={[
-            { required: true, message: "Please input your email!" },
-            { type: "email", message: "Please enter a valid email!" },
+            { required: true, message: "Vui lòng nhập email!" },
+            { type: "email", message: "Email không hợp lệ!" },
           ]}
         >
           <Input
-            name="email"
-            size="large"
+            prefix={<UserOutlined className="text-gray-400" />}
             placeholder="admin@company.com"
-            style={{ borderRadius: 8 }}
+            className="!rounded-lg"
           />
         </Form.Item>
+
         <Form.Item
-          label="Mật khẩu"
+          label={<span className="font-medium text-gray-700">Mật khẩu</span>}
           name="password"
-          rules={[{ required: true, message: "Please input your password!" }]}
+          rules={[{ required: true, message: "Vui lòng nhập mật khẩu!" }]}
         >
           <Input.Password
-            name="password"
-            size="large"
+            prefix={<LockOutlined className="text-gray-400" />}
             placeholder="••••••••"
             iconRender={(visible) =>
               visible ? <EyeTwoTone /> : <EyeInvisibleOutlined />
             }
-            style={{ borderRadius: 8 }}
+            className="!rounded-lg"
           />
         </Form.Item>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: 24,
-          }}
-        >
+
+        <div className="flex justify-between items-center mb-6">
           <Form.Item name="remember" valuePropName="checked" noStyle>
-            <Checkbox>Ghi nhớ đăng nhập</Checkbox>
+            <Checkbox className="text-gray-600">Ghi nhớ đăng nhập</Checkbox>
           </Form.Item>
           <Button
             type="link"
-            style={{ padding: 0, height: "auto" }}
             onClick={onForgotPassword}
+            className="!p-0 !h-auto"
           >
             Quên mật khẩu?
           </Button>
         </div>
-        <Form.Item style={{ marginTop: 0, marginBottom: 0 }}>
+
+        <Form.Item className="!mb-0">
           <Button
             type="primary"
             htmlType="submit"
-            size="large"
             block
             loading={isLoading}
-            style={{
-              height: 44,
-              borderRadius: 8,
-              fontWeight: 500,
-              background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-              border: "none",
-            }}
+            className="!h-12 !rounded-lg !font-semibold !text-base"
+            style={{ background: "linear-gradient(135deg, #69b1ff 0%, #1677ff 100%)", border: "none" }}
           >
             Đăng nhập
           </Button>
         </Form.Item>
       </Form>
-    </Card>
+
+      {/* Divider */}
+      <Divider className="!my-6">Hoặc</Divider>
+
+      {/* Google Login Button */}
+      <Button
+        block
+        size="large"
+        className="!h-12 !rounded-lg !font-semibold !text-base !border-gray-300 hover:!bg-gray-50"
+        onClick={handleGoogleSignIn}
+        loading={isGoogleLoading}
+        icon={
+          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+            <path
+              d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+              fill="#4285F4"
+            />
+            <path
+              d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+              fill="#34A853"
+            />
+            <path
+              d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+              fill="#FBBC05"
+            />
+            <path
+              d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+              fill="#EA4335"
+            />
+          </svg>
+        }
+      >
+        <span className="ml-2">Đăng nhập bằng Google</span>
+      </Button>
+
+      {/* Footer */}
+      <div className="mt-8 pt-6 border-t border-gray-100 text-center">
+        <Text className="text-gray-400 text-sm">
+          © 2026 KMSPlus. All rights reserved.
+        </Text>
+      </div>
+    </div>
   )
 }

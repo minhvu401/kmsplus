@@ -70,13 +70,11 @@ function PaginationNumber({
   isActive: boolean
 }) {
   const className = clsx(
-    "flex h-10 w-10 items-center justify-center text-sm border",
+    "flex h-10 w-10 items-center justify-center text-sm border border-gray-300 rounded-md font-medium transition-all",
     {
-      "rounded-l-md": position === "first" || position === "single",
-      "rounded-r-md": position === "last" || position === "single",
-      "z-10 bg-blue-600 border-blue-600 text-white": isActive,
-      "hover:bg-gray-100": !isActive && position !== "middle",
-      "text-gray-300": position === "middle",
+      "z-10 bg-blue-600 border-blue-600 text-white hover:bg-blue-700": isActive,
+      "bg-white text-gray-700 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-600": !isActive && position !== "middle",
+      "text-gray-400 cursor-default": position === "middle",
     }
   )
 
@@ -99,10 +97,10 @@ function PaginationArrow({
   isDisabled?: boolean
 }) {
   const className = clsx(
-    "flex h-10 w-10 items-center justify-center rounded-md border",
+    "flex h-10 w-10 items-center justify-center rounded-md border border-gray-300 transition-all font-medium",
     {
-      "pointer-events-none text-gray-300": isDisabled,
-      "hover:bg-gray-100": !isDisabled,
+      "pointer-events-none text-gray-300 bg-gray-50": isDisabled,
+      "text-gray-700 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-600": !isDisabled,
       "mr-2 md:mr-4": direction === "left",
       "ml-2 md:ml-4": direction === "right",
     }

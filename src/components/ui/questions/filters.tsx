@@ -2,16 +2,10 @@
 import { useSearchParams, useRouter, usePathname } from "next/navigation"
 import { useState, useEffect } from "react"
 import { Typography } from "antd"
+import { Category } from "@/service/question.service"
 
-type Category = {
-  id: number
-  name: string
-  slug: string
-}
+const { Text } = Typography
 
-const { Text } = Typography;
-
-//------------------------------- CATEGORY FILTER ---------------------------------
 export function FilterCategory({ categories }: { categories: Category[] }) {
   const searchParams = useSearchParams()
   const pathname = usePathname()
@@ -39,19 +33,35 @@ export function FilterCategory({ categories }: { categories: Category[] }) {
   }
 
   return (
-    <div className="flex items-center gap-2">
-      <label htmlFor="category" className="text-sm font-medium text-gray-700">
+    <div className="flex items-center gap-3">
+      <label htmlFor="category" className="text-sm font-semibold text-gray-700 whitespace-nowrap">
         Category:
       </label>
       <select
         id="category"
         value={selected}
         onChange={(e) => handleChange(e.target.value)}
-        className="block w-auto rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+        style={{
+          height: "36px",
+          borderRadius: "0.5rem",
+          border: "1px solid #e5e7eb",
+          backgroundColor: "white",
+          padding: "0 12px",
+          fontSize: "14px",
+          color: "#374151",
+          cursor: "pointer",
+          transition: "all 0.2s"
+        }}
+        onMouseEnter={(e) => {
+          (e.target as HTMLSelectElement).style.borderColor = "#2563eb"
+        }}
+        onMouseLeave={(e) => {
+          (e.target as HTMLSelectElement).style.borderColor = "#e5e7eb"
+        }}
       >
         <option value="any">Any</option>
         {categories.map((cat) => (
-          <option key={cat.id} value={cat.slug}>
+          <option key={cat.id} value={cat.id}>
             {cat.name}
           </option>
         ))}
@@ -60,7 +70,6 @@ export function FilterCategory({ categories }: { categories: Category[] }) {
   )
 }
 
-// -------------------- STATUS FILTER --------------------
 export function FilterStatus() {
   const searchParams = useSearchParams()
   const pathname = usePathname()
@@ -75,7 +84,7 @@ export function FilterStatus() {
 
   const handleChange = (value: string) => {
     const params = new URLSearchParams(searchParams)
-    params.set("page", "1") // reset pagination
+    params.set("page", "1")
 
     if (value === "any") {
       params.delete("status")
@@ -88,15 +97,32 @@ export function FilterStatus() {
   }
 
   return (
-    <div className="flex items-center gap-2">
-      <label htmlFor="status" className="text-sm font-medium text-gray-700">
+    <div className="flex items-center gap-3">
+      <label htmlFor="status" className="text-sm font-semibold text-gray-700 whitespace-nowrap">
         Status:
       </label>
       <select
         id="status"
         value={selected}
         onChange={(e) => handleChange(e.target.value)}
-        className="block w-40 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+        style={{
+          height: "36px",
+          minWidth: "120px",
+          borderRadius: "0.5rem",
+          border: "1px solid #e5e7eb",
+          backgroundColor: "white",
+          padding: "0 12px",
+          fontSize: "14px",
+          color: "#374151",
+          cursor: "pointer",
+          transition: "all 0.2s"
+        }}
+        onMouseEnter={(e) => {
+          (e.target as HTMLSelectElement).style.borderColor = "#2563eb"
+        }}
+        onMouseLeave={(e) => {
+          (e.target as HTMLSelectElement).style.borderColor = "#e5e7eb"
+        }}
       >
         <option key="Any" value="any">
           Any
@@ -104,7 +130,7 @@ export function FilterStatus() {
         <option key="Open" value="open">
           Open
         </option>
-        <option key="Closed" value="close">
+        <option key="Closed" value="closed">
           Closed
         </option>
       </select>
@@ -126,8 +152,7 @@ export function SortBy() {
 
   const handleChange = (value: string) => {
     const params = new URLSearchParams(searchParams)
-    params.set("page", "1") // reset pagination
-
+    params.set("page", "1")
     params.set("sort", value)
 
     replace(`${pathname}?${params.toString()}`)
@@ -135,21 +160,35 @@ export function SortBy() {
   }
 
   return (
-    <div className="flex items-center gap-2">
-      <label htmlFor="sort" className="text-sm font-medium text-gray-700">
+    <div className="flex items-center gap-3">
+      <label htmlFor="sort" className="text-sm font-semibold text-gray-700 whitespace-nowrap">
         Sort by:
       </label>
       <select
         id="sort"
         value={selected}
         onChange={(e) => handleChange(e.target.value)}
-        className="block w-40 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+        style={{
+          height: "36px",
+          minWidth: "140px",
+          borderRadius: "0.5rem",
+          border: "1px solid #e5e7eb",
+          backgroundColor: "white",
+          padding: "0 12px",
+          fontSize: "14px",
+          color: "#374151",
+          cursor: "pointer",
+          transition: "all 0.2s"
+        }}
+        onMouseEnter={(e) => {
+          (e.target as HTMLSelectElement).style.borderColor = "#2563eb"
+        }}
+        onMouseLeave={(e) => {
+          (e.target as HTMLSelectElement).style.borderColor = "#e5e7eb"
+        }}
       >
         <option key="Newest" value="newest">
           Newest
-        </option>
-        <option key="Most Views" value="most-views">
-          Most Popular
         </option>
         <option key="Most Answers" value="most-answers">
           Most Answers

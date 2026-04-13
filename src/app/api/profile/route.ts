@@ -1,5 +1,6 @@
-import { requireAuth } from "@/lib/auth"
+import { requirePermission } from "@/lib/requirePermission"
 import { NextRequest, NextResponse } from "next/server"
+import { Permission } from "@/enum/permission.enum"
 import {
   getCurrentUserInforAction,
   updateUserProfileAction,
@@ -11,7 +12,7 @@ import {
  */
 export async function GET(req: NextRequest) {
   try {
-    await requireAuth()
+    await requirePermission(Permission.VIEW_PROFILE)
     const user = await getCurrentUserInforAction()
 
     if (!user) {
@@ -25,8 +26,18 @@ export async function GET(req: NextRequest) {
       success: true,
       data: user,
     })
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error fetching profile:", error)
+    // Handle authorization errors
+    if (
+      error?.message?.includes("Unauthorized") ||
+      error?.message?.includes("Missing permission")
+    ) {
+      return NextResponse.json(
+        { success: false, message: error.message },
+        { status: 403 }
+      )
+    }
     return NextResponse.json(
       { success: false, message: "Failed to fetch profile" },
       { status: 500 }
@@ -39,7 +50,7 @@ export async function GET(req: NextRequest) {
  */
 export async function PATCH(req: NextRequest) {
   try {
-    await requireAuth()
+    await requirePermission(Permission.VIEW_PROFILE)
     const body = await req.json()
 
     const { full_name, avatar_url, department } = body
@@ -77,8 +88,18 @@ export async function PATCH(req: NextRequest) {
       message: result.message,
       data: result.data,
     })
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error updating profile:", error)
+    // Handle authorization errors
+    if (
+      error?.message?.includes("Unauthorized") ||
+      error?.message?.includes("Missing permission")
+    ) {
+      return NextResponse.json(
+        { success: false, message: error.message },
+        { status: 403 }
+      )
+    }
     return NextResponse.json(
       { success: false, message: "Failed to update profile" },
       { status: 500 }

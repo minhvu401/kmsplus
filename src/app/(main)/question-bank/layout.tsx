@@ -7,8 +7,6 @@ export default function QuestionBankLayout({
 }) {
   return (
     // Dựng khung chính bằng flexbox, chiếm toàn bộ chiều cao màn hình
-    <div className="flex h-screen bg-gray-50">
-      <main className="flex-1 overflow-y-auto bg-gray-100 p-8">{children}</main>
-    </div>
+    <main className="flex-1 overflow-y-auto">{children}</main>
   )
 }
