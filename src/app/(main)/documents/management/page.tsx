@@ -67,16 +67,19 @@ export default function DocumentManagementPage() {
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
 
+  // THÊM STATE LƯU THÔNG TIN USER
+  const [currentUser, setCurrentUser] = useState<any>(null)
+
   // State: Drawer quản lý tạo/sửa Document
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [fileList, setFileList] = useState<UploadFile[]>([])
+  const [departments, setDepartments] = useState<Department[]>([])
 
-  // State: Modal quản lý tạo Danh mục nhanh
+  // State: Modal quản lý Danh mục
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false)
   const [isCategorySubmitting, setIsCategorySubmitting] = useState(false)
-  const [departments, setDepartments] = useState<Department[]>([])
 
   // Forms
   const [docForm] = Form.useForm()
@@ -86,15 +89,38 @@ export default function DocumentManagementPage() {
   const loadData = async () => {
     setLoading(true)
     try {
+      // Gọi thêm API lấy thông tin user hiện tại
+      const authRes = await fetch("/api/auth/me")
+      const authData = authRes.ok ? await authRes.json() : null
+      const user = authData?.user
+
       const [docsData, catsData, deptsData] = await Promise.all([
         fetchDocuments(),
         fetchCategories(),
         getAllDepartments()
       ])
-      
+      setCurrentUser(user)
       setDocuments(docsData)
       setCategories(catsData)
-      setDepartments(deptsData || [])
+
+      // LỌC DROPDOWN PHÒNG BAN DỰA TRÊN ROLE
+      if (user?.role === "ADMIN") {
+        setDepartments(deptsData || [])
+      } else if (user?.department?.head_of_department_id) {
+        // HOD: Chỉ cho phép chọn phòng ban của chính họ
+        const hodDeptId = user.department.head_of_department_id;
+        const filteredDepts = (deptsData || []).filter((d: Department) => {
+          // Trả về đúng phòng ban mà user đang làm HOD
+           return String(hodDeptId) === String(user.id) && d.id === user.department_id // Chú ý user.department_id tuỳ DB trả về
+        });
+        
+        // Nếu muốn đơn giản hơn: Chỉ cần lấy phòng ban của user
+        const myDept = (deptsData || []).filter((d: Department) => String(d.id) === String(user.department_id))
+        setDepartments(myDept)
+      } else {
+        setDepartments([])
+      }
+
     } catch (error: any) {
       console.error("Lỗi:", error)
       message.error("Lỗi khởi tạo dữ liệu: " + error.message)

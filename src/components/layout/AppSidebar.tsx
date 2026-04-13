@@ -21,6 +21,8 @@ interface SidebarProps {
 
 const AppSidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
   const [userRole, setUserRole] = useState<Role | undefined>(undefined)
+  const [isHeadOfDepartment, setIsHeadOfDepartment] = useState<boolean>(false)
+
 
   // Get user role from JWT token on component mount
   useEffect(() => {
@@ -36,6 +38,28 @@ const AppSidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
               (r) => r === roleFromAPI
             ) as Role | undefined
             setUserRole(roleValue)
+
+           // Lấy id của user hiện tại
+            const currentUserId = data.id || data.user?.id
+            // Lấy head_of_department_id từ object department (nếu API có trả về)
+            const hodId =
+              data.department?.head_of_department_id ||
+              data.user?.department?.head_of_department_id
+
+            // User là HOD nếu API trả cờ boolean có sẵn HOẶC currentUserId trùng với hodId
+            const isHead =
+              data.is_head_of_department ||
+              data.user?.is_head_of_department ||
+              (currentUserId && hodId && Number(currentUserId) === Number(hodId)) ||
+              false
+            // THÊM CONSOLE LOG VÀO ĐÂY ĐỂ DEBUG
+            console.log("DEBUG HoD:", {
+              currentUserId,
+              hodId,
+              isHead,
+              apiData: data 
+            });
+            setIsHeadOfDepartment(Boolean(isHead))
           }
         }
       } catch (error) {
@@ -45,7 +69,7 @@ const AppSidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
     loadUserRole()
   }, [])
 
-  const sidebarItems = useSidebarItems(userRole)
+  const sidebarItems = useSidebarItems(userRole, isHeadOfDepartment)
   const router = useRouter()
   const pathname = usePathname()
 
