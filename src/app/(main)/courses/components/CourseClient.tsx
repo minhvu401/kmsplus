@@ -1,32 +1,28 @@
-/**
- * CourseClient.tsx
- * @/app/(main)/courses/components/CourseClient.tsx
- * Client component for displaying a list of courses with search, sort, and pagination.
- * This is a preview-compatible version that doesn't use Next.js specific components.
- */
-
+// @/src/app/(main)/courses/components/CourseClient.tsx
 "use client"
+
 import type { Course } from "@/service/course.service"
-import React, { useState, useMemo, useCallback } from "react"
-import Link from "next/link"
-import { Bell, Clock } from "lucide-react"
+import React, { useState, useEffect } from "react"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
+import { message } from "antd"
+import { CourseSearchHero } from "@/components/ui/courses/course-search-hero"
+import { CourseSection } from "@/components/ui/courses/course-section"
+import { TrendingCourses } from "@/components/ui/courses/trending-courses"
+import { CategoryPopularSection } from "@/components/ui/courses/category-popular-section"
+import { RelevantCoursesSection } from "@/components/ui/courses/relevant-courses-section"
+import { CTAPromo } from "@/components/ui/courses/cta-promo"
+import { FadeInOnScroll } from "@/components/ui/courses/fade-in-on-scroll"
 import {
-  Input,
-  Select,
-  Button,
-  Badge,
-  Avatar,
-  Alert,
-  Card,
-  Rate,
-  Pagination as AntPagination,
-} from "antd"
-import { SearchOutlined } from "@ant-design/icons"
+  CourseCompactFilters,
+  type FilterValues,
+} from "@/components/ui/courses/course-compact-filters"
 
 interface SearchParams {
   query?: string
   page?: string
-  sort?: "trending" | "popular" | "newest"
+  sort?: "trending" | "popular" | "newest" | "top-rated"
+  category?: string
+  rating?: string
 }
 
 interface CourseClientProps {
@@ -34,6 +30,7 @@ interface CourseClientProps {
   initialTotalCount: number
   coursesPerPage: number
   fetchError: string | null
+  categories: Array<{ id: number; name: string }>
   currentSearchParams?: SearchParams
 }
 
@@ -42,361 +39,387 @@ export default function CourseClient({
   initialTotalCount,
   coursesPerPage,
   fetchError,
+  categories,
   currentSearchParams = {},
 }: CourseClientProps) {
-  // State management
-  const [searchInput, setSearchInput] = useState(
-    currentSearchParams?.query || ""
-  )
-  const [sortOption, setSortOption] = useState<SearchParams["sort"]>(
-    currentSearchParams?.sort || "trending"
-  )
-  const [currentPage, setCurrentPage] = useState(
-    Number(currentSearchParams?.page) || 1
-  )
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const [messageApi, contextHolder] = message.useMessage()
+  const handledFlashRef = React.useRef<string | null>(null)
 
-  // Use the initialCourses directly as they are already sorted and paginated on the server
-  const paginatedCourses = initialCourses
-  const totalPages = Math.ceil(initialTotalCount / coursesPerPage)
+  // State for each course section
+  const [resumeCourses, setResumeCourses] = useState<Course[]>([])
+  const [assignedCourses, setAssignedCourses] = useState<Course[]>([])
+  const [trendingCourses, setTrendingCourses] = useState<Course[]>([])
+  const [popularByCategory, setPopularByCategory] = useState<Course[]>([])
+  const [relevantCourses, setRelevantCourses] = useState<Course[]>([])
+  const [newCourses, setNewCourses] = useState<Course[]>([])
+  const [relevantDepartmentName, setRelevantDepartmentName] =
+    useState<string>("Phòng ban của bạn")
 
-  // Navigation handlers
-  const createQueryString = useCallback(
-    (params: Partial<SearchParams>): string => {
-      const searchParams = new URLSearchParams()
+  // Loading states for each section
+  const [loadingTrending, setLoadingTrending] = useState(false)
+  const [loadingPopular, setLoadingPopular] = useState(false)
+  const [loadingRelevant, setLoadingRelevant] = useState(false)
+  const [loadingNew, setLoadingNew] = useState(false)
 
-      Object.entries(params).forEach(([key, value]) => {
-        if (value) {
-          searchParams.set(key, String(value))
+  // OPTIMIZED: Cache fetched data to prevent unnecessary re-fetches on page changes
+  const fetchedSections = React.useRef(new Set<string>())
+
+  // Fetch different course sections on mount
+  useEffect(() => {
+    // OPTIMIZED: Use AbortController to cleanup pending requests
+    const abortController = new AbortController()
+    const signal = abortController.signal
+
+    // ========================================
+    // OPTIMIZED: Batch fetch multiple endpoints
+    // ========================================
+    const fetchAllCourseSections = async () => {
+      setLoadingTrending(true)
+      setLoadingPopular(true)
+      setLoadingRelevant(true)
+      setLoadingNew(true)
+
+      try {
+        const isAbortError = (reason: unknown) => {
+          if (!reason) return false
+          if (reason instanceof Error && reason.name === "AbortError") {
+            return true
+          }
+          if (
+            typeof reason === "object" &&
+            reason !== null &&
+            "name" in reason &&
+            (reason as { name?: string }).name === "AbortError"
+          ) {
+            return true
+          }
+          const reasonText = String(reason).toLowerCase()
+          return (
+            reasonText.includes("aborterror") ||
+            reasonText.includes("signal is aborted")
+          )
         }
-      })
 
-      return searchParams.toString()
-    },
-    []
-  )
+        const fetchSectionCourses = async (url: string) => {
+          const res = await fetch(url, {
+            method: "GET",
+            headers: { "Content-Type": "application/json" },
+            credentials: "same-origin",
+            cache: "no-store",
+            signal,
+          })
 
-  const handleSearch = (value: string) => {
-    const queryString = createQueryString({
-      ...currentSearchParams,
-      query: value || undefined,
-      page: "1", // Reset to first page on new search
-    })
-    // Force a full page reload to trigger server-side data fetching
-    window.location.href = `?${queryString}`
+          if (!res.ok) {
+            throw new Error(`Failed to fetch ${url}: ${res.status}`)
+          }
+
+          return res.json()
+        }
+
+        const [
+          resumeResult,
+          assignedResult,
+          trendingResult,
+          popularResult,
+          relevantResult,
+          newResult,
+        ] = await Promise.allSettled([
+          fetchSectionCourses("/api/courses/resume"),
+          fetchSectionCourses("/api/courses/assigned"),
+          fetchSectionCourses("/api/courses/trending"),
+          fetchSectionCourses("/api/courses/popular-by-category"),
+          fetchSectionCourses("/api/courses/relevant"),
+          fetchSectionCourses("/api/courses/newest"),
+        ])
+
+        if (signal.aborted) {
+          return
+        }
+
+        setResumeCourses(
+          resumeResult.status === "fulfilled"
+            ? (resumeResult.value?.courses ?? [])
+            : []
+        )
+        setAssignedCourses(
+          assignedResult.status === "fulfilled"
+            ? (assignedResult.value?.courses ?? [])
+            : []
+        )
+        setTrendingCourses(
+          trendingResult.status === "fulfilled"
+            ? (trendingResult.value?.courses ?? [])
+            : []
+        )
+        setPopularByCategory(
+          popularResult.status === "fulfilled"
+            ? (popularResult.value?.courses ?? [])
+            : []
+        )
+        setRelevantCourses(
+          relevantResult.status === "fulfilled"
+            ? (relevantResult.value?.courses ?? [])
+            : []
+        )
+        setRelevantDepartmentName(
+          relevantResult.status === "fulfilled"
+            ? (relevantResult.value?.departmentName ?? "Phòng ban của bạn")
+            : "Phòng ban của bạn"
+        )
+        setNewCourses(
+          newResult.status === "fulfilled" ? (newResult.value?.courses ?? []) : []
+        )
+
+        if (resumeResult.status === "rejected") {
+          if (!isAbortError(resumeResult.reason)) {
+            console.error("Failed to fetch resume courses:", resumeResult.reason)
+          }
+        }
+        if (assignedResult.status === "rejected") {
+          if (!isAbortError(assignedResult.reason)) {
+            console.error(
+              "Failed to fetch assigned courses:",
+              assignedResult.reason
+            )
+          }
+        }
+        if (trendingResult.status === "rejected") {
+          if (!isAbortError(trendingResult.reason)) {
+            console.error(
+              "Failed to fetch trending courses:",
+              trendingResult.reason
+            )
+          }
+        }
+        if (popularResult.status === "rejected") {
+          if (!isAbortError(popularResult.reason)) {
+            console.error(
+              "Failed to fetch popular-by-category courses:",
+              popularResult.reason
+            )
+          }
+        }
+        if (relevantResult.status === "rejected") {
+          if (!isAbortError(relevantResult.reason)) {
+            console.error(
+              "Failed to fetch relevant courses:",
+              relevantResult.reason
+            )
+          }
+        }
+        if (newResult.status === "rejected") {
+          if (!isAbortError(newResult.reason)) {
+            console.error("Failed to fetch newest courses:", newResult.reason)
+          }
+        }
+
+        fetchedSections.current.add("all")
+      } catch (error) {
+        if (error instanceof Error && error.name === "AbortError") {
+          console.log("Course fetch cancelled")
+          return
+        }
+        console.error("Error fetching course sections:", error)
+      } finally {
+        setLoadingTrending(false)
+        setLoadingPopular(false)
+        setLoadingRelevant(false)
+        setLoadingNew(false)
+      }
+    }
+
+    fetchAllCourseSections()
+
+    // Cleanup pending requests
+    return () => {
+      abortController.abort()
+    }
+  }, [])
+
+  useEffect(() => {
+    const flash = searchParams.get("flash")
+    if (flash !== "management-access-denied") return
+    if (handledFlashRef.current === flash) return
+
+    handledFlashRef.current = flash
+    messageApi.error("You do not have permission to access course management.")
+
+    const params = new URLSearchParams(searchParams.toString())
+    params.delete("flash")
+    const nextQuery = params.toString()
+    router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname)
+  }, [messageApi, pathname, router, searchParams])
+
+  const handleSearch = (query: string) => {
+    const params = new URLSearchParams()
+    if (query.trim()) {
+      params.set("query", query.trim())
+      params.set("page", "1")
+    }
+    router.push(`?${params.toString()}`)
   }
 
-  const handleSortChange = (value: string) => {
-    const newSort = value as SearchParams["sort"]
-    const queryString = createQueryString({
-      ...currentSearchParams,
-      sort: newSort,
-      page: "1", // Reset to first page on sort change
-    })
-    // Force a full page reload to trigger server-side data fetching
-    window.location.href = `?${queryString}`
-  }
-
-  const handlePageChange = (newPage: number) => {
-    const queryString = createQueryString({
-      ...currentSearchParams,
-      page: String(newPage),
-    })
-    // Force a full page reload to trigger server-side data fetching
-    window.location.href = `?${queryString}`
-  }
-
-  // Render the component
+  // --- RENDER ---
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-800">
-      <Header />
+    <div>
+      {contextHolder}
+      {/* Hero Section with Search */}
+      <CourseSearchHero onSearch={handleSearch} />
 
-      <div className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-screen-xl mx-auto px-4 lg:px-6 xl:px-8 py-4">
-          <h1 className="text-2xl font-bold text-center text-gray-900">
-            Welcome To KMS Plus Course
-          </h1>
+      {/* Main Content */}
+      <div
+        style={{ maxWidth: "1100px", margin: "0 auto", padding: "60px 60px" }}
+      >
+        {/* Filter Widget - White Card (Compact) */}
+        <div
+          style={{
+            backgroundColor: "white",
+            borderRadius: "0.5rem",
+            boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
+            padding: "16px",
+            marginBottom: "30px",
+          }}
+        >
+          <CourseCompactFilters categories={categories} />
         </div>
-      </div>
 
-      <div className="max-w-screen-xl mx-auto px-4 lg:px-6 xl:px-8 py-8">
-        <main className="w-full min-w-0">
-          {/* Search and Sort Bar */}
-          <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-            <div className="w-full md:w-auto flex-grow md:flex-grow-0 max-w-lg">
-              <Input.Search
-                placeholder="Search courses by title..."
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-                onSearch={handleSearch}
-                size="large"
-                allowClear
-                style={{ borderRadius: "9999px" }}
-              />
-            </div>
-
-            <div className="flex items-center gap-2 text-sm w-full md:w-auto flex-shrink-0">
-              <label className="text-gray-600 flex-shrink-0">Sort by:</label>
-              <Select
-                value={sortOption}
-                onChange={handleSortChange}
-                size="large"
-                style={{ width: "100%", minWidth: 150 }}
-                options={[
-                  { value: "trending", label: "Trending" },
-                  { value: "popular", label: "Most Popular" },
-                  { value: "newest", label: "Newest" },
-                ]}
-              />
-            </div>
-          </div>
-
-          {/* Error Message */}
-          {fetchError && (
-            <div className="mb-6">
-              <Alert
-                message="Error"
-                description={fetchError}
-                type="error"
-                showIcon
-                closable
-              />
-            </div>
+        {/* Resume Section - Show if user has in-progress courses */}
+        <FadeInOnScroll threshold={0.2} triggerOnce={true}>
+          {resumeCourses.length > 0 && (
+            <CourseSection
+              title="Tiếp tục học"
+              subtitle="Xem lại các khóa học bạn đang theo học"
+              courses={resumeCourses}
+              columns={4}
+            />
           )}
+        </FadeInOnScroll>
 
-          {/* Course Grid */}
-          {initialCourses.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {initialCourses.map((course) => (
-                <CourseCard key={course.id} course={course} />
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-12">
-              <p className="text-gray-500 text-lg">
-                {searchInput
-                  ? "No courses found matching your search."
-                  : "No courses available at the moment."}
+        {/* Assigned Section - Private courses assigned to current user */}
+        <FadeInOnScroll threshold={0.2} triggerOnce={true}>
+          {assignedCourses.length > 0 && (
+            <CourseSection
+              title="Khóa học được giao"
+              subtitle="Các khóa học riêng tư được giao cho bạn"
+              courses={assignedCourses}
+              columns={4}
+            />
+          )}
+        </FadeInOnScroll>
+
+        {/* CTA Promo - Q&A Section */}
+        <FadeInOnScroll threshold={0.2} triggerOnce={true}>
+          <CTAPromo
+            type="qa"
+            title="Có câu hỏi?"
+            description="Hỏi đáp trực tiếp từ cộng đồng và các chuyên gia. Giải quyết vấn đề và học hỏi từ những người khác."
+            buttonText="Khám phá Q&A"
+            href="/questions"
+          />
+        </FadeInOnScroll>
+
+        {/* CTA Promo - Articles Section */}
+        <FadeInOnScroll threshold={0.2} triggerOnce={true}>
+          <CTAPromo
+            type="articles"
+            title="Đọc bài viết chuyên sâu"
+            description="Tìm hiểu thêm thông qua các bài viết, hướng dẫn và kinh nghiệm từ đội KMS-Plus và các chuyên gia."
+            buttonText="Khám phá Bài viết"
+            href="/articles"
+          />
+        </FadeInOnScroll>
+
+        {/* Trending Courses Section */}
+        <FadeInOnScroll threshold={0.2} triggerOnce={true}>
+          {trendingCourses.length > 0 && (
+            <TrendingCourses
+              courses={trendingCourses}
+              isLoading={loadingTrending}
+            />
+          )}
+        </FadeInOnScroll>
+
+        {/* Relevant Courses Section */}
+        <FadeInOnScroll threshold={0.2} triggerOnce={true}>
+          {relevantCourses.length > 0 && (
+            <RelevantCoursesSection
+              courses={relevantCourses}
+              departmentName={relevantDepartmentName}
+              isLoading={loadingRelevant}
+            />
+          )}
+        </FadeInOnScroll>
+
+        {/* New Section */}
+        <FadeInOnScroll threshold={0.2} triggerOnce={true}>
+          {newCourses.length > 0 && (
+            <CourseSection
+              title="Mới nhất từ KMS Plus"
+              subtitle="Các khóa học mới được thêm gần đây"
+              courses={newCourses}
+              columns={4}
+              isLoading={loadingNew}
+            />
+          )}
+        </FadeInOnScroll>
+
+        {/* All Courses Section (Main catalog) */}
+        <FadeInOnScroll threshold={0.2} triggerOnce={true}>
+          {
+            <CourseSection
+              title="Tất cả khóa học"
+              subtitle="Khám phá các khóa học có sẵn"
+              courses={initialCourses}
+              columns={4}
+            />
+          }
+        </FadeInOnScroll>
+
+        {/* Empty State */}
+        {currentSearchParams?.query &&
+          initialCourses.length === 0 &&
+          !fetchError && (
+            <div style={{ textAlign: "center", padding: "80px 20px" }}>
+              <h3
+                style={{
+                  fontSize: "24px",
+                  fontWeight: 600,
+                  marginBottom: "12px",
+                  color: "#111827",
+                }}
+              >
+                Không tìm thấy khóa học
+              </h3>
+              <p
+                style={{
+                  fontSize: "16px",
+                  color: "#6b7280",
+                  marginBottom: "24px",
+                }}
+              >
+                Hãy thử tìm kiếm với các từ khóa khác
               </p>
             </div>
           )}
 
-          {/* Pagination */}
-          {totalPages > 1 && !fetchError && (
-            <div className="mt-10">
-              <Pagination
-                currentPage={currentPage}
-                totalCount={initialTotalCount}
-                perPage={coursesPerPage}
-                onPageChange={handlePageChange}
-              />
-            </div>
-          )}
-        </main>
-      </div>
-    </div>
-  )
-}
-// ==============================================================================
-// Sub-Components
-// ==============================================================================
-
-/**
- * Header component with navigation
- */
-function Header() {
-  return (
-    <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
-      <nav className="max-w-screen-xl mx-auto px-4 lg:px-6 xl:px-8 flex items-center justify-between h-16">
-        <div className="flex items-center gap-8">
-          <a
-            href="/courses"
-            className="text-2xl font-bold text-blue-600 hover:text-blue-700 transition-colors"
+        {/* Error State */}
+        {fetchError && (
+          <div
+            style={{
+              backgroundColor: "#fee2e2",
+              border: "1px solid #fca5a5",
+              borderRadius: "8px",
+              padding: "20px",
+              color: "#991b1b",
+            }}
           >
-            KMS Plus
-          </a>
-          <div className="hidden md:flex items-center gap-6">
-            <a
-              href="/my-learning"
-              className="text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors"
-            >
-              My Learning
-            </a>
+            <strong>Lỗi:</strong> {fetchError}
           </div>
-        </div>
-        <div className="flex items-center gap-4">
-          <Badge count={1} size="small">
-            <Button
-              type="text"
-              icon={<Bell size={20} />}
-              className="text-gray-600 hover:text-blue-600"
-            />
-          </Badge>
-          <Avatar
-            size={36}
-            src="https://placehold.co/40x40/E2E8F0/31343C?text=U"
-            alt="User Profile"
-          />
-        </div>
-      </nav>
-    </header>
-  )
-}
-
-/**
- * CourseCard component to display individual course information
- */
-function CourseCard({ course }: { course: Course }) {
-  // Generate a random rating between 4.2 and 5.0
-  const mockRating = useMemo(
-    () => (Math.random() * (5 - 4.2) + 4.2).toFixed(1),
-    []
-  )
-
-  return (
-    <Link href={`/courses/${course.id}`} className="block h-full">
-      <Card
-        hoverable
-        className="h-full flex flex-col"
-        cover={
-          <div className="relative h-40 w-full bg-gray-200 overflow-hidden">
-            <img
-              src={
-                course.thumbnail_url ||
-                "https://placehold.co/600x400/E2E8F0/31343C?text=KMS+Course"
-              }
-              alt={course.title || "Course thumbnail"}
-              className="w-full h-full object-cover"
-              onError={(e) => {
-                ;(e.target as HTMLImageElement).src =
-                  "https://placehold.co/600x400/E2E8F0/31343C?text=Image+Not+Found"
-              }}
-            />
-          </div>
-        }
-      >
-        <Card.Meta
-          title={
-            <h3 className="font-semibold text-md text-gray-900 line-clamp-2">
-              {course.title}
-            </h3>
-          }
-          description={
-            <p className="text-xs text-gray-500 line-clamp-2">
-              {course.description || "No description available."}
-            </p>
-          }
-        />
-        <div className="mt-4 pt-2 border-t border-gray-100">
-          <div className="flex items-center gap-2 text-xs text-gray-500 mb-1">
-            <Rate
-              disabled
-              defaultValue={parseFloat(mockRating)}
-              style={{ fontSize: 14 }}
-            />
-            <span className="font-bold text-gray-700">{mockRating}</span>
-            <span>({course.enrollment_count.toLocaleString()} students)</span>
-          </div>
-          {course.duration_hours && (
-            <div className="flex justify-end">
-              <span className="text-xs text-gray-500 flex items-center gap-1">
-                <Clock size={12} /> {course.duration_hours} hours
-              </span>
-            </div>
-          )}
-        </div>
-      </Card>
-    </Link>
-  )
-}
-
-/**
- * Pagination component for navigating between pages
- */
-interface PaginationProps {
-  currentPage: number
-  totalCount: number
-  perPage: number
-  onPageChange: (page: number) => void
-}
-
-function Pagination({
-  currentPage,
-  totalCount,
-  perPage,
-  onPageChange,
-}: PaginationProps) {
-  const totalPages = Math.ceil(totalCount / perPage)
-
-  // Don't render if there's only one page
-  if (totalPages <= 1) return null
-
-  // Generate page numbers with ellipsis
-  const pageNumbers: (number | string)[] = []
-  const maxPagesToShow = 5
-  const halfMaxPages = Math.floor(maxPagesToShow / 2)
-
-  if (totalPages <= maxPagesToShow) {
-    // Show all pages if there are few enough
-    for (let i = 1; i <= totalPages; i++) {
-      pageNumbers.push(i)
-    }
-  } else {
-    // Always show first page
-    pageNumbers.push(1)
-
-    let startPage = Math.max(2, currentPage - halfMaxPages)
-    let endPage = Math.min(totalPages - 1, currentPage + halfMaxPages)
-
-    // Adjust if we're near the start or end
-    if (currentPage <= halfMaxPages + 1) {
-      endPage = maxPagesToShow - 1
-    }
-
-    if (currentPage >= totalPages - halfMaxPages) {
-      startPage = totalPages - maxPagesToShow + 2
-    }
-
-    // Add ellipsis if needed before middle section
-    if (startPage > 2) {
-      pageNumbers.push("…")
-    }
-
-    // Add middle section of page numbers
-    for (let i = startPage; i <= endPage; i++) {
-      pageNumbers.push(i)
-    }
-
-    // Add ellipsis if needed after middle section
-    if (endPage < totalPages - 1) {
-      pageNumbers.push("…")
-    }
-
-    // Always show last page
-    pageNumbers.push(totalPages)
-  }
-
-  // Page button component
-  interface PageButtonProps {
-    page: number | string
-    children: React.ReactNode
-    isDisabled?: boolean
-    isActive?: boolean
-    title?: string
-  }
-
-  return (
-    <div className="flex items-center justify-center">
-      <AntPagination
-        current={currentPage}
-        total={totalCount}
-        pageSize={perPage}
-        onChange={onPageChange}
-        showSizeChanger={false}
-        showQuickJumper
-        showTotal={(total, range) =>
-          `${range[0]}-${range[1]} of ${total} items`
-        }
-      />
+        )}
+      </div>
     </div>
   )
 }

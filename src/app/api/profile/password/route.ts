@@ -1,5 +1,6 @@
-import { requireAuth } from "@/lib/auth"
+import { requirePermission } from "@/lib/requirePermission"
 import { NextRequest, NextResponse } from "next/server"
+import { Permission } from "@/enum/permission.enum"
 import { updateUserPasswordAction } from "@/service/user.service"
 
 /**
@@ -7,7 +8,7 @@ import { updateUserPasswordAction } from "@/service/user.service"
  */
 export async function PATCH(req: NextRequest) {
   try {
-    await requireAuth()
+    await requirePermission(Permission.VIEW_PROFILE)
     const body = await req.json()
 
     const { currentPassword, newPassword, confirmPassword } = body
@@ -49,8 +50,18 @@ export async function PATCH(req: NextRequest) {
       success: true,
       message: result.message,
     })
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error updating password:", error)
+    // Handle authorization errors
+    if (
+      error?.message?.includes("Unauthorized") ||
+      error?.message?.includes("Missing permission")
+    ) {
+      return NextResponse.json(
+        { success: false, message: error.message },
+        { status: 403 }
+      )
+    }
     return NextResponse.json(
       { success: false, message: "Failed to update password" },
       { status: 500 }

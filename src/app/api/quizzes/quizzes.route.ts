@@ -14,13 +14,13 @@ interface QuizResponse {
 export async function GET() {
   try {
     const result = await getAllQuizzesAction({})
-    if (!result.quizzes || result.quizzes.length === 0) {
+    if (!result.data || result.data.length === 0) {
       return NextResponse.json(
         { success: false, error: "No data available" },
         { status: 500 }
       )
     }
-    const quizzes: QuizResponse[] = result.quizzes.map((quiz: any) => ({
+    const quizzes: QuizResponse[] = result.data.map((quiz: any) => ({
       id: quiz.id,
       title: quiz.title,
       description: quiz.description,
