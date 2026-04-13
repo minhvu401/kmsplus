@@ -3,9 +3,17 @@
 import { revalidatePath } from "next/cache"
 import { sql } from "@/lib/database"
 import { getCurrentUser } from "@/lib/auth"
+import {
+  requirePermission,
+  requireAnyPermission,
+} from "@/lib/requirePermission"
+import { Permission } from "@/enum/permission.enum"
 
 export async function fetchCategories() {
   try {
+    // Check permission
+    await requirePermission(Permission.VIEW_DOCUMENT)
+
     const list = await sql`
       SELECT c.id, c.name, c.description, c.parent_id, c.department_id, d.name as department_name
       FROM document_categories c
@@ -18,8 +26,15 @@ export async function fetchCategories() {
   }
 }
 
-export async function createCategory(data: { name: string; description?: string; department_id?: number }) {
+export async function createCategory(data: {
+  name: string
+  description?: string
+  department_id?: number
+}) {
   try {
+    // Check permission - only management users can create
+    await requirePermission(Permission.CREATE_DOCUMENT)
+
     const res = await sql`
       INSERT INTO document_categories (name, description, department_id)
       VALUES (${data.name}, ${data.description || null}, ${data.department_id || null})
@@ -34,6 +49,9 @@ export async function createCategory(data: { name: string; description?: string;
 
 export async function fetchDocuments() {
   try {
+    // Check permission
+    await requirePermission(Permission.VIEW_DOCUMENT)
+
     const list = await sql`
       SELECT d.id, d.title, d.status, d.version, d.updated_at,
              dc.name as category_name, dc.id as category_id
@@ -49,10 +67,14 @@ export async function fetchDocuments() {
 
 export async function getDocumentById(id: string) {
   try {
+    // Check permission
+    await requirePermission(Permission.VIEW_DOCUMENT)
+
     const list = await sql`SELECT * FROM documents WHERE id = ${id}`
     const doc = list[0] || null
     if (doc) {
-      doc.attachments = await sql`SELECT * FROM document_attachments WHERE document_id = ${id} ORDER BY created_at ASC`
+      doc.attachments =
+        await sql`SELECT * FROM document_attachments WHERE document_id = ${id} ORDER BY created_at ASC`
     }
     return doc
   } catch (error: any) {
@@ -78,6 +100,13 @@ export async function saveDocument(data: {
     const user = await getCurrentUser()
     if (!user) throw new Error("Chưa đăng nhập hoặc phiên làm việc hết hạn")
 
+    // Check permission - CREATE for new documents, UPDATE for existing
+    if (data.id) {
+      await requirePermission(Permission.UPDATE_DOCUMENT)
+    } else {
+      await requirePermission(Permission.CREATE_DOCUMENT)
+    }
+
     let result
     if (data.id) {
       const res = await sql`
@@ -99,8 +128,8 @@ export async function saveDocument(data: {
           ${data.title}, 
           ${data.category_id}, 
           ${data.content}, 
-          ${data.status || 'DRAFT'}, 
-          ${data.version || '1.0'}, 
+          ${data.status || "DRAFT"}, 
+          ${data.version || "1.0"}, 
           ${user.id}
         )
         RETURNING *
@@ -121,7 +150,7 @@ export async function saveDocument(data: {
         }
       }
     }
-    
+
     revalidatePath("/documents/management")
     return result
   } catch (error: any) {
@@ -131,6 +160,9 @@ export async function saveDocument(data: {
 
 export async function deleteDocument(id: string) {
   try {
+    // Check permission
+    await requirePermission(Permission.DELETE_DOCUMENT)
+
     await sql`DELETE FROM documents WHERE id = ${id}`
     revalidatePath("/documents/management")
     return true

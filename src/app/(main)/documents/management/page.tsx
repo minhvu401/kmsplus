@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 import {
   Table,
   Button,
@@ -17,14 +18,22 @@ import {
   Row,
   Col,
   Modal,
-  Upload
+  Upload,
 } from "antd"
-import { PlusOutlined, EditOutlined, DeleteOutlined, FolderAddOutlined, UploadOutlined } from "@ant-design/icons"
-import type { UploadFile, UploadProps } from 'antd/es/upload/interface'
+import {
+  PlusOutlined,
+  EditOutlined,
+  DeleteOutlined,
+  FolderAddOutlined,
+  UploadOutlined,
+} from "@ant-design/icons"
+import type { UploadFile, UploadProps } from "antd/es/upload/interface"
 import dayjs from "dayjs"
 
 import QuillEditorLazy from "@/components/QuillEditorLazy"
 import { DocumentStatus } from "@/enum/document-status.enum"
+import useUserStore from "@/store/useUserStore"
+import { Permission } from "@/enum/permission.enum"
 
 import {
   fetchDocuments,
@@ -32,9 +41,11 @@ import {
   saveDocument,
   deleteDocument,
   getDocumentById,
-  createCategory
+  createCategory,
 } from "@/action/documents/documentActions"
 import { getAllDepartments } from "@/action/department/departmentActions"
+import { hasAnyPermissionDynamic } from "@/service/rolePermission.service"
+import { Role } from "@/enum/role.enum"
 
 // Types
 interface Category {
@@ -62,6 +73,9 @@ interface DocumentItem {
 }
 
 export default function DocumentManagementPage() {
+  const router = useRouter()
+  const { user, userRole } = useUserStore()
+
   // State: dữ liệu Table
   const [documents, setDocuments] = useState<DocumentItem[]>([])
   const [categories, setCategories] = useState<Category[]>([])
@@ -82,6 +96,28 @@ export default function DocumentManagementPage() {
   const [docForm] = Form.useForm()
   const [catForm] = Form.useForm()
 
+  // Permission check on mount
+  useEffect(() => {
+    const checkPermission = async () => {
+      if (!userRole) {
+        router.replace("/login")
+        return
+      }
+
+      // Check if user has CREATE_DOCUMENT permission
+      const hasPermission = await hasAnyPermissionDynamic(userRole as Role, [
+        Permission.CREATE_DOCUMENT,
+      ])
+
+      if (!hasPermission) {
+        message.error("Bạn không có quyền truy cập trang này")
+        router.replace("/dashboard-metrics")
+      }
+    }
+
+    checkPermission()
+  }, [userRole, router])
+
   // 1. Khởi tạo: Lấy dữ liệu Documents & Categories & Phòng ban
   const loadData = async () => {
     setLoading(true)
@@ -89,9 +125,9 @@ export default function DocumentManagementPage() {
       const [docsData, catsData, deptsData] = await Promise.all([
         fetchDocuments(),
         fetchCategories(),
-        getAllDepartments()
+        getAllDepartments(),
       ])
-      
+
       setDocuments(docsData)
       setCategories(catsData)
       setDepartments(deptsData || [])
@@ -127,14 +163,16 @@ export default function DocumentManagementPage() {
             content: detail.content,
           })
           if (detail.attachments && detail.attachments.length > 0) {
-            setFileList(detail.attachments.map((att: any) => ({
-              uid: String(att.id),
-              name: att.file_name,
-              url: att.file_url,
-              size: att.file_size,
-              type: att.file_type,
-              status: 'done'
-            })))
+            setFileList(
+              detail.attachments.map((att: any) => ({
+                uid: String(att.id),
+                name: att.file_name,
+                url: att.file_url,
+                size: att.file_size,
+                type: att.file_type,
+                status: "done",
+              }))
+            )
           }
         }
       } catch (error: any) {
@@ -147,7 +185,7 @@ export default function DocumentManagementPage() {
       // Giá trị mặc định khi Thêm mới
       docForm.setFieldsValue({
         status: DocumentStatus.DRAFT,
-        version: "1.0"
+        version: "1.0",
       })
     }
   }
@@ -157,23 +195,37 @@ export default function DocumentManagementPage() {
     try {
       const values = await docForm.validateFields()
       setIsSubmitting(true)
-      
-      const finalAttachments = fileList.map(f => {
-        if (f.status === 'done' && f.response) {
-          return { file_name: f.name, file_url: f.response.url, file_size: f.response.bytes, file_type: f.response.format }
-        }
-        if (f.status === 'done' && f.url) {
-          return { file_name: f.name, file_url: f.url, file_size: f.size, file_type: f.type }
-        }
-        return null
-      }).filter(Boolean) as any[]
+
+      const finalAttachments = fileList
+        .map((f) => {
+          if (f.status === "done" && f.response) {
+            return {
+              file_name: f.name,
+              file_url: f.response.url,
+              file_size: f.response.bytes,
+              file_type: f.response.format,
+            }
+          }
+          if (f.status === "done" && f.url) {
+            return {
+              file_name: f.name,
+              file_url: f.url,
+              file_size: f.size,
+              file_type: f.type,
+            }
+          }
+          return null
+        })
+        .filter(Boolean) as any[]
 
       await saveDocument({
         id: editingId || undefined,
         ...values,
-        attachments: finalAttachments
+        attachments: finalAttachments,
       })
-      message.success(editingId ? "Cập nhật thành công!" : "Tạo mới thành công!")
+      message.success(
+        editingId ? "Cập nhật thành công!" : "Tạo mới thành công!"
+      )
       setIsDrawerOpen(false)
       loadData() // Refresh Table
     } catch (error: any) {
@@ -200,7 +252,12 @@ export default function DocumentManagementPage() {
       const values = await catForm.validateFields()
       setIsCategorySubmitting(true)
       await createCategory(values)
-      notification.success({ message: "T?o danh m?c t�i li?u th�nh c�ng!", description: "Danh m?c v?a m?i du?c th�m th�nh c�ng v� hi?n th? b�n du?i.", placement: "topRight" })
+      notification.success({
+        message: "T?o danh m?c t�i li?u th�nh c�ng!",
+        description:
+          "Danh m?c v?a m?i du?c th�m th�nh c�ng v� hi?n th? b�n du?i.",
+        placement: "topRight",
+      })
       setIsCategoryModalOpen(false)
       catForm.resetFields()
       // Tải lại danh sách categories để cập nhật vào dropdown
@@ -219,23 +276,28 @@ export default function DocumentManagementPage() {
       title: "Tiêu đề",
       dataIndex: "title",
       key: "title",
-      render: (text: string) => <strong>{text}</strong>
+      render: (text: string) => <strong>{text}</strong>,
     },
     {
       title: "Danh mục",
       dataIndex: "category_name",
       key: "category_name",
       render: (text: string, record: DocumentItem) => {
-        const cat = categories.find(c => c.id === record.category_id);
-        const deptText = cat?.department_name ? ` (${cat.department_name})` : '';
-        return <Tag color="blue">{text || "Không xác định"}{deptText}</Tag>
-      }
+        const cat = categories.find((c) => c.id === record.category_id)
+        const deptText = cat?.department_name ? ` (${cat.department_name})` : ""
+        return (
+          <Tag color="blue">
+            {text || "Không xác định"}
+            {deptText}
+          </Tag>
+        )
+      },
     },
     {
       title: "Phiên bản",
       dataIndex: "version",
       key: "version",
-      width: 100
+      width: 100,
     },
     {
       title: "Trạng thái",
@@ -248,13 +310,13 @@ export default function DocumentManagementPage() {
           [DocumentStatus.ARCHIVED]: "red",
         }
         return <Tag color={colorMap[status] || "default"}>{status}</Tag>
-      }
+      },
     },
     {
       title: "Ngày cập nhật",
       dataIndex: "updated_at",
       key: "updated_at",
-      render: (date: string) => dayjs(date).format("DD/MM/YYYY HH:mm")
+      render: (date: string) => dayjs(date).format("DD/MM/YYYY HH:mm"),
     },
     {
       title: "Hành động",
@@ -262,10 +324,10 @@ export default function DocumentManagementPage() {
       width: 150,
       render: (_: any, record: DocumentItem) => (
         <Space>
-          <Button 
-            type="text" 
-            icon={<EditOutlined />} 
-            onClick={() => openDrawer(record.id)} 
+          <Button
+            type="text"
+            icon={<EditOutlined />}
+            onClick={() => openDrawer(record.id)}
           />
           <Popconfirm
             title="Xóa tài liệu này?"
@@ -285,19 +347,23 @@ export default function DocumentManagementPage() {
     <div className="p-6 max-w-7xl mx-auto space-y-6 animate-fade-in">
       <div className="flex justify-between items-center mb-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Quản trị Tri thức Nội bộ (Wiki)</h1>
-          <p className="text-gray-500">Quản lý quy định, chính sách và tài liệu công ty.</p>
+          <h1 className="text-2xl font-bold text-gray-800">
+            Quản trị Tri thức Nội bộ (Wiki)
+          </h1>
+          <p className="text-gray-500">
+            Quản lý quy định, chính sách và tài liệu công ty.
+          </p>
         </div>
         <Space>
-          <Button 
-            icon={<FolderAddOutlined />} 
+          <Button
+            icon={<FolderAddOutlined />}
             onClick={() => setIsCategoryModalOpen(true)}
           >
             Thêm danh mục
           </Button>
-          <Button 
-            type="primary" 
-            icon={<PlusOutlined />} 
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
             onClick={() => openDrawer()}
           >
             Thêm tài liệu mới
@@ -324,7 +390,11 @@ export default function DocumentManagementPage() {
         extra={
           <Space>
             <Button onClick={() => setIsDrawerOpen(false)}>Hủy</Button>
-            <Button type="primary" onClick={handleSaveDoc} loading={isSubmitting}>
+            <Button
+              type="primary"
+              onClick={handleSaveDoc}
+              loading={isSubmitting}
+            >
               Lưu tài liệu
             </Button>
           </Space>
@@ -338,7 +408,10 @@ export default function DocumentManagementPage() {
                 label="Tiêu đề tài liệu"
                 rules={[{ required: true, message: "Vui lòng nhập tiêu đề" }]}
               >
-                <Input placeholder="VD: Quy định trang phục 2024..." size="large" />
+                <Input
+                  placeholder="VD: Quy định trang phục 2024..."
+                  size="large"
+                />
               </Form.Item>
             </Col>
             <Col span={8}>
@@ -350,7 +423,10 @@ export default function DocumentManagementPage() {
                 <Select
                   showSearch
                   placeholder="Chọn danh mục"
-                  options={categories.map(c => ({ label: c.name, value: c.id }))}
+                  options={categories.map((c) => ({
+                    label: c.name,
+                    value: c.id,
+                  }))}
                   size="large"
                 />
               </Form.Item>
@@ -358,30 +434,30 @@ export default function DocumentManagementPage() {
           </Row>
 
           <Row gutter={16}>
-             <Col span={12}>
+            <Col span={12}>
               <Form.Item
-                  name="version"
-                  label="Phiên bản"
-                  rules={[{ required: true }]}
-                >
-                  <Input placeholder="1.0" />
-                </Form.Item>
-             </Col>
-             <Col span={12}>
+                name="version"
+                label="Phiên bản"
+                rules={[{ required: true }]}
+              >
+                <Input placeholder="1.0" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
               <Form.Item
-                  name="status"
-                  label="Trạng thái"
-                  rules={[{ required: true }]}
-                >
-                  <Select
-                    options={[
-                      { label: "Bản nháp", value: DocumentStatus.DRAFT },
-                      { label: "Đã ban hành", value: DocumentStatus.PUBLISHED },
-                      { label: "Lưu trữ", value: DocumentStatus.ARCHIVED },
-                    ]}
-                  />
-                </Form.Item>
-             </Col>
+                name="status"
+                label="Trạng thái"
+                rules={[{ required: true }]}
+              >
+                <Select
+                  options={[
+                    { label: "Bản nháp", value: DocumentStatus.DRAFT },
+                    { label: "Đã ban hành", value: DocumentStatus.PUBLISHED },
+                    { label: "Lưu trữ", value: DocumentStatus.ARCHIVED },
+                  ]}
+                />
+              </Form.Item>
+            </Col>
           </Row>
 
           {/* SỬ DỤNG QUILL EDITOR - LAZY IMPORT GÍUP CẢI THIỆN PERFORMANCE */}
@@ -391,20 +467,27 @@ export default function DocumentManagementPage() {
             rules={[{ required: true, message: "Vui lòng nhập nội dung" }]}
             valuePropName="value"
           >
-            <QuillEditorLazy value="" onChange={() => {}} height={450} placeholder="Soạn thảo chi tiết..." />
+            <QuillEditorLazy
+              value=""
+              onChange={() => {}}
+              height={450}
+              placeholder="Soạn thảo chi tiết..."
+            />
           </Form.Item>
 
-            <Form.Item label="Đính kèm tệp">
-              <Upload
-                name="file"
-                action="/api/upload/cloudinary"
-                fileList={fileList}
-                onChange={({ fileList: newFileList }) => setFileList(newFileList)}
-                multiple
-              >
-                <Button icon={<UploadOutlined />}>Tải lên tệp (Word, Excel, PDF...)</Button>
-              </Upload>
-            </Form.Item>
+          <Form.Item label="Đính kèm tệp">
+            <Upload
+              name="file"
+              action="/api/upload/cloudinary"
+              fileList={fileList}
+              onChange={({ fileList: newFileList }) => setFileList(newFileList)}
+              multiple
+            >
+              <Button icon={<UploadOutlined />}>
+                Tải lên tệp (Word, Excel, PDF...)
+              </Button>
+            </Upload>
+          </Form.Item>
         </Form>
       </Drawer>
 
@@ -434,16 +517,16 @@ export default function DocumentManagementPage() {
               allowClear
               showSearch
               placeholder="Chọn phòng ban..."
-              options={departments.map(d => ({ label: d.name, value: d.id }))}
+              options={departments.map((d) => ({ label: d.name, value: d.id }))}
               optionFilterProp="label"
             />
           </Form.Item>
 
-          <Form.Item
-            name="description"
-            label="Mô tả"
-          >
-            <Input.TextArea rows={3} placeholder="Mô tả công dụng của danh mục này" />
+          <Form.Item name="description" label="Mô tả">
+            <Input.TextArea
+              rows={3}
+              placeholder="Mô tả công dụng của danh mục này"
+            />
           </Form.Item>
         </Form>
       </Modal>
