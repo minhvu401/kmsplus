@@ -15,5 +15,6 @@ export enum PageRoute {
   CATEGORY_MANAGEMENT = "/categories/management",
   COURSE_MANAGEMENT = "/courses/management",
   QUESTION_BANK_MANAGEMENT = "/question-bank",
-  ARTICLE_MANAGEMENT = "/articles/management"
+  ARTICLE_MANAGEMENT = "/articles/management",
+  DOCUMENT_MANAGEMENT = "/documents/management"
 }
