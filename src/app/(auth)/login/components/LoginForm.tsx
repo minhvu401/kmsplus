@@ -178,7 +178,7 @@ export default function LoginForm({
         >
           <Input
             prefix={<UserOutlined className="text-gray-400" />}
-            placeholder="admin@company.com"
+            placeholder="Enter email here..."
             className="!rounded-lg"
           />
         </Form.Item>

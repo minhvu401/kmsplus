@@ -1,6 +1,8 @@
 const EMAIL_REGEX = /^[a-zA-Z0-9._%-+]+@[a-zA-Z0-9.-]{2,}\.[a-zA-Z]{2,}$/
 
-const FULL_NAME_REGEX = /^[a-zA-Z\s'-]+$/
+// Allow any Unicode letter (including diacritics) and combining marks,
+// plus spaces, apostrophes and hyphens.
+const FULL_NAME_REGEX = /^[\p{L}\p{M}\s'-]+$/u
 export function isValidEmail(email: string): boolean {
   if (!email || typeof email !== "string") {
     return false

@@ -16,6 +16,7 @@ import {
 import Link from "next/link"
 import { useRouter, useSearchParams, usePathname } from "next/navigation" // Import thêm hook điều hướng
 import CompleteButton from "./CompleteButton"
+import PdfViewer from "@/components/PdfViewer"
 import { getLessonByIdAction } from "@/service/lesson.service"
 import {
   getAttemptHistoryForCurriculumItem,
@@ -26,6 +27,15 @@ import QuizDetails from "@/components/ui/quizzes/quiz-details"
 import AttemptHistory from "@/components/ui/quizzes/attempt-history"
 
 const { Header, Sider, Content } = Layout
+
+const getLessonTypeLabel = (lessonType?: string) => {
+  const key = (lessonType || "").toLowerCase()
+
+  if (key === "text_media" || key === "text") return "Text"
+  if (key === "video") return "Video"
+  if (key === "pdf" || key === "file") return "PDF"
+  return "Other"
+}
 
 export default function LearningClient({
   course,
@@ -168,8 +178,16 @@ export default function LearningClient({
       setCompletedIds((prev) => [...prev, itemId])
     }
 
-    // Refresh trang để lấy dữ liệu progress mới nhất từ server
-    router.refresh()
+    // Refresh trang để lấy dữ liệu progress mới nhất từ server.
+    // Delay the refresh slightly so server-side revalidation (triggered by
+    // the server action) has time to complete and avoid fetching stale data.
+    setTimeout(() => {
+      try {
+        router.refresh()
+      } catch (e) {
+        console.error("Failed to refresh router:", e)
+      }
+    }, 1000)
 
     // Chuyển đến bài tiếp theo (nếu có)
     const currentIndex = flatItems.findIndex((i: any) => i.id === activeItem.id)
@@ -217,78 +235,9 @@ export default function LearningClient({
   const renderMediaViewer = (url: string) => {
     if (!url) return null
 
-    // 1. Xử lý PDF (Nhiều phương án dự phòng)
+    // 1. Xử lý PDF: sử dụng PdfViewer (react-pdf)
     if (isPdf(url)) {
-      return (
-        <div className="w-full h-[800px] bg-gray-50 rounded-xl overflow-hidden border border-gray-200 shadow-sm relative group">
-          {/* Nút tải xuống (Luôn hiển thị) */}
-          <div className="absolute top-4 right-4 z-10">
-            <a
-              href={url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-2 bg-white text-gray-700 px-4 py-2 rounded-full shadow-md font-medium hover:bg-blue-50 hover:text-blue-600 transition-colors border border-gray-100"
-            >
-              <span>📄 Download PDF</span>
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth={2}
-                stroke="currentColor"
-                className="w-4 h-4"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M12 9.75l-3 3m0 0l3 3m-3-3H21"
-                />
-              </svg>
-            </a>
-          </div>
-
-          {/* PHƯƠNG PHÁP 1: Thử embed trực tiếp */}
-          <iframe
-            src={url}
-            className="w-full h-full"
-            title="PDF Viewer - Direct Embed"
-            frameBorder="0"
-            allowFullScreen
-          />
-
-          {/* PHƯƠNG PHÁP 2: Fallback khi embed thất bại */}
-          <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
-            <div className="text-center p-6 max-w-md">
-              <div className="text-6xl mb-4">📄</div>
-              <h3 className="text-lg font-semibold text-gray-800 mb-2">
-                PDF Document
-              </h3>
-              <p className="text-gray-600 mb-6">
-                This PDF cannot be displayed inline. Please download or open it
-                in a new tab.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                <a
-                  href={url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors"
-                >
-                  <span>📖 Open PDF</span>
-                </a>
-                <a
-                  href={url}
-                  download
-                  className="inline-flex items-center gap-2 bg-green-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-green-700 transition-colors"
-                >
-                  <span>⬇️ Download</span>
-                </a>
-              </div>
-            </div>
-          </div>
-        </div>
-      )
+      return <PdfViewer url={url} className="w-full" />
     }
 
     // 2. Xử lý YouTube
@@ -441,10 +390,19 @@ export default function LearningClient({
             ) : (
               <div className="space-y-6 animate-fadeIn">
                 {/* A. KHUNG HIỂN THỊ MEDIA (VIDEO HOẶC PDF) */}
-                {lessonContent?.video_url && activeItem.type === "lesson" && (
-                  <div className="mb-8 w-full">
-                    {renderMediaViewer(lessonContent.video_url)}
-                  </div>
+                {activeItem.type === "lesson" && (
+                  (() => {
+                    const mediaUrl = 
+                    lessonContent?.file_path || lessonContent?.video_url || null
+
+                    if (!mediaUrl) return null
+
+                    return (
+                      <div className="mb-8 w-full">
+                        {renderMediaViewer(mediaUrl)}
+                      </div>
+                    )
+                  })()
                 )}
 
                 {/* B. THÔNG TIN & NÚT HOÀN THÀNH */}
@@ -631,7 +589,22 @@ export default function LearningClient({
                               ) : (
                                 <CheckCircleFilled />
                               )}
-                              {item.duration_minutes || "5"} min
+
+                              {item.type === "lesson" ? (
+                                <>
+                                  <span>Lesson | {getLessonTypeLabel(item.lesson_type)}</span>
+                                  {item.duration_minutes ? (
+                                    <span> • {item.duration_minutes} min</span>
+                                  ) : null}
+                                </>
+                              ) : (
+                                <>
+                                  <span>Quiz</span>
+                                  {item.question_count ? (
+                                    <span> • {item.question_count} questions</span>
+                                  ) : null}
+                                </>
+                              )}
                             </div>
                           </div>
                         </div>

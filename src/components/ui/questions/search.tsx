@@ -4,8 +4,12 @@ import { useDebouncedCallback } from "use-debounce"
 import { SearchOutlined } from "@ant-design/icons"
 import { Input, Button } from "antd"
 import { useRef } from "react"
+import useLanguageStore from "@/store/useLanguageStore"
 
 export default function Search({ placeholder }: { placeholder: string }) {
+  const { language } = useLanguageStore()
+  const isVi = language === "vi"
+
   // These give access to:
   const searchParams = useSearchParams() // The current query parameters.
   const pathname = usePathname() // The current path (like /invoices).
@@ -58,7 +62,7 @@ export default function Search({ placeholder }: { placeholder: string }) {
             alignItems: "center",
             justifyContent: "center",
           }}
-          title="Click to search"
+          title={isVi ? "Nhấn để tìm" : "Click to search"}
         />
       }
       placeholder={placeholder}

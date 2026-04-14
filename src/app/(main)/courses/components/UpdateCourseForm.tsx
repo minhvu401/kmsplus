@@ -14,7 +14,13 @@ import {
   createNewLessonAPI,
   updateLessonAPI,
   deleteLessonAPI,
+  checkLessonDependenciesBatchAPI,
 } from "@/action/lesson/lessonActions"
+import {
+  areQuizzesUsedInCourse,
+  deleteQuiz,
+  getQuizQuestions,
+} from "@/action/quiz/quizActions"
 import { COURSE_STATUS_LABELS } from "@/enum/course-status.enum"
 import RichTextEditor from "@/components/ui/RichTextEditor"
 import {
@@ -38,6 +44,7 @@ import {
   GripVertical,
   BookOpen,
   FileQuestion,
+  Eye,
   Edit2,
   Trash2,
   Search,
@@ -62,6 +69,8 @@ import {
   Card,
   Divider,
   Alert,
+  Collapse,
+  Spin,
 } from "antd"
 import {
   PlusOutlined,
@@ -72,6 +81,7 @@ import {
   DeleteOutlined,
   SafetyCertificateOutlined,
 } from "@ant-design/icons"
+import CreateQuizModal from "@/app/(main)/quizzes/components/CreateQuizModal"
 import useLanguageStore from "@/store/useLanguageStore"
 
 const { TextArea } = Input
@@ -90,7 +100,12 @@ export type Lesson = {
   video_url?: string | null // ✅ Thêm
   file_path?: string | null // ✅ Thêm
 }
-export type Quiz = { id: number; title: string; question_count: number }
+export type Quiz = {
+  id: number
+  title: string
+  question_count: number
+  category_id?: number | null
+}
 export type CurriculumItem = {
   id: string
   order: number
@@ -177,7 +192,18 @@ function SortableItem({
   )
 }
 
-function ContentBankItem({ icon, title, meta, onAdd, onEdit, onDelete }: any) {
+function ContentBankItem({
+  icon,
+  title,
+  meta,
+  onAdd,
+  onPreview,
+  onEdit,
+  onDelete,
+  disableEdit = false,
+  disableDelete = false,
+  lockedReason,
+}: any) {
   const { language } = useLanguageStore()
   return (
     <div className="group flex items-center justify-between p-2 bg-white border rounded shadow-sm hover:shadow-md transition-shadow mb-2">
@@ -194,14 +220,37 @@ function ContentBankItem({ icon, title, meta, onAdd, onEdit, onDelete }: any) {
         <button
           onClick={(e) => {
             e.stopPropagation()
-            if (onEdit) onEdit()
+            if (onPreview) onPreview()
           }}
-          className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors opacity-0 group-hover:opacity-100"
-          title={language === "vi" ? "Chỉnh sửa" : "Edit"}
+          className="p-1.5 text-cyan-600 hover:text-cyan-700 hover:bg-cyan-50 rounded transition-colors"
+          title={language === "vi" ? "Xem trước" : "Preview"}
         >
-          <Edit2 size={14} />
+          <Eye size={14} />
         </button>
-        <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+        {onEdit && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              onEdit()
+            }}
+            disabled={disableEdit}
+            className={`p-1.5 rounded transition-colors ${
+              disableEdit
+                ? "text-gray-300 cursor-not-allowed"
+                : "text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+            }`}
+            title={
+              disableEdit
+                ? lockedReason
+                : language === "vi"
+                  ? "Chỉnh sửa"
+                  : "Edit"
+            }
+          >
+            <Edit2 size={14} />
+          </button>
+        )}
+        <div>
           <Popconfirm
             title={
               language === "vi" ? "Xóa nội dung này?" : "Delete this item?"
@@ -216,13 +265,25 @@ function ContentBankItem({ icon, title, meta, onAdd, onEdit, onDelete }: any) {
               if (onDelete) onDelete()
             }}
             onCancel={(e) => e?.stopPropagation()}
+            disabled={disableDelete}
             okText={language === "vi" ? "Xóa" : "Yes"}
             cancelText={language === "vi" ? "Hủy" : "No"}
           >
             <button
               onClick={(e) => e.stopPropagation()}
-              className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
-              title={language === "vi" ? "Xóa" : "Delete"}
+              disabled={disableDelete}
+              className={`p-1.5 rounded transition-colors ${
+                disableDelete
+                  ? "text-gray-300 cursor-not-allowed"
+                  : "text-red-600 hover:text-red-700 hover:bg-red-50"
+              }`}
+              title={
+                disableDelete
+                  ? lockedReason
+                  : language === "vi"
+                    ? "Xóa"
+                    : "Delete"
+              }
             >
               <Trash2 size={14} />
             </button>
@@ -402,6 +463,20 @@ export default function UpdateCourseForm({
       })),
     }))
   }
+  const handleQuizDeleted = (deletedId: number) => {
+    setAvailableQuizzes((prev) =>
+      prev.filter((q) => Number(q.id) !== deletedId)
+    )
+    setPayload((prev) => ({
+      ...prev,
+      curriculum: prev.curriculum.map((section) => ({
+        ...section,
+        items: section.items.filter(
+          (item) => !(item.type === "quiz" && item.resource_id === deletedId)
+        ),
+      })),
+    }))
+  }
 
   const router = useRouter()
   const [modal, contextHolder] = Modal.useModal()
@@ -533,7 +608,7 @@ export default function UpdateCourseForm({
   function validateStep(stepIndex: number): boolean {
     switch (stepIndex) {
       case 0:
-        if (!payload.title?.trim()) return false
+        if (!payload.title?.trim() || payload.category_id == null) return false
         // ✅ THÊM: Bắt buộc chọn đúng dữ liệu khi thiết lập Assignment Rules
         if (payload.assignment_rules && payload.assignment_rules.length > 0) {
           const isRulesValid = payload.assignment_rules.every((rule) => {
@@ -654,6 +729,9 @@ export default function UpdateCourseForm({
     (acc, s) => acc + s.items.length,
     0
   )
+  const isCategoryLockedByCurriculum = payload.curriculum.some(
+    (section) => section.items.length > 0
+  )
 
   return (
     <div className="bg-white flex flex-col h-[85vh] rounded-lg relative">
@@ -738,10 +816,11 @@ export default function UpdateCourseForm({
                   </div>
                   <div>
                     <label className="block text-sm font-medium mb-1">
-                      {language === "vi" ? "Danh mục" : "Category"}
+                      {language === "vi" ? "Danh mục" : "Category"}{" "}
+                      <span className="text-red-500">*</span>
                     </label>
                     <Select
-                      disabled={isLocked}
+                      disabled={isLocked || isCategoryLockedByCurriculum}
                       placeholder={
                         language === "vi" ? "Chọn danh mục" : "Select category"
                       }
@@ -751,7 +830,15 @@ export default function UpdateCourseForm({
                           ? String(payload.category_id)
                           : undefined
                       }
-                      onChange={(val) => update("category_id", Number(val))}
+                      onChange={(val) => {
+                        if (isCategoryLockedByCurriculum) return
+                        update("category_id", Number(val))
+                      }}
+                      status={
+                        stepStatus[0] === "invalid" && payload.category_id == null
+                          ? "error"
+                          : ""
+                      }
                       options={categories.map((c) => ({
                         value: String(c.id),
                         label: c.name,
@@ -764,6 +851,13 @@ export default function UpdateCourseForm({
                           .includes(input.toLowerCase())
                       }
                     />
+                    {isCategoryLockedByCurriculum && (
+                      <p className="text-xs text-amber-600 mt-1 mb-0">
+                        {language === "vi"
+                          ? "Danh mục đã bị khóa vì chương trình học đã có bài học hoặc bài kiểm tra."
+                          : "Category is locked because the curriculum already contains lessons or quizzes."}
+                      </p>
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-medium mb-1">
@@ -1272,6 +1366,7 @@ export default function UpdateCourseForm({
                   onLessonCreated={handleLessonCreated}
                   onLessonUpdated={handleLessonUpdated}
                   onLessonDeleted={handleLessonDeleted}
+                  onQuizDeleted={handleQuizDeleted}
                   categories={categories}
                   courseCategoryId={payload.category_id}
                   isLocked={isLocked} // 🔥 Truyền cờ khóa UI xuống dưới
@@ -1361,6 +1456,7 @@ interface CurriculumContentBankProps {
   onLessonCreated: (l: Lesson) => void
   onLessonUpdated: (l: Lesson) => void
   onLessonDeleted: (id: number) => void
+  onQuizDeleted: (id: number) => void
   categories: { id: number; name: string }[]
   courseCategoryId?: number | null
   isLocked?: boolean // 🔥 Nhận biến khóa
@@ -1380,6 +1476,7 @@ function CurriculumContentBank({
   onLessonCreated,
   onLessonUpdated,
   onLessonDeleted,
+  onQuizDeleted,
   categories,
   courseCategoryId,
   isLocked,
@@ -1392,12 +1489,16 @@ function CurriculumContentBank({
   } | null>(null)
   const [activeTab, setActiveTab] = useState<"lessons" | "quizzes">("lessons")
   const [searchTerm, setSearchTerm] = useState("")
-  const [selectedFilterCategory, setSelectedFilterCategory] = useState<
-    number | null
-  >(null)
 
   const [form] = Form.useForm()
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+  const [isCreateQuizModalOpen, setIsCreateQuizModalOpen] = useState(false)
+  const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false)
+  const [previewLesson, setPreviewLesson] = useState<Lesson | null>(null)
+  const [isQuizPreviewModalOpen, setIsQuizPreviewModalOpen] = useState(false)
+  const [previewQuiz, setPreviewQuiz] = useState<Quiz | null>(null)
+  const [previewQuizQuestions, setPreviewQuizQuestions] = useState<any[]>([])
+  const [isLoadingQuizPreview, setIsLoadingQuizPreview] = useState(false)
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false)
   const [createdLessonName, setCreatedLessonName] = useState("")
   const [isCreating, setIsCreating] = useState(false)
@@ -1409,6 +1510,146 @@ function CurriculumContentBank({
     null
   )
   const [editingLessonId, setEditingLessonId] = useState<number | null>(null)
+  const [lockedLessons, setLockedLessons] = useState<
+    Record<number, { locked: boolean; reason: string }>
+  >({})
+  const [lockedQuizzes, setLockedQuizzes] = useState<
+    Record<number, { locked: boolean; reason: string }>
+  >({})
+
+  // 👇 PHẦN BÊN DƯỚI DÀNH CHO TRƯỜNG HỢP KHÔNG BỊ KHÓA (DRAFT / PENDING)
+
+  const lockedCourseCategoryName = useMemo(() => {
+    if (courseCategoryId == null) {
+      return language === "vi"
+        ? "Chưa chọn danh mục ở Bước 1"
+        : "No category selected in Step 1"
+    }
+    return (
+      categories.find((c) => String(c.id) === String(courseCategoryId))?.name ||
+      (language === "vi" ? "Danh mục không hợp lệ" : "Invalid category")
+    )
+  }, [categories, courseCategoryId, language])
+
+  useEffect(() => {
+    form.setFieldValue(
+      "category_id",
+      courseCategoryId != null ? String(courseCategoryId) : undefined
+    )
+  }, [courseCategoryId, form])
+
+  useEffect(() => {
+    let cancelled = false
+
+    const checkLessonLocks = async () => {
+      if (!availableLessons.length) {
+        setLockedLessons({})
+        return
+      }
+
+      const lessonIds = availableLessons.map((lesson) => Number(lesson.id))
+
+      try {
+        const usageMap = await checkLessonDependenciesBatchAPI(lessonIds)
+        if (cancelled) return
+
+        const nextLockedLessons: Record<
+          number,
+          { locked: boolean; reason: string }
+        > = {}
+
+        for (const lessonId of lessonIds) {
+          const usage = usageMap?.[lessonId]
+          const isUsed = Number(usage?.total || 0) > 0
+          nextLockedLessons[lessonId] = {
+            locked: isUsed,
+            reason:
+              language === "vi"
+                ? "Bài học đã tồn tại trong khóa học, không thể sửa hoặc xóa."
+                : "This lesson is already used in a course and cannot be edited or deleted.",
+          }
+        }
+
+        setLockedLessons(nextLockedLessons)
+      } catch {
+        if (cancelled) return
+        const fallbackLocked = Object.fromEntries(
+          lessonIds.map((lessonId) => [
+            lessonId,
+            {
+              locked: true,
+              reason:
+                language === "vi"
+                  ? "Không thể xác minh trạng thái sử dụng của bài học. Vui lòng thử lại."
+                  : "Unable to verify lesson usage. Please try again.",
+            },
+          ])
+        ) as Record<number, { locked: boolean; reason: string }>
+        setLockedLessons(fallbackLocked)
+      }
+    }
+
+    checkLessonLocks()
+    return () => {
+      cancelled = true
+    }
+  }, [availableLessons, language])
+
+  useEffect(() => {
+    let cancelled = false
+
+    const checkQuizLocks = async () => {
+      if (!availableQuizzes.length) {
+        setLockedQuizzes({})
+        return
+      }
+
+      const quizIds = availableQuizzes.map((quiz) => Number(quiz.id))
+
+      try {
+        const usageMap = await areQuizzesUsedInCourse(quizIds)
+        if (cancelled) return
+
+        const nextLockedQuizzes: Record<
+          number,
+          { locked: boolean; reason: string }
+        > = {}
+
+        for (const quizId of quizIds) {
+          const isUsed = Boolean(usageMap?.[quizId])
+          nextLockedQuizzes[quizId] = {
+            locked: isUsed,
+            reason:
+              language === "vi"
+                ? "Bài kiểm tra đã tồn tại trong khóa học, không thể xóa."
+                : "This quiz is already used in a course and cannot be deleted.",
+          }
+        }
+
+        setLockedQuizzes(nextLockedQuizzes)
+      } catch {
+        if (cancelled) return
+        const fallbackLocked = Object.fromEntries(
+          quizIds.map((quizId) => [
+            quizId,
+            {
+              locked: true,
+              reason:
+                language === "vi"
+                  ? "Không thể xác minh trạng thái sử dụng của bài kiểm tra. Vui lòng thử lại."
+                  : "Unable to verify quiz usage. Please try again.",
+            },
+          ])
+        ) as Record<number, { locked: boolean; reason: string }>
+        setLockedQuizzes(fallbackLocked)
+      }
+    }
+
+    checkQuizLocks()
+    return () => {
+      cancelled = true
+    }
+  }, [availableQuizzes, language])
 
   // 🔥 NẾU ĐÃ PUBLIC: CHỈ HIỂN THỊ CHƯƠNG TRÌNH DƯỚI DẠNG READ-ONLY
   if (isLocked) {
@@ -1461,8 +1702,6 @@ function CurriculumContentBank({
       </div>
     )
   }
-
-  // 👇 PHẦN BÊN DƯỚI DÀNH CHO TRƯỜNG HỢP KHÔNG BỊ KHÓA (DRAFT / PENDING)
 
   const handleAddSection = () => {
     const newSection: Section = {
@@ -1648,9 +1887,14 @@ function CurriculumContentBank({
 
     form.setFieldsValue({
       title: lesson.title,
+      duration_minutes: lesson.duration_minutes ?? undefined,
       type: lessonType,
       content: existingContent,
-      category_id: lesson.category_id ? String(lesson.category_id) : undefined,
+      category_id: courseCategoryId
+        ? String(courseCategoryId)
+        : lesson.category_id
+          ? String(lesson.category_id)
+          : undefined,
     })
 
     setContentType(lessonType)
@@ -1666,15 +1910,107 @@ function CurriculumContentBank({
     id: number,
     type: "lesson" | "quiz"
   ) => {
-    if (type === "quiz") return
     try {
+      if (type === "quiz") {
+        await deleteQuiz(id)
+        onQuizDeleted(id)
+        message.success(
+          language === "vi" ? "Đã xóa bài kiểm tra" : "Quiz deleted"
+        )
+        return
+      }
+
       await deleteLessonAPI(id)
       onLessonDeleted(id)
+      message.success(language === "vi" ? "Đã xóa bài học" : "Lesson deleted")
     } catch (error) {
       message.error(
-        language === "vi" ? "Không thể xóa bài học" : "Unable to delete lesson"
+        type === "quiz"
+          ? language === "vi"
+            ? "Không thể xóa bài kiểm tra"
+            : "Unable to delete quiz"
+          : language === "vi"
+            ? "Không thể xóa bài học"
+            : "Unable to delete lesson"
       )
     }
+  }
+
+  const handlePreviewItemAction = (item: Lesson, type: "lesson" | "quiz") => {
+    if (type === "quiz") return
+    setPreviewLesson(item)
+    setIsPreviewModalOpen(true)
+  }
+
+  const parseOptionsArray = (value: unknown): string[] => {
+    if (Array.isArray(value)) {
+      return value.map((item) => String(item ?? "")).filter((v) => v.trim() !== "")
+    }
+    if (typeof value === "string") {
+      try {
+        const parsed = JSON.parse(value)
+        if (Array.isArray(parsed)) {
+          return parsed
+            .map((item) => String(item ?? ""))
+            .filter((v) => v.trim() !== "")
+        }
+      } catch {
+        return []
+      }
+    }
+    return []
+  }
+
+  const parseIndexArray = (value: unknown): number[] => {
+    if (Array.isArray(value)) {
+      return value
+        .map((v) => Number(v))
+        .filter((n) => Number.isFinite(n))
+    }
+    if (typeof value === "number") {
+      return Number.isFinite(value) ? [value] : []
+    }
+    if (typeof value === "string") {
+      try {
+        const parsed = JSON.parse(value)
+        if (Array.isArray(parsed)) {
+          return parsed
+            .map((v) => Number(v))
+            .filter((n) => Number.isFinite(n))
+        }
+        const single = Number(parsed)
+        return Number.isFinite(single) ? [single] : []
+      } catch {
+        const single = Number(value)
+        return Number.isFinite(single) ? [single] : []
+      }
+    }
+    return []
+  }
+
+  const handlePreviewQuizAction = async (quiz: Quiz) => {
+    setPreviewQuiz(quiz)
+    setIsQuizPreviewModalOpen(true)
+    setIsLoadingQuizPreview(true)
+    try {
+      const questions = await getQuizQuestions(quiz.id)
+      setPreviewQuizQuestions(Array.isArray(questions) ? questions : [])
+    } catch {
+      setPreviewQuizQuestions([])
+      message.error(
+        language === "vi"
+          ? "Không thể tải câu hỏi bài kiểm tra"
+          : "Unable to load quiz questions"
+      )
+    } finally {
+      setIsLoadingQuizPreview(false)
+    }
+  }
+
+  const getLessonTypeLabel = (type?: string) => {
+    if (type === "video") return language === "vi" ? "Video" : "Video"
+    if (type === "pdf") return language === "vi" ? "PDF" : "PDF"
+    return language === "vi" ? "Văn bản" : "Text"
   }
 
   const handleCreateSubmit = async (values: any) => {
@@ -1683,9 +2019,10 @@ function CurriculumContentBank({
       if (editingLessonId) {
         const updated = await updateLessonAPI(editingLessonId, {
           title: values.title,
+          duration_minutes: Number(values.duration_minutes),
           type: values.type,
           content: values.content,
-          category_id: values.category_id ? Number(values.category_id) : null,
+          category_id: courseCategoryId ?? null,
         })
         onLessonUpdated(updated as unknown as Lesson)
         message.success(
@@ -1696,9 +2033,10 @@ function CurriculumContentBank({
       } else {
         const newLessonResponse = await createNewLessonAPI({
           title: values.title,
+          duration_minutes: Number(values.duration_minutes),
           type: values.type,
           content: values.content,
-          category_id: values.category_id ? Number(values.category_id) : null,
+          category_id: courseCategoryId ?? null,
         })
         if (onLessonCreated)
           onLessonCreated(newLessonResponse as unknown as Lesson)
@@ -1726,23 +2064,28 @@ function CurriculumContentBank({
 
   const filteredLessons = useMemo(() => {
     return availableLessons.filter((l) => {
-      const matchSearch = l.title
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase())
-      const matchCategory = selectedFilterCategory
-        ? l.category_id != null &&
-          Number(l.category_id) === Number(selectedFilterCategory)
-        : true
-      return matchSearch && matchCategory
+      const matchCourseCategory =
+        courseCategoryId != null
+          ? l.category_id != null &&
+            String(l.category_id) === String(courseCategoryId)
+          : true
+      const matchSearch = l.title.toLowerCase().includes(searchTerm.toLowerCase())
+      return matchCourseCategory && matchSearch
     })
-  }, [availableLessons, searchTerm, selectedFilterCategory])
+  }, [availableLessons, searchTerm, courseCategoryId])
 
   const filteredQuizzes = useMemo(
     () =>
-      availableQuizzes.filter((q) =>
-        q.title.toLowerCase().includes(searchTerm.toLowerCase())
-      ),
-    [availableQuizzes, searchTerm]
+      availableQuizzes.filter((q) => {
+        const matchCourseCategory =
+          courseCategoryId != null
+            ? q.category_id != null &&
+              String(q.category_id) === String(courseCategoryId)
+            : true
+        const matchSearch = q.title.toLowerCase().includes(searchTerm.toLowerCase())
+        return matchCourseCategory && matchSearch
+      }),
+    [availableQuizzes, searchTerm, courseCategoryId]
   )
 
   return (
@@ -1757,23 +2100,35 @@ function CurriculumContentBank({
           <Button
             type="primary"
             size="small"
-            icon={<Plus size={16} />}
+            icon={
+              activeTab === "lessons" ? <Plus size={16} /> : <FileQuestion size={16} />
+            }
             onClick={() => {
-              setEditingLessonId(null)
-              form.resetFields()
-              form.setFieldsValue({
-                category_id: courseCategoryId
-                  ? String(courseCategoryId)
-                  : undefined,
-              })
-              setVideoUrl("")
-              setPdfFile(null)
-              setContentType("text_media")
-              setIsCreateModalOpen(true)
+              if (activeTab === "lessons") {
+                setEditingLessonId(null)
+                form.resetFields()
+                form.setFieldsValue({
+                  category_id: courseCategoryId
+                    ? String(courseCategoryId)
+                    : undefined,
+                })
+                setVideoUrl("")
+                setPdfFile(null)
+                setContentType("text_media")
+                setIsCreateModalOpen(true)
+                return
+              }
+              setIsCreateQuizModalOpen(true)
             }}
             className="bg-[#1677ff] hover:bg-blue-500 shadow-sm"
           >
-            {language === "vi" ? "Bài Học Mới" : "New Lesson"}
+            {activeTab === "lessons"
+              ? language === "vi"
+                ? "Bài Học Mới"
+                : "New Lesson"
+              : language === "vi"
+                ? "Bài Kiểm Tra Mới"
+                : "New Quiz"}
           </Button>
         </div>
         {sections.length > 0 && (
@@ -1795,25 +2150,16 @@ function CurriculumContentBank({
           </div>
         )}
 
-        <div className="grid grid-cols-2 gap-2 mb-2">
-          <Select
-            allowClear
-            placeholder={
-              language === "vi" ? "Lọc danh mục..." : "Filter by category..."
-            }
-            className="w-full"
-            value={selectedFilterCategory}
-            onChange={setSelectedFilterCategory}
-            options={categories.map((c) => ({ value: c.id, label: c.name }))}
-            showSearch
-            optionFilterProp="label"
-            filterOption={(input, option) =>
-              (option?.label ?? "").toLowerCase().includes(input.toLowerCase())
-            }
-          />
+        <div className="mb-2">
           <Input
             placeholder={
-              language === "vi" ? "Tìm tên bài..." : "Search lesson title..."
+              activeTab === "lessons"
+                ? language === "vi"
+                  ? "Tìm tên bài..."
+                  : "Search lessons..."
+                : language === "vi"
+                  ? "Tìm bài kiểm tra..."
+                  : "Search quizzes..."
             }
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -1838,11 +2184,25 @@ function CurriculumContentBank({
         <div className="overflow-y-auto flex-1 max-h-[400px] pr-1">
           {activeTab === "lessons" &&
             filteredLessons.map((l) => (
+              (() => {
+                const lockInfo = lockedLessons[Number(l.id)]
+                const isCheckingLock = !lockInfo
+                const isLockedAction = isCheckingLock || Boolean(lockInfo?.locked)
+                const lockReason =
+                  lockInfo?.reason ||
+                  (language === "vi"
+                    ? "Đang kiểm tra trạng thái sử dụng..."
+                    : "Checking usage status...")
+                return (
               <ContentBankItem
                 key={String(l.id)}
                 icon={<BookOpen size={16} />}
                 title={l.title}
                 meta={`${l.duration_minutes || 0} min`}
+                onPreview={() => handlePreviewItemAction(l, "lesson")}
+                disableEdit={isLockedAction}
+                disableDelete={isLockedAction}
+                lockedReason={lockReason}
                 onEdit={() => handleEditItemAction(l, "lesson")}
                 onDelete={() => handleDeleteItemAction(Number(l.id), "lesson")}
                 onAdd={() =>
@@ -1855,15 +2215,31 @@ function CurriculumContentBank({
                       )
                 }
               />
+                )
+              })()
             ))}
           {activeTab === "quizzes" &&
             filteredQuizzes.map((q) => (
+              (() => {
+                const lockInfo = lockedQuizzes[Number(q.id)]
+                const isCheckingLock = !lockInfo
+                const isLockedAction = isCheckingLock || Boolean(lockInfo?.locked)
+                const lockReason =
+                  lockInfo?.reason ||
+                  (language === "vi"
+                    ? "Đang kiểm tra trạng thái sử dụng..."
+                    : "Checking usage status...")
+                return (
               <ContentBankItem
                 key={q.id}
                 icon={<FileQuestion size={16} />}
                 title={q.title}
                 meta={`${q.question_count} Qs`}
-                onEdit={() => handleEditItemAction(q, "quiz")}
+                onPreview={() => handlePreviewQuizAction(q)}
+                disableEdit={isLockedAction}
+                disableDelete={isLockedAction}
+                lockedReason={lockReason}
+                onEdit={undefined}
                 onDelete={() => handleDeleteItemAction(q.id, "quiz")}
                 onAdd={() =>
                   activeSectionId
@@ -1875,6 +2251,8 @@ function CurriculumContentBank({
                       )
                 }
               />
+                )
+              })()
             ))}
           {activeTab === "lessons" && filteredLessons.length === 0 && (
             <p className="text-center text-gray-400 py-4 text-sm">
@@ -1892,9 +2270,18 @@ function CurriculumContentBank({
         onDragEnd={onDragEnd}
       >
         <div className="flex flex-col h-[500px]">
-          <h3 className="text-lg font-semibold mb-4">
-            {language === "vi" ? "Chương Trình Khóa Học" : "Course Curriculum"}
-          </h3>
+          <div className="flex items-center justify-between mb-4 gap-3">
+            <h3 className="text-lg font-semibold m-0">
+              {language === "vi" ? "Chương Trình Khóa Học" : "Course Curriculum"}
+            </h3>
+            <button
+              type="button"
+              onClick={handleAddSection}
+              className="flex items-center justify-center gap-2 px-3 py-2 border border-dashed border-gray-300 rounded text-gray-600 hover:border-blue-500 hover:text-blue-600 transition-colors text-sm"
+            >
+              <Plus size={16} /> {language === "vi" ? "Thêm Chương" : "Add Section"}
+            </button>
+          </div>
           <div className="flex-1 overflow-y-auto space-y-4 pr-1">
             {sections.map((section) => (
               <div
@@ -1982,13 +2369,6 @@ function CurriculumContentBank({
               </div>
             ))}
           </div>
-          <button
-            type="button"
-            onClick={handleAddSection}
-            className="w-full mt-4 flex items-center justify-center gap-2 p-3 border-2 border-dashed border-gray-300 rounded text-gray-600 hover:border-blue-500 hover:text-blue-600 transition-colors"
-          >
-            <Plus size={18} /> {language === "vi" ? "Thêm Chương" : "Add Section"}
-          </button>
         </div>
       </DndContext>
 
@@ -2033,13 +2413,13 @@ function CurriculumContentBank({
         <Form
           form={form}
           layout="vertical"
+          requiredMark={false}
           onFinish={handleCreateSubmit}
           initialValues={{ type: "text_media" }}
           className="mt-4"
         >
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-0.5">
             <Form.Item
-              className="md:col-span-2"
               name="title"
               label={
                 <span className="font-semibold">
@@ -2066,36 +2446,55 @@ function CurriculumContentBank({
                 size="large"
               />
             </Form.Item>
+            <Form.Item
+              name="category_id"
+              label={
+                <span className="font-semibold">
+                  {language === "vi" ? "Danh mục bài học" : "Lesson category"}
+                </span>
+              }
+            >
+              <div className="h-10 w-full rounded-md border border-[#d9d9d9] bg-white px-3 text-gray-900 flex items-center cursor-default">
+                {lockedCourseCategoryName}
+              </div>
+            </Form.Item>
+            <Form.Item
+              name="duration_minutes"
+              label={
+                <span className="font-semibold">
+                  {language === "vi" ? "Thời lượng (phút)" : "Duration (minutes)"}{" "}
+                  <span className="text-red-500">*</span>
+                </span>
+              }
+              rules={[
+                {
+                  required: true,
+                  message:
+                    language === "vi"
+                      ? "Vui lòng nhập thời lượng"
+                      : "Please enter duration",
+                },
+                {
+                  type: "number",
+                  min: 1,
+                  message:
+                    language === "vi"
+                      ? "Thời lượng phải lớn hơn 0"
+                      : "Duration must be greater than 0",
+                },
+              ]}
+            >
+              <InputNumber
+                min={1}
+                className="w-full"
+                size="large"
+                placeholder={language === "vi" ? "Nhập số phút" : "Enter minutes"}
+              />
+            </Form.Item>
+            <Form.Item name="category_id" hidden>
+              <Input />
+            </Form.Item>
           </div>
-          <Form.Item
-            name="category_id"
-            label={
-              <span className="font-semibold">
-                {language === "vi" ? "Danh mục bài học" : "Lesson category"}
-              </span>
-            }
-          >
-            <Select
-              placeholder={
-                language === "vi"
-                  ? "Chọn danh mục phân loại"
-                  : "Select a category"
-              }
-              size="large"
-              allowClear
-              showSearch
-              options={categories.map((c) => ({
-                value: String(c.id),
-                label: c.name,
-              }))}
-              optionFilterProp="label"
-              filterOption={(input, option) =>
-                (option?.label ?? "")
-                  .toLowerCase()
-                  .includes(input.toLowerCase())
-              }
-            />
-          </Form.Item>
 
           <Form.Item
             name="type"
@@ -2342,6 +2741,206 @@ function CurriculumContentBank({
             {language === "vi" ? "Đóng" : "Close"}
           </Button>
         </div>
+      </Modal>
+
+      <CreateQuizModal
+        visible={isCreateQuizModalOpen}
+        onClose={() => setIsCreateQuizModalOpen(false)}
+        presetCategoryId={courseCategoryId ?? null}
+        lockPresetCategory={courseCategoryId != null}
+        onSuccess={() => {
+          setIsCreateQuizModalOpen(false)
+          router.refresh()
+        }}
+      />
+
+      <Modal
+        title={language === "vi" ? "Xem trước bài học" : "Lesson Preview"}
+        open={isPreviewModalOpen}
+        onCancel={() => {
+          setIsPreviewModalOpen(false)
+          setPreviewLesson(null)
+        }}
+        footer={null}
+        centered
+        width={800}
+      >
+        {previewLesson ? (
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+              <div className="rounded border bg-gray-50 p-3">
+                <p className="text-gray-500 m-0">{language === "vi" ? "Tiêu đề" : "Title"}</p>
+                <p className="font-semibold m-0 mt-1">{previewLesson.title}</p>
+              </div>
+              <div className="rounded border bg-gray-50 p-3">
+                <p className="text-gray-500 m-0">{language === "vi" ? "Loại" : "Type"}</p>
+                <p className="font-semibold m-0 mt-1">
+                  {getLessonTypeLabel(previewLesson.type)}
+                </p>
+              </div>
+              <div className="rounded border bg-gray-50 p-3">
+                <p className="text-gray-500 m-0">{language === "vi" ? "Thời lượng" : "Duration"}</p>
+                <p className="font-semibold m-0 mt-1">
+                  {previewLesson.duration_minutes || 0} {language === "vi" ? "phút" : "min"}
+                </p>
+              </div>
+            </div>
+
+            {previewLesson.type === "video" ? (
+              <div className="bg-gray-100 rounded-lg p-4 border border-gray-200">
+                {previewLesson.content && getYoutubeEmbedId(previewLesson.content) ? (
+                  <div className="w-full aspect-video">
+                    <iframe
+                      width="100%"
+                      height="100%"
+                      src={`https://www.youtube.com/embed/${getYoutubeEmbedId(previewLesson.content)}`}
+                      title={language === "vi" ? "Xem trước Video" : "Video preview"}
+                      frameBorder="0"
+                      allowFullScreen
+                      className="rounded"
+                    ></iframe>
+                  </div>
+                ) : (
+                  <p className="text-gray-500 m-0">
+                    {language === "vi"
+                      ? "Không có dữ liệu video để xem trước."
+                      : "No video data available for preview."}
+                  </p>
+                )}
+              </div>
+            ) : previewLesson.type === "pdf" ? (
+              <div className="rounded border p-4 bg-gray-50">
+                {previewLesson.content ? (
+                  <a
+                    href={previewLesson.content}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-blue-600 hover:text-blue-700"
+                  >
+                    {language === "vi"
+                      ? "Mở tệp PDF trong tab mới"
+                      : "Open PDF in a new tab"}
+                  </a>
+                ) : (
+                  <p className="text-gray-500 m-0">
+                    {language === "vi"
+                      ? "Không có tệp PDF để xem trước."
+                      : "No PDF available for preview."}
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div className="rounded border p-4 bg-white max-h-[50vh] overflow-y-auto">
+                {previewLesson.content ? (
+                  <div
+                    className="prose prose-sm md:prose-base max-w-none text-gray-700"
+                    style={{ fontSize: 16, lineHeight: 1.6 }}
+                    dangerouslySetInnerHTML={{ __html: previewLesson.content }}
+                  />
+                ) : (
+                  <p className="text-gray-500 m-0">
+                    {language === "vi"
+                      ? "Không có nội dung để xem trước."
+                      : "No content available for preview."}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        ) : null}
+      </Modal>
+
+      <Modal
+        title={language === "vi" ? "Xem trước bài kiểm tra" : "Quiz Preview"}
+        open={isQuizPreviewModalOpen}
+        onCancel={() => {
+          setIsQuizPreviewModalOpen(false)
+          setPreviewQuiz(null)
+          setPreviewQuizQuestions([])
+        }}
+        footer={null}
+        centered
+        width={900}
+      >
+        {previewQuiz ? (
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+              <div className="rounded border bg-gray-50 p-3">
+                <p className="text-gray-500 m-0">{language === "vi" ? "Tiêu đề" : "Title"}</p>
+                <p className="font-semibold m-0 mt-1">{previewQuiz.title}</p>
+              </div>
+              <div className="rounded border bg-gray-50 p-3">
+                <p className="text-gray-500 m-0">{language === "vi" ? "Số câu hỏi" : "Question count"}</p>
+                <p className="font-semibold m-0 mt-1">
+                  {previewQuizQuestions.length || previewQuiz.question_count || 0}
+                </p>
+              </div>
+            </div>
+
+            <Spin spinning={isLoadingQuizPreview}>
+              {previewQuizQuestions.length > 0 ? (
+                <Collapse
+                  accordion
+                  items={previewQuizQuestions.map((question: any, index: number) => {
+                    const options = parseOptionsArray(question.options)
+                    const correctIndexes = parseIndexArray(question.correct_answer)
+
+                    return {
+                      key: String(question.question_id || question.quiz_question_id || index),
+                      label: `${language === "vi" ? "Câu" : "Question"} ${index + 1}: ${question.question_text || ""}`,
+                      children: (
+                        <div className="space-y-3">
+                          <div className="space-y-2">
+                            <p className="font-semibold m-0">
+                              {language === "vi" ? "Các lựa chọn" : "Options"}
+                            </p>
+                            <div className="space-y-1">
+                              {options.length > 0 ? (
+                                options.map((option, optIndex) => {
+                                  const isCorrectOption = correctIndexes.includes(optIndex)
+                                  return (
+                                    <div
+                                      key={`${question.question_id || index}-opt-${optIndex}`}
+                                      className={`rounded border px-3 py-2 text-sm ${
+                                        isCorrectOption
+                                          ? "border-green-300 bg-green-50 text-green-800"
+                                          : "border-gray-100 bg-gray-50"
+                                      }`}
+                                    >
+                                      <span className="font-medium mr-2">
+                                        {String.fromCharCode(65 + optIndex)}.
+                                      </span>
+                                      <span>{option}</span>
+                                      {isCorrectOption && (
+                                        <span className="ml-2 text-xs font-semibold uppercase tracking-wide text-green-700">
+                                          {language === "vi" ? "Đúng" : "Correct"}
+                                        </span>
+                                      )}
+                                    </div>
+                                  )
+                                })
+                              ) : (
+                                <p className="text-sm text-gray-500 m-0">
+                                  {language === "vi" ? "Không có lựa chọn" : "No options"}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ),
+                    }
+                  })}
+                />
+              ) : (
+                <p className="text-sm text-gray-500 m-0 py-2">
+                  {language === "vi"
+                    ? "Không có câu hỏi để xem trước."
+                    : "No questions available for preview."}
+                </p>
+              )}
+            </Spin>
+          </div>
+        ) : null}
       </Modal>
     </div>
   )

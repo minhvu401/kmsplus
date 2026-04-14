@@ -1,3 +1,4 @@
+
 "use server"
 
 import { sql } from "@/lib/database"
@@ -12,6 +13,16 @@ export type ActionResult = {
   success?: boolean
   message?: string
   errors?: Record<string, string[] | undefined>
+}
+
+export type QuestionRow = {
+  id: number
+  title: string
+  content?: string | null
+  created_at?: string | null
+  updated_at?: string | null
+  is_closed?: boolean | null
+  category?: string | null
 }
 
 //TYPE FOR 'QUESTION' RESPONSE
@@ -45,6 +56,33 @@ export type Answer = {
   user_avatar?: string | null
 }
 
+// TYPE FOR 'ANSWER' ROW USED IN PROFILE LIST
+export type AnswerRow = {
+  id: number
+  question_id?: number
+  question_title?: string | null
+  content?: string | null
+  created_at?: string | null
+  updated_at?: string | null
+}
+
+// Get user answers (used by profile page)
+export async function getUserAnswersAction(userId: string | number): Promise<AnswerRow[]> {
+  try {
+    const rows = await sql`
+      SELECT a.id, a.question_id, q.title AS question_title, a.content, a.created_at, a.updated_at
+      FROM answers a
+      LEFT JOIN questions q ON a.question_id = q.id
+      WHERE a.user_id = ${userId} AND a.deleted_at IS NULL
+      ORDER BY a.created_at DESC
+    `
+    return rows as AnswerRow[]
+  } catch (error) {
+    console.error("Error fetching user answers:", error)
+    return []
+  }
+}
+
 // TYPE FOR 'TOP SHARER' RESPONSE
 export type TopSharer = {
   id: number
@@ -68,6 +106,23 @@ export async function getAllQuestionsAction(): Promise<Question[]> {
   `
 
   return questions as Question[]
+}
+
+// Get user questions (used by profile page)
+export async function getUserQuestionsAction(userId: string | number): Promise<QuestionRow[]> {
+  try {
+    const rows = await sql`
+      SELECT q.id, q.title, q.content, q.created_at, q.updated_at, q.is_closed, c.name as category
+      FROM questions q
+      LEFT JOIN categories c ON q.category_id = c.id
+      WHERE q.user_id = ${userId} AND q.deleted_at IS NULL
+      ORDER BY q.created_at DESC
+    `
+    return rows as QuestionRow[]
+  } catch (error) {
+    console.error("Error fetching user questions:", error)
+    return []
+  }
 }
 
 // GET QUESTION DETAILS

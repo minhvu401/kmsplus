@@ -3,9 +3,12 @@
 import { Result, Button, Space, Flex } from "antd";
 import { ArrowLeftOutlined } from "@ant-design/icons";
 import { useRouter } from "next/navigation";
+import useLanguageStore from "@/store/useLanguageStore";
 
 export default function QuestionNotFound() {
   const router = useRouter();
+  const { language } = useLanguageStore();
+  const isVi = language === "vi";
 
   return (
     <Flex
@@ -18,8 +21,12 @@ export default function QuestionNotFound() {
     >
       <Result
         status="404"
-        title="Question Not Found"
-        subTitle="The question you are looking for does not exist or has been removed."
+        title={isVi ? "Không tìm thấy câu hỏi" : "Question Not Found"}
+        subTitle={
+          isVi
+            ? "Câu hỏi bạn đang tìm không tồn tại hoặc đã bị xóa."
+            : "The question you are looking for does not exist or has been removed."
+        }
         extra={
           <Space>
             <Button
@@ -27,7 +34,7 @@ export default function QuestionNotFound() {
               icon={<ArrowLeftOutlined />}
               onClick={() => router.push("/questions")}
             >
-              Back to Questions
+              {isVi ? "Quay lại danh sách câu hỏi" : "Back to Questions"}
             </Button>
           </Space>
         }

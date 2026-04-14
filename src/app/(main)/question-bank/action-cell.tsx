@@ -7,6 +7,7 @@ import * as actions from '@/action/question-bank/questionBankActions';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import CreateQuestionModal from '@/app/(main)/question-bank/create/create-question-modal';
+import useLanguageStore from '@/store/useLanguageStore';
 
 export function ActionCell({
     record,
@@ -20,6 +21,18 @@ export function ActionCell({
     disabledReason?: string;
 }) {
     const router = useRouter();
+    const { language } = useLanguageStore();
+    const isVi = language === 'vi';
+    const txt = {
+        edit: isVi ? 'Chỉnh sửa' : 'Edit',
+        delete: isVi ? 'Xóa' : 'Delete',
+        deleteTitle: isVi ? 'Xóa câu hỏi' : 'Delete Question',
+        deleteConfirm: isVi
+            ? 'Bạn có chắc chắn muốn xóa câu hỏi này?'
+            : 'Are you sure you want to delete this question?',
+        yes: isVi ? 'Có' : 'Yes',
+        no: isVi ? 'Không' : 'No',
+    };
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingRecord, setEditingRecord] = useState<any>(null);
 
@@ -51,7 +64,7 @@ export function ActionCell({
     return (
         <>
             <Space size="middle">
-                <Tooltip title={canManage ? 'Edit' : disabledReason}>
+                <Tooltip title={canManage ? txt.edit : disabledReason}>
                     <EditOutlined
                         style={{
                             cursor: canManage ? 'pointer' : 'not-allowed',
@@ -61,15 +74,15 @@ export function ActionCell({
                     />
                 </Tooltip>
                 <Popconfirm
-                    title="Delete Question"
-                    description="Are you sure you want to delete this question?"
+                    title={txt.deleteTitle}
+                    description={txt.deleteConfirm}
                     onConfirm={handleDelete}
-                    okText="Yes"
-                    cancelText="No"
+                    okText={txt.yes}
+                    cancelText={txt.no}
                     okButtonProps={{ danger: true }}
                     disabled={!canManage}
                 >
-                    <Tooltip title={canManage ? 'Delete' : disabledReason}>
+                    <Tooltip title={canManage ? txt.delete : disabledReason}>
                         <DeleteOutlined
                             style={{
                                 cursor: canManage ? 'pointer' : 'not-allowed',

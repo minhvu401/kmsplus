@@ -46,20 +46,23 @@ export const translations: Record<Language, Record<string, string>> = {
     "profile.protect_account_desc":
       "Sử dụng mật khẩu mạnh và cập nhật thường xuyên để bảo vệ tài khoản của bạn.",
     "profile.cancel": "Hủy bỏ",
+    "profile.preview_question": "Xem trước câu hỏi",
+    "profile.preview_comment": "Xem trước bình luận",
+    "profile.created_at": "Ngày tạo",
+    "profile.updated_at": "Ngày cập nhật",
+    "profile.status": "Trạng thái",
+    "profile.category": "Danh mục",
 
     // Profile Activity Tab
     "profile.activity_answers_empty": "Bạn chưa trả lời câu hỏi nào.",
     "profile.activity_questions_empty": "Bạn chưa đặt câu hỏi nào.",
-    "profile.activity_tags_placeholder": "Nội dung thẻ (Tags).",
-    "profile.activity_badges_placeholder": "Nội dung huy hiệu (Badges).",
-    "profile.activity_reputation_placeholder":
-      "Nội dung điểm uy tín (Reputation).",
+    "profile.activity_comments_empty": "Bạn chưa đặt bình luận nào.",
+    "profile.activity_learning_placeholder": "Bạn chưa tham gia khóa học nào",
     "profile.tab_summary": "Tổng hợp",
-    "profile.tab_answers": "Câu trả lời",
     "profile.tab_questions": "Câu hỏi",
-    "profile.tab_tags": "Thẻ",
-    "profile.tab_badges": "Huy hiệu",
-    "profile.tab_reputation": "Uy tín",
+    "profile.tab_answers": "Câu trả lời",
+    "profile.tab_comments": "Bình luận",
+    "profile.tab_learning": "Học tập",
 
     // Settings
     "settings.title": "Cài đặt",
@@ -176,6 +179,9 @@ export const translations: Record<Language, Record<string, string>> = {
     "module.category": "Danh mục",
     "module.admin": "Quản trị",
     "module.settings": "Cài đặt",
+
+    // Article labels
+    "article.title": "Tiêu đề bài viết",
 
     // Dashboard Metrics - General
     "dashboard.metrics.access_denied": "Truy cập bị từ chối",
@@ -504,19 +510,23 @@ export const translations: Record<Language, Record<string, string>> = {
     "profile.protect_account_desc":
       "Use a strong password and update it regularly to protect your account.",
     "profile.cancel": "Cancel",
+    "profile.preview_question": "Preview question",
+    "profile.preview_comment": "Preview comment",
+    "profile.created_at": "Created At",
+    "profile.updated_at": "Updated At",
+    "profile.status": "Status",
+    "profile.category": "Category",
 
     // Profile Activity Tab
     "profile.activity_answers_empty": "You haven't answered any questions yet.",
     "profile.activity_questions_empty": "You haven't asked any questions yet.",
-    "profile.activity_tags_placeholder": "Tags content.",
-    "profile.activity_badges_placeholder": "Badges content.",
-    "profile.activity_reputation_placeholder": "Reputation content.",
+    "profile.activity_comments_empty": "You haven't made any comments yet.",
+    "profile.activity_learning_placeholder": "You haven't enrolled in any courses yet.",
     "profile.tab_summary": "Summary",
-    "profile.tab_answers": "Answers",
     "profile.tab_questions": "Questions",
-    "profile.tab_tags": "Tags",
-    "profile.tab_badges": "Badges",
-    "profile.tab_reputation": "Reputation",
+    "profile.tab_answers": "Answers",
+    "profile.tab_comments": "Comments",
+    "profile.tab_learning": "Learning",
 
     // Settings
     "settings.title": "Settings",
@@ -633,6 +643,9 @@ export const translations: Record<Language, Record<string, string>> = {
     "module.category": "Categories",
     "module.admin": "Administration",
     "module.settings": "Settings",
+
+    // Article labels
+    "article.title": "Article title",
 
     // Dashboard Metrics - General
     "dashboard.metrics.access_denied": "Access Denied",

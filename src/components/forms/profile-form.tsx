@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useActionState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import {
   Form,
   Input,
@@ -41,6 +42,7 @@ export default function ProfileForm({ user, onSuccess }: ProfileFormProps) {
   )
   const [avatarUrl, setAvatarUrl] = useState<string | null>(user.avatar_url || null)
   const { user: currentUser, setUser } = useUserStore()
+  const router = useRouter()
 
   const initialState: ProfileActionState = {
     success: false,
@@ -68,6 +70,12 @@ export default function ProfileForm({ user, onSuccess }: ProfileFormProps) {
         setUser(updatedUser)
       }
       if (onSuccess) onSuccess()
+      // Refresh server data so pages using server props get updated
+      try {
+        router.refresh()
+      } catch (e) {
+        // ignore if router not available
+      }
     } else if (state.message && !isLoading && state.success === false) {
       message.error(state.message)
     }
@@ -134,7 +142,6 @@ export default function ProfileForm({ user, onSuccess }: ProfileFormProps) {
       }}
     >
       <div style={{ marginBottom: "24px" }}>
-        <Title level={4}>Avatar</Title>
         <Space direction="vertical" align="center" style={{ width: "100%" }}>
           <Avatar
             size={120}
@@ -176,11 +183,31 @@ export default function ProfileForm({ user, onSuccess }: ProfileFormProps) {
       </Form.Item>
 
       <Form.Item>
-        <Flex gap="middle">
-          <Button type="primary" htmlType="submit" loading={isLoading || isUploadingAvatar} block>
+        <div style={{ display: "flex", gap: 12, justifyContent: "flex-end" }}>
+          <Button
+            type="default"
+            size="middle"
+            danger
+            onClick={() => {
+              form.resetFields()
+              setAvatarPreview(user.avatar_url || null)
+              setAvatarUrl(user.avatar_url || null)
+              if (onSuccess) onSuccess()
+            }}
+            style={{ minWidth: 96, color: '#f5222d', borderColor: '#f5222d' }}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="primary"
+            htmlType="submit"
+            loading={isLoading || isUploadingAvatar}
+            size="middle"
+            style={{ minWidth: 96 }}
+          >
             Save Changes
           </Button>
-        </Flex>
+        </div>
       </Form.Item>
 
       {state.message && !state.success && (

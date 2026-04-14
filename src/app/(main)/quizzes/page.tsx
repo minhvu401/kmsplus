@@ -19,22 +19,31 @@ import {
   Segmented,
   Tag,
   Tooltip,
+  Pagination,
 } from "antd"
 import {
   PlusOutlined,
   EditOutlined,
+  EyeOutlined,
   DeleteOutlined,
   SearchOutlined,
   ClearOutlined,
 } from "@ant-design/icons"
 import Link from "next/link"
-import { getAllQuizzes, deleteQuiz } from "@/action/quiz/quizActions"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
+import {
+  getAllQuizzes,
+  deleteQuiz,
+  getQuizDeleteGuards,
+} from "@/action/quiz/quizActions"
 import { getCategoriesAPI } from "@/action/courses/courseAction"
 import CreateQuizModal from "./components/CreateQuizModal"
+import useLanguageStore from "@/store/useLanguageStore"
 
 interface Quiz {
   id: number
-  course_id: number
+  category_id?: number | null
+  category_name?: string | null
   title: string
   description: string | null
   time_limit_minutes: number | null
@@ -45,11 +54,80 @@ interface Quiz {
 }
 
 export default function QuizzesPage() {
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const { language } = useLanguageStore()
+
+  const t = {
+    pageTitle: language === "vi" ? "Quản Lý Bài Thi" : "Quiz Management",
+    pageSubtitle:
+      language === "vi"
+        ? "Quản lý và tổ chức các bài thi"
+        : "Manage and organize your quizzes",
+    createQuiz: language === "vi" ? "Tạo Bài Thi" : "Create Quiz",
+    searchPlaceholder:
+      language === "vi" ? "Tìm kiếm bài thi..." : "Search quizzes...",
+    category: language === "vi" ? "Danh mục" : "Category",
+    allCategories: language === "vi" ? "Tất cả danh mục" : "All Categories",
+    sortBy: language === "vi" ? "Sắp xếp" : "Sort By",
+    newestFirst: language === "vi" ? "Mới nhất" : "Newest First",
+    oldestFirst: language === "vi" ? "Cũ nhất" : "Oldest First",
+    viewMode: language === "vi" ? "Chế độ xem" : "View Mode",
+    list: language === "vi" ? "Danh sách" : "List",
+    grid: language === "vi" ? "Lưới" : "Grid",
+    clearFilters: language === "vi" ? "Xóa bộ lọc" : "Clear Filters",
+    clearFiltersTooltip:
+      language === "vi" ? "Xóa tất cả bộ lọc" : "Clear all filters",
+    tableQuizName: language === "vi" ? "Tên Bài Thi" : "Quiz Name",
+    tableDescription: language === "vi" ? "Mô Tả" : "Description",
+    tableTime: language === "vi" ? "Thời Gian (phút)" : "Time Limit (min)",
+    tablePassing: language === "vi" ? "Điểm Đạt" : "Passing Score",
+    tableAction: language === "vi" ? "Hành Động" : "Actions",
+    noCategory: language === "vi" ? "Không có danh mục" : "No category",
+    noDescription: language === "vi" ? "Không có mô tả" : "No description",
+    unlimited: language === "vi" ? "Không giới hạn" : "Unlimited",
+    viewEdit: language === "vi" ? "Xem & Chỉnh sửa" : "View & Edit",
+    delete: language === "vi" ? "Xóa" : "Delete",
+    deleteTitle: language === "vi" ? "Xóa bài thi" : "Delete quiz",
+    deleteConfirm:
+      language === "vi"
+        ? "Bạn có chắc chắn muốn xóa bài thi này? Hành động này không thể hoàn tác."
+        : "Are you sure you want to delete this quiz? This action cannot be undone.",
+    yes: language === "vi" ? "Có" : "Yes",
+    no: language === "vi" ? "Không" : "No",
+    cannotDeleteDefault:
+      language === "vi" ? "Không thể xóa bài thi này" : "Cannot delete this quiz",
+    categoryLabel: language === "vi" ? "Danh mục:" : "Category:",
+    timeLabel: language === "vi" ? "Thời gian:" : "Time Limit:",
+    passingLabel: language === "vi" ? "Điểm đạt:" : "Passing Score:",
+    attemptsLabel: language === "vi" ? "Số lần làm:" : "Max Attempts:",
+    createdLabel: language === "vi" ? "Ngày tạo:" : "Created:",
+    empty: language === "vi" ? "Không có bài thi nào" : "No quizzes found",
+    createFirst:
+      language === "vi" ? "Tạo Bài Thi Đầu Tiên" : "Create First Quiz",
+    total: language === "vi" ? "Tổng" : "Total",
+    itemSuffix: language === "vi" ? "bài thi" : "quizzes",
+    loadError:
+      language === "vi"
+        ? "Không thể tải danh sách bài thi"
+        : "Failed to load quizzes",
+    deleteSuccess:
+      language === "vi"
+        ? "Đã xóa bài thi thành công"
+        : "Quiz deleted successfully",
+    deleteError:
+      language === "vi" ? "Không thể xóa bài thi" : "Failed to delete quiz",
+  }
+
   const [quizzes, setQuizzes] = useState<Quiz[]>([])
   const [loading, setLoading] = useState(true)
   const [searchText, setSearchText] = useState("")
   const [filteredQuizzes, setFilteredQuizzes] = useState<Quiz[]>([])
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest")
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
+  const [totalQuizzes, setTotalQuizzes] = useState(0)
   const [categories, setCategories] = useState<{ id: number; name: string }[]>(
     []
   )
@@ -60,18 +138,40 @@ export default function QuizzesPage() {
   const [isCreateModalVisible, setIsCreateModalVisible] = useState(false)
   const [viewMode, setViewMode] = useState<"list" | "grid">("list")
   const [hasActiveFilters, setHasActiveFilters] = useState(false)
+  const [isQueryHydrated, setIsQueryHydrated] = useState(false)
+  const [deleteGuards, setDeleteGuards] = useState<
+    Record<number, { canDelete: boolean; reason?: string; isUsedInCourse: boolean }>
+  >({})
 
   useEffect(() => {
-    loadQuizzes()
+    const q = searchParams.get("q") || ""
+    const categoryParam = searchParams.get("category")
+    const sortParam = searchParams.get("sort")
+    const viewParam = searchParams.get("view")
+    const pageParam = Number(searchParams.get("page"))
+    const limitParam = Number(searchParams.get("limit"))
+
+    const parsedCategory =
+      categoryParam && !Number.isNaN(Number(categoryParam))
+        ? Number(categoryParam)
+        : "All"
+
+    setSearchText(q)
+    setSelectedCategory(parsedCategory)
+    setSortOrder(sortParam === "oldest" ? "oldest" : "newest")
+    setViewMode(viewParam === "grid" ? "grid" : "list")
+    setCurrentPage(pageParam > 0 ? pageParam : 1)
+    setPageSize(limitParam > 0 ? limitParam : 10)
+    setIsQueryHydrated(true)
+  }, [searchParams])
+
+  useEffect(() => {
     loadCategories()
   }, [])
 
   useEffect(() => {
     if (quizzes.length > 0) {
-      const filtered = quizzes.filter((quiz) =>
-        quiz.title.toLowerCase().includes(searchText.toLowerCase())
-      )
-      applySorting(filtered)
+      applySorting(quizzes)
     }
   }, [sortOrder])
 
@@ -80,16 +180,44 @@ export default function QuizzesPage() {
     setHasActiveFilters(active)
   }, [searchText, selectedCategory])
 
+  useEffect(() => {
+    if (!isQueryHydrated) return
+
+    const params = new URLSearchParams()
+    if (searchText) params.set("q", searchText)
+    if (selectedCategory !== "All") {
+      params.set("category", String(selectedCategory))
+    }
+    if (sortOrder !== "newest") params.set("sort", sortOrder)
+    if (viewMode !== "list") params.set("view", viewMode)
+    if (currentPage !== 1) params.set("page", String(currentPage))
+    if (pageSize !== 10) params.set("limit", String(pageSize))
+
+    const nextUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname
+    router.replace(nextUrl, { scroll: false })
+  }, [
+    isQueryHydrated,
+    searchText,
+    selectedCategory,
+    sortOrder,
+    viewMode,
+    currentPage,
+    pageSize,
+    pathname,
+    router,
+  ])
+
   // Reload quizzes when search text or category changes
   useEffect(() => {
+    if (!isQueryHydrated) return
     loadQuizzes()
-  }, [searchText, selectedCategory])
+  }, [isQueryHydrated, searchText, selectedCategory, currentPage, pageSize])
 
   const loadCategories = async () => {
     setLoadingCategories(true)
     try {
       const res = await getCategoriesAPI()
-      setCategories(res || [])
+      setCategories((res || []).filter((category) => category.id !== 1))
     } catch (error) {
       console.error("Failed to load categories:", error)
       setCategories([])
@@ -103,16 +231,22 @@ export default function QuizzesPage() {
     try {
       const data = await getAllQuizzes({
         query: searchText,
-        page: 1,
-        limit: 100,
+        page: currentPage,
+        limit: pageSize,
         category_id:
           selectedCategory === "All" ? undefined : (selectedCategory as number),
       })
-      setQuizzes(data.data || [])
-      applySorting(data.data || [])
+      const quizzesData = data.data || []
+      setQuizzes(quizzesData)
+      applySorting(quizzesData)
+      setTotalQuizzes(data.total || 0)
+
+      const guards = await getQuizDeleteGuards(quizzesData.map((quiz) => quiz.id))
+      setDeleteGuards(guards)
     } catch (error) {
       console.error("Failed to load quizzes:", error)
-      message.error("Không thể tải danh sách bài thi")
+      message.error(t.loadError)
+      setDeleteGuards({})
     } finally {
       setLoading(false)
     }
@@ -120,10 +254,21 @@ export default function QuizzesPage() {
 
   const handleSearch = (value: string) => {
     setSearchText(value)
-    const filtered = quizzes.filter((quiz) =>
-      quiz.title.toLowerCase().includes(value.toLowerCase())
-    )
-    applySorting(filtered)
+    setCurrentPage(1)
+  }
+
+  const handleCategoryChange = (value: number | "All") => {
+    setSelectedCategory(value)
+    setCurrentPage(1)
+  }
+
+  const handlePaginationChange = (page: number, size: number) => {
+    if (size !== pageSize) {
+      setPageSize(size)
+      setCurrentPage(1)
+      return
+    }
+    setCurrentPage(page)
   }
 
   const applySorting = (itemsToSort: Quiz[]) => {
@@ -138,75 +283,102 @@ export default function QuizzesPage() {
   const handleDelete = async (id: number) => {
     try {
       await deleteQuiz(id)
-      message.success("Đã xóa bài thi thành công")
+      message.success(t.deleteSuccess)
       loadQuizzes()
     } catch (error) {
       console.error("Failed to delete quiz:", error)
-      message.error("Không thể xóa bài thi")
+      message.error(t.deleteError)
     }
   }
 
   const handleClearFilters = () => {
     setSearchText("")
     setSelectedCategory("All")
+    setCurrentPage(1)
   }
 
   const columns = [
     {
-      title: "Tên Bài Thi",
+      title: t.tableQuizName,
       dataIndex: "title",
       key: "title",
       width: "40%",
+      render: (_: string, record: Quiz) => (
+        <div>
+          <div className="font-medium text-gray-900">{record.title}</div>
+          <Typography.Text type="secondary" className="text-xs">
+            {record.category_name || t.noCategory}
+          </Typography.Text>
+        </div>
+      ),
     },
     {
-      title: "Mô Tả",
+      title: t.tableDescription,
       dataIndex: "description",
       key: "description",
       width: "30%",
-      render: (text: string | null) => <span>{text || "Không có mô tả"}</span>,
+      render: (text: string | null) => <span>{text || t.noDescription}</span>,
     },
     {
-      title: "Thời Gian (phút)",
+      title: t.tableTime,
       dataIndex: "time_limit_minutes",
       key: "time_limit_minutes",
       width: "12%",
-      render: (text: number | null) => <span>{text || "Unlimited"}</span>,
+      render: (text: number | null) => <span>{text || t.unlimited}</span>,
     },
     {
-      title: "Điểm Đạt",
+      title: t.tablePassing,
       dataIndex: "passing_score",
       key: "passing_score",
       width: "10%",
       render: (text: number) => <span>{text}%</span>,
     },
     {
-      title: "Hành Động",
+      title: t.tableAction,
       key: "action",
       width: "8%",
       align: "center" as const,
-      render: (_: any, record: Quiz) => (
-        <Space size="middle">
-          <Link href={`/quizzes/${record.id}`}>
-            <EditOutlined
-              style={{ cursor: "pointer", color: "#1890ff" }}
-              title="Chỉnh sửa"
-            />
-          </Link>
-          <Popconfirm
-            title="Xóa bài thi"
-            description="Bạn có chắc chắn muốn xóa bài thi này? Hành động này không thể hoàn tác."
-            onConfirm={() => handleDelete(record.id)}
-            okText="Có"
-            cancelText="Không"
-            okButtonProps={{ danger: true }}
-          >
-            <DeleteOutlined
-              style={{ cursor: "pointer", color: "#ff4d4f" }}
-              title="Xóa"
-            />
-          </Popconfirm>
-        </Space>
-      ),
+      render: (_: any, record: Quiz) => {
+        const guard = deleteGuards[record.id]
+        const isUsedInCourse = guard?.isUsedInCourse ?? false
+        const canDeleteLocal = !isUsedInCourse
+        const deleteReason = guard?.reason || t.cannotDeleteDefault
+
+        return (
+          <Space size="middle">
+            <Link href={`/quizzes/${record.id}`}>
+              <EyeOutlined
+                style={{ cursor: "pointer", color: "#1890ff" }}
+                title={t.viewEdit}
+              />
+            </Link>
+            {canDeleteLocal ? (
+              <Popconfirm
+                title={t.deleteTitle}
+                description={t.deleteConfirm}
+                onConfirm={() => handleDelete(record.id)}
+                okText={t.yes}
+                cancelText={t.no}
+                okButtonProps={{ danger: true }}
+              >
+                <DeleteOutlined
+                  style={{ cursor: "pointer", color: "#ff4d4f" }}
+                  title={t.delete}
+                />
+              </Popconfirm>
+            ) : (
+              <Tooltip title={deleteReason}>
+                <span>
+                  <DeleteOutlined
+                    style={{ cursor: "not-allowed", color: "#d1d5db" }}
+                    title={t.delete}
+                  />
+                </span>
+              </Tooltip>
+            )}
+          </Space>
+        )
+      },
     },
   ]
 
@@ -215,14 +387,14 @@ export default function QuizzesPage() {
       {/* Page Header */}
       <div className="mb-8">
         <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-blue-900 bg-clip-text text-transparent mb-4">
-          Quiz Management
+          {t.pageTitle}
         </h1>
         <div
           className="flex align-center justify-between gap-6"
           style={{ marginBottom: 16 }}
         >
           <p className="text-gray-600 max-w-2xl leading-relaxed">
-            Manage and organize your quizzes
+            {t.pageSubtitle}
           </p>
           <Button
             style={{
@@ -255,7 +427,7 @@ export default function QuizzesPage() {
               button.style.borderColor = "#1e40af"
             }}
           >
-            Create Quiz
+            {t.createQuiz}
           </Button>
         </div>
         <Divider
@@ -268,7 +440,7 @@ export default function QuizzesPage() {
         <div className="space-y-3">
           {/* Search Bar - Full Width */}
           <Input.Search
-            placeholder="Search quizzes..."
+            placeholder={t.searchPlaceholder}
             prefix={<SearchOutlined />}
             value={searchText}
             onChange={(e) => handleSearch(e.target.value)}
@@ -285,13 +457,13 @@ export default function QuizzesPage() {
                 type="secondary"
                 className="text-sm font-medium mb-2"
               >
-                Category
+                {t.category}
               </Typography.Text>
               <Select
                 value={selectedCategory}
-                onChange={setSelectedCategory}
+                onChange={handleCategoryChange}
                 options={[
-                  { label: "All Categories", value: "All" },
+                  { label: t.allCategories, value: "All" },
                   ...categories.map((cat) => ({
                     label: cat.name,
                     value: cat.id,
@@ -308,14 +480,14 @@ export default function QuizzesPage() {
                 type="secondary"
                 className="text-sm font-medium mb-2"
               >
-                Sort By
+                {t.sortBy}
               </Typography.Text>
               <Select
                 value={sortOrder}
                 onChange={setSortOrder}
                 options={[
-                  { label: "Newest First", value: "newest" },
-                  { label: "Oldest First", value: "oldest" },
+                  { label: t.newestFirst, value: "newest" },
+                  { label: t.oldestFirst, value: "oldest" },
                 ]}
                 size="middle"
                 className="w-full"
@@ -327,15 +499,15 @@ export default function QuizzesPage() {
                 type="secondary"
                 className="text-sm font-medium mb-2"
               >
-                View Mode
+                {t.viewMode}
               </Typography.Text>
               <Segmented
                 size="middle"
                 value={viewMode}
                 onChange={(value) => setViewMode(value as "list" | "grid")}
                 options={[
-                  { label: "List", value: "list" },
-                  { label: "Grid", value: "grid" },
+                  { label: t.list, value: "list" },
+                  { label: t.grid, value: "grid" },
                 ]}
                 block
               />
@@ -343,7 +515,7 @@ export default function QuizzesPage() {
 
             {hasActiveFilters && (
               <div className="flex flex-col justify-end">
-                <Tooltip title="Clear all filters">
+                <Tooltip title={t.clearFiltersTooltip}>
                   <Button
                     type="dashed"
                     danger
@@ -352,7 +524,7 @@ export default function QuizzesPage() {
                     onClick={handleClearFilters}
                     className="w-full"
                   >
-                    Clear Filters
+                    {t.clearFilters}
                   </Button>
                 </Tooltip>
               </div>
@@ -373,11 +545,7 @@ export default function QuizzesPage() {
                     ...quiz,
                     key: quiz.id,
                   }))}
-                  pagination={{
-                    pageSize: 10,
-                    total: filteredQuizzes.length,
-                    showTotal: (total) => `Tổng ${total} bài thi`,
-                  }}
+                  pagination={false}
                   bordered
                   size="middle"
                 />
@@ -385,6 +553,13 @@ export default function QuizzesPage() {
                 <Row gutter={[16, 16]}>
                   {filteredQuizzes.map((quiz) => (
                     <Col xs={24} sm={12} lg={8} xl={6} key={quiz.id}>
+                      {(() => {
+                        const guard = deleteGuards[quiz.id]
+                        const isUsedInCourse = guard?.isUsedInCourse ?? false
+                        const canDeleteLocal = !isUsedInCourse
+                        const deleteReason = guard?.reason || "Cannot delete this quiz"
+
+                        return (
                       <Card
                         hoverable
                         className="h-full cursor-pointer hover:shadow-lg transition-shadow"
@@ -404,17 +579,25 @@ export default function QuizzesPage() {
                         <div className="mt-4 space-y-2 text-sm">
                           <div className="flex justify-between">
                             <Typography.Text type="secondary">
-                              Time Limit:
+                              {t.categoryLabel}
                             </Typography.Text>
                             <Typography.Text strong>
-                              {quiz.time_limit_minutes
-                                ? `${quiz.time_limit_minutes} min`
-                                : "Unlimited"}
+                              {quiz.category_name || "N/A"}
                             </Typography.Text>
                           </div>
                           <div className="flex justify-between">
                             <Typography.Text type="secondary">
-                              Passing Score:
+                              {t.timeLabel}
+                            </Typography.Text>
+                            <Typography.Text strong>
+                              {quiz.time_limit_minutes
+                                ? `${quiz.time_limit_minutes} min`
+                                : t.unlimited}
+                            </Typography.Text>
+                          </div>
+                          <div className="flex justify-between">
+                            <Typography.Text type="secondary">
+                              {t.passingLabel}
                             </Typography.Text>
                             <Typography.Text strong>
                               <Tag color="blue">{quiz.passing_score}%</Tag>
@@ -422,7 +605,7 @@ export default function QuizzesPage() {
                           </div>
                           <div className="flex justify-between">
                             <Typography.Text type="secondary">
-                              Max Attempts:
+                              {t.attemptsLabel}
                             </Typography.Text>
                             <Typography.Text strong>
                               {quiz.max_attempts}
@@ -430,7 +613,7 @@ export default function QuizzesPage() {
                           </div>
                           <div className="flex justify-between">
                             <Typography.Text type="secondary">
-                              Created:
+                              {t.createdLabel}
                             </Typography.Text>
                             <Typography.Text strong>
                               {new Date(quiz.created_at).toLocaleDateString(
@@ -444,39 +627,58 @@ export default function QuizzesPage() {
                             <Button
                               type="text"
                               size="small"
-                              icon={<EditOutlined />}
+                              icon={<EyeOutlined />}
                               className="w-full text-blue-600 hover:!text-blue-700"
                             >
-                              Edit
+                              {t.viewEdit}
                             </Button>
                           </Link>
-                          <Popconfirm
-                            title="Xóa bài thi"
-                            description="Bạn có chắc chắn muốn xóa bài thi này? Hành động này không thể hoàn tác."
-                            onConfirm={() => handleDelete(quiz.id)}
-                            okText="Có"
-                            cancelText="Không"
-                            okButtonProps={{ danger: true }}
-                          >
-                            <Button
-                              type="text"
-                              danger
-                              size="small"
-                              icon={<DeleteOutlined />}
-                              className="flex-1"
+                          {canDeleteLocal ? (
+                            <Popconfirm
+                              title={t.deleteTitle}
+                              description={t.deleteConfirm}
+                              onConfirm={() => handleDelete(quiz.id)}
+                              okText={t.yes}
+                              cancelText={t.no}
+                              okButtonProps={{ danger: true }}
                             >
-                              Delete
-                            </Button>
-                          </Popconfirm>
+                              <Button
+                                type="text"
+                                danger
+                                size="small"
+                                icon={<DeleteOutlined />}
+                                className="w-full"
+                              >
+                                {t.delete}
+                              </Button>
+                            </Popconfirm>
+                          ) : (
+                            <Tooltip title={deleteReason}>
+                              <span className="flex-1">
+                                <Button
+                                  type="text"
+                                  danger
+                                  size="small"
+                                  icon={<DeleteOutlined />}
+                                  className="w-full"
+                                  disabled
+                                >
+                                  {t.delete}
+                                </Button>
+                              </span>
+                            </Tooltip>
+                          )}
                         </div>
                       </Card>
+                        )
+                      })()}
                     </Col>
                   ))}
                 </Row>
               )
             ) : (
               <Empty
-                description="Không có bài thi nào"
+                description={t.empty}
                 style={{ marginTop: "60px" }}
               >
                 <Button
@@ -485,11 +687,23 @@ export default function QuizzesPage() {
                   icon={<PlusOutlined />}
                   onClick={() => setIsCreateModalVisible(true)}
                 >
-                  Tạo Bài Thi Đầu Tiên
+                  {t.createFirst}
                 </Button>
               </Empty>
             )}
           </Spin>
+          {filteredQuizzes.length > 0 && (
+            <div className="mt-6 flex justify-end">
+              <Pagination
+                current={currentPage}
+                pageSize={pageSize}
+                total={totalQuizzes}
+                showSizeChanger
+                onChange={handlePaginationChange}
+                showTotal={(total) => `${t.total} ${total} ${t.itemSuffix}`}
+              />
+            </div>
+          )}
         </div>
       </div>
 

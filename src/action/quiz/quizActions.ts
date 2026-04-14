@@ -14,6 +14,8 @@ import {
   updateQuizAction,
   deleteQuizAction,
   getQuizQuestionsAction,
+  isQuizUsedInCourseAction,
+  isQuizzesUsedInCourseBatchAction,
   updateQuizQuestionsAction,
   startQuizAttemptAction,
   submitQuizAttemptAction,
@@ -29,6 +31,7 @@ import {
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 import { sanitizeTitle, sanitizeDescription } from "@/utils/sanitize"
+import { Role } from "@/enum/role.enum"
 import {
   QuizMetadataDto,
   QuizCreateDto,
@@ -42,7 +45,6 @@ type GetAllQuizzesParams = {
   query?: string
   page?: number
   limit?: number
-  course_id?: number
   category_id?: number | "All"
 }
 
@@ -69,6 +71,193 @@ export async function getAllQuizzes(params: GetAllQuizzesParams) {
   return getAllQuizzesAction(params)
 }
 
+export async function getQuizDeleteGuards(quizIds: number[]) {
+  await requirePermission(Permission.VIEW_QUIZ_LIST)
+  const user = await requireAuth()
+
+  const normalizedQuizIds = Array.from(
+    new Set((quizIds || []).map((id) => Number(id)).filter(Number.isFinite))
+  )
+
+  if (normalizedQuizIds.length === 0) {
+    return {} as Record<number, { canDelete: boolean; reason?: string; isUsedInCourse: boolean }>
+  }
+
+  const isSystemAdmin =
+    user.role === Role.ADMIN ||
+    (user.role || "").toLowerCase().includes("admin")
+
+  const ownerColumnCheck = await sql`
+    SELECT EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = 'quizzes'
+        AND column_name = 'created_by'
+    ) AS has_created_by
+  `
+
+  const hasCreatedBy = Boolean(ownerColumnCheck?.[0]?.has_created_by)
+  const currentUserId = Number(user.id)
+
+  const rows = hasCreatedBy
+    ? await sql`
+        SELECT
+          q.id,
+          q.created_by,
+          EXISTS (
+            SELECT 1
+            FROM curriculum_items ci
+            JOIN sections s ON s.id = ci.section_id
+            JOIN courses c ON c.id = s.course_id
+            WHERE ci.quiz_id = q.id
+              AND c.deleted_at IS NULL
+          ) AS is_used_in_course
+        FROM quizzes q
+        WHERE q.id = ANY(${normalizedQuizIds})
+      `
+    : await sql`
+        SELECT
+          q.id,
+          EXISTS (
+            SELECT 1
+            FROM curriculum_items ci
+            JOIN sections s ON s.id = ci.section_id
+            JOIN courses c ON c.id = s.course_id
+            WHERE ci.quiz_id = q.id
+              AND c.deleted_at IS NULL
+          ) AS is_used_in_course
+        FROM quizzes q
+        WHERE q.id = ANY(${normalizedQuizIds})
+      `
+
+  const guardMap: Record<number, { canDelete: boolean; reason?: string; isUsedInCourse: boolean }> = {}
+
+  for (const row of rows as any[]) {
+    const quizId = Number(row.id)
+    const isUsedInCourse = Boolean(row.is_used_in_course)
+    const isOwner = hasCreatedBy
+      ? Number.isFinite(currentUserId) && Number(row.created_by) === currentUserId
+      : false
+
+    const canDelete = !isUsedInCourse && (isSystemAdmin || isOwner)
+
+    let reason: string | undefined
+    if (isUsedInCourse) {
+      reason = "This quiz is already used in a course"
+    } else if (!isSystemAdmin && !isOwner) {
+      reason = "You are not this quiz's creator"
+    }
+
+    guardMap[quizId] = {
+      canDelete,
+      reason,
+      isUsedInCourse,
+    }
+  }
+
+  return guardMap
+}
+
+export async function getQuizMutationGuard(quizId: number) {
+  await requirePermission(Permission.VIEW_QUIZ)
+  const user = await requireAuth()
+
+  const normalizedQuizId = Number(quizId)
+  if (!Number.isFinite(normalizedQuizId)) {
+    return {
+      isOwnerOrAdmin: false,
+      isSystemAdmin: false,
+      isUsedInCourse: false,
+      canModify: false,
+      reason: "Invalid quiz id",
+    }
+  }
+
+  const isSystemAdmin =
+    user.role === Role.ADMIN ||
+    (user.role || "").toLowerCase().includes("admin")
+
+  const ownerColumnCheck = await sql`
+    SELECT EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = 'quizzes'
+        AND column_name = 'created_by'
+    ) AS has_created_by
+  `
+
+  const hasCreatedBy = Boolean(ownerColumnCheck?.[0]?.has_created_by)
+
+  const rows = hasCreatedBy
+    ? await sql`
+        SELECT
+          q.id,
+          q.created_by,
+          EXISTS (
+            SELECT 1
+            FROM curriculum_items ci
+            JOIN sections s ON s.id = ci.section_id
+            JOIN courses c ON c.id = s.course_id
+            WHERE ci.quiz_id = q.id
+              AND c.deleted_at IS NULL
+          ) AS is_used_in_course
+        FROM quizzes q
+        WHERE q.id = ${normalizedQuizId}
+        LIMIT 1
+      `
+    : await sql`
+        SELECT
+          q.id,
+          EXISTS (
+            SELECT 1
+            FROM curriculum_items ci
+            JOIN sections s ON s.id = ci.section_id
+            JOIN courses c ON c.id = s.course_id
+            WHERE ci.quiz_id = q.id
+              AND c.deleted_at IS NULL
+          ) AS is_used_in_course
+        FROM quizzes q
+        WHERE q.id = ${normalizedQuizId}
+        LIMIT 1
+      `
+
+  if (!rows.length) {
+    return {
+      isOwnerOrAdmin: false,
+      isSystemAdmin,
+      isUsedInCourse: false,
+      canModify: false,
+      reason: "Quiz not found",
+    }
+  }
+
+  const row = rows[0] as any
+  const currentUserId = Number(user.id)
+  const isOwner = hasCreatedBy
+    ? Number.isFinite(currentUserId) && Number(row.created_by) === currentUserId
+    : false
+  const isUsedInCourse = Boolean(row.is_used_in_course)
+  const isOwnerOrAdmin = isSystemAdmin || isOwner
+  const canModify = isOwnerOrAdmin && !isUsedInCourse
+
+  let reason: string | undefined
+  if (!isOwnerOrAdmin) {
+    reason = "Only the quiz owner or System Admin can modify this quiz"
+  } else if (isUsedInCourse) {
+    reason = "This quiz is already used in a course and cannot be modified"
+  }
+
+  return {
+    isOwnerOrAdmin,
+    isSystemAdmin,
+    isUsedInCourse,
+    canModify,
+    reason,
+  }
+}
+
 /**
  * Lấy chi tiết một bài thi theo ID.
  * - Tham số: id (number)
@@ -80,7 +269,7 @@ export async function getQuizById(id: number) {
   await requirePermission(Permission.VIEW_QUIZ)
   const quizData = await getQuizByIdAction(id)
   console.log("🟦 [getQuizById] Quiz data returned:", quizData)
-  console.log("🟦 [getQuizById] Course ID:", quizData?.course_id)
+  console.log("🟦 [getQuizById] Category ID:", quizData?.category_id)
   return quizData
 }
 
@@ -112,7 +301,7 @@ export async function getAttemptHistoryForCurriculumItem(
  * Pre-conditions: Người dùng đã đăng nhập với quyền Manager/Admin
  * Post-conditions: Dữ liệu Title, Description, và liên kết Questions được lưu trong DB
  *
- * - FormData expected fields: course_id, title, description, status, question_ids (JSON array)
+ * - FormData expected fields: category_id, title, description, status, question_ids (JSON array)
  * - Kiểm tra các trường bắt buộc và chuyển đổi kiểu
  * - Validate với Zod schema
  * - Sanitize input để chống XSS
@@ -121,7 +310,7 @@ export async function getAttemptHistoryForCurriculumItem(
  */
 export async function createQuiz(formData: FormData) {
   await requirePermission(Permission.CREATE_QUIZ)
-  const course_id = Number(formData.get("course_id"))
+  const category_id = Number(formData.get("category_id"))
   const title = (formData.get("title") as string) || ""
   const description = (formData.get("description") as string) || ""
   const status = (formData.get("status") as string) || "draft"
@@ -135,8 +324,8 @@ export async function createQuiz(formData: FormData) {
     ? Number(formData.get("max_attempts"))
     : 3
 
-  if (!course_id) {
-    throw new Error("Course ID is required")
+  if (!category_id) {
+    throw new Error("Category ID is required")
   }
 
   // Sanitize inputs
@@ -147,7 +336,7 @@ export async function createQuiz(formData: FormData) {
   const validationResult = QuizCreateDto.safeParse({
     title: sanitizedTitle,
     description: sanitizedDescription,
-    course_id,
+    category_id,
     status,
     time_limit_minutes,
     passing_score,
@@ -164,7 +353,7 @@ export async function createQuiz(formData: FormData) {
   const parsedData = parseAndValidateQuizFormData(formData)
 
   await createQuizAction({
-    course_id: parsedData.course_id,
+    category_id: parsedData.category_id,
     title: parsedData.title,
     description: parsedData.description,
     status: parsedData.status,
@@ -257,6 +446,18 @@ export async function getQuizQuestions(quizId: number) {
   return questionsData
 }
 
+export async function isQuizUsedInCourse(quizId: number) {
+  await requirePermission(Permission.VIEW_QUIZ)
+  await requireAuth()
+  return isQuizUsedInCourseAction(quizId)
+}
+
+export async function areQuizzesUsedInCourse(quizIds: number[]) {
+  await requirePermission(Permission.VIEW_QUIZ_LIST)
+  await requireAuth()
+  return isQuizzesUsedInCourseBatchAction(quizIds)
+}
+
 /**
  * Cập nhật danh sách câu hỏi của một quiz.
  * - Tham số: quizId (number), questionIds (number[])
@@ -281,6 +482,7 @@ export async function updateQuizQuestions(
 export async function updateQuizMetadata(
   quizId: number,
   data: {
+    category_id: number
     title: string
     description?: string
     time_limit_minutes?: number | null
@@ -308,6 +510,7 @@ export async function updateQuizMetadata(
   }
 
   await updateQuizAction(quizId, {
+    category_id: data.category_id,
     title: sanitizedTitle,
     ...(sanitizedDescription && { description: sanitizedDescription }),
     time_limit_minutes: data.time_limit_minutes,

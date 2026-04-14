@@ -14,7 +14,10 @@ import {
   createNewLessonAPI,
   updateLessonAPI,
   deleteLessonAPI,
+  checkLessonDependenciesBatchAPI,
 } from "@/action/lesson/lessonActions"
+import { areQuizzesUsedInCourse, deleteQuiz } from "@/action/quiz/quizActions"
+import { getQuizQuestions } from "@/action/quiz/quizActions"
 import { COURSE_STATUS_LABELS } from "@/enum/course-status.enum"
 import RichTextEditor from "@/components/ui/RichTextEditor"
 import {
@@ -38,6 +41,7 @@ import {
   GripVertical,
   BookOpen,
   FileQuestion,
+  Eye,
   Edit2,
   Trash2,
   Search,
@@ -51,6 +55,7 @@ import {
   Steps,
   Modal,
   Select,
+  Tooltip,
   message,
   Upload,
   Form,
@@ -60,6 +65,8 @@ import {
   InputNumber,
   Card,
   Divider,
+  Collapse,
+  Spin,
 } from "antd"
 import {
   PlusOutlined,
@@ -70,6 +77,8 @@ import {
   DeleteOutlined,
   SafetyCertificateOutlined,
 } from "@ant-design/icons"
+import CreateQuizModal from "@/app/(main)/quizzes/components/CreateQuizModal"
+import useLanguageStore from "@/store/useLanguageStore"
 
 const { TextArea } = Input
 const { Dragger } = Upload
@@ -85,7 +94,12 @@ export type Lesson = {
   content?: string
   category_id?: number | null // ✅ Thêm category_id
 }
-export type Quiz = { id: number; title: string; question_count: number }
+export type Quiz = {
+  id: number
+  title: string
+  question_count: number
+  category_id?: number | null
+}
 export type CurriculumItem = {
   id: string
   order: number
@@ -172,7 +186,20 @@ function SortableItem({
   )
 }
 
-function ContentBankItem({ icon, title, meta, onAdd, onEdit, onDelete }: any) {
+function ContentBankItem({
+  icon,
+  title,
+  meta,
+  onAdd,
+  onPreview,
+  onEdit,
+  onDelete,
+  disableEdit = false,
+  disableDelete = false,
+  lockedReason,
+}: any) {
+  const { language } = useLanguageStore()
+  const isVi = language === "vi"
   return (
     <div className="group flex items-center justify-between p-2 bg-white border rounded shadow-sm hover:shadow-md transition-shadow mb-2">
       <div className="flex items-center gap-2 overflow-hidden flex-1">
@@ -188,32 +215,67 @@ function ContentBankItem({ icon, title, meta, onAdd, onEdit, onDelete }: any) {
         <button
           onClick={(e) => {
             e.stopPropagation()
-            if (onEdit) onEdit()
+            if (onPreview) onPreview()
           }}
-          className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors opacity-0 group-hover:opacity-100"
-          title="Edit"
+          className="p-1.5 text-cyan-600 hover:text-cyan-700 hover:bg-cyan-50 rounded transition-colors"
+          title={isVi ? "Xem trước" : "Preview"}
         >
-          <Edit2 size={14} />
+          <Eye size={14} />
         </button>
-        <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+        {onEdit && (
+          <Tooltip title={disableEdit ? lockedReason : undefined}>
+            <span>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onEdit()
+                }}
+                disabled={disableEdit}
+                className={`p-1.5 rounded transition-colors ${
+                  disableEdit
+                    ? "text-gray-300 cursor-not-allowed"
+                    : "text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                }`}
+                title={disableEdit ? undefined : isVi ? "Chỉnh sửa" : "Edit"}
+              >
+                <Edit2 size={14} />
+              </button>
+            </span>
+          </Tooltip>
+        )}
+        <div>
           <Popconfirm
-            title="Xóa mục này?"
-            description="Bạn có chắc chắn muốn xóa nội dung này?"
+            title={isVi ? "Xóa mục này?" : "Delete this item?"}
+            description={
+              isVi
+                ? "Bạn có chắc chắn muốn xóa nội dung này?"
+                : "Are you sure you want to delete this content?"
+            }
             onConfirm={(e) => {
               e?.stopPropagation()
               if (onDelete) onDelete()
             }}
             onCancel={(e) => e?.stopPropagation()}
-            okText="Có"
-            cancelText="Không"
+            disabled={disableDelete}
+            okText={isVi ? "Có" : "Yes"}
+            cancelText={isVi ? "Không" : "No"}
           >
-            <button
-              onClick={(e) => e.stopPropagation()}
-              className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
-              title="Xóa"
-            >
-              <Trash2 size={14} />
-            </button>
+            <Tooltip title={disableDelete ? lockedReason : undefined}>
+              <span>
+                <button
+                  onClick={(e) => e.stopPropagation()}
+                  disabled={disableDelete}
+                  className={`p-1.5 rounded transition-colors ${
+                    disableDelete
+                      ? "text-gray-300 cursor-not-allowed"
+                      : "text-red-600 hover:text-red-700 hover:bg-red-50"
+                  }`}
+                  title={disableDelete ? undefined : isVi ? "Xóa" : "Delete"}
+                >
+                  <Trash2 size={14} />
+                </button>
+              </span>
+            </Tooltip>
           </Popconfirm>
         </div>
         <button
@@ -222,7 +284,7 @@ function ContentBankItem({ icon, title, meta, onAdd, onEdit, onDelete }: any) {
             onAdd()
           }}
           className="text-blue-500 hover:text-blue-700 p-1 rounded-full hover:bg-blue-50 transition-colors ml-1"
-          title="Thêm vào Chương trình học"
+          title={isVi ? "Thêm vào Chương trình học" : "Add to curriculum"}
         >
           <PlusCircle size={18} />
         </button>
@@ -239,6 +301,8 @@ function FormModal({
   onClose,
   onSave,
 }: any) {
+  const { language } = useLanguageStore()
+  const isVi = language === "vi"
   const [value, setValue] = useState(initialValue)
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -277,13 +341,13 @@ function FormModal({
               onClick={onClose}
               className="px-4 py-2 bg-white text-blue-600 border border-blue-600 rounded text-sm font-medium hover:bg-blue-50 transition-colors"
             >
-              Hủy
+              {isVi ? "Hủy" : "Cancel"}
             </button>
             <button
               type="submit"
               className="px-4 py-2 bg-blue-600 text-white rounded text-sm font-medium"
             >
-              Lưu Thay Đổi
+              {isVi ? "Lưu Thay Đổi" : "Save Changes"}
             </button>
           </div>
         </form>
@@ -298,6 +362,11 @@ export default function CreateCourseForm({
   onSuccess,
   onError,
 }: CreateCourseFormProps) {
+  const { language } = useLanguageStore()
+  const isVi = language === "vi"
+  const stepLabels = isVi
+    ? ["Thông Tin Cơ Bản", "Thông Tin Nâng Cao"]
+    : ["Basic Information", "Advanced Information"]
   const [availableLessons, setAvailableLessons] =
     useState<Lesson[]>(initialLessons)
   const [availableQuizzes, setAvailableQuizzes] =
@@ -363,6 +432,18 @@ export default function CreateCourseForm({
       })),
     }))
   }
+  const handleQuizDeleted = (deletedId: number) => {
+    setAvailableQuizzes((prev) => prev.filter((q) => Number(q.id) !== deletedId))
+    setPayload((prev) => ({
+      ...prev,
+      curriculum: prev.curriculum.map((section) => ({
+        ...section,
+        items: section.items.filter(
+          (item) => !(item.type === "quiz" && item.resource_id === deletedId)
+        ),
+      })),
+    }))
+  }
 
   const router = useRouter()
   const [modal, contextHolder] = Modal.useModal()
@@ -379,7 +460,7 @@ export default function CreateCourseForm({
   })
 
   const [stepStatus, setStepStatus] = useState<StepStatus[]>(
-    new Array(steps.length).fill("pending")
+    new Array(stepLabels.length).fill("pending")
   )
   const [imageUrl, setImageUrl] = useState<string | null>(null)
   const [activeSectionId, setActiveSectionId] = useState<string | null>(null)
@@ -482,7 +563,7 @@ export default function CreateCourseForm({
   function validateStep(stepIndex: number): boolean {
     switch (stepIndex) {
       case 0:
-        return !!payload.title?.trim()
+        return !!payload.title?.trim() && payload.category_id != null
       case 1:
         return (
           payload.curriculum.length > 0 &&
@@ -494,7 +575,12 @@ export default function CreateCourseForm({
   }
 
   function changeStep(newIndex: number) {
-    if (newIndex === current || newIndex < 0 || newIndex >= steps.length) return
+    if (
+      newIndex === current ||
+      newIndex < 0 ||
+      newIndex >= stepLabels.length
+    )
+      return
     const isCurrentStepValid = validateStep(current)
     setStepStatus((prev) => {
       const newStatus = [...prev]
@@ -506,7 +592,7 @@ export default function CreateCourseForm({
   }
 
   async function handleSubmit() {
-    const allStepsValidResults = steps.map((_, i) => validateStep(i))
+    const allStepsValidResults = stepLabels.map((_, i) => validateStep(i))
     const isAllValid = allStepsValidResults.every((isValid) => isValid)
     setStepStatus((prev) =>
       prev.map((_, i) => (allStepsValidResults[i] ? "valid" : "invalid"))
@@ -514,7 +600,11 @@ export default function CreateCourseForm({
     if (!isAllValid) {
       const firstInvalid = allStepsValidResults.findIndex((v) => !v)
       if (firstInvalid !== -1) setCurrent(firstInvalid)
-      message.error("Vui lòng hoàn thành tất cả các trường bắt buộc.")
+      message.error(
+        isVi
+          ? "Vui lòng hoàn thành tất cả các trường bắt buộc."
+          : "Please complete all required fields."
+      )
       return
     }
 
@@ -545,10 +635,11 @@ export default function CreateCourseForm({
         if (onSuccess) onSuccess()
         router.refresh()
       } else {
-        if (onError) onError(res.error || "Tạo thất bại")
+        if (onError) onError(res.error || (isVi ? "Tạo thất bại" : "Creation failed"))
       }
     } catch (err) {
-      if (onError) onError("Đã xảy ra lỗi hệ thống.")
+      if (onError)
+        onError(isVi ? "Đã xảy ra lỗi hệ thống." : "A system error occurred.")
     } finally {
       setLoading(false)
     }
@@ -558,23 +649,26 @@ export default function CreateCourseForm({
     (acc, s) => acc + s.items.length,
     0
   )
+  const isCategoryLockedByCurriculum = payload.curriculum.some(
+    (section) => section.items.length > 0
+  )
 
   return (
     <div className="bg-white flex flex-col h-[85vh] rounded-lg">
       {contextHolder}
       <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
         <h1 className="text-2xl font-semibold text-gray-900">
-          Tạo Khóa Học Mới
+          {isVi ? "Tạo Khóa Học Mới" : "Create New Course"}
         </h1>
         <div className="text-sm text-gray-500 mb-6">
-          Step {current + 1} / {steps.length}
+          {isVi ? "Bước" : "Step"} {current + 1} / {stepLabels.length}
         </div>
 
         <Steps
           className="mb-6"
           current={current}
           onChange={changeStep}
-          items={steps.map((s, i) => ({
+          items={stepLabels.map((s, i) => ({
             title: s,
             status:
               stepStatus[i] === "valid"
@@ -593,7 +687,7 @@ export default function CreateCourseForm({
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium mb-1">
-                      Tiêu đề <span className="text-red-500">*</span>
+                      {isVi ? "Tiêu đề" : "Title"} <span className="text-red-500">*</span>
                     </label>
                     <Input
                       value={payload.title || ""}
@@ -609,17 +703,26 @@ export default function CreateCourseForm({
                   </div>
                   <div>
                     <label className="block text-sm font-medium mb-1">
-                      Danh mục
+                      {isVi ? "Danh mục" : "Category"} <span className="text-red-500">*</span>
                     </label>
                     <Select
-                      placeholder="Chọn danh mục"
+                      placeholder={isVi ? "Chọn danh mục" : "Select category"}
                       className="w-full"
                       value={
                         payload.category_id
                           ? String(payload.category_id)
                           : undefined
                       }
-                      onChange={(val) => update("category_id", Number(val))}
+                      onChange={(val) => {
+                        if (isCategoryLockedByCurriculum) return
+                        update("category_id", Number(val))
+                      }}
+                      disabled={isCategoryLockedByCurriculum}
+                      status={
+                        stepStatus[0] === "invalid" && payload.category_id == null
+                          ? "error"
+                          : ""
+                      }
                       options={categories.map((c) => ({
                         value: String(c.id),
                         label: c.name,
@@ -632,10 +735,17 @@ export default function CreateCourseForm({
                           .includes(input.toLowerCase())
                       }
                     />
+                    {isCategoryLockedByCurriculum && (
+                      <p className="text-xs text-amber-600 mt-1 mb-0">
+                        {isVi
+                          ? "Danh mục đã bị khóa vì chương trình học đã có bài học hoặc bài kiểm tra."
+                          : "Category is locked because curriculum already contains lessons or quizzes."}
+                      </p>
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-medium mb-1">
-                      Mô tả ngắn
+                      {isVi ? "Mô tả ngắn" : "Short description"}
                     </label>
                     <TextArea
                       value={payload.description || ""}
@@ -648,7 +758,7 @@ export default function CreateCourseForm({
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">
-                    Ảnh đại diện
+                    {isVi ? "Ảnh đại diện" : "Thumbnail"}
                   </label>
                   <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-blue-400 transition-colors bg-gray-50">
                     {imageUrl ? (
@@ -664,13 +774,13 @@ export default function CreateCourseForm({
                             showUploadList={false}
                             customRequest={handleUploadThumbnail}
                           >
-                            <Button ghost>Thay Đổi Ảnh</Button>
+                            <Button ghost>{isVi ? "Thay Đổi Ảnh" : "Change Image"}</Button>
                           </Upload>
                           <Button
                             ghost
                             onClick={() => setCropModalVisible(true)}
                           >
-                            Cắt Ảnh
+                            {isVi ? "Cắt Ảnh" : "Crop Image"}
                           </Button>
                         </div>
                       </div>
@@ -685,7 +795,9 @@ export default function CreateCourseForm({
                             <InboxOutlined className="text-2xl" />
                           </div>
                           <p className="text-gray-600 font-medium">
-                            Nhấn để tải ảnh đại diện lên
+                            {isVi
+                              ? "Nhấn để tải ảnh đại diện lên"
+                              : "Click to upload thumbnail"}
                           </p>
                         </div>
                       </Upload>
@@ -697,7 +809,11 @@ export default function CreateCourseForm({
                       update("thumbnail_url", e.target.value)
                       setImageUrl(e.target.value)
                     }}
-                    placeholder="Hoặc dán URL ảnh vào đây"
+                    placeholder={
+                      isVi
+                        ? "Hoặc dán URL ảnh vào đây"
+                        : "Or paste image URL here"
+                    }
                     className="mt-3"
                   />
                 </div>
@@ -705,13 +821,15 @@ export default function CreateCourseForm({
               <Divider />
               <div>
                 <h2 className="text-lg font-bold text-gray-800 mb-1">
-                  Cấu Hình Hiển Thị & Quy Tắc Ghi Danh
+                  {isVi
+                    ? "Cấu Hình Hiển Thị & Quy Tắc Ghi Danh"
+                    : "Visibility & Enrollment Rules"}
                 </h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-4">
                   <div className="space-y-6">
                     <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                       <label className="block font-semibold text-gray-700 mb-2">
-                        1. Hiển Thị Trong Thư Viện
+                        {isVi ? "1. Hiển Thị Trong Thư Viện" : "1. Visibility in Library"}
                       </label>
                       <Radio.Group
                         value={payload.visibility || "private"}
@@ -723,11 +841,12 @@ export default function CreateCourseForm({
                           className="bg-white p-3 border rounded-md shadow-sm w-full"
                         >
                           <span className="font-semibold text-blue-600">
-                            Công Khai (Thư Viện Mở)
+                            {isVi ? "Công Khai (Thư Viện Mở)" : "Public (Open Library)"}
                           </span>
                           <span className="block text-xs text-gray-500 mt-1">
-                            Bất kỳ ai cũng có thể xem và tự ghi danh vào khóa
-                            học này.
+                            {isVi
+                              ? "Bất kỳ ai cũng có thể xem và tự ghi danh vào khóa học này."
+                              : "Anyone can view and self-enroll in this course."}
                           </span>
                         </Radio>
                         <Radio
@@ -735,11 +854,12 @@ export default function CreateCourseForm({
                           className="bg-white p-3 border rounded-md shadow-sm w-full m-0"
                         >
                           <span className="font-semibold text-orange-600">
-                            Riêng Tư (Ẩn)
+                            {isVi ? "Riêng Tư (Ẩn)" : "Private (Hidden)"}
                           </span>
                           <span className="block text-xs text-gray-500 mt-1">
-                            Ẩn khỏi thư viện. Chỉ người dùng được phân công mới
-                            có thể xem.
+                            {isVi
+                              ? "Ẩn khỏi thư viện. Chỉ người dùng được phân công mới có thể xem."
+                              : "Hidden from library. Only assigned users can view."}
                           </span>
                         </Radio>
                       </Radio.Group>
@@ -749,10 +869,12 @@ export default function CreateCourseForm({
                     <div className="flex justify-between items-start mb-4">
                       <div>
                         <label className="block font-semibold text-blue-900 mb-1">
-                          2. Phân Công Bắt Buộc
+                          {isVi ? "2. Phân Công Bắt Buộc" : "2. Mandatory Assignment"}
                         </label>
                         <p className="text-xs text-blue-700">
-                          Buộc các nhóm cụ thể phải tham gia khóa học này.
+                          {isVi
+                            ? "Buộc các nhóm cụ thể phải tham gia khóa học này."
+                            : "Require specific groups to take this course."}
                         </p>
                       </div>
                       <Button
@@ -773,7 +895,7 @@ export default function CreateCourseForm({
                           ])
                         }}
                       >
-                        Thêm Quy Tắc
+                        {isVi ? "Thêm Quy Tắc" : "Add Rule"}
                       </Button>
                     </div>
                     <div className="flex-1 overflow-y-auto space-y-3 pr-1 max-h-[300px] custom-scrollbar">
@@ -782,7 +904,9 @@ export default function CreateCourseForm({
                         <div className="h-32 flex flex-col items-center justify-center border-2 border-dashed border-blue-200 rounded-lg text-blue-400">
                           <SafetyCertificateOutlined className="text-2xl mb-2" />
                           <span className="text-sm">
-                            Chưa có quy tắc bắt buộc nào được đặt.
+                            {isVi
+                              ? "Chưa có quy tắc bắt buộc nào được đặt."
+                              : "No mandatory rules set yet."}
                           </span>
                         </div>
                       ) : (
@@ -811,17 +935,17 @@ export default function CreateCourseForm({
                                   options={[
                                     {
                                       value: "all_employees",
-                                      label: "Tất Cả NV",
+                                      label: isVi ? "Tất Cả NV" : "All Staff",
                                     },
-                                    { value: "department", label: "Phòng Ban" },
-                                    { value: "role", label: "Vai Trò" },
-                                    { value: "user", label: "Người Dùng" },
+                                    { value: "department", label: isVi ? "Phòng Ban" : "Department" },
+                                    { value: "role", label: isVi ? "Vai Trò" : "Role" },
+                                    { value: "user", label: isVi ? "Người Dùng" : "User" },
                                   ]}
                                 />
                                 <div className="flex-1">
                                   {rule.target_type === "department" && (
                                     <Select
-                                      placeholder="Chọn Phòng Ban..."
+                                      placeholder={isVi ? "Chọn Phòng Ban..." : "Select Department..."}
                                       className="w-full"
                                       value={rule.department_id}
                                       onChange={(val) => {
@@ -843,7 +967,7 @@ export default function CreateCourseForm({
                                   )}
                                   {rule.target_type === "role" && (
                                     <Select
-                                      placeholder="Chọn Vai Trò..."
+                                      placeholder={isVi ? "Chọn Vai Trò..." : "Select Role..."}
                                       className="w-full"
                                       value={rule.role_id}
                                       onChange={(val) => {
@@ -852,14 +976,14 @@ export default function CreateCourseForm({
                                         update("assignment_rules", r)
                                       }}
                                       options={[
-                                        { value: 1, label: "Quản Lý" },
-                                        { value: 2, label: "Nhân Viên" },
+                                        { value: 1, label: isVi ? "Quản Lý" : "Manager" },
+                                        { value: 2, label: isVi ? "Nhân Viên" : "Staff" },
                                       ]}
                                     />
                                   )}
                                   {rule.target_type === "user" && (
                                     <Select
-                                      placeholder="Tìm người dùng..."
+                                      placeholder={isVi ? "Tìm người dùng..." : "Search users..."}
                                       className="w-full"
                                       value={rule.user_id}
                                       onChange={(val) => {
@@ -882,7 +1006,7 @@ export default function CreateCourseForm({
                                   {rule.target_type === "all_employees" && (
                                     <Input
                                       disabled
-                                      value="Toàn Công Ty"
+                                      value={isVi ? "Toàn Công Ty" : "Whole Company"}
                                       className="bg-gray-50 text-center"
                                     />
                                   )}
@@ -890,7 +1014,7 @@ export default function CreateCourseForm({
                               </div>
                               <div className="flex gap-2 items-center bg-gray-50 p-2 rounded border border-gray-200">
                                 <span className="text-xs font-semibold text-gray-500 w-16">
-                                  Hạn:
+                                  {isVi ? "Hạn:" : "Due:"}
                                 </span>
                                 <Select
                                   size="small"
@@ -902,9 +1026,9 @@ export default function CreateCourseForm({
                                     update("assignment_rules", r)
                                   }}
                                   options={[
-                                    { value: "none", label: "Không" },
-                                    { value: "relative", label: "Ngày" },
-                                    { value: "fixed", label: "Cố Định" },
+                                    { value: "none", label: isVi ? "Không" : "None" },
+                                    { value: "relative", label: isVi ? "Ngày" : "Days" },
+                                    { value: "fixed", label: isVi ? "Cố Định" : "Fixed" },
                                   ]}
                                 />
                                 <div className="flex-1 flex justify-end">
@@ -918,7 +1042,7 @@ export default function CreateCourseForm({
                                         r[index].due_days = v
                                         update("assignment_rules", r)
                                       }}
-                                      addonAfter="ngày"
+                                      addonAfter={isVi ? "ngày" : "days"}
                                       className="w-full"
                                     />
                                   )}
@@ -942,7 +1066,7 @@ export default function CreateCourseForm({
                                   {(rule.due_type === "none" ||
                                     !rule.due_type) && (
                                     <span className="text-xs text-gray-400 italic">
-                                      Không giới hạn
+                                      {isVi ? "Không giới hạn" : "No deadline"}
                                     </span>
                                   )}
                                 </div>
@@ -975,7 +1099,7 @@ export default function CreateCourseForm({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium mb-1 text-gray-700">
-                    Trạng Thái
+                    {isVi ? "Trạng Thái" : "Status"}
                   </label>
                   <Select
                     value={payload.status}
@@ -990,7 +1114,7 @@ export default function CreateCourseForm({
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1 text-gray-700">
-                    Thời Lượng (giờ)
+                    {isVi ? "Thời Lượng (giờ)" : "Duration (hours)"}
                   </label>
                   <Input
                     type="number"
@@ -1024,13 +1148,15 @@ export default function CreateCourseForm({
                   onLessonCreated={handleLessonCreated}
                   onLessonUpdated={handleLessonUpdated}
                   onLessonDeleted={handleLessonDeleted}
+                  onQuizDeleted={handleQuizDeleted}
                   categories={categories} // ✅ Truyền Categories
                   courseCategoryId={payload.category_id} // ✅ Truyền ID để auto-fill
                 />
                 {stepStatus[1] === "invalid" && (
                   <p className="mt-2 text-sm text-red-600">
-                    Chương trình phải có ít nhất một chương, và mỗi chương phải
-                    có ít nhất một mục.
+                    {isVi
+                      ? "Chương trình phải có ít nhất một chương, và mỗi chương phải có ít nhất một mục."
+                      : "Curriculum must have at least one section, and each section must have at least one item."}
                   </p>
                 )}
               </div>
@@ -1043,18 +1169,18 @@ export default function CreateCourseForm({
         <div>
           {current > 0 && (
             <Button size="large" onClick={() => changeStep(current - 1)}>
-              Quay Lại
+              {isVi ? "Quay Lại" : "Back"}
             </Button>
           )}
         </div>
         <div>
-          {current < steps.length - 1 ? (
+          {current < stepLabels.length - 1 ? (
             <Button
               type="primary"
               size="large"
               onClick={() => changeStep(current + 1)}
             >
-              Tiếp Tục Đến Chương Trình
+              {isVi ? "Tiếp Tục Đến Chương Trình" : "Continue to Curriculum"}
             </Button>
           ) : (
             <Button
@@ -1064,14 +1190,14 @@ export default function CreateCourseForm({
               loading={loading}
               className="bg-[#1677ff] hover:bg-blue-700 font-bold px-8 shadow-md"
             >
-              Xuất Bản Khóa Học
+              {isVi ? "Xuất Bản Khóa Học" : "Publish Course"}
             </Button>
           )}
         </div>
       </div>
 
       <Modal
-        title="Cắt Ảnh"
+        title={isVi ? "Cắt Ảnh" : "Crop Image"}
         open={cropModalVisible}
         onCancel={() => setCropModalVisible(false)}
         onOk={() => setCropModalVisible(false)}
@@ -1081,7 +1207,9 @@ export default function CreateCourseForm({
           {imageUrl && (
             <img src={imageUrl} alt="Crop Preview" className="max-w-full" />
           )}
-          <p className="mt-2 text-gray-500">Chức năng cắt ảnh placeholder.</p>
+          <p className="mt-2 text-gray-500">
+            {isVi ? "Chức năng cắt ảnh placeholder." : "Image crop placeholder feature."}
+          </p>
         </div>
       </Modal>
     </div>
@@ -1102,6 +1230,7 @@ interface CurriculumContentBankProps {
   onLessonCreated: (l: Lesson) => void
   onLessonUpdated: (l: Lesson) => void
   onLessonDeleted: (id: number) => void
+  onQuizDeleted: (id: number) => void
   categories: { id: number; name: string }[]
   courseCategoryId?: number | null
 }
@@ -1120,9 +1249,12 @@ function CurriculumContentBank({
   onLessonCreated,
   onLessonUpdated,
   onLessonDeleted,
+  onQuizDeleted,
   categories,
   courseCategoryId,
 }: CurriculumContentBankProps) {
+  const { language } = useLanguageStore()
+  const isVi = language === "vi"
   const router = useRouter()
   const [modalState, setModalState] = useState<{
     type: "Section"
@@ -1132,12 +1264,16 @@ function CurriculumContentBank({
 
   // ✅ STATE FILTER KÉP
   const [searchTerm, setSearchTerm] = useState("")
-  const [selectedFilterCategory, setSelectedFilterCategory] = useState<
-    number | null
-  >(null)
 
   const [form] = Form.useForm()
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+  const [isCreateQuizModalOpen, setIsCreateQuizModalOpen] = useState(false)
+  const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false)
+  const [previewLesson, setPreviewLesson] = useState<Lesson | null>(null)
+  const [isQuizPreviewModalOpen, setIsQuizPreviewModalOpen] = useState(false)
+  const [previewQuiz, setPreviewQuiz] = useState<Quiz | null>(null)
+  const [previewQuizQuestions, setPreviewQuizQuestions] = useState<any[]>([])
+  const [isLoadingQuizPreview, setIsLoadingQuizPreview] = useState(false)
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false)
   const [createdLessonName, setCreatedLessonName] = useState("")
   const [isCreating, setIsCreating] = useState(false)
@@ -1149,6 +1285,141 @@ function CurriculumContentBank({
     null
   )
   const [editingLessonId, setEditingLessonId] = useState<number | null>(null)
+  const [lockedLessons, setLockedLessons] = useState<
+    Record<number, { locked: boolean; reason: string }>
+  >({})
+  const [lockedQuizzes, setLockedQuizzes] = useState<
+    Record<number, { locked: boolean; reason: string }>
+  >({})
+
+  const lockedCourseCategoryName = useMemo(() => {
+    if (courseCategoryId == null)
+      return isVi ? "Chưa chọn danh mục ở Bước 1" : "No category selected in Step 1"
+    return (
+      categories.find((c) => String(c.id) === String(courseCategoryId))?.name ||
+      (isVi ? "Danh mục không hợp lệ" : "Invalid category")
+    )
+  }, [categories, courseCategoryId, isVi])
+
+  useEffect(() => {
+    form.setFieldValue(
+      "category_id",
+      courseCategoryId != null ? String(courseCategoryId) : undefined
+    )
+  }, [courseCategoryId, form])
+
+  useEffect(() => {
+    let cancelled = false
+
+    const checkLessonLocks = async () => {
+      if (!availableLessons.length) {
+        setLockedLessons({})
+        return
+      }
+
+      const lessonIds = availableLessons.map((lesson) => Number(lesson.id))
+
+      try {
+        const usageMap = await checkLessonDependenciesBatchAPI(lessonIds)
+        if (cancelled) return
+
+        const nextLockedLessons: Record<
+          number,
+          { locked: boolean; reason: string }
+        > = {}
+
+        for (const lessonId of lessonIds) {
+          const usage = usageMap?.[lessonId]
+          const isLocked = Number(usage?.total || 0) > 0
+          nextLockedLessons[lessonId] = {
+            locked: isLocked,
+            reason: isVi
+              ? "Bài học đã tồn tại trong khóa học, không thể sửa hoặc xóa."
+              : "This lesson is already used in a course and cannot be edited or deleted.",
+          }
+        }
+
+        setLockedLessons(nextLockedLessons)
+      } catch {
+        if (cancelled) return
+        const fallbackLocked = Object.fromEntries(
+          lessonIds.map((lessonId) => [
+            lessonId,
+            {
+              locked: true,
+              reason:
+                isVi
+                  ? "Không thể xác minh trạng thái sử dụng của bài học. Vui lòng thử lại."
+                  : "Unable to verify lesson usage. Please try again.",
+            },
+          ])
+        ) as Record<number, { locked: boolean; reason: string }>
+        setLockedLessons(fallbackLocked)
+      }
+    }
+
+    checkLessonLocks()
+
+    return () => {
+      cancelled = true
+    }
+  }, [availableLessons, isVi])
+
+  useEffect(() => {
+    let cancelled = false
+
+    const checkQuizLocks = async () => {
+      if (!availableQuizzes.length) {
+        setLockedQuizzes({})
+        return
+      }
+
+      const quizIds = availableQuizzes.map((quiz) => Number(quiz.id))
+
+      try {
+        const usageMap = await areQuizzesUsedInCourse(quizIds)
+        if (cancelled) return
+
+        const nextLockedQuizzes: Record<
+          number,
+          { locked: boolean; reason: string }
+        > = {}
+
+        for (const quizId of quizIds) {
+          const isLocked = Boolean(usageMap?.[quizId])
+          nextLockedQuizzes[quizId] = {
+            locked: isLocked,
+            reason: isVi
+              ? "Bài kiểm tra đã tồn tại trong khóa học, không thể sửa hoặc xóa."
+              : "This quiz is already used in a course and cannot be edited or deleted.",
+          }
+        }
+
+        setLockedQuizzes(nextLockedQuizzes)
+      } catch {
+        if (cancelled) return
+        const fallbackLocked = Object.fromEntries(
+          quizIds.map((quizId) => [
+            quizId,
+            {
+              locked: true,
+              reason:
+                isVi
+                  ? "Không thể xác minh trạng thái sử dụng của bài kiểm tra. Vui lòng thử lại."
+                  : "Unable to verify quiz usage. Please try again.",
+            },
+          ])
+        ) as Record<number, { locked: boolean; reason: string }>
+        setLockedQuizzes(fallbackLocked)
+      }
+    }
+
+    checkQuizLocks()
+
+    return () => {
+      cancelled = true
+    }
+  }, [availableQuizzes, isVi])
 
   const handleAddSection = () => {
     const newSection: Section = {
@@ -1298,9 +1569,14 @@ function CurriculumContentBank({
 
     form.setFieldsValue({
       title: lesson.title,
+      duration_minutes: lesson.duration_minutes ?? undefined,
       type: lessonType,
       content: existingContent,
-      category_id: lesson.category_id ? String(lesson.category_id) : undefined,
+      category_id: courseCategoryId
+        ? String(courseCategoryId)
+        : lesson.category_id
+          ? String(lesson.category_id)
+          : undefined,
     })
 
     setContentType(lessonType)
@@ -1313,13 +1589,93 @@ function CurriculumContentBank({
     id: number,
     type: "lesson" | "quiz"
   ) => {
-    if (type === "quiz") return
     try {
+      if (type === "quiz") {
+        await deleteQuiz(id)
+        onQuizDeleted(id)
+        message.success("Đã xóa bài kiểm tra")
+        return
+      }
+
       await deleteLessonAPI(id)
       onLessonDeleted(id)
+      message.success("Đã xóa bài học")
     } catch (error) {
-      message.error("Không thể xóa bài học")
+      message.error(type === "quiz" ? "Không thể xóa bài kiểm tra" : "Không thể xóa bài học")
     }
+  }
+
+  const handlePreviewItemAction = (item: Lesson, type: "lesson" | "quiz") => {
+    if (type === "quiz") return
+    setPreviewLesson(item)
+    setIsPreviewModalOpen(true)
+  }
+
+  const parseOptionsArray = (value: unknown): string[] => {
+    if (Array.isArray(value)) {
+      return value.map((item) => String(item ?? "")).filter((v) => v.trim() !== "")
+    }
+    if (typeof value === "string") {
+      try {
+        const parsed = JSON.parse(value)
+        if (Array.isArray(parsed)) {
+          return parsed
+            .map((item) => String(item ?? ""))
+            .filter((v) => v.trim() !== "")
+        }
+      } catch {
+        return []
+      }
+    }
+    return []
+  }
+
+  const parseIndexArray = (value: unknown): number[] => {
+    if (Array.isArray(value)) {
+      return value
+        .map((v) => Number(v))
+        .filter((n) => Number.isFinite(n))
+    }
+    if (typeof value === "number") {
+      return Number.isFinite(value) ? [value] : []
+    }
+    if (typeof value === "string") {
+      try {
+        const parsed = JSON.parse(value)
+        if (Array.isArray(parsed)) {
+          return parsed
+            .map((v) => Number(v))
+            .filter((n) => Number.isFinite(n))
+        }
+        const single = Number(parsed)
+        return Number.isFinite(single) ? [single] : []
+      } catch {
+        const single = Number(value)
+        return Number.isFinite(single) ? [single] : []
+      }
+    }
+    return []
+  }
+
+  const handlePreviewQuizAction = async (quiz: Quiz) => {
+    setPreviewQuiz(quiz)
+    setIsQuizPreviewModalOpen(true)
+    setIsLoadingQuizPreview(true)
+    try {
+      const questions = await getQuizQuestions(quiz.id)
+      setPreviewQuizQuestions(Array.isArray(questions) ? questions : [])
+    } catch {
+      setPreviewQuizQuestions([])
+      message.error("Không thể tải câu hỏi bài kiểm tra")
+    } finally {
+      setIsLoadingQuizPreview(false)
+    }
+  }
+
+  const getLessonTypeLabel = (type?: string) => {
+    if (type === "video") return "Video"
+    if (type === "pdf") return "PDF"
+    return "Text"
   }
 
   const handleCreateSubmit = async (values: any) => {
@@ -1328,20 +1684,22 @@ function CurriculumContentBank({
       if (editingLessonId) {
         const updated = await updateLessonAPI(editingLessonId, {
           title: values.title,
+          duration_minutes: Number(values.duration_minutes),
           type: values.type,
           content: values.content,
-          category_id: values.category_id ? Number(values.category_id) : null,
+          category_id: courseCategoryId ?? null,
         })
         onLessonUpdated(updated as unknown as Lesson)
-        message.success("Đã cập nhật bài học!")
+        message.success(isVi ? "Đã cập nhật bài học!" : "Lesson updated successfully!")
         setIsCreateModalOpen(false)
         setEditingLessonId(null)
       } else {
         const newLessonResponse = await createNewLessonAPI({
           title: values.title,
+          duration_minutes: Number(values.duration_minutes),
           type: values.type,
           content: values.content,
-          category_id: values.category_id ? Number(values.category_id) : null,
+          category_id: courseCategoryId ?? null,
         })
         if (onLessonCreated)
           onLessonCreated(newLessonResponse as unknown as Lesson)
@@ -1353,7 +1711,15 @@ function CurriculumContentBank({
       setVideoUrl("")
       setPdfFile(null)
     } catch (error) {
-      message.error(editingLessonId ? "Cập nhật thất bại" : "Tạo thất bại")
+      message.error(
+        editingLessonId
+          ? isVi
+            ? "Cập nhật thất bại"
+            : "Update failed"
+          : isVi
+            ? "Tạo thất bại"
+            : "Creation failed"
+      )
     } finally {
       setIsCreating(false)
     }
@@ -1362,21 +1728,30 @@ function CurriculumContentBank({
   // ✅ LOGIC LỌC KÉP
   const filteredLessons = useMemo(() => {
     return availableLessons.filter((l) => {
+      const matchCourseCategory =
+        courseCategoryId != null
+          ? l.category_id != null &&
+            String(l.category_id) === String(courseCategoryId)
+          : true
       const matchText = l.title.toLowerCase().includes(searchTerm.toLowerCase())
-      const matchCat = selectedFilterCategory
-        ? l.category_id != null &&
-          String(l.category_id) === String(selectedFilterCategory)
-        : true
-      return matchText && matchCat
+      return matchCourseCategory && matchText
     })
-  }, [availableLessons, searchTerm, selectedFilterCategory])
+  }, [availableLessons, courseCategoryId, searchTerm])
 
   const filteredQuizzes = useMemo(
     () =>
-      availableQuizzes.filter((q) =>
-        q.title.toLowerCase().includes(searchTerm.toLowerCase())
-      ),
-    [availableQuizzes, searchTerm]
+      availableQuizzes.filter((q) => {
+        const matchCourseCategory =
+          courseCategoryId != null
+            ? q.category_id != null &&
+              String(q.category_id) === String(courseCategoryId)
+            : true
+        const matchText = q.title
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase())
+        return matchCourseCategory && matchText
+      }),
+    [availableQuizzes, courseCategoryId, searchTerm]
   )
 
   return (
@@ -1385,65 +1760,62 @@ function CurriculumContentBank({
     >
       <div className="bg-gray-50 p-4 rounded border flex-1 flex flex-col overflow-hidden">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-semibold m-0">Nội Dung Có Sẵn</h3>
+          <h3 className="text-lg font-semibold m-0">
+            {isVi ? "Nội Dung Có Sẵn" : "Available Content"}
+          </h3>
           <Button
             type="primary"
             size="small"
-            icon={<Plus size={16} />}
+            icon={activeTab === "lessons" ? <Plus size={16} /> : <FileQuestion size={16} />}
             onClick={() => {
-              setEditingLessonId(null)
-              form.resetFields()
-              // ✅ AUTO-FILL DANH MỤC KHÓA HỌC VÀO FORM LESSON
-              form.setFieldsValue({
-                category_id: courseCategoryId
-                  ? String(courseCategoryId)
-                  : undefined,
-              })
-              setVideoUrl("")
-              setPdfFile(null)
-              setContentType("text_media")
-              setIsCreateModalOpen(true)
+              if (activeTab === "lessons") {
+                setEditingLessonId(null)
+                form.resetFields()
+                // ✅ AUTO-FILL DANH MỤC KHÓA HỌC VÀO FORM LESSON
+                form.setFieldsValue({
+                  category_id: courseCategoryId
+                    ? String(courseCategoryId)
+                    : undefined,
+                })
+                setVideoUrl("")
+                setPdfFile(null)
+                setContentType("text_media")
+                setIsCreateModalOpen(true)
+                return
+              }
+              setIsCreateQuizModalOpen(true)
             }}
             className="bg-[#1677ff] hover:bg-blue-500 shadow-sm"
           >
-            Bài Học Mới
+            {activeTab === "lessons"
+              ? isVi
+                ? "Bài Học Mới"
+                : "New Lesson"
+              : isVi
+                ? "Bài Kiểm Tra Mới"
+                : "New Quiz"}
           </Button>
         </div>
         {sections.length > 0 && (
           <div className="mb-4">
             <label className="block text-xs font-medium text-gray-500 mb-1">
-              Chọn Chương Để Thêm Vào
+              {isVi ? "Chọn Chương Để Thêm Vào" : "Select section to add into"}
             </label>
             <Select
               className="w-full"
               value={activeSectionId || undefined}
               onChange={setActiveSectionId}
               options={sections.map((s) => ({ value: s.id, label: s.title }))}
-              placeholder="Chọn chương..."
+              placeholder={isVi ? "Chọn chương..." : "Select section..."}
             />
           </div>
         )}
 
         {/* ✅ GRID 2 CỘT TÌM KIẾM & LỌC */}
         {activeTab === "lessons" && (
-          <div className="grid grid-cols-2 gap-2 mb-2">
-            <Select
-              allowClear
-              placeholder="Lọc danh mục..."
-              className="w-full"
-              value={selectedFilterCategory}
-              onChange={setSelectedFilterCategory}
-              options={categories.map((c) => ({ value: c.id, label: c.name }))}
-              showSearch
-              optionFilterProp="label"
-              filterOption={(input, option) =>
-                (option?.label ?? "")
-                  .toLowerCase()
-                  .includes(input.toLowerCase())
-              }
-            />
+          <div className="mb-2">
             <Input
-              placeholder="Tìm tên bài..."
+              placeholder={isVi ? "Tìm tên bài..." : "Search lessons..."}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               prefix={<Search size={14} className="text-gray-400" />}
@@ -1453,7 +1825,7 @@ function CurriculumContentBank({
         {activeTab === "quizzes" && (
           <div className="relative mb-2">
             <Input
-              placeholder="Tìm bài kiểm tra..."
+              placeholder={isVi ? "Tìm bài kiểm tra..." : "Search quizzes..."}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               prefix={<Search size={14} className="text-gray-400" />}
@@ -1466,51 +1838,93 @@ function CurriculumContentBank({
             className={`px-4 py-2 text-sm font-medium ${activeTab === "lessons" ? "border-b-2 border-blue-600 text-blue-600" : "text-gray-500"}`}
             onClick={() => setActiveTab("lessons")}
           >
-            Bài Học
+            {isVi ? "Bài Học" : "Lessons"}
           </button>
           <button
             className={`px-4 py-2 text-sm font-medium ${activeTab === "quizzes" ? "border-b-2 border-blue-600 text-blue-600" : "text-gray-500"}`}
             onClick={() => setActiveTab("quizzes")}
           >
-            Bài Kiểm Tra
+            {isVi ? "Bài Kiểm Tra" : "Quizzes"}
           </button>
         </div>
         <div className="overflow-y-auto flex-1 max-h-[400px] pr-1">
           {activeTab === "lessons" &&
             filteredLessons.map((l) => (
+              (() => {
+                const lockInfo = lockedLessons[Number(l.id)]
+                const isCheckingLock = !lockInfo
+                const isLocked = isCheckingLock || Boolean(lockInfo?.locked)
+                const lockedReason = isCheckingLock
+                  ? isVi
+                    ? "Đang kiểm tra trạng thái sử dụng..."
+                    : "Checking usage status..."
+                  : lockInfo?.reason
+                return (
               <ContentBankItem
                 key={String(l.id)}
                 icon={<BookOpen size={16} />}
                 title={l.title}
                 meta={`${l.duration_minutes || 0} min`}
+                onPreview={() => handlePreviewItemAction(l, "lesson")}
+                disableEdit={isLocked}
+                disableDelete={isLocked}
+                lockedReason={lockedReason}
                 onEdit={() => handleEditItemAction(l, "lesson")}
                 onDelete={() => handleDeleteItemAction(Number(l.id), "lesson")}
                 onAdd={() =>
                   activeSectionId
                     ? handleAddItem(activeSectionId, l, "lesson")
-                    : message.warning("Vui lòng chọn một chương trước")
+                    : message.warning(
+                        isVi
+                          ? "Vui lòng chọn một chương trước"
+                          : "Please select a section first"
+                      )
                 }
               />
+                )
+              })()
             ))}
           {activeTab === "quizzes" &&
             filteredQuizzes.map((q) => (
+              (() => {
+                const lockInfo = lockedQuizzes[Number(q.id)]
+                const isCheckingLock = !lockInfo
+                const isLocked = isCheckingLock || Boolean(lockInfo?.locked)
+                const lockedReason = isCheckingLock
+                  ? isVi
+                    ? "Đang kiểm tra trạng thái sử dụng..."
+                    : "Checking usage status..."
+                  : lockInfo?.reason
+                return (
               <ContentBankItem
                 key={q.id}
                 icon={<FileQuestion size={16} />}
                 title={q.title}
                 meta={`${q.question_count} Qs`}
-                onEdit={() => handleEditItemAction(q, "quiz")}
+                onPreview={() => handlePreviewQuizAction(q)}
+                disableEdit={isLocked}
+                disableDelete={isLocked}
+                lockedReason={lockedReason}
+                onEdit={undefined}
                 onDelete={() => handleDeleteItemAction(q.id, "quiz")}
                 onAdd={() =>
                   activeSectionId
                     ? handleAddItem(activeSectionId, q, "quiz")
-                    : message.warning("Vui lòng chọn một chương trước")
+                    : message.warning(
+                        isVi
+                          ? "Vui lòng chọn một chương trước"
+                          : "Please select a section first"
+                      )
                 }
               />
+                )
+              })()
             ))}
           {activeTab === "lessons" && filteredLessons.length === 0 && (
             <p className="text-center text-gray-400 py-4 text-sm">
-              Không có bài học nào khớp với bộ lọc.
+              {isVi
+                ? "Không có bài học nào khớp với bộ lọc."
+                : "No lessons match the current filter."}
             </p>
           )}
         </div>
@@ -1522,7 +1936,18 @@ function CurriculumContentBank({
         onDragEnd={onDragEnd}
       >
         <div className="flex flex-col h-[500px]">
-          <h3 className="text-lg font-semibold mb-4">Chương Trình Khóa Học</h3>
+          <div className="flex items-center justify-between mb-4 gap-3">
+            <h3 className="text-lg font-semibold m-0">
+              {isVi ? "Chương Trình Khóa Học" : "Course Curriculum"}
+            </h3>
+            <button
+              type="button"
+              onClick={handleAddSection}
+              className="flex items-center justify-center gap-2 px-3 py-2 border border-dashed border-gray-300 rounded text-gray-600 hover:border-blue-500 hover:text-blue-600 transition-colors text-sm"
+            >
+              <Plus size={16} /> {isVi ? "Thêm Chương" : "Add Section"}
+            </button>
+          </div>
           <div className="flex-1 overflow-y-auto space-y-4 pr-1">
             {sections.map((section) => (
               <div
@@ -1603,27 +2028,20 @@ function CurriculumContentBank({
                   </SortableContext>
                   {section.items.length === 0 && (
                     <p className="text-center text-sm text-gray-400 py-2 italic">
-                      Chương trống
+                      {isVi ? "Chương trống" : "Empty section"}
                     </p>
                   )}
                 </div>
               </div>
             ))}
           </div>
-          <button
-            type="button"
-            onClick={handleAddSection}
-            className="w-full mt-4 flex items-center justify-center gap-2 p-3 border-2 border-dashed border-gray-300 rounded text-gray-600 hover:border-blue-500 hover:text-blue-600 transition-colors"
-          >
-            <Plus size={18} /> Thêm Chương
-          </button>
         </div>
       </DndContext>
 
       {modalState?.type === "Section" && (
         <FormModal
-          title="Sửa tên chương"
-          label="Tiêu đề"
+          title={isVi ? "Sửa tên chương" : "Edit section name"}
+          label={isVi ? "Tiêu đề" : "Title"}
           initialValue={
             sections.find((s) => s.id === modalState.sectionId)?.title
           }
@@ -1636,7 +2054,13 @@ function CurriculumContentBank({
       <Modal
         title={
           <span className="text-lg font-bold">
-            {editingLessonId ? "Sửa Bài Học" : "Tạo Bài Học Mới"}
+            {editingLessonId
+              ? isVi
+                ? "Sửa Bài Học"
+                : "Edit Lesson"
+              : isVi
+                ? "Tạo Bài Học Mới"
+                : "Create New Lesson"}
           </span>
         }
         open={isCreateModalOpen}
@@ -1656,49 +2080,63 @@ function CurriculumContentBank({
         <Form
           form={form}
           layout="vertical"
+          requiredMark={false}
           onFinish={handleCreateSubmit}
           initialValues={{ type: "text_media" }}
           className="mt-4"
         >
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-0.5">
             <Form.Item
               name="title"
               label={
                 <span className="font-semibold">
-                  Tiêu đề bài học <span className="text-red-500">*</span>
+                  {isVi ? "Tiêu đề bài học" : "Lesson title"} <span className="text-red-500">*</span>
                 </span>
               }
-              rules={[{ required: true, message: "Vui lòng nhập tiêu đề" }]}
+              rules={[{ required: true, message: isVi ? "Vui lòng nhập tiêu đề" : "Please enter title" }]}
             >
-              <Input placeholder="ví dụ: Giới thiệu chung" size="large" />
+              <Input placeholder={isVi ? "ví dụ: Giới thiệu chung" : "e.g. General introduction"} size="large" />
             </Form.Item>
-            {/* ✅ TRƯỜNG CATEGORY */}
             <Form.Item
               name="category_id"
-              label={<span className="font-semibold">Danh mục bài học</span>}
+              label={<span className="font-semibold">{isVi ? "Danh mục bài học" : "Lesson category"}</span>}
             >
-              <Select
-                placeholder="Chọn danh mục phân loại"
+              <div className="h-10 w-full rounded-md border border-[#d9d9d9] bg-white px-3 text-gray-900 flex items-center cursor-default">
+                {lockedCourseCategoryName}
+              </div>
+            </Form.Item>
+            <Form.Item
+              name="duration_minutes"
+              label={
+                <span className="font-semibold">
+                  {isVi ? "Thời lượng (phút)" : "Duration (minutes)"} <span className="text-red-500">*</span>
+                </span>
+              }
+              rules={[
+                { required: true, message: isVi ? "Vui lòng nhập thời lượng" : "Please enter duration" },
+                {
+                  type: "number",
+                  min: 1,
+                  message: isVi ? "Thời lượng phải lớn hơn 0" : "Duration must be greater than 0",
+                },
+              ]}
+            >
+              <InputNumber
+                min={1}
+                className="w-full"
                 size="large"
-                allowClear
-                showSearch
-                options={categories.map((c) => ({
-                  value: String(c.id),
-                  label: c.name,
-                }))}
-                optionFilterProp="label"
-                filterOption={(input, option) =>
-                  (option?.label ?? "")
-                    .toLowerCase()
-                    .includes(input.toLowerCase())
-                }
+                placeholder={isVi ? "Nhập số phút" : "Enter minutes"}
               />
+            </Form.Item>
+            {/* ✅ TRƯỜNG CATEGORY */}
+            <Form.Item name="category_id" hidden>
+              <Input />
             </Form.Item>
           </div>
 
           <Form.Item
             name="type"
-            label={<span className="font-semibold">Loại Nội Dung</span>}
+            label={<span className="font-semibold">{isVi ? "Loại Nội Dung" : "Content Type"}</span>}
           >
             <Radio.Group
               onChange={(e) => {
@@ -1712,13 +2150,13 @@ function CurriculumContentBank({
               value={contentType}
             >
               <Radio.Button value="text_media" className="flex-1 text-center">
-                Văn bản & Media
+                {isVi ? "Văn bản & Media" : "Text & Media"}
               </Radio.Button>
               <Radio.Button value="video" className="flex-1 text-center">
-                Video Link
+                {isVi ? "Video Link" : "Video Link"}
               </Radio.Button>
               <Radio.Button value="pdf" className="flex-1 text-center">
-                Tải lên PDF
+                {isVi ? "Tải lên PDF" : "Upload PDF"}
               </Radio.Button>
             </Radio.Group>
           </Form.Item>
@@ -1726,8 +2164,8 @@ function CurriculumContentBank({
           {contentType === "text_media" && (
             <Form.Item
               name="content"
-              label={<span className="font-semibold">Nội dung Bài Học</span>}
-              rules={[{ required: true, message: "Vui lòng nhập nội dung" }]}
+              label={<><span className="font-semibold">{isVi ? "Nội dung Bài Học" : "Lesson content"}</span>&nbsp;<span className="text-red-500">*</span></>}
+              rules={[{ required: true, message: isVi ? "Vui lòng nhập nội dung" : "Please enter content" }]}
             >
               <RichTextEditor
                 value={form.getFieldValue("content")}
@@ -1736,7 +2174,7 @@ function CurriculumContentBank({
                   if (content !== form.getFieldValue("content"))
                     form.setFieldValue("content", content)
                 }}
-                placeholder="Bắt đầu nhập..."
+                placeholder={isVi ? "Bắt đầu nhập..." : "Start typing..."}
               />
             </Form.Item>
           )}
@@ -1744,12 +2182,16 @@ function CurriculumContentBank({
             <div className="space-y-4">
               <Form.Item
                 name="content"
-                label={<span className="font-semibold">Nhập URL Video</span>}
+                label={
+                  <span className="font-semibold">
+                    {isVi ? "Nhập URL Video" : "Enter video URL"} <span className="text-red-500">*</span>
+                  </span>
+                }
                 rules={[
-                  { required: true, message: "Vui lòng nhập URL video" },
-                  { type: "url", message: "Vui lòng nhập URL hợp lệ" },
+                  { required: true, message: isVi ? "Vui lòng nhập URL video" : "Please enter video URL" },
+                  { type: "url", message: isVi ? "Vui lòng nhập URL hợp lệ" : "Please enter a valid URL" },
                 ]}
-                help="Hỗ trợ: YouTube, Vimeo, Wistia."
+                help={isVi ? "Hỗ trợ: YouTube, Vimeo, Wistia." : "Supported: YouTube, Vimeo, Wistia."}
               >
                 <Input
                   placeholder="https://www.youtube.com/watch?v=..."
@@ -1775,7 +2217,7 @@ function CurriculumContentBank({
                     <PlayCircleOutlined
                       style={{ fontSize: "32px", marginBottom: "8px" }}
                     />
-                    <span>Preview video sẽ hiển thị ở đây</span>
+                    <span>{isVi ? "Preview video sẽ hiển thị ở đây" : "Video preview will appear here"}</span>
                   </div>
                 )}
               </div>
@@ -1785,12 +2227,15 @@ function CurriculumContentBank({
             <div>
               <Form.Item
                 name="content"
-                label={<span className="font-semibold">Tệp PDF</span>}
-                rules={[{ required: true, message: "Vui lòng tải lên PDF" }]}
+                label={<span className="font-semibold">{isVi ? "Tệp PDF" : "PDF file"}</span>}
+                rules={[{ required: true, message: isVi ? "Vui lòng tải lên PDF" : "Please upload a PDF" }]}
                 style={{ display: "none" }}
               >
                 <Input />
               </Form.Item>
+              <label className="block font-semibold mb-2">
+                {isVi ? "Tệp PDF" : "PDF file"} <span className="text-red-500">*</span>
+              </label>
               <div className="mb-4">
                 <Dragger
                   accept=".pdf"
@@ -1803,7 +2248,7 @@ function CurriculumContentBank({
                     <InboxOutlined style={{ color: "#3b82f6" }} />
                   </p>
                   <p className="ant-upload-text">
-                    Kéo thả hoặc nhấp để tải PDF lên
+                    {isVi ? "Kéo thả hoặc nhấp để tải PDF lên" : "Drag and drop or click to upload PDF"}
                   </p>
                 </Dragger>
               </div>
@@ -1838,7 +2283,7 @@ function CurriculumContentBank({
                 form.resetFields()
               }}
             >
-              Hủy
+              {isVi ? "Hủy" : "Cancel"}
             </Button>
             <Button
               type="primary"
@@ -1847,7 +2292,13 @@ function CurriculumContentBank({
               size="large"
               className="bg-[#1677ff] hover:bg-blue-700 font-semibold px-8 shadow-md"
             >
-              {editingLessonId ? "Lưu Thay Đổi" : "Tạo Bài Học"}
+              {editingLessonId
+                ? isVi
+                  ? "Lưu Thay Đổi"
+                  : "Save Changes"
+                : isVi
+                  ? "Tạo Bài Học"
+                  : "Create Lesson"}
             </Button>
           </div>
         </Form>
@@ -1862,9 +2313,9 @@ function CurriculumContentBank({
       >
         <div className="text-center py-4">
           <CheckCircleFilled className="text-green-500 text-5xl mb-4" />
-          <h2 className="text-xl font-bold mb-2">Thành Công!</h2>
+          <h2 className="text-xl font-bold mb-2">{isVi ? "Thành Công!" : "Success!"}</h2>
           <p className="text-gray-500 mb-6">
-            Bài học <strong>"{createdLessonName}"</strong> đã được lưu.
+            {isVi ? "Bài học" : "Lesson"} <strong>"{createdLessonName}"</strong> {isVi ? "đã được lưu." : "has been saved."}
           </p>
           <Button
             block
@@ -1872,9 +2323,195 @@ function CurriculumContentBank({
             size="large"
             onClick={() => setIsSuccessModalOpen(false)}
           >
-            Đóng
+            {isVi ? "Đóng" : "Close"}
           </Button>
         </div>
+      </Modal>
+
+      <CreateQuizModal
+        visible={isCreateQuizModalOpen}
+        onClose={() => setIsCreateQuizModalOpen(false)}
+        presetCategoryId={courseCategoryId ?? null}
+        lockPresetCategory={courseCategoryId != null}
+        onSuccess={() => {
+          setIsCreateQuizModalOpen(false)
+          router.refresh()
+        }}
+      />
+
+      <Modal
+        title={isVi ? "Xem trước bài học" : "Lesson preview"}
+        open={isPreviewModalOpen}
+        onCancel={() => {
+          setIsPreviewModalOpen(false)
+          setPreviewLesson(null)
+        }}
+        footer={null}
+        centered
+        width={800}
+      >
+        {previewLesson ? (
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+              <div className="rounded border bg-gray-50 p-3">
+                <p className="text-gray-500 m-0">{isVi ? "Tiêu đề" : "Title"}</p>
+                <p className="font-semibold m-0 mt-1">{previewLesson.title}</p>
+              </div>
+              <div className="rounded border bg-gray-50 p-3">
+                <p className="text-gray-500 m-0">{isVi ? "Loại" : "Type"}</p>
+                <p className="font-semibold m-0 mt-1">
+                  {getLessonTypeLabel(previewLesson.type)}
+                </p>
+              </div>
+              <div className="rounded border bg-gray-50 p-3">
+                <p className="text-gray-500 m-0">{isVi ? "Thời lượng" : "Duration"}</p>
+                <p className="font-semibold m-0 mt-1">
+                  {previewLesson.duration_minutes || 0} {isVi ? "phút" : "min"}
+                </p>
+              </div>
+            </div>
+
+            {previewLesson.type === "video" ? (
+              <div className="bg-gray-100 rounded-lg p-4 border border-gray-200">
+                {previewLesson.content && getYoutubeEmbedId(previewLesson.content) ? (
+                  <div className="w-full aspect-video">
+                    <iframe
+                      width="100%"
+                      height="100%"
+                      src={`https://www.youtube.com/embed/${getYoutubeEmbedId(previewLesson.content)}`}
+                      title="Xem trước Video"
+                      frameBorder="0"
+                      allowFullScreen
+                      className="rounded"
+                    ></iframe>
+                  </div>
+                ) : (
+                  <p className="text-gray-500 m-0">
+                    {isVi ? "Không có dữ liệu video để xem trước." : "No video data available for preview."}
+                  </p>
+                )}
+              </div>
+            ) : previewLesson.type === "pdf" ? (
+              <div className="rounded border p-4 bg-gray-50">
+                {previewLesson.content ? (
+                  <a
+                    href={previewLesson.content}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-blue-600 hover:text-blue-700"
+                  >
+                    {isVi ? "Mở tệp PDF trong tab mới" : "Open PDF in a new tab"}
+                  </a>
+                ) : (
+                  <p className="text-gray-500 m-0">{isVi ? "Không có tệp PDF để xem trước." : "No PDF available for preview."}</p>
+                )}
+              </div>
+            ) : (
+              <div className="rounded border p-4 bg-white max-h-[50vh] overflow-y-auto">
+                {previewLesson.content ? (
+                  <div
+                    className="prose prose-sm md:prose-base max-w-none text-gray-700"
+                    style={{ fontSize: 16, lineHeight: 1.6 }}
+                    dangerouslySetInnerHTML={{ __html: previewLesson.content }}
+                  />
+                ) : (
+                  <p className="text-gray-500 m-0">{isVi ? "Không có nội dung để xem trước." : "No content available for preview."}</p>
+                )}
+              </div>
+            )}
+          </div>
+        ) : null}
+      </Modal>
+
+      <Modal
+        title={isVi ? "Xem trước bài kiểm tra" : "Quiz preview"}
+        open={isQuizPreviewModalOpen}
+        onCancel={() => {
+          setIsQuizPreviewModalOpen(false)
+          setPreviewQuiz(null)
+          setPreviewQuizQuestions([])
+        }}
+        footer={null}
+        centered
+        width={900}
+      >
+        {previewQuiz ? (
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+              <div className="rounded border bg-gray-50 p-3">
+                <p className="text-gray-500 m-0">{isVi ? "Tiêu đề" : "Title"}</p>
+                <p className="font-semibold m-0 mt-1">{previewQuiz.title}</p>
+              </div>
+              <div className="rounded border bg-gray-50 p-3">
+                <p className="text-gray-500 m-0">{isVi ? "Số câu hỏi" : "Question count"}</p>
+                <p className="font-semibold m-0 mt-1">
+                  {previewQuizQuestions.length || previewQuiz.question_count || 0}
+                </p>
+              </div>
+            </div>
+
+            <Spin spinning={isLoadingQuizPreview}>
+              {previewQuizQuestions.length > 0 ? (
+                <Collapse
+                  accordion
+                  items={previewQuizQuestions.map((question: any, index: number) => {
+                    const options = parseOptionsArray(question.options)
+                    const correctIndexes = parseIndexArray(question.correct_answer)
+                    const correctAnswerText = correctIndexes
+                      .map((idx) => options[idx] ?? `Lựa chọn ${idx}`)
+                      .join(", ")
+
+                    return {
+                      key: String(question.question_id || question.quiz_question_id || index),
+                      label: `${isVi ? "Câu" : "Question"} ${index + 1}: ${question.question_text || ""}`,
+                      children: (
+                        <div className="space-y-3">
+                          <div className="space-y-2">
+                            <p className="font-semibold m-0">{isVi ? "Các lựa chọn" : "Options"}</p>
+                            <div className="space-y-1">
+                              {options.length > 0 ? (
+                                options.map((option, optIndex) => (
+                                  (() => {
+                                    const isCorrectOption = correctIndexes.includes(optIndex)
+                                    return (
+                                  <div
+                                    key={`${question.question_id || index}-opt-${optIndex}`}
+                                    className={`rounded border px-3 py-2 text-sm ${
+                                      isCorrectOption
+                                        ? "border-green-300 bg-green-50 text-green-800"
+                                        : "border-gray-100 bg-gray-50"
+                                    }`}
+                                  >
+                                    <span className="font-medium mr-2">
+                                      {String.fromCharCode(65 + optIndex)}.
+                                    </span>
+                                    <span>{option}</span>
+                                    {isCorrectOption && (
+                                      <span className="ml-2 text-xs font-semibold uppercase tracking-wide text-green-700">
+                                        {isVi ? "Đúng" : "Correct"}
+                                      </span>
+                                    )}
+                                  </div>
+                                    )
+                                  })()
+                                ))
+                              ) : (
+                                <p className="text-sm text-gray-500 m-0">{isVi ? "Không có lựa chọn" : "No options"}</p>
+                              )}
+                            </div>
+                          </div>
+
+                        </div>
+                      ),
+                    }
+                  })}
+                />
+              ) : (
+                <p className="text-sm text-gray-500 m-0 py-2">{isVi ? "Không có câu hỏi để xem trước." : "No questions available for preview."}</p>
+              )}
+            </Spin>
+          </div>
+        ) : null}
       </Modal>
     </div>
   )

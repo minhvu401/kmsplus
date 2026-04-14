@@ -7,8 +7,19 @@ import { PlusOutlined } from '@ant-design/icons';
 import CreateQuestionModal from './create-question-modal';
 import { useRouter } from 'next/navigation';
 import * as actions from '@/action/question-bank/questionBankActions';
+import useLanguageStore from '@/store/useLanguageStore';
 
 export default function CreateQuestionModalWrapper() {
+    const { language } = useLanguageStore();
+    const isVi = language === 'vi';
+    const txt = {
+        noTopic: isVi ? 'Không có chủ đề nào trong hệ thống' : 'No topics available in the system',
+        loadTopicFail: isVi
+            ? 'Lỗi tải danh sách chủ đề. Vui lòng thử lại.'
+            : 'Failed to load topics. Please try again.',
+        loading: isVi ? 'Đang tải...' : 'Loading...',
+        createNew: isVi ? 'Tạo Câu Hỏi Mới' : 'Create New Question',
+    };
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [categories, setCategories] = useState<Record<string, any>[]>([]);
     const [categoriesError, setCategoriesError] = useState<string | null>(null);
@@ -25,11 +36,11 @@ export default function CreateQuestionModalWrapper() {
                 if (safeCategories.length > 0) {
                     setCategories(safeCategories);
                 } else {
-                    setCategoriesError('Không có chủ đề nào trong hệ thống');
+                    setCategoriesError(txt.noTopic);
                 }
             } catch (error) {
                 console.error('Error loading categories:', error);
-                setCategoriesError('Lỗi tải danh sách chủ đề. Vui lòng thử lại.');
+                setCategoriesError(txt.loadTopicFail);
             } finally {
                 setIsLoadingCategories(false);
             }
@@ -86,7 +97,7 @@ export default function CreateQuestionModalWrapper() {
                     button.style.borderColor = '#1e40af';
                 }}
             >
-                {isLoadingCategories ? 'Đang tải...' : 'Tạo Câu Hỏi Mới'}
+                {isLoadingCategories ? txt.loading : txt.createNew}
             </Button>
             {categoriesError && (
                 <div className="mt-2 p-3 bg-red-100 border border-red-400 rounded text-red-700 text-sm">

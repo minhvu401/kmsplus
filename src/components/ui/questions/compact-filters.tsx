@@ -6,12 +6,48 @@ import { Flex, Button, Tooltip, Select } from "antd"
 import { ClearOutlined } from "@ant-design/icons"
 import Search from "./search"
 import { Category } from "@/service/question.service"
+import useLanguageStore from "@/store/useLanguageStore"
 
 interface CompactFiltersProps {
   categories: Category[]
 }
 
 export default function CompactFilters({ categories }: CompactFiltersProps) {
+  const { language } = useLanguageStore()
+  const isVi = language === "vi"
+
+  const text = isVi
+    ? {
+        searchPlaceholder: "Tìm kiếm câu hỏi...",
+        allCategories: "Tất cả danh mục",
+        selectCategory: "Chọn danh mục",
+        filterByCategory: "Lọc theo danh mục",
+        filterByStatus: "Lọc theo trạng thái",
+        allStatus: "Tất cả trạng thái",
+        open: "Đang mở",
+        closed: "Đã đóng",
+        sortResults: "Sắp xếp kết quả",
+        newest: "Mới nhất",
+        mostAnswers: "Nhiều câu trả lời",
+        clearAllFilters: "Xóa tất cả bộ lọc",
+        clearFilters: "Xóa bộ lọc",
+      }
+    : {
+        searchPlaceholder: "Search questions...",
+        allCategories: "All Categories",
+        selectCategory: "Select category",
+        filterByCategory: "Filter by category",
+        filterByStatus: "Filter by status",
+        allStatus: "All Status",
+        open: "Open",
+        closed: "Closed",
+        sortResults: "Sort results",
+        newest: "Newest",
+        mostAnswers: "Most Answers",
+        clearAllFilters: "Clear all filters",
+        clearFilters: "Clear filters",
+      }
+
   const searchParams = useSearchParams()
   const pathname = usePathname()
   const { replace } = useRouter()
@@ -82,7 +118,7 @@ export default function CompactFilters({ categories }: CompactFiltersProps) {
     <Flex wrap="wrap" align="center" gap={8} style={{ width: "100%" }}>
       {/* Search - Full width on first row */}
       <div style={{ flex: "1 1 100%", minWidth: "200px", marginBottom: 12 }}>
-        <Search placeholder="Search questions..." />
+        <Search placeholder={text.searchPlaceholder} />
       </div>
 
       {/* Category Filter - Searchable */}
@@ -94,15 +130,15 @@ export default function CompactFilters({ categories }: CompactFiltersProps) {
           flex: "1 1 auto",
         }}
         options={[
-          { label: "All Categories", value: "any" },
+          { label: text.allCategories, value: "any" },
           ...categories.map((cat) => ({
             label: cat.name,
             value: String(cat.id),
           })),
         ]}
-        placeholder="Select category"
+        placeholder={text.selectCategory}
         allowClear={category !== "any"}
-        title="Filter by category"
+        title={text.filterByCategory}
         filterOption={(input, option) =>
           (option?.label ?? "").toLowerCase().includes(input.toLowerCase())
         }
@@ -135,11 +171,11 @@ export default function CompactFilters({ categories }: CompactFiltersProps) {
           e.currentTarget.style.borderColor =
             status !== "any" ? "#2563eb" : "#e5e7eb"
         }}
-        title="Filter by status"
+        title={text.filterByStatus}
       >
-        <option value="any">All Status</option>
-        <option value="open">Open</option>
-        <option value="closed">Closed</option>
+        <option value="any">{text.allStatus}</option>
+        <option value="open">{text.open}</option>
+        <option value="closed">{text.closed}</option>
       </select>
 
       {/* Sort */}
@@ -165,14 +201,14 @@ export default function CompactFilters({ categories }: CompactFiltersProps) {
         onMouseLeave={(e) => {
           e.currentTarget.style.borderColor = "#e5e7eb"
         }}
-        title="Sort results"
+        title={text.sortResults}
       >
-        <option value="newest">Newest</option>
-        <option value="most-answers">Most Answers</option>
+        <option value="newest">{text.newest}</option>
+        <option value="most-answers">{text.mostAnswers}</option>
       </select>
 
       {/* Clear Filters Button */}
-      <Tooltip title="Clear all filters">
+      <Tooltip title={text.clearAllFilters}>
         <Button
           type="text"
           size="small"
@@ -186,7 +222,7 @@ export default function CompactFilters({ categories }: CompactFiltersProps) {
             cursor: hasActiveFilters ? "pointer" : "not-allowed",
           }}
           icon={<ClearOutlined />}
-          title="Clear filters"
+          title={text.clearFilters}
         ></Button>
       </Tooltip>
     </Flex>

@@ -41,6 +41,16 @@ const nextConfig: NextConfig = {
       bodySizeLimit: "5mb",
     },
   },
+  webpack: (config: any, { isServer }: any) => {
+    if (!isServer) {
+      config.resolve = config.resolve || {}
+      config.resolve.alias = {
+        ...(config.resolve.alias || {}),
+        canvas: false,
+      }
+    }
+    return config
+  },
 }
 
 export default nextConfig

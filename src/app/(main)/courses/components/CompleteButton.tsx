@@ -1,7 +1,7 @@
 // @/app/(main)/courses/components/CompleteButton.tsx
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button, message, Tooltip } from "antd"
 import { CheckCircleFilled, CheckOutlined } from "@ant-design/icons"
 import { updateProgress } from "@/action/progress/progressAction"
@@ -44,10 +44,10 @@ export default function CompleteButton({
         // 2. Gọi callback để LearningClient cập nhật state ngay lập tức
         if (onCompleted) {
           onCompleted()
+        } else {
+          // Nếu không có callback, refresh để đồng bộ data
+          router.refresh()
         }
-
-        // 3. Refresh server để đồng bộ data
-        router.refresh()
       } else {
         message.error(res.error || "Failed to update progress")
       }
@@ -58,6 +58,11 @@ export default function CompleteButton({
       setLoading(false)
     }
   }
+
+  // Sync internal state when parent prop changes
+  useEffect(() => {
+    setIsCompleted(initialCompleted)
+  }, [initialCompleted])
 
   // Style chung cho cả 2 trạng thái
   const commonClasses =

@@ -4,7 +4,9 @@ import { Flex, Tag, Typography, Avatar } from 'antd';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { formatDistanceToNowStrict } from 'date-fns';
+import { vi as viLocale } from 'date-fns/locale';
 import { MessageOutlined, UserOutlined } from '@ant-design/icons';
+import useLanguageStore from '@/store/useLanguageStore';
 
 const { Text, Title } = Typography;
 
@@ -44,12 +46,37 @@ interface QuestionCardProps {
 }
 
 export default function QuestionCard({ question: q }: QuestionCardProps) {
+    const { language } = useLanguageStore();
+    const isVi = language === 'vi';
+
+    const text = isVi
+        ? {
+            asked: 'da hoi',
+            readMore: '...xem thêm',
+            closed: 'Đã đóng',
+            open: 'Đang mở',
+            answer: 'câu trả lời',
+            answers: 'câu trả lời',
+        }
+        : {
+            asked: 'asked',
+            readMore: '...read more',
+            closed: 'Closed',
+            open: 'Open',
+            answer: 'answer',
+            answers: 'answers',
+        };
+
     const pathname = usePathname();
     const searchParams = useSearchParams();
     const contentPreview = stripHtml(q.content).substring(0, 150);
     const truncated = stripHtml(q.content).length > 150;
     const currentQuestionsUrl = `${pathname}${searchParams.toString() ? `?${searchParams.toString()}` : ''}`;
     const questionHref = `/questions/${q.id}?returnTo=${encodeURIComponent(currentQuestionsUrl)}`;
+    const relativeTime = formatDistanceToNowStrict(new Date(q.created_at), {
+        addSuffix: true,
+        locale: isVi ? viLocale : undefined,
+    });
 
     return (
         <Link href={questionHref} className="block no-underline group">
@@ -68,7 +95,7 @@ export default function QuestionCard({ question: q }: QuestionCardProps) {
                             {q.user_name}
                         </Text>
                         <Text type="secondary" style={{ fontSize: '12px' }}>
-                            asked {formatDistanceToNowStrict(new Date(q.created_at), { addSuffix: true })}
+                            {text.asked} {relativeTime}
                         </Text>
                     </Flex>
                 </Flex>
@@ -104,7 +131,7 @@ export default function QuestionCard({ question: q }: QuestionCardProps) {
                     }}
                 >
                     {contentPreview}
-                    {truncated && <span style={{ color: '#2563eb', fontWeight: 500 }}> ...read more</span>}
+                    {truncated && <span style={{ color: '#2563eb', fontWeight: 500 }}> {text.readMore}</span>}
                 </Text>
 
                 {/* Tags */}
@@ -132,7 +159,7 @@ export default function QuestionCard({ question: q }: QuestionCardProps) {
                                 padding: '4px 12px',
                             }}
                         >
-                            {q.is_closed ? 'Closed' : 'Open'}
+                            {q.is_closed ? text.closed : text.open}
                         </Tag>
                     </Flex>
                     <Tag
@@ -150,7 +177,7 @@ export default function QuestionCard({ question: q }: QuestionCardProps) {
                         }}
                     >
                         <MessageOutlined />
-                        {q.answer_count} {q.answer_count === 1 ? 'answer' : 'answers'}
+                        {q.answer_count} {q.answer_count === 1 ? text.answer : text.answers}
                     </Tag>
                 </Flex>
             </div>

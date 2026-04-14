@@ -112,7 +112,7 @@ export default function ForgotPasswordForm({
         >
           <Input
             prefix={<MailOutlined className="text-gray-400" />}
-            placeholder="admin@company.com"
+            placeholder="Enter email here..."
             className="!rounded-lg"
           />
         </Form.Item>

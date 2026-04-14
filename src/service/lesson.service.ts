@@ -402,29 +402,249 @@ export async function updateLessonsOrderAction(
  */
 export async function checkLessonUsageService(lessonId: number) {
   try {
-    const usage = await sql`
-      SELECT 
-        c.status,
-        COUNT(c.id) as count
-      FROM lessons l
-      JOIN courses c ON l.course_id = c.id
-      WHERE l.id = ${lessonId}
-      GROUP BY c.status
+    const courseIds = new Set<number>()
+    const addCourseIds = (rows: any[]) => {
+      rows.forEach((row: any) => {
+        if (row?.course_id != null) courseIds.add(Number(row.course_id))
+      })
+    }
+
+    // Current schema: curriculum_items.lesson_id + sections.course_id
+    try {
+      const modernUsage = await sql`
+        SELECT DISTINCT s.course_id
+        FROM curriculum_items ci
+        JOIN sections s ON s.id = ci.section_id
+        WHERE ci.lesson_id = ${lessonId}
+          AND s.course_id IS NOT NULL
+      `
+      addCourseIds(modernUsage as any[])
+    } catch {
+      // Ignore if this schema/table variant is unavailable.
+    }
+
+    // Older section table variant: curriculum_sections
+    try {
+      const legacySectionUsage = await sql`
+        SELECT DISTINCT cs.course_id
+        FROM curriculum_items ci
+        JOIN curriculum_sections cs ON cs.id = ci.section_id
+        WHERE ci.lesson_id = ${lessonId}
+          AND cs.course_id IS NOT NULL
+      `
+      addCourseIds(legacySectionUsage as any[])
+    } catch {
+      // Ignore if this schema/table variant is unavailable.
+    }
+
+    // Legacy schema fallback: curriculum_items.resource_id + course_id
+    try {
+      const legacyUsage = await sql`
+        SELECT DISTINCT ci.course_id
+        FROM curriculum_items ci
+        WHERE ci.type = 'lesson'
+          AND ci.resource_id = ${lessonId}
+          AND ci.course_id IS NOT NULL
+      `
+      addCourseIds(legacyUsage as any[])
+    } catch {
+      // Ignore legacy query errors when old columns are unavailable.
+    }
+
+    // Legacy variant where resource_id is present but course_id lives on curriculum_sections.
+    try {
+      const legacyUsageBySection = await sql`
+        SELECT DISTINCT cs.course_id
+        FROM curriculum_items ci
+        JOIN curriculum_sections cs ON cs.id = ci.section_id
+        WHERE ci.type = 'lesson'
+          AND ci.resource_id = ${lessonId}
+          AND cs.course_id IS NOT NULL
+      `
+      addCourseIds(legacyUsageBySection as any[])
+    } catch {
+      // Ignore legacy query errors when old columns are unavailable.
+    }
+
+    // Legacy direct linkage fallback: lessons.course_id
+    const directUsage = await sql`
+      SELECT course_id
+      FROM lessons
+      WHERE id = ${lessonId}
+        AND course_id IS NOT NULL
+    `
+    addCourseIds(directUsage as any[])
+
+    if (courseIds.size === 0) {
+      return { total: 0, published: 0, draft: 0 }
+    }
+
+    const [result] = await sql`
+      SELECT
+        COUNT(DISTINCT c.id) AS total,
+        COUNT(DISTINCT c.id) FILTER (WHERE c.status = 'published') AS published,
+        COUNT(DISTINCT c.id) FILTER (WHERE c.status <> 'published') AS draft
+      FROM courses c
+      WHERE c.id = ANY(${Array.from(courseIds)})
+        AND c.deleted_at IS NULL
     `
 
-    const result = { total: 0, published: 0, draft: 0 }
-
-    usage.forEach((row: any) => {
-      const count = Number(row.count)
-      result.total += count
-      if (row.status === "published") result.published += count
-      else result.draft += count
-    })
-
-    return result
+    return {
+      total: Number(result?.total || 0),
+      published: Number(result?.published || 0),
+      draft: Number(result?.draft || 0),
+    }
   } catch (error) {
     console.error("Check Usage Error:", error)
     return { total: 0, published: 0, draft: 0 }
+  }
+}
+
+/**
+ * CHECK DEPENDENCY (BATCH): Kiểm tra nhiều lesson đang được dùng ở đâu
+ */
+export async function checkLessonsUsageBatchService(lessonIds: number[]) {
+  const normalizedIds = Array.from(
+    new Set((lessonIds || []).map((id) => Number(id)).filter((id) => Number.isFinite(id) && id > 0))
+  )
+
+  if (normalizedIds.length === 0) return {}
+
+  try {
+    const lessonToCourseIds = new Map<number, Set<number>>()
+
+    const addPairs = (rows: any[], lessonKey: string, courseKey: string) => {
+      for (const row of rows || []) {
+        const lessonId = Number(row?.[lessonKey])
+        const courseId = Number(row?.[courseKey])
+        if (!Number.isFinite(lessonId) || !Number.isFinite(courseId)) continue
+        if (!lessonToCourseIds.has(lessonId)) {
+          lessonToCourseIds.set(lessonId, new Set<number>())
+        }
+        lessonToCourseIds.get(lessonId)!.add(courseId)
+      }
+    }
+
+    // Current schema: curriculum_items.lesson_id + sections.course_id
+    try {
+      const modernPairs = await sql`
+        SELECT DISTINCT ci.lesson_id, s.course_id
+        FROM curriculum_items ci
+        JOIN sections s ON s.id = ci.section_id
+        WHERE ci.lesson_id = ANY(${normalizedIds}::int[])
+          AND s.course_id IS NOT NULL
+      `
+      addPairs(modernPairs as any[], "lesson_id", "course_id")
+    } catch {
+      // Ignore if this schema/table variant is unavailable.
+    }
+
+    // Older section table variant: curriculum_sections
+    try {
+      const legacySectionPairs = await sql`
+        SELECT DISTINCT ci.lesson_id, cs.course_id
+        FROM curriculum_items ci
+        JOIN curriculum_sections cs ON cs.id = ci.section_id
+        WHERE ci.lesson_id = ANY(${normalizedIds}::int[])
+          AND cs.course_id IS NOT NULL
+      `
+      addPairs(legacySectionPairs as any[], "lesson_id", "course_id")
+    } catch {
+      // Ignore if this schema/table variant is unavailable.
+    }
+
+    // Legacy schema fallback: curriculum_items.resource_id + course_id
+    try {
+      const legacyResourcePairs = await sql`
+        SELECT DISTINCT ci.resource_id AS lesson_id, ci.course_id
+        FROM curriculum_items ci
+        WHERE ci.type = 'lesson'
+          AND ci.resource_id = ANY(${normalizedIds}::int[])
+          AND ci.course_id IS NOT NULL
+      `
+      addPairs(legacyResourcePairs as any[], "lesson_id", "course_id")
+    } catch {
+      // Ignore legacy query errors when old columns are unavailable.
+    }
+
+    // Legacy variant: resource_id + curriculum_sections.course_id
+    try {
+      const legacyResourceSectionPairs = await sql`
+        SELECT DISTINCT ci.resource_id AS lesson_id, cs.course_id
+        FROM curriculum_items ci
+        JOIN curriculum_sections cs ON cs.id = ci.section_id
+        WHERE ci.type = 'lesson'
+          AND ci.resource_id = ANY(${normalizedIds}::int[])
+          AND cs.course_id IS NOT NULL
+      `
+      addPairs(legacyResourceSectionPairs as any[], "lesson_id", "course_id")
+    } catch {
+      // Ignore legacy query errors when old columns are unavailable.
+    }
+
+    // Legacy direct linkage fallback: lessons.course_id
+    try {
+      const directPairs = await sql`
+        SELECT id AS lesson_id, course_id
+        FROM lessons
+        WHERE id = ANY(${normalizedIds}::int[])
+          AND course_id IS NOT NULL
+      `
+      addPairs(directPairs as any[], "lesson_id", "course_id")
+    } catch {
+      // Ignore direct fallback errors.
+    }
+
+    const allCourseIds = Array.from(
+      new Set(
+        Array.from(lessonToCourseIds.values()).flatMap((set) => Array.from(set))
+      )
+    )
+
+    const courseStatusMap = new Map<number, string>()
+    if (allCourseIds.length > 0) {
+      const courseRows = await sql`
+        SELECT id, status
+        FROM courses
+        WHERE id = ANY(${allCourseIds}::int[])
+          AND deleted_at IS NULL
+      `
+      for (const row of (courseRows as any[]) || []) {
+        const id = Number(row?.id)
+        if (Number.isFinite(id)) {
+          courseStatusMap.set(id, String(row?.status || ""))
+        }
+      }
+    }
+
+    const result: Record<number, { total: number; published: number; draft: number }> = {}
+
+    for (const lessonId of normalizedIds) {
+      const linkedCourseIds = lessonToCourseIds.get(lessonId) || new Set<number>()
+      let total = 0
+      let published = 0
+      let draft = 0
+
+      for (const courseId of linkedCourseIds) {
+        const status = courseStatusMap.get(courseId)
+        if (!status) continue
+        total += 1
+        if (status === "published") {
+          published += 1
+        } else {
+          draft += 1
+        }
+      }
+
+      result[lessonId] = { total, published, draft }
+    }
+
+    return result
+  } catch (error) {
+    console.error("Check Batch Usage Error:", error)
+    return Object.fromEntries(
+      normalizedIds.map((id) => [id, { total: 0, published: 0, draft: 0 }])
+    )
   }
 }
 

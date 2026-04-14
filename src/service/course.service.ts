@@ -849,6 +849,40 @@ export async function getUserEnrolledCoursesService(
 }
 
 /**
+ * Get all courses the user is enrolled in (including completed), no limit
+ */
+export async function getAllUserEnrolledCoursesService(userId: number) {
+  try {
+    if (!userId || userId === 0) {
+      return { courses: [] }
+    }
+
+    const rows = await sql`
+      SELECT 
+        c.*,
+        MAX(cat.name) AS category_name,
+        COALESCE(ROUND(AVG(f.rating) * 2) / 2, 0) AS average_rating,
+        COALESCE(COUNT(f.id), 0)::int AS rating_count,
+        MAX(e.enrolled_at) AS latest_enrolled_at
+      FROM courses c
+      LEFT JOIN categories cat ON c.category_id = cat.id
+      LEFT JOIN feedback f ON f.course_id = c.id AND f.deleted_at IS NULL
+      INNER JOIN enrollments e ON e.course_id = c.id
+      WHERE c.deleted_at IS NULL
+        AND c.status = 'published'
+        AND e.user_id = ${userId}
+      GROUP BY c.id
+      ORDER BY latest_enrolled_at DESC, c.created_at DESC
+    `
+
+    return { courses: rows as Course[] }
+  } catch (error) {
+    console.error("Error fetching all enrolled courses:", error)
+    return { courses: [] }
+  }
+}
+
+/**
  * Get newest published courses
  * Used for "Mới nhất từ KMS Plus" (Newest) section
  */

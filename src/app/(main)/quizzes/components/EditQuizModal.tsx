@@ -24,7 +24,7 @@ import { getQuestions } from "@/action/question-bank/questionBankActions"
 
 interface Quiz {
   id: number
-  course_id: number
+  category_id?: number | null
   title: string
   description: string | null
   time_limit_minutes: number | null
