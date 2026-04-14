@@ -23,6 +23,7 @@ import { hasPermission } from "@/config/RolePermission.config"
 import useLanguageStore from "@/store/useLanguageStore"
 import { t } from "@/lib/i18n"
 import type { MenuProps } from "antd"
+import { is } from "zod/v4/locales"
 
 export type MenuItem = Required<MenuProps>["items"][number] & {
   route?: string
@@ -50,7 +51,20 @@ const createEmployeeSidebarItems = (
   language: "vi" | "en" = "vi"
 ): MenuItem[] => {
   return [
-    // Q&A Section - CRUD Q & A, share Q published
+    // Knowledge Section Header
+    {
+      key: "knowledge-header",
+      label: t("nav.knowledge_header", language) || "KNOWLEDGE",
+      disabled: true,
+      style: {
+        textAlign: "left",
+        fontSize: "11px",
+        color: "#999",
+        marginTop: "8px",
+        marginBottom: "8px",
+      },
+    } as MenuItem,
+    // Q&A
     {
       key: PageRoute.QUESTIONS,
       icon: <MessageOutlined />,
@@ -63,10 +77,7 @@ const createEmployeeSidebarItems = (
       route: PageRoute.QUESTIONS,
       onClick: () => navigate(PageRoute.QUESTIONS),
     },
-    {
-      type: "divider",
-    },
-    // Articles - POST comment (CRUD), View Articles
+    // Articles
     {
       key: PageRoute.ARTICLES,
       icon: <FileTextOutlined />,
@@ -74,6 +85,15 @@ const createEmployeeSidebarItems = (
       title: byLang(language, "Bài viết - Xem và bình luận (CRUD)", "Articles - View & Comment (CRUD)"),
       route: PageRoute.ARTICLES,
       onClick: () => navigate(PageRoute.ARTICLES),
+    },
+    // Courses
+    {
+      key: PageRoute.COURSES,
+      icon: <BookOutlined />,
+      label: t("sidebar.courses", language),
+      title: "Courses - Search, View, Enroll & Participate in Quizzes",
+      route: PageRoute.COURSES,
+      onClick: () => navigate(PageRoute.COURSES),
     },
     // Documents
     {
@@ -112,9 +132,6 @@ const createEmployeeSidebarItems = (
       route: "/history",
       onClick: () => navigate("/history"),
     },
-    {
-      type: "divider",
-    },
     // View Profile
     {
       key: PageRoute.PROFILE,
@@ -126,7 +143,6 @@ const createEmployeeSidebarItems = (
     },
   ] as MenuItem[]
 }
-
 /**
  * Contributor Sidebar: Q&A, Articles (CRUD), Contributions, Profile
  */
@@ -135,7 +151,19 @@ const createContributorSidebarItems = (
   language: "vi" | "en" = "vi"
 ): MenuItem[] => {
   return [
-    // Q&A Section - CRUD Q & A, share Q published (same as Employee)
+    // Knowledge Section Header
+    {
+      key: "knowledge-header",
+      label: t("nav.knowledge_header", language) || "KNOWLEDGE",
+      disabled: true,
+      style: {
+        textAlign: "left",
+        fontSize: "11px",
+        color: "#999",
+        marginTop: "8px",
+        marginBottom: "8px",
+      },
+    } as MenuItem,
     {
       key: PageRoute.QUESTIONS,
       icon: <MessageOutlined />,
@@ -149,10 +177,6 @@ const createContributorSidebarItems = (
       onClick: () => navigate(PageRoute.QUESTIONS),
     },
     {
-      type: "divider",
-    },
-    // Articles - Full CRUD (Create, Update, Delete) + Comment
-    {
       key: PageRoute.ARTICLES,
       icon: <FileTextOutlined />,
       label: t("sidebar.articles", language),
@@ -164,7 +188,37 @@ const createContributorSidebarItems = (
       route: PageRoute.ARTICLES,
       onClick: () => navigate(PageRoute.ARTICLES),
     },
-    // Article Management
+    {
+      key: PageRoute.COURSES,
+      icon: <BookOutlined />,
+      label: t("sidebar.courses", language) || "Courses",
+      title: "Courses - View Courses",
+      route: PageRoute.COURSES,
+      onClick: () => navigate(PageRoute.COURSES),
+    },
+    {
+      key: "/documents",
+      icon: <BookOutlined />, // Bạn có thể đổi icon nếu muốn
+      label: t("sidebar.documents", language) || "Documents",
+      title: "Documents - Company Policies & Guidelines",
+      route: "/documents",
+      onClick: () => navigate("/documents"),
+    },
+    { type: "divider" },
+
+    // Management Section Header
+    {
+      key: "management-header",
+      label: "MANAGEMENT",
+      disabled: true,
+      style: {
+        textAlign: "left",
+        fontSize: "11px",
+        color: "#999",
+        marginTop: "8px",
+        marginBottom: "8px",
+      },
+    } as MenuItem,
     {
       key: PageRoute.ARTICLE_MANAGEMENT,
       icon: <FileTextOutlined />,
@@ -195,20 +249,20 @@ const createContributorSidebarItems = (
     {
       key: PageRoute.PROFILE,
       icon: <UserOutlined />,
-      label: t("sidebar.profile", language),
-      title: t("sidebar.profile", language),
+      label: t("sidebar.profile", language) || "Profile",
+      title: t("sidebar.profile", language) || "Profile",
       route: PageRoute.PROFILE,
       onClick: () => navigate(PageRoute.PROFILE),
     },
   ] as MenuItem[]
 }
-
 /**
  * Training Manager Sidebar: Dashboard, Knowledge, Management sections with all items visible
  */
 const createTrainingManagerSidebarItems = (
   navigate: (route: string) => void,
-  language: "vi" | "en" = "vi"
+  language: "vi" | "en" = "vi",
+  isHeadOfDepartment: boolean = false
 ): MenuItem[] => {
   return [
     // Dashboard Section Header
@@ -280,6 +334,15 @@ const createTrainingManagerSidebarItems = (
       route: PageRoute.QUESTIONS,
       onClick: () => navigate(PageRoute.QUESTIONS),
     },
+    // Articles
+    {
+      key: PageRoute.ARTICLES,
+      icon: <FileTextOutlined />,
+      label: t("sidebar.articles", language),
+      title: "Articles - View Articles",
+      route: PageRoute.ARTICLES,
+      onClick: () => navigate(PageRoute.ARTICLES),
+    },
     // Courses
     {
       key: PageRoute.COURSES,
@@ -288,6 +351,15 @@ const createTrainingManagerSidebarItems = (
       title: byLang(language, "Khóa học - Xem và quản lý khóa học", "Courses - View & Manage Courses"),
       route: PageRoute.COURSES,
       onClick: () => navigate(PageRoute.COURSES),
+    },
+    // Documents
+    {
+      key: "/documents",
+      icon: <BookOutlined />,
+      label: t("sidebar.documents", language),
+      title: "Documents - Company Policies & Guidelines",
+      route: "/documents",
+      onClick: () => navigate("/documents"),
     },
     {
       type: "divider",
@@ -323,15 +395,19 @@ const createTrainingManagerSidebarItems = (
       route: PageRoute.ARTICLE_MANAGEMENT,
       onClick: () => navigate(PageRoute.ARTICLE_MANAGEMENT),
     },
-    // Document Management (Wiki)
-    {
-      key: PageRoute.DOCUMENT_MANAGEMENT,
-      icon: <FileTextOutlined />,
-      label: "Document Management",
-      title: "Internal Wiki & Policies",
-      route: PageRoute.DOCUMENT_MANAGEMENT,
-      onClick: () => navigate(PageRoute.DOCUMENT_MANAGEMENT),
-    },
+    // Document Management (Wiki) - CHỈ HIỂN THỊ KHI LÀ HEAD OF DEPARTMENT
+    ...(isHeadOfDepartment
+      ? [
+          {
+            key: PageRoute.DOCUMENT_MANAGEMENT,
+            icon: <FileTextOutlined />,
+            label: "Document Management",
+            title: "Internal Wiki & Policies",
+            route: PageRoute.DOCUMENT_MANAGEMENT,
+            onClick: () => navigate(PageRoute.DOCUMENT_MANAGEMENT),
+          } as MenuItem,
+        ]
+      : []),
     // Quiz Management
     {
       key: PageRoute.QUIZ_MANAGEMENT,
@@ -382,6 +458,7 @@ const createTrainingManagerSidebarItems = (
     },
   ] as MenuItem[]
 }
+
 
 /**
  * System Admin Sidebar: Dashboard, Knowledge, Management, Settings sections with all items visible
@@ -688,31 +765,51 @@ const createDirectorSidebarItems = (
 const createMenuItems = (
   navigate: (route: string) => void,
   userRole?: Role,
-  language: "vi" | "en" = "vi"
+  language: "vi" | "en" = "vi",
+  isHeadOfDepartment: boolean = false
+
 ): MenuItem[] => {
+  let items: MenuItem[] = []
+
   // Role-specific sidebars
   if (userRole === Role.EMPLOYEE) {
-    return createEmployeeSidebarItems(navigate, language)
+    items = createEmployeeSidebarItems(navigate, language)
+  } else if (userRole === Role.CONTRIBUTOR) {
+    items = createContributorSidebarItems(navigate, language)
+  } else if (userRole === Role.TRAINING_MANAGER) {
+    items = createTrainingManagerSidebarItems(navigate, language, isHeadOfDepartment)
+  } else if (userRole === Role.ADMIN) {
+    items = createSystemAdminSidebarItems(navigate, language)
+  } else if (userRole === Role.DIRECTOR) {
+    items = createDirectorSidebarItems(navigate, language)
   }
+  // Nếu user đã match vào một role cụ thể ở trên
+  if (items.length > 0) {
+    // --- Kiểm tra ép kiểu cho tất cả HOD (CHÈN THÊM VÀO ĐÂY) ---
+    if (isHeadOfDepartment && userRole !== Role.ADMIN) {
+      const hasDocMenu = items.some((item) => item?.key === PageRoute.DOCUMENT_MANAGEMENT)
+      if (!hasDocMenu) {
+        const profileIndex = items.findIndex((item) => item?.key === PageRoute.PROFILE)
+        const docMenu = {
+          key: PageRoute.DOCUMENT_MANAGEMENT,
+          icon: <FileTextOutlined />,
+          label: "Document Management",
+          title: "Internal Wiki & Policies",
+          route: PageRoute.DOCUMENT_MANAGEMENT,
+          onClick: () => navigate(PageRoute.DOCUMENT_MANAGEMENT),
+        } as MenuItem
 
-  if (userRole === Role.CONTRIBUTOR) {
-    return createContributorSidebarItems(navigate, language)
+        if (profileIndex !== -1) {
+          items.splice(profileIndex, 0, docMenu, { type: "divider" })
+        } else {
+          items.push({ type: "divider" }, docMenu)
+        }
+      }
+    }
+
+    // Sửa lỗi: Bắt buộc phải return items (menu theo role)
+    return items
   }
-
-  if (userRole === Role.TRAINING_MANAGER) {
-    return createTrainingManagerSidebarItems(navigate, language)
-  }
-
-  // System Admin/ADMIN Sidebar
-  if (userRole === Role.ADMIN) {
-    return createSystemAdminSidebarItems(navigate, language)
-  }
-
-  // Director Sidebar
-  if (userRole === Role.DIRECTOR) {
-    return createDirectorSidebarItems(navigate, language)
-  }
-
   // Default sidebar (existing behavior)
   const baseItems: MenuItem[] = [
     {
@@ -801,16 +898,16 @@ const createMenuItems = (
   return baseItems
 }
 
-export const useSidebarItems = (userRole?: Role) => {
+export const useSidebarItems = (userRole?: Role, isHeadOfDepartment: boolean = false) => {
   const { navigate } = useNavigation()
   const { language } = useLanguageStore()
   const items = useMemo(() => {
-    return createMenuItems(navigate, userRole, language)
-  }, [navigate, userRole, language])
+    return createMenuItems(navigate, userRole, language, isHeadOfDepartment)
+  }, [navigate, userRole, language, isHeadOfDepartment])
   return items
 }
 
 // Export hàm thô (nếu cần)
-export const getSidebarItems = (language: "vi" | "en" = "vi"): MenuItem[] => {
-  return createMenuItems(() => {}, undefined, language)
+export const getSidebarItems = (language: "vi" | "en" = "vi", isHeadOfDepartment: boolean = false): MenuItem[] => {
+  return createMenuItems(() => {}, undefined, language, isHeadOfDepartment)
 }
