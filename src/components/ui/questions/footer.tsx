@@ -1,7 +1,7 @@
-"use client";
+"use client"
 
-import Link from "next/link";
-import { Flex } from "antd";
+import Link from "next/link"
+import { Flex } from "antd"
 
 export default function Footer() {
   return (
@@ -23,13 +23,14 @@ export default function Footer() {
           textAlign: "center",
           marginLeft: "4rem",
           marginBottom: "1.5rem",
-          marginRight: "4rem"
+          marginRight: "4rem",
         }}
       >
         {/* Left text */}
         <p style={{ margin: 0 }}>
-          © 2025 - <span style={{ fontWeight: 600 }}>KMSPlus</span>. Designed by{" "}
-          <span style={{ fontWeight: 600 }}>KMS Team</span>. All rights reserved.
+          © 2026 - <span style={{ fontWeight: 600 }}>KMSPlus</span>. Designed by{" "}
+          <span style={{ fontWeight: 600 }}>KMS Team</span>. All rights
+          reserved.
         </p>
 
         {/* Links */}
@@ -64,5 +65,5 @@ export default function Footer() {
         </Flex>
       </Flex>
     </footer>
-  );
+  )
 }
