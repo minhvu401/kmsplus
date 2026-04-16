@@ -1249,7 +1249,7 @@ export default function ArticleDetailPage() {
         <footer className="mt-8 py-6 border-t">
           <div className="flex justify-between items-center text-sm text-gray-600">
             <Text type="secondary">
-              © 2025 - KMSPlus. Designed by <Text strong>KMS Team</Text>. All
+              © 2026 - KMSPlus. Designed by <Text strong>KMS Team</Text>. All
               rights reserved
             </Text>
             <Space size="large">

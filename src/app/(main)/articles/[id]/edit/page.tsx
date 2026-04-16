@@ -530,7 +530,7 @@ export default function EditArticlePage() {
       <footer className="bg-white border-t px-8 py-4">
         <Flex justify="space-between" align="center">
           <Text type="secondary" className="text-sm">
-            © 2025 - KMSPlus. Designed by <Text strong>KMS Team</Text>. All
+            © 2026 - KMSPlus. Designed by <Text strong>KMS Team</Text>. All
             rights reserved
           </Text>
           <Space size="large">

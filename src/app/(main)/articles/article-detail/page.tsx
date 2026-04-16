@@ -5,7 +5,7 @@ import { CalendarDays } from 'lucide-react';
 
 // Giả lập dữ liệu chi tiết bài viết
 const mockArticleDetail = {
-  date: '23/10/2025',
+  date: '23/10/2026',
   title: 'Tại sao Trái Đất hình tròn?',
   intro: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit...',
   imageUrl: 'https://images.unsplash.com/photo-1506748686214-e9df14d4d9d0?w=800&fit=crop',
@@ -19,9 +19,9 @@ const mockArticleDetail = {
 
 // Cập nhật mock Related Articles (category sẽ không được dùng)
 const mockRelatedArticles = [
-  { id: 1, title: 'Tại sao Trái Đất hình tròn?', category: 'Funny Fact', date: '22/10/2025' },
-  { id: 2, title: 'Một bài viết liên quan khác', category: 'Technical', date: '21/10/2025' },
-  { id: 3, title: 'Khám phá mới về vũ trụ', category: 'News', date: '20/10/2025' },
+  { id: 1, title: 'Tại sao Trái Đất hình tròn?', category: 'Funny Fact', date: '22/10/2026' },
+  { id: 2, title: 'Một bài viết liên quan khác', category: 'Technical', date: '21/10/2026' },
+  { id: 3, title: 'Khám phá mới về vũ trụ', category: 'News', date: '20/10/2026' },
 ];
 
 export default function ArticleDetailPage() {
@@ -187,7 +187,7 @@ export default function ArticleDetailPage() {
       {/* Footer (Giữ nguyên) */}
       <footer className="bg-white border-t px-8 py-4 mt-auto">
         <div className="flex justify-between items-center text-sm text-gray-600">
-          <p>© 2025 - KMSPlus. Designed by <span className="font-medium">KMS Team</span>. All rights reserved</p>
+          <p>© 2026 - KMSPlus. Designed by <span className="font-medium">KMS Team</span>. All rights reserved</p>
           <div className="flex gap-6">
             <a href="#" className="hover:text-gray-900">FAQs</a>
             <a href="#" className="hover:text-gray-900">Privacy Policy</a>
