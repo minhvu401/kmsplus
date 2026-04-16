@@ -10,6 +10,7 @@ import {
   Input,
   Button,
   Space,
+  Tag,
   Spin,
   message,
   Empty,
@@ -717,8 +718,8 @@ export default function ArticleDetailPage() {
                 </div>
               )}
 
-              {/* Date */}
-              <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-gray-500 mb-3">
+              {/* Date, Category and Tags */}
+              <div className="flex items-center gap-3 text-xs tracking-wide text-gray-500 mb-3">
                 <span className="inline-flex h-2 w-2 rounded-full bg-gray-400" />
                 <span>
                   {new Date(article.created_at).toLocaleString("vi-VN", {
@@ -726,6 +727,31 @@ export default function ArticleDetailPage() {
                     hour12: false,
                   })}
                 </span>
+
+                {/* Category */}
+                {article?.category_name && (
+                  <Tag color="blue" className="ml-1 text-xs">
+                    {article.category_name}
+                  </Tag>
+                )}
+
+                {/* Tags - parse if string or use array */}
+                {article?.tags && (
+                  <div className="flex items-center gap-1 flex-wrap">
+                    {(
+                      Array.isArray(article.tags)
+                        ? article.tags
+                        : String(article.tags || "").split(",")
+                    )
+                      .map((t: any) => String(t).trim())
+                      .filter((t: string) => t)
+                      .map((tag: string) => (
+                        <Tag key={tag} className="text-xs" color="default">
+                          {tag}
+                        </Tag>
+                      ))}
+                  </div>
+                )}
               </div>
 
               {/* Title */}
@@ -1245,26 +1271,6 @@ export default function ArticleDetailPage() {
           <p>Are you sure you want to delete this comment?</p>
         </Modal>
 
-        {/* Footer */}
-        <footer className="mt-8 py-6 border-t">
-          <div className="flex justify-between items-center text-sm text-gray-600">
-            <Text type="secondary">
-              © 2026 - KMSPlus. Designed by <Text strong>KMS Team</Text>. All
-              rights reserved
-            </Text>
-            <Space size="large">
-              <a href="#" className="text-gray-600 hover:text-gray-900">
-                FAQs
-              </a>
-              <a href="#" className="text-gray-600 hover:text-gray-900">
-                Privacy Policy
-              </a>
-              <a href="#" className="text-gray-600 hover:text-gray-900">
-                Terms & Condition
-              </a>
-            </Space>
-          </div>
-        </footer>
         <style jsx global>{`
           .article-content img {
             display: block;

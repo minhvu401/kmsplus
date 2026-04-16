@@ -169,9 +169,10 @@ export async function deleteArticle(id: number) {
     // If missing permission, check ownership
     try {
       const rows = await sql`
-        SELECT author_id
-        FROM articles
-        WHERE id = ${id}
+        SELECT a.author_id, u.department_id
+        FROM articles a
+        LEFT JOIN users u ON u.id = a.author_id
+        WHERE a.id = ${id}
         LIMIT 1
       `
 
@@ -182,11 +183,35 @@ export async function deleteArticle(id: number) {
         }
       }
 
-      if (Number(rows[0].author_id) === Number(currentUser.id)) {
+      const authorId = Number(rows[0].author_id)
+      const authorDeptId = rows[0].department_id
+
+      // Allow if the current user is the author
+      if (authorId === Number(currentUser.id)) {
         return deleteArticleAction(id)
       }
 
-      // Re-throw original permission error for non-owners
+      // Allow if current user is system admin
+      if (currentUser.isAdmin) {
+        return deleteArticleAction(id)
+      }
+
+      // Allow if current user is head of the author's department
+      if (authorDeptId) {
+        const deptRows = await sql`
+          SELECT id
+          FROM department
+          WHERE id = ${authorDeptId}
+            AND head_of_department_id = ${Number(currentUser.id)}
+            AND is_deleted = FALSE
+          LIMIT 1
+        `
+        if (deptRows.length > 0) {
+          return deleteArticleAction(id)
+        }
+      }
+
+      // Re-throw original permission error for other users
       throw err
     } catch (innerErr: any) {
       throw innerErr
@@ -211,9 +236,10 @@ export async function restoreArticle(id: number) {
   } catch (err) {
     try {
       const rows = await sql`
-        SELECT author_id
-        FROM articles
-        WHERE id = ${id}
+        SELECT a.author_id, u.department_id
+        FROM articles a
+        LEFT JOIN users u ON u.id = a.author_id
+        WHERE a.id = ${id}
         LIMIT 1
       `
 
@@ -224,8 +250,32 @@ export async function restoreArticle(id: number) {
         }
       }
 
-      if (Number(rows[0].author_id) === Number(currentUser.id)) {
+      const authorId = Number(rows[0].author_id)
+      const authorDeptId = rows[0].department_id
+
+      // Allow if the current user is the author
+      if (authorId === Number(currentUser.id)) {
         return restoreArticleAction(id)
+      }
+
+      // Allow if current user is system admin
+      if (currentUser.isAdmin) {
+        return restoreArticleAction(id)
+      }
+
+      // Allow if current user is head of the author's department
+      if (authorDeptId) {
+        const deptRows = await sql`
+          SELECT id
+          FROM department
+          WHERE id = ${authorDeptId}
+            AND head_of_department_id = ${Number(currentUser.id)}
+            AND is_deleted = FALSE
+          LIMIT 1
+        `
+        if (deptRows.length > 0) {
+          return restoreArticleAction(id)
+        }
       }
 
       throw err

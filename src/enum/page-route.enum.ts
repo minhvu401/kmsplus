@@ -3,6 +3,7 @@ export enum PageRoute {
   DASHBOARD_METRICS = "/dashboard-metrics",
   PROFILE = "/profile",
   COURSES = "/courses",
+  HISTORY = "/history",
   ARTICLES = "/articles",
   QUESTIONS = "/questions",
   QUESTION_BANK = "/question-bank",
@@ -16,5 +17,6 @@ export enum PageRoute {
   COURSE_MANAGEMENT = "/courses/management",
   QUESTION_BANK_MANAGEMENT = "/question-bank",
   ARTICLE_MANAGEMENT = "/articles/management",
-  DOCUMENT_MANAGEMENT = "/documents/management"
+  DOCUMENT_MANAGEMENT = "/documents/management",
+  DOCUMENTS = "/documents"
 }

@@ -97,40 +97,37 @@ const createEmployeeSidebarItems = (
     },
     // Documents
     {
-      key: "/documents",
+      key: PageRoute.DOCUMENTS,
       icon: <BookOutlined />,
       label: t("sidebar.documents", language),
       title: "Documents - Company Policies & Guidelines",
-      route: "/documents",
-      onClick: () => navigate("/documents"),
+      route: PageRoute.DOCUMENTS,
+      onClick: () => navigate(PageRoute.DOCUMENTS),
     },
     {
       type: "divider",
     },
-    // Courses - search, view list, view a course → Enroll → participate in quizzes
+    // Personal Section Header
     {
-      key: PageRoute.COURSES,
-      icon: <BookOutlined />,
-      label: t("sidebar.courses", language),
-      title: byLang(
-        language,
-        "Khóa học - Tìm kiếm, xem, đăng ký và tham gia bài thi",
-        "Courses - Search, View, Enroll & Participate in Quizzes"
-      ),
-      route: PageRoute.COURSES,
-      onClick: () => navigate(PageRoute.COURSES),
-    },
-    {
-      type: "divider",
-    },
+      key: "personal-header",
+      label: "PERSONAL",
+      disabled: true,
+      style: {
+        textAlign: "left",
+        fontSize: "11px",
+        color: "#999",
+        marginTop: "8px",
+        marginBottom: "8px",
+      },
+    } as MenuItem,
     // Learning History - ref #
     {
-      key: "learning-history",
+      key: PageRoute.HISTORY,
       icon: <HistoryOutlined />,
       label: t("sidebar.learning_history", language),
       title: byLang(language, "Lịch sử học tập - Theo dõi tiến độ", "Learning History - Track your progress"),
-      route: "/history",
-      onClick: () => navigate("/history"),
+      route: PageRoute.HISTORY,
+      onClick: () => navigate(PageRoute.HISTORY),
     },
     // View Profile
     {
@@ -197,12 +194,12 @@ const createContributorSidebarItems = (
       onClick: () => navigate(PageRoute.COURSES),
     },
     {
-      key: "/documents",
+      key: PageRoute.DOCUMENTS,
       icon: <BookOutlined />, // Bạn có thể đổi icon nếu muốn
       label: t("sidebar.documents", language) || "Documents",
       title: "Documents - Company Policies & Guidelines",
-      route: "/documents",
-      onClick: () => navigate("/documents"),
+      route: PageRoute.DOCUMENTS,
+      onClick: () => navigate(PageRoute.DOCUMENTS),
     },
     { type: "divider" },
 
@@ -230,20 +227,27 @@ const createContributorSidebarItems = (
     {
       type: "divider",
     },
-    // Contributions - Track contributor's content
+    // Personal Section Header
     {
-      key: "contributions",
-      icon: <BulbOutlined />,
-      label: t("sidebar.contributions", language),
-      title: byLang(
-        language,
-        `${t("sidebar.contributions", language)} - Theo dõi đóng góp của bạn`,
-        `${t("sidebar.contributions", language)} - Track your contributions`
-      ),
-      disabled: true, // UI chưa làm
-    },
+      key: "personal-header",
+      label: "PERSONAL",
+      disabled: true,
+      style: {
+        textAlign: "left",
+        fontSize: "11px",
+        color: "#999",
+        marginTop: "8px",
+        marginBottom: "8px",
+      },
+    } as MenuItem,
+    // Learning History - ref #
     {
-      type: "divider",
+      key: PageRoute.HISTORY,
+      icon: <HistoryOutlined />,
+      label: t("sidebar.learning_history", language),
+      title: byLang(language, "Lịch sử học tập - Theo dõi tiến độ", "Learning History - Track your progress"),
+      route: PageRoute.HISTORY,
+      onClick: () => navigate(PageRoute.HISTORY),
     },
     // View Profile
     {
@@ -303,24 +307,6 @@ const createTrainingManagerSidebarItems = (
         marginBottom: "8px",
       },
     } as MenuItem,
-    // Articles
-    {
-      key: PageRoute.ARTICLES,
-      icon: <FileTextOutlined />,
-      label: t("sidebar.articles", language),
-      title: byLang(language, "Bài viết - Xem bài viết", "Articles - View Articles"),
-      route: PageRoute.ARTICLES,
-      onClick: () => navigate(PageRoute.ARTICLES),
-    },
-    // Documents
-    {
-      key: "/documents",
-      icon: <BookOutlined />,
-      label: t("sidebar.documents", language),
-      title: "Documents - Company Policies & Guidelines",
-      route: "/documents",
-      onClick: () => navigate("/documents"),
-    },
     // Q&A
     {
       key: PageRoute.QUESTIONS,
@@ -354,12 +340,12 @@ const createTrainingManagerSidebarItems = (
     },
     // Documents
     {
-      key: "/documents",
+      key: PageRoute.DOCUMENTS,
       icon: <BookOutlined />,
       label: t("sidebar.documents", language),
       title: "Documents - Company Policies & Guidelines",
-      route: "/documents",
-      onClick: () => navigate("/documents"),
+      route: PageRoute.DOCUMENTS,
+      onClick: () => navigate(PageRoute.DOCUMENTS),
     },
     {
       type: "divider",
@@ -377,46 +363,19 @@ const createTrainingManagerSidebarItems = (
         marginBottom: "8px",
       },
     } as MenuItem,
-    // Q&A Management
-    {
-      key: PageRoute.QA_MANAGEMENT,
-      icon: <MessageOutlined />,
-      label: byLang(language, "Quản lý Hỏi đáp", "Q&A Management"),
-      title: byLang(language, "Quản lý Hỏi đáp - Quản lý câu hỏi và câu trả lời", "Q&A Management - Manage Questions & Answers"),
-      route: PageRoute.QA_MANAGEMENT,
-      onClick: () => navigate(PageRoute.QA_MANAGEMENT),
-    },
     // Article Management
-    {
-      key: PageRoute.ARTICLE_MANAGEMENT,
-      icon: <FormOutlined />,
-      label: byLang(language, "Quản lý bài viết", "Article Management"),
-      title: byLang(language, "Quản lý bài viết - Tạo/Cập nhật/Xóa bài viết", "Article Management - Create/Update/Delete Articles"),
-      route: PageRoute.ARTICLE_MANAGEMENT,
-      onClick: () => navigate(PageRoute.ARTICLE_MANAGEMENT),
-    },
-    // Document Management (Wiki) - CHỈ HIỂN THỊ KHI LÀ HEAD OF DEPARTMENT
     ...(isHeadOfDepartment
       ? [
-          {
-            key: PageRoute.DOCUMENT_MANAGEMENT,
-            icon: <FileTextOutlined />,
-            label: "Document Management",
-            title: "Internal Wiki & Policies",
-            route: PageRoute.DOCUMENT_MANAGEMENT,
-            onClick: () => navigate(PageRoute.DOCUMENT_MANAGEMENT),
-          } as MenuItem,
-        ]
+        {
+          key: PageRoute.ARTICLE_MANAGEMENT,
+          icon: <FormOutlined />,
+          label: byLang(language, "Quản lý bài viết", "Article Management"),
+          title: byLang(language, "Quản lý bài viết - Tạo/Cập nhật/Xóa bài viết", "Article Management - Create/Update/Delete Articles"),
+          route: PageRoute.ARTICLE_MANAGEMENT,
+          onClick: () => navigate(PageRoute.ARTICLE_MANAGEMENT),
+        },
+      ]
       : []),
-    // Quiz Management
-    {
-      key: PageRoute.QUIZ_MANAGEMENT,
-      icon: <FormOutlined />,
-      label: byLang(language, "Quản lý bài thi", "Quiz Management"),
-      title: byLang(language, "Quản lý bài thi - Tạo/Cập nhật/Xóa bài thi", "Quiz Management - Create/Update/Delete Quizzes"),
-      route: PageRoute.QUIZ_MANAGEMENT,
-      onClick: () => navigate(PageRoute.QUIZ_MANAGEMENT),
-    },
     // Course Management
     {
       key: PageRoute.COURSE_MANAGEMENT,
@@ -426,14 +385,14 @@ const createTrainingManagerSidebarItems = (
       route: PageRoute.COURSE_MANAGEMENT,
       onClick: () => navigate(PageRoute.COURSE_MANAGEMENT),
     },
-    // Category Management
+    // Quiz Management
     {
-      key: PageRoute.CATEGORY_MANAGEMENT,
-      icon: <FolderOpenOutlined />,
-      label: byLang(language, "Quản lý danh mục", "Category Management"),
-      title: byLang(language, "Quản lý danh mục - Tạo/Cập nhật/Xóa danh mục", "Category Management - Create/Update/Delete Categories"),
-      route: PageRoute.CATEGORY_MANAGEMENT,
-      onClick: () => navigate(PageRoute.CATEGORY_MANAGEMENT),
+      key: PageRoute.QUIZ_MANAGEMENT,
+      icon: <FormOutlined />,
+      label: byLang(language, "Quản lý bài thi", "Quiz Management"),
+      title: byLang(language, "Quản lý bài thi - Tạo/Cập nhật/Xóa bài thi", "Quiz Management - Create/Update/Delete Quizzes"),
+      route: PageRoute.QUIZ_MANAGEMENT,
+      onClick: () => navigate(PageRoute.QUIZ_MANAGEMENT),
     },
     // Question Bank
     {
@@ -444,8 +403,43 @@ const createTrainingManagerSidebarItems = (
       route: PageRoute.QUESTION_BANK_MANAGEMENT,
       onClick: () => navigate(PageRoute.QUESTION_BANK_MANAGEMENT),
     },
+    // Document Management (Wiki) - CHỈ HIỂN THỊ KHI LÀ HEAD OF DEPARTMENT
+    ...(isHeadOfDepartment
+      ? [
+        {
+          key: PageRoute.DOCUMENT_MANAGEMENT,
+          icon: <FileTextOutlined />,
+          label: byLang(language, "Quản lý tài liệu", "Document Management"),
+          title: byLang(language, "Wiki nội bộ & Chính sách", "Internal Wiki & Policies"),
+          route: PageRoute.DOCUMENT_MANAGEMENT,
+          onClick: () => navigate(PageRoute.DOCUMENT_MANAGEMENT),
+        } as MenuItem,
+      ]
+      : []),
     {
       type: "divider",
+    },
+    // Personal Section Header
+    {
+      key: "personal-header",
+      label: "PERSONAL",
+      disabled: true,
+      style: {
+        textAlign: "left",
+        fontSize: "11px",
+        color: "#999",
+        marginTop: "8px",
+        marginBottom: "8px",
+      },
+    } as MenuItem,
+    // Learning History - ref #
+    {
+      key: PageRoute.HISTORY,
+      icon: <HistoryOutlined />,
+      label: t("sidebar.learning_history", language),
+      title: byLang(language, "Lịch sử học tập - Theo dõi tiến độ", "Learning History - Track your progress"),
+      route: PageRoute.HISTORY,
+      onClick: () => navigate(PageRoute.HISTORY),
     },
     // View Profile
     {
@@ -537,6 +531,15 @@ const createSystemAdminSidebarItems = (
       route: PageRoute.COURSES,
       onClick: () => navigate(PageRoute.COURSES),
     },
+    // Documents
+    {
+      key: PageRoute.DOCUMENTS,
+      icon: <BookOutlined />,
+      label: t("sidebar.documents", language),
+      title: "Documents - Company Policies & Guidelines",
+      route: PageRoute.DOCUMENTS,
+      onClick: () => navigate(PageRoute.DOCUMENTS),
+    },
     {
       type: "divider",
     },
@@ -571,14 +574,14 @@ const createSystemAdminSidebarItems = (
       route: PageRoute.ARTICLE_MANAGEMENT,
       onClick: () => navigate(PageRoute.ARTICLE_MANAGEMENT),
     },
-    // Document Management (Wiki)
+    // Course Management
     {
-      key: PageRoute.DOCUMENT_MANAGEMENT,
-      icon: <FileTextOutlined />,
-      label: "Document Management",
-      title: "Internal Wiki & Policies",
-      route: PageRoute.DOCUMENT_MANAGEMENT,
-      onClick: () => navigate(PageRoute.DOCUMENT_MANAGEMENT),
+      key: PageRoute.COURSE_MANAGEMENT,
+      icon: <BookOutlined />,
+      label: byLang(language, "Quản lý khóa học", "Course Management"),
+      title: byLang(language, "Quản lý khóa học - Tạo/Cập nhật/Xóa khóa học", "Course Management - Create/Update/Delete Courses"),
+      route: PageRoute.COURSE_MANAGEMENT,
+      onClick: () => navigate(PageRoute.COURSE_MANAGEMENT),
     },
     // Quiz Management
     {
@@ -589,14 +592,14 @@ const createSystemAdminSidebarItems = (
       route: PageRoute.QUIZ_MANAGEMENT,
       onClick: () => navigate(PageRoute.QUIZ_MANAGEMENT),
     },
-    // Course Management
+    // Question Bank
     {
-      key: PageRoute.COURSE_MANAGEMENT,
-      icon: <BookOutlined />,
-      label: byLang(language, "Quản lý khóa học", "Course Management"),
-      title: byLang(language, "Quản lý khóa học - Tạo/Cập nhật/Xóa khóa học", "Course Management - Create/Update/Delete Courses"),
-      route: PageRoute.COURSE_MANAGEMENT,
-      onClick: () => navigate(PageRoute.COURSE_MANAGEMENT),
+      key: PageRoute.QUESTION_BANK_MANAGEMENT,
+      icon: <DatabaseOutlined />,
+      label: byLang(language, "Ngân hàng câu hỏi", "Question Bank"),
+      title: byLang(language, "Ngân hàng câu hỏi - Quản lý câu hỏi cho bài thi", "Question Bank - Manage Questions for Quizzes"),
+      route: PageRoute.QUESTION_BANK_MANAGEMENT,
+      onClick: () => navigate(PageRoute.QUESTION_BANK_MANAGEMENT),
     },
     // Category Management
     {
@@ -607,14 +610,14 @@ const createSystemAdminSidebarItems = (
       route: PageRoute.CATEGORY_MANAGEMENT,
       onClick: () => navigate(PageRoute.CATEGORY_MANAGEMENT),
     },
-    // Question Bank
+    // Document Management (Wiki)
     {
-      key: PageRoute.QUESTION_BANK_MANAGEMENT,
-      icon: <DatabaseOutlined />,
-      label: byLang(language, "Ngân hàng câu hỏi", "Question Bank"),
-      title: byLang(language, "Ngân hàng câu hỏi - Quản lý câu hỏi cho bài thi", "Question Bank - Manage Questions for Quizzes"),
-      route: PageRoute.QUESTION_BANK_MANAGEMENT,
-      onClick: () => navigate(PageRoute.QUESTION_BANK_MANAGEMENT),
+      key: PageRoute.DOCUMENT_MANAGEMENT,
+      icon: <FileTextOutlined />,
+      label: byLang(language, "Quản lý tài liệu", "Document Management"),
+      title: byLang(language, "Wiki nội bộ & Chính sách", "Internal Wiki & Policies"),
+      route: PageRoute.DOCUMENT_MANAGEMENT,
+      onClick: () => navigate(PageRoute.DOCUMENT_MANAGEMENT),
     },
     {
       type: "divider",
@@ -661,6 +664,28 @@ const createSystemAdminSidebarItems = (
     },
     {
       type: "divider",
+    },
+    // Personal Section Header
+    {
+      key: "personal-header",
+      label: "PERSONAL",
+      disabled: true,
+      style: {
+        textAlign: "left",
+        fontSize: "11px",
+        color: "#999",
+        marginTop: "8px",
+        marginBottom: "8px",
+      },
+    } as MenuItem,
+    // Learning History - ref #
+    {
+      key: PageRoute.HISTORY,
+      icon: <HistoryOutlined />,
+      label: t("sidebar.learning_history", language),
+      title: byLang(language, "Lịch sử học tập - Theo dõi tiến độ", "Learning History - Track your progress"),
+      route: PageRoute.HISTORY,
+      onClick: () => navigate(PageRoute.HISTORY),
     },
     // View Profile
     {
@@ -750,6 +775,19 @@ const createDirectorSidebarItems = (
     {
       type: "divider",
     },
+    // Personal Section Header
+    {
+      key: "personal-header",
+      label: "PERSONAL",
+      disabled: true,
+      style: {
+        textAlign: "left",
+        fontSize: "11px",
+        color: "#999",
+        marginTop: "8px",
+        marginBottom: "8px",
+      },
+    } as MenuItem,
     // View Profile
     {
       key: PageRoute.PROFILE,
@@ -793,8 +831,8 @@ const createMenuItems = (
         const docMenu = {
           key: PageRoute.DOCUMENT_MANAGEMENT,
           icon: <FileTextOutlined />,
-          label: "Document Management",
-          title: "Internal Wiki & Policies",
+          label: byLang(language, "Quản lý tài liệu", "Document Management"),
+          title: byLang(language, "Wiki nội bộ & Chính sách", "Internal Wiki & Policies"),
           route: PageRoute.DOCUMENT_MANAGEMENT,
           onClick: () => navigate(PageRoute.DOCUMENT_MANAGEMENT),
         } as MenuItem
@@ -909,5 +947,5 @@ export const useSidebarItems = (userRole?: Role, isHeadOfDepartment: boolean = f
 
 // Export hàm thô (nếu cần)
 export const getSidebarItems = (language: "vi" | "en" = "vi", isHeadOfDepartment: boolean = false): MenuItem[] => {
-  return createMenuItems(() => {}, undefined, language, isHeadOfDepartment)
+  return createMenuItems(() => { }, undefined, language, isHeadOfDepartment)
 }

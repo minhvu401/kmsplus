@@ -23,6 +23,10 @@ const lato = Lato({
 export const metadata: Metadata = {
   title: "KMS Plus",
   description: "Knowledge Management System",
+  icons: {
+    icon: "/favico.png",
+    apple: "/favico.png",
+  },
 }
 
 export default function RootLayout({
