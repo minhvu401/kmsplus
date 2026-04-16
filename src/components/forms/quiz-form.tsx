@@ -405,7 +405,29 @@ export default function QuizForm({
         onOk={submitAttempt}
         onCancel={() => setOpen(false)}
       >
-        <p>{t.confirmSubmitBody}</p>
+        <div style={{ position: "relative" }}>
+          {isPending && (
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                background: "rgba(255,255,255,0.9)",
+                zIndex: 9999,
+                borderRadius: 6,
+              }}
+            >
+              <div style={{ textAlign: "center" }}>
+                <Spin size="large" />
+                <div style={{ marginTop: 8 }}>{t.autoSubmitting}</div>
+              </div>
+            </div>
+          )}
+
+          <p>{t.confirmSubmitBody}</p>
+        </div>
       </Modal>
 
       <Modal

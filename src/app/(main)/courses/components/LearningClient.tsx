@@ -23,8 +23,10 @@ import {
   getQuizByCurriculumItemId,
 } from "@/action/quiz/quizActions"
 import FeedbackBanner from "@/components/ui/reviews/feedback-banner"
+import FailedBanner from "@/components/ui/reviews/failed-banner"
 import QuizDetails from "@/components/ui/quizzes/quiz-details"
 import AttemptHistory from "@/components/ui/quizzes/attempt-history"
+import useLanguageStore from "@/store/useLanguageStore"
 
 const { Header, Sider, Content } = Layout
 
@@ -55,6 +57,32 @@ export default function LearningClient({
     Boolean(enrollment?.has_submitted_feedback)
   )
   const [messageApi, contextHolder] = message.useMessage()
+  const { language } = useLanguageStore()
+
+  const L = {
+    learningMode: language === "vi" ? "Chế độ học" : "Learning Mode",
+    progress: language === "vi" ? "Tiến độ" : "Progress",
+    previousLesson: language === "vi" ? "Bài trước" : "Previous Lesson",
+    nextLesson: language === "vi" ? "Bài sau" : "Next Lesson",
+      resetSuccess:
+        language === "vi" ? 'Đã đặt lại tiến độ khóa học.' : 'Course progress has been reset.',
+    quizNotAvailable: language === "vi" ? "Chi tiết bài kiểm tra không có sẵn." : "Quiz details are not available.",
+    courseContent: language === "vi" ? "Nội dung khóa học" : "Course Content",
+    loadingContent: language === "vi" ? "Đang tải nội dung..." : "Loading content...",
+  }
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    try {
+      const flag = sessionStorage.getItem('kms_reset_success')
+      if (flag) {
+        sessionStorage.removeItem('kms_reset_success')
+        messageApi.success(L.resetSuccess)
+      }
+    } catch (e) {
+      // ignore
+    }
+  }, [messageApi, language])
 
   // Real-time progress from database
   const currentProgressPercentage = enrollment?.progress_percentage || 0
@@ -332,7 +360,7 @@ export default function LearningClient({
               <div className="h-96 flex flex-col items-center justify-center gap-4">
                 <Spin size="large" />
                 <div className="text-gray-500 font-medium">
-                  Loading content...
+                  {L.loadingContent}
                 </div>
               </div>
             ) : activeItem.type === "quiz" ? (
@@ -347,10 +375,27 @@ export default function LearningClient({
                       />
                     ) : (
                       <div className="text-center text-gray-500 py-10">
-                        Quiz details are not available.
+                        {L.quizNotAvailable}
                       </div>
                     )}
                   </div>
+
+                  {(() => {
+                    const attempts = attemptHistory?.attempts || []
+                    const hasPassed = attempts.some((a: any) => a.status === "passed")
+                    const hasInProgress = attempts.some((a: any) => a.status === "in_progress")
+                    const noAttemptsLeft = attemptHistory?.attempts_left === 0
+                    if (noAttemptsLeft && !hasPassed && !hasInProgress) {
+                      return (
+                        <FailedBanner
+                          courseId={course.id}
+                          onSuccessMessage={(content) => messageApi.success(content)}
+                          onErrorMessage={(content) => messageApi.error(content)}
+                        />
+                      )
+                    }
+                    return null
+                  })()}
 
                   <AttemptHistory
                     courseId={course.id}
@@ -370,7 +415,7 @@ export default function LearningClient({
                     disabled={isFirstLesson}
                     style={{ visibility: isFirstLesson ? "hidden" : "visible" }}
                   >
-                    Previous Lesson
+                    {L.previousLesson}
                   </Button>
 
                   <div className="flex-1" />
@@ -383,7 +428,7 @@ export default function LearningClient({
                     disabled={isLastLesson}
                     style={{ visibility: isLastLesson ? "hidden" : "visible" }}
                   >
-                    Next Lesson <RightOutlined />
+                    {L.nextLesson} <RightOutlined />
                   </Button>
                 </div>
               </div>
@@ -535,7 +580,7 @@ export default function LearningClient({
         >
           <div className="sticky top-0 z-10 bg-white p-4 border-b flex justify-between items-center shadow-sm">
             {!collapsed && (
-              <span className="font-bold text-gray-700">Course Content</span>
+              <span className="font-bold text-gray-700">{L.courseContent}</span>
             )}
             <Button
               type="text"

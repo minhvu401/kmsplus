@@ -12,6 +12,7 @@ import {
   getEnrollmentOverviewService,
   getCourseLearnerEnrollmentsService,
   getCourseLearnerEnrollmentDetailService,
+  resetCourseProgressService,
 } from "@/service/enrollment.service"
 
 export async function enrollCourseAction(courseId: number) {
@@ -169,5 +170,29 @@ export async function getCourseLearnerEnrollmentDetail(params: {
       success: false,
       error: error.message || "Authentication failed",
     }
+  }
+}
+
+// Reset a learner's progress for a course: clear completed items, set progress to 0,
+// and delete quiz attempts for quiz-type curriculum items in the course.
+export async function resetCourseProgressAction(courseId: number) {
+  try {
+    await requireAuth()
+    const user = await getCurrentUser()
+    if (!user?.id) return { success: false, error: "Vui lòng đăng nhập" }
+    const userId = Number(user.id)
+
+    const res = await resetCourseProgressService(courseId, userId)
+    if (!res || !res.success) {
+      return { success: false, error: res?.error || "Failed to reset progress" }
+    }
+
+    revalidatePath(`/courses/${courseId}`)
+    revalidatePath(`/courses/${courseId}/learning`)
+    revalidatePath(`/history`)
+    return { success: true }
+  } catch (error: any) {
+    console.error("Reset progress error:", error)
+    return { success: false, error: error.message || "Server error" }
   }
 }

@@ -516,3 +516,41 @@ export async function getCourseLearnerEnrollmentDetailService({
     }
   }
 }
+
+export async function resetCourseProgressService(courseId: number, userId: number) {
+  try {
+    // Ensure enrollment exists
+    const enrolled = await sql`SELECT id FROM enrollments WHERE user_id = ${userId} AND course_id = ${courseId} LIMIT 1`
+    if (!enrolled || enrolled.length === 0) {
+      return { success: false, error: "Enrollment not found" }
+    }
+
+    // Delete quiz attempts associated with this course for the user
+    await sql`
+      DELETE FROM quiz_attempts
+      WHERE user_id = ${userId}
+        AND curriculum_item_id IN (
+          SELECT ci.id
+          FROM curriculum_items ci
+          JOIN sections s ON s.id = ci.section_id
+          WHERE s.course_id = ${courseId} AND ci.quiz_id IS NOT NULL
+        )
+    `
+
+    // Reset enrollment progress and completed items
+    await sql`
+      UPDATE enrollments
+      SET
+        completed_item_ids = '[]'::jsonb,
+        progress_percentage = 0,
+        status = 'in_progress',
+        completed_at = NULL
+      WHERE user_id = ${userId} AND course_id = ${courseId}
+    `
+
+    return { success: true }
+  } catch (error: any) {
+    console.error("Service Error - resetCourseProgressService:", error)
+    return { success: false, error: error?.message || "Database error" }
+  }
+}
