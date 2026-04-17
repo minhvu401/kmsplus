@@ -10,6 +10,8 @@ import {
   ArrowLeftOutlined,
 } from "@ant-design/icons"
 import { useState } from "react"
+import useLanguageStore from "@/store/useLanguageStore"
+import { t } from "@/lib/i18n"
 
 const { Title, Text } = Typography
 
@@ -24,6 +26,7 @@ export default function ForgotPasswordForm({
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState("")
   const [success, setSuccess] = useState(false)
+  const { language } = useLanguageStore()
 
   return (
     <div className="bg-white rounded-2xl shadow-2xl p-8 w-full">
@@ -39,9 +42,11 @@ export default function ForgotPasswordForm({
 
       {/* Header */}
       <div className="text-center mb-8">
-        <div 
+        <div
           className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg"
-          style={{ background: "linear-gradient(135deg, #69b1ff 0%, #1677ff 100%)" }}
+          style={{
+            background: "linear-gradient(135deg, #69b1ff 0%, #1677ff 100%)",
+          }}
         >
           <LockOutlined className="text-3xl text-white" />
         </div>
@@ -65,10 +70,10 @@ export default function ForgotPasswordForm({
       )}
 
       {/* Form */}
-      <Form 
-        form={form} 
-        layout="vertical" 
-        requiredMark={false} 
+      <Form
+        form={form}
+        layout="vertical"
+        requiredMark={false}
         size="large"
         onFinish={async (values) => {
           setLoading(true)
@@ -112,7 +117,7 @@ export default function ForgotPasswordForm({
         >
           <Input
             prefix={<MailOutlined className="text-gray-400" />}
-            placeholder="Enter email here..."
+            placeholder={t("password.email_placeholder", language)}
             className="!rounded-lg"
           />
         </Form.Item>
@@ -172,7 +177,10 @@ export default function ForgotPasswordForm({
             block
             loading={loading}
             className="!h-12 !rounded-lg !font-semibold !text-base"
-            style={{ background: "linear-gradient(135deg, #69b1ff 0%, #1677ff 100%)", border: "none" }}
+            style={{
+              background: "linear-gradient(135deg, #69b1ff 0%, #1677ff 100%)",
+              border: "none",
+            }}
           >
             Đặt lại mật khẩu
           </Button>

@@ -2,6 +2,8 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import useLanguageStore from "@/store/useLanguageStore"
+import { t } from "@/lib/i18n"
 
 type CoursePayload = {
   title?: string
@@ -30,6 +32,7 @@ type StepStatus = "pending" | "valid" | "invalid"
 
 export default function ClientCreateCourse() {
   const router = useRouter()
+  const language = useLanguageStore((state) => state.language)
   const [current, setCurrent] = useState(0)
   const [loading, setLoading] = useState(false)
   const [payload, setPayload] = useState<CoursePayload>({
@@ -137,9 +140,7 @@ export default function ClientCreateCourse() {
       if (firstInvalidStep !== -1) {
         setCurrent(firstInvalidStep)
       }
-      alert(
-        "Vui lòng hoàn thành tất cả các trường bắt buộc ở mọi bước trước khi đăng."
-      )
+      alert(t("course.create.error_all_required", language))
       return // Dừng lại, không cho submit
     }
 
@@ -157,7 +158,7 @@ export default function ClientCreateCourse() {
       router.push("/courses/management")
     } catch (err) {
       console.error(err)
-      alert("Failed to create course. See console for details.")
+      alert(t("course.create.error_failed", language))
     } finally {
       setLoading(false)
     }
@@ -166,9 +167,13 @@ export default function ClientCreateCourse() {
   return (
     <div className="bg-white p-6 rounded shadow">
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Create a new course</h1>
+        <h1 className="text-2xl font-semibold">
+          {t("course.create.title", language)}
+        </h1>
         <div className="text-sm text-gray-500">
-          Step {current + 1} / {steps.length}
+          {t("course.create.step_info", language)
+            .replace("{current}", String(current + 1))
+            .replace("{total}", String(steps.length))}
         </div>
       </div>
 
@@ -220,7 +225,12 @@ export default function ClientCreateCourse() {
                         : "○"}
                   </span>
 
-                  <span className="flex-1 text-sm font-medium">{s}</span>
+                  <span className="flex-1 text-sm font-medium">
+                    {i === 0 && t("course.create.step_basic", language)}
+                    {i === 1 && t("course.create.step_advance", language)}
+                    {i === 2 && t("course.create.step_curriculum", language)}
+                    {i === 3 && t("course.create.step_publish", language)}
+                  </span>
 
                   {/* {s === "Curriculum" && (
                     <span className="ml-2 text-xs text-sky-600 bg-sky-100 px-2 py-0.5 rounded">
@@ -253,7 +263,9 @@ export default function ClientCreateCourse() {
         {current === 0 && (
           <section className="space-y-4">
             <div>
-              <label className="block text-sm font-medium">Title</label>
+              <label className="block text-sm font-medium">
+                {t("course.create.form_title", language)}
+              </label>
               <input
                 value={payload.title || ""}
                 onChange={(e) => update("title", e.target.value)}
@@ -266,7 +278,9 @@ export default function ClientCreateCourse() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium">Slug</label>
+              <label className="block text-sm font-medium">
+                {t("course.create.form_slug", language)}
+              </label>
               <input
                 value={payload.slug || ""}
                 onChange={(e) => update("slug", e.target.value)}
@@ -280,7 +294,9 @@ export default function ClientCreateCourse() {
             </div>
             {/* ... các input khác ... */}
             <div>
-              <label className="block text-sm font-medium">Thumbnail URL</label>
+              <label className="block text-sm font-medium">
+                {t("course.create.form_thumbnail", language)}
+              </label>
               <input
                 value={payload.thumbnail_url || ""}
                 onChange={(e) => update("thumbnail_url", e.target.value)}
@@ -289,7 +305,7 @@ export default function ClientCreateCourse() {
             </div>
             <div>
               <label className="block text-sm font-medium">
-                Short Description
+                {t("course.create.form_description", language)}
               </label>
               <textarea
                 value={payload.description || ""}
@@ -305,20 +321,28 @@ export default function ClientCreateCourse() {
           <section className="space-y-4">
             {/* ... các input khác ... */}
             <div>
-              <label className="block text-sm font-medium">Status</label>
+              <label className="block text-sm font-medium">
+                {t("course.create.form_status", language)}
+              </label>
               <select
                 value={payload.status}
                 onChange={(e) => update("status", e.target.value)}
                 className="mt-1 block w-full border px-3 py-2 rounded"
               >
-                <option value="draft">Draft</option>
-                <option value="published">Published</option>
-                <option value="archived">Archived</option>
+                <option value="draft">
+                  {t("course.create.status_draft", language)}
+                </option>
+                <option value="published">
+                  {t("course.create.status_published", language)}
+                </option>
+                <option value="archived">
+                  {t("course.create.status_archived", language)}
+                </option>
               </select>
             </div>
             <div>
               <label className="block text-sm font-medium">
-                Duration (hours)
+                {t("course.create.form_duration", language)}
               </label>
               <input
                 type="number"
@@ -330,7 +354,9 @@ export default function ClientCreateCourse() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium">Level</label>
+              <label className="block text-sm font-medium">
+                {t("course.create.form_level", language)}
+              </label>
               <select
                 value={payload.level || ""}
                 onChange={(e) => update("level", e.target.value)}
@@ -341,10 +367,18 @@ export default function ClientCreateCourse() {
                     : "border-gray-300"
                 }`}
               >
-                <option value="">Select level</option>
-                <option value="beginner">Beginner</option>
-                <option value="intermediate">Intermediate</option>
-                <option value="advanced">Advanced</option>
+                <option value="">
+                  {t("course.create.level_placeholder", language)}
+                </option>
+                <option value="beginner">
+                  {t("course.create.level_beginner", language)}
+                </option>
+                <option value="intermediate">
+                  {t("course.create.level_intermediate", language)}
+                </option>
+                <option value="advanced">
+                  {t("course.create.level_advanced", language)}
+                </option>
               </select>
             </div>
           </section>
@@ -353,10 +387,11 @@ export default function ClientCreateCourse() {
         {current === 2 && (
           <section className="space-y-4">
             <div>
-              <label className="block text-sm font-medium">Curriculum</label>
+              <label className="block text-sm font-medium">
+                {t("course.create.form_curriculum", language)}
+              </label>
               <small className="block text-xs text-gray-500">
-                You can paste a JSON array of modules/lessons. For quick setup
-                leave empty and edit later.
+                {t("course.create.curriculum_hint", language)}
               </small>
               <textarea
                 value={JSON.stringify(payload.curriculum || [], null, 2)}
@@ -387,7 +422,7 @@ export default function ClientCreateCourse() {
           <section className="space-y-4">
             <div>
               <label className="block text-sm font-medium">
-                Price (leave empty for free)
+                {t("course.create.form_price", language)}
               </label>
               <input
                 type="number"
@@ -408,20 +443,22 @@ export default function ClientCreateCourse() {
             </div>
             {/* ... các input khác ... */}
             <div>
-              <label className="block text-sm font-medium">SEO Title</label>
+              <label className="block text-sm font-medium">
+                {t("course.create.form_seo_title", language)}
+              </label>
               <input
                 className="mt-1 block w-full border px-3 py-2 rounded"
-                placeholder="Optional"
+                placeholder={t("course.create.placeholder_optional", language)}
               />
             </div>
             <div>
               <label className="block text-sm font-medium">
-                SEO Description
+                {t("course.create.form_seo_description", language)}
               </label>
               <textarea
                 className="mt-1 block w-full border px-3 py-2 rounded"
                 rows={3}
-                placeholder="Optional"
+                placeholder={t("course.create.placeholder_optional", language)}
               />
             </div>
           </section>
@@ -436,7 +473,7 @@ export default function ClientCreateCourse() {
               onClick={prev}
               className="px-4 py-2 border rounded mr-2"
             >
-              Back
+              {t("course.create.btn_back", language)}
             </button>
           )}
         </div>
@@ -448,7 +485,7 @@ export default function ClientCreateCourse() {
               onClick={next}
               className="px-4 py-2 bg-sky-600 text-white rounded"
             >
-              Next
+              {t("course.create.btn_next", language)}
             </button>
           ) : (
             <button
@@ -457,7 +494,9 @@ export default function ClientCreateCourse() {
               disabled={loading}
               className="px-4 py-2 bg-green-600 text-white rounded"
             >
-              {loading ? "Saving..." : "Publish / Save"}
+              {loading
+                ? t("course.create.btn_saving", language)
+                : t("course.create.btn_publish", language)}
             </button>
           )}
         </div>

@@ -1,7 +1,17 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { List, Button, Modal, Typography, Space, Spin, Tooltip, Tag, Divider } from "antd"
+import {
+  List,
+  Button,
+  Modal,
+  Typography,
+  Space,
+  Spin,
+  Tooltip,
+  Tag,
+  Divider,
+} from "antd"
 import { EyeOutlined, ArrowRightOutlined } from "@ant-design/icons"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -23,7 +33,13 @@ type AnswerGroup = {
   answers: AnswerItem[]
 }
 
-export default function AnswersTabContent({ initialItems = [], userId }: { initialItems?: AnswerItem[], userId?: number | string }) {
+export default function AnswersTabContent({
+  initialItems = [],
+  userId,
+}: {
+  initialItems?: AnswerItem[]
+  userId?: number | string
+}) {
   const language = useLanguageStore((s) => s.language)
   const [items, setItems] = useState<AnswerItem[]>(initialItems)
   const [groups, setGroups] = useState<AnswerGroup[]>([])
@@ -34,7 +50,6 @@ export default function AnswersTabContent({ initialItems = [], userId }: { initi
     let mounted = true
     if ((items?.length ?? 0) > 0) return
     if (!userId) return
-
     ;(async () => {
       try {
         const res = await fetch(`/api/users/${userId}/answers`)
@@ -61,14 +76,20 @@ export default function AnswersTabContent({ initialItems = [], userId }: { initi
     }
     const grouped: AnswerGroup[] = []
     for (const [key, arr] of map.entries()) {
-      grouped.push({ question_id: arr[0].question_id, question_title: arr[0].question_title ?? null, answers: arr })
+      grouped.push({
+        question_id: arr[0].question_id,
+        question_title: arr[0].question_title ?? null,
+        answers: arr,
+      })
     }
     setGroups(grouped)
   }, [items])
 
   return (
     <div>
-      <Typography.Title level={4}>{t("profile.tab_answers", language)}</Typography.Title>
+      <Typography.Title level={4}>
+        {t("profile.tab_answers", language)}
+      </Typography.Title>
       <List
         itemLayout="horizontal"
         dataSource={groups}
@@ -77,7 +98,9 @@ export default function AnswersTabContent({ initialItems = [], userId }: { initi
           <List.Item
             actions={[
               <Link key="view" href={`/questions/${group.question_id}`}>
-                <Button type="link" icon={<ArrowRightOutlined />}>{language === 'vi' ? 'Xem câu hỏi' : 'View question'}</Button>
+                <Button type="link" icon={<ArrowRightOutlined />}>
+                  {t("profile.view_question", language)}
+                </Button>
               </Link>,
             ]}
           >
@@ -91,8 +114,17 @@ export default function AnswersTabContent({ initialItems = [], userId }: { initi
                   />
                 </Tooltip>
               }
-              title={<span className="font-medium">{group.question_title ?? (language === 'vi' ? 'Câu hỏi liên quan' : 'Related question')}</span>}
-              description={<span className="text-sm text-gray-500">{group.answers.length} {language === 'vi' ? 'trả lời' : 'answers'}</span>}
+              title={
+                <span className="font-medium">
+                  {group.question_title ??
+                    t("profile.related_question", language)}
+                </span>
+              }
+              description={
+                <span className="text-sm text-gray-500">
+                  {group.answers.length} {t("profile.answers_count", language)}
+                </span>
+              }
             />
           </List.Item>
         )}
@@ -104,33 +136,62 @@ export default function AnswersTabContent({ initialItems = [], userId }: { initi
         width={760}
         open={!!preview}
         onCancel={() => setPreview(null)}
-        footer={preview ? [
-          <Button key="view-full" type="primary" onClick={() => router.push(`/questions/${preview?.question_id}`)}>
-            {language === 'vi' ? 'Xem câu hỏi' : 'View Question'}
-          </Button>,
-          <Button key="close" onClick={() => setPreview(null)}>
-            {t('common.close', language)}
-          </Button>
-        ] : null}
+        footer={
+          preview
+            ? [
+                <Button
+                  key="view-full"
+                  type="primary"
+                  onClick={() =>
+                    router.push(`/questions/${preview?.question_id}`)
+                  }
+                >
+                  {t("profile.view_question", language)}
+                </Button>,
+                <Button key="close" onClick={() => setPreview(null)}>
+                  {t("common.close", language)}
+                </Button>,
+              ]
+            : null
+        }
       >
         {preview && (
           <div className="space-y-4">
             {preview.question_title && (
               <div>
-                <Typography.Text type="secondary">{t('quiz.review_label_title', language)}</Typography.Text>
-                <div className="font-semibold text-base text-gray-900">{preview.question_title}</div>
+                <Typography.Text type="secondary">
+                  {t("quiz.review_label_title", language)}
+                </Typography.Text>
+                <div className="font-semibold text-base text-gray-900">
+                  {preview.question_title}
+                </div>
               </div>
             )}
 
-            <Divider style={{ margin: '8px 0' }} />
+            <Divider style={{ margin: "8px 0" }} />
 
             <div className="space-y-6">
               {preview.answers.map((ans) => (
                 <div key={ans.id} className="p-3 border rounded-md">
-                  <div className="prose max-w-none" dangerouslySetInnerHTML={{ __html: ans.content || '' }} />
+                  <div
+                    className="prose max-w-none"
+                    dangerouslySetInnerHTML={{ __html: ans.content || "" }}
+                  />
                   <div className="text-xs text-gray-500 mt-2">
-                    <strong>{t("profile.created_at", language)}:</strong> {ans.created_at ? new Date(ans.created_at).toLocaleString(language === "vi" ? "vi-VN" : "en-US") : "N/A"}
-                    {ans.updated_at && <span className="ml-4"><strong>{t("profile.updated_at", language)}:</strong> {new Date(ans.updated_at).toLocaleString(language === "vi" ? "vi-VN" : "en-US")}</span>}
+                    <strong>{t("profile.created_at", language)}:</strong>{" "}
+                    {ans.created_at
+                      ? new Date(ans.created_at).toLocaleString(
+                          language === "vi" ? "vi-VN" : "en-US"
+                        )
+                      : "N/A"}
+                    {ans.updated_at && (
+                      <span className="ml-4">
+                        <strong>{t("profile.updated_at", language)}:</strong>{" "}
+                        {new Date(ans.updated_at).toLocaleString(
+                          language === "vi" ? "vi-VN" : "en-US"
+                        )}
+                      </span>
+                    )}
                   </div>
                 </div>
               ))}

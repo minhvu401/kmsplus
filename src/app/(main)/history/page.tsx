@@ -29,6 +29,8 @@ import {
   TrendingUp,
 } from "lucide-react"
 import { getPersonalHistory } from "@/action/progress/progressAction"
+import useLanguageStore from "@/store/useLanguageStore"
+import { t } from "@/lib/i18n"
 
 // Định nghĩa kiểu dữ liệu trả về từ API (khớp với câu SQL trong service)
 interface HistoryItem {
@@ -47,6 +49,7 @@ export default function PersonalHistoryPage() {
   const [data, setData] = useState<HistoryItem[]>([])
   const [searchText, setSearchText] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
+  const { language } = useLanguageStore()
 
   // --- 1. FETCH DỮ LIỆU TỪ SERVER ---
   useEffect(() => {
@@ -85,7 +88,7 @@ export default function PersonalHistoryPage() {
 
     return [
       {
-        title: "Tổng số khóa học",
+        title: t("history.total_courses", language),
         value: totalEnrolled,
         sub: "Truy cập trọn đời",
         icon: <BookOpen className="text-blue-600" size={24} />,
@@ -93,7 +96,7 @@ export default function PersonalHistoryPage() {
         text: "text-blue-600",
       },
       {
-        title: "Đã hoàn thành",
+        title: t("history.filter_completed", language),
         value: completedCourses,
         sub: `${totalEnrolled > 0 ? Math.round((completedCourses / totalEnrolled) * 100) : 0}% tỷ lệ hoàn thành`,
         icon: <CheckCircle className="text-blue-600" size={24} />,
@@ -101,7 +104,7 @@ export default function PersonalHistoryPage() {
         text: "text-blue-600",
       },
       {
-        title: "Tiến độ trung bình",
+        title: t("history.avg_progress", language),
         value: `${avgScore}%`,
         sub: "Tiếp tục học nhé!",
         icon: <TrendingUp className="text-purple-600" size={24} />,
@@ -109,7 +112,7 @@ export default function PersonalHistoryPage() {
         text: "text-purple-600",
       },
     ]
-  }, [data])
+  }, [data, language])
 
   // --- 3. FILTER & SEARCH CLIENT-SIDE ---
   const filteredData = data.filter((item) => {
@@ -124,7 +127,7 @@ export default function PersonalHistoryPage() {
   // --- 4. CẤU HÌNH CỘT (MAPPING DB FIELDS) ---
   const columns: ColumnsType<HistoryItem> = [
     {
-      title: "TÊN KHÓA HỌC",
+      title: t("history.table_course_name", language),
       dataIndex: "course_name", // Khớp với SQL: c.title as course_name
       key: "course_name",
       width: 350,
@@ -157,7 +160,7 @@ export default function PersonalHistoryPage() {
       ),
     },
     {
-      title: "NGÀY THAM GIA",
+      title: t("history.table_join_date", language),
       dataIndex: "enrolled_at", // Khớp với SQL
       key: "enrolled_at",
       className: "text-gray-500 font-medium",
@@ -165,7 +168,7 @@ export default function PersonalHistoryPage() {
         date ? new Date(date).toLocaleDateString("vi-VN") : "--", // Format ngày, xử lý TH null
     },
     {
-      title: "TIẾN ĐỘ",
+      title: t("history.table_progress", language),
       dataIndex: "progress_percentage", // Khớp với SQL
       key: "progress_percentage",
       width: 200,
@@ -186,7 +189,7 @@ export default function PersonalHistoryPage() {
       ),
     },
     {
-      title: "TRẠNG THÁI",
+      title: t("history.table_status", language),
       dataIndex: "status",
       render: (status) => {
         if (status === "assigned") {
@@ -220,7 +223,7 @@ export default function PersonalHistoryPage() {
       },
     },
     {
-      title: "THAO TÁC",
+      title: t("history.table_action", language),
       key: "action",
       align: "right",
       render: (_, record) => {
@@ -343,10 +346,16 @@ export default function PersonalHistoryPage() {
               className="w-32"
               onChange={setStatusFilter}
               options={[
-                { value: "all", label: "Tất cả" },
-                { value: "completed", label: "Hoàn thành" },
+                { value: "all", label: t("history.filter_all", language) },
+                {
+                  value: "completed",
+                  label: t("history.filter_completed", language),
+                },
                 { value: "in_progress", label: "Đang học" },
-                { value: "assigned", label: "Bắt buộc" },
+                {
+                  value: "assigned",
+                  label: t("history.filter_assigned", language),
+                },
               ]}
             />
             {/* Các filter khác có thể thêm sau nếu API hỗ trợ */}

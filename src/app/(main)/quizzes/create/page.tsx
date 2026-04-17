@@ -150,14 +150,20 @@ export default function CreateQuizPage() {
       payload.time_limit_minutes !== undefined &&
       (payload.time_limit_minutes < 0 || payload.time_limit_minutes > 1440)
     ) {
-      newErrors.time_limit_minutes = t("quiz.validation_duration_range", language)
+      newErrors.time_limit_minutes = t(
+        "quiz.validation_duration_range",
+        language
+      )
     }
 
     if (
       payload.passing_score !== undefined &&
       (payload.passing_score <= 0 || payload.passing_score > 100)
     ) {
-      newErrors.passing_score = t("quiz.validation_passing_score_range", language)
+      newErrors.passing_score = t(
+        "quiz.validation_passing_score_range",
+        language
+      )
     }
 
     setErrors(newErrors)
@@ -421,7 +427,12 @@ export default function CreateQuizPage() {
       questions: selectedQuestions,
     }))
 
-    message.success(`Cập nhật ${selectedQuestions.length} câu hỏi`)
+    message.success(
+      t("quiz.updated_questions", language).replace(
+        "{0}",
+        String(selectedQuestions.length)
+      )
+    )
     handleCloseAddQuestionsModal()
   }
 
@@ -576,7 +587,7 @@ export default function CreateQuizPage() {
 
     if (!payload.category_id) {
       console.warn("[handleSubmit] Category ID not found")
-      message.error("Category is required")
+      message.error(t("quiz.error_category_required", language))
       return
     }
 
@@ -623,7 +634,9 @@ export default function CreateQuizPage() {
     } catch (error) {
       console.error("[handleSubmit] Error:", error)
       const errorMsg = error instanceof Error ? error.message : "Unknown error"
-      message.error(`Lỗi khi tạo bài thi: ${errorMsg}`)
+      message.error(
+        t("quiz.error_creating_quiz", language).replace("{0}", errorMsg)
+      )
     } finally {
       setLoading(false)
     }
@@ -637,9 +650,13 @@ export default function CreateQuizPage() {
     <div className="max-w-4xl mx-auto py-6 px-4">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">{t("quiz.create_title", language)}</h1>
+        <h1 className="text-3xl font-bold mb-2">
+          {t("quiz.create_title", language)}
+        </h1>
         <p className="text-gray-600">
-          Bước {current + 1} / {steps.length}
+          {t("quiz.step_number", language)
+            .replace("{0}", String(current + 1))
+            .replace("{1}", String(steps.length))}
         </p>
       </div>
 
@@ -715,7 +732,7 @@ export default function CreateQuizPage() {
                   help={errors.title}
                 >
                   <Input
-                    placeholder="VD: Kiểm tra kiến thức Product"
+                    placeholder={t("quiz.example_title", language)}
                     value={payload.title}
                     onChange={handleTitleChange}
                     onBlur={handleBlur}
@@ -732,7 +749,7 @@ export default function CreateQuizPage() {
                   help={errors.description}
                 >
                   <Input.TextArea
-                    placeholder="VD: Dành cho nhân viên mới bắt đầu học về sản phẩm"
+                    placeholder={t("quiz.example_description", language)}
                     value={payload.description}
                     onChange={handleDescriptionChange}
                     onBlur={handleBlur}
@@ -751,7 +768,7 @@ export default function CreateQuizPage() {
                   <div className="flex gap-3 items-center">
                     <Input
                       type="number"
-                      placeholder="VD: 45"
+                      placeholder={t("quiz.example_duration", language)}
                       value={payload.time_limit_minutes ?? ""}
                       onChange={handleDurationChange}
                       onBlur={handleBlur}
@@ -781,7 +798,7 @@ export default function CreateQuizPage() {
                 >
                   <div className="flex gap-3 items-center">
                     <InputNumber
-                      placeholder="VD: 50"
+                      placeholder={t("quiz.example_passing_score", language)}
                       value={payload.passing_score || 80}
                       onChange={handlePassingScoreChange}
                       onBlur={handleBlur}
@@ -800,12 +817,12 @@ export default function CreateQuizPage() {
                 </Form.Item>
 
                 <Form.Item
-                  label="Số Lần Làm Bài (Max Attempts)"
+                  label={t("quiz.label_max_attempts", language)}
                   validateStatus={errors.max_attempts ? "error" : ""}
                   help={errors.max_attempts}
                 >
                   <Select
-                    placeholder="Chọn số lần được phép làm bài"
+                    placeholder={t("quiz.placeholder_max_attempts", language)}
                     value={payload.max_attempts}
                     onChange={handleMaxAttemptsChange}
                     size="large"
@@ -814,7 +831,10 @@ export default function CreateQuizPage() {
                       { label: "2", value: 2 },
                       { label: "3", value: 3 },
                       { label: "5", value: 5 },
-                      { label: "Không giới hạn", value: 999 },
+                      {
+                        label: t("quiz.option_unlimited", language),
+                        value: 999,
+                      },
                     ]}
                   />
                 </Form.Item>
@@ -826,14 +846,14 @@ export default function CreateQuizPage() {
                     <>
                       <CheckCircleOutlined className="text-green-600" />
                       <span className="text-green-600 font-medium">
-                        Thông tin hợp lệ. Bạn có thể tiếp tục.
+                        {t("quiz.valid_info", language)}
                       </span>
                     </>
                   ) : (
                     <>
                       <ExclamationCircleOutlined className="text-red-600" />
                       <span className="text-red-600 font-medium">
-                        Vui lòng kiểm tra lại các lỗi ở trên.
+                        {t("quiz.invalid_info", language)}
                       </span>
                     </>
                   )}
@@ -845,7 +865,9 @@ export default function CreateQuizPage() {
           {/* STEP 2: Thêm Câu Hỏi */}
           {current === 1 && (
             <div>
-              <h2 className="text-2xl font-semibold mb-6">{t("quiz.step_add_questions", language)}</h2>
+              <h2 className="text-2xl font-semibold mb-6">
+                {t("quiz.step_add_questions", language)}
+              </h2>
 
               <Button
                 type="primary"
@@ -862,11 +884,15 @@ export default function CreateQuizPage() {
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <p className="font-medium">
-                      {t("quiz.selected_questions_label", language)} ({payload.questions.length}):
+                      {t("quiz.selected_questions_label", language)} (
+                      {payload.questions.length}):
                     </p>
                     {payload.questions.length < 10 && (
                       <p className="text-sm text-red-600 font-medium">
-                        Cần thêm ít nhất {10 - payload.questions.length} câu nữa
+                        {t("quiz.need_more_questions", language).replace(
+                          "{0}",
+                          String(10 - payload.questions.length)
+                        )}
                       </p>
                     )}
                   </div>
@@ -893,17 +919,23 @@ export default function CreateQuizPage() {
                               : "text-yellow-900"
                           }`}
                         >
-                          Tổng điểm bài thi:{" "}
-                          <span className="text-lg">{totalScore}</span> điểm
+                          {t("quiz.total_score", language)}{" "}
+                          <span className="text-lg">{totalScore}</span>{" "}
+                          {t("quiz.points", language)}
                         </p>
                         <p className="text-sm text-gray-700 mt-1">
-                          ({payload.questions.length} câu ×{" "}
-                          {pointsPerQuestion.toFixed(2)} điểm/câu)
+                          ({payload.questions.length}{" "}
+                          {t("quiz.questions_times_points", language).replace(
+                            "{0}",
+                            pointsPerQuestion.toFixed(2)
+                          )}
+                          )
                         </p>
                         {!isPassingScoreValid && (
                           <p className="text-sm text-yellow-800 mt-2">
-                            ⚠️ Điểm đạt ({passingScore}%) vượt quá tổng điểm (
-                            {totalScore}). Vui lòng cân đối lại!
+                            {t("quiz.passing_score_exceeds", language)
+                              .replace("{0}", String(passingScore))
+                              .replace("{1}", String(totalScore))}
                           </p>
                         )}
                       </div>
@@ -946,14 +978,14 @@ export default function CreateQuizPage() {
                         </div>
                         {draggedIndex === index && (
                           <p className="text-xs text-blue-600 mt-2 font-medium">
-                            ⬆️ Kéo để sắp xếp, thả lên vị trí muốn di chuyển tới
+                            {t("quiz.drag_to_reorder", language)}
                           </p>
                         )}
                         {dragOverIndex === index &&
                           draggedIndex !== null &&
                           draggedIndex !== index && (
                             <p className="text-xs text-green-600 mt-2 font-medium">
-                              ✓ Thả ở đây để đặt câu hỏi vào vị trí này
+                              {t("quiz.drop_here", language)}
                             </p>
                           )}
                       </div>
@@ -970,8 +1002,7 @@ export default function CreateQuizPage() {
               ) : (
                 <div className="p-6 text-center bg-gray-50 rounded border border-gray-200">
                   <p className="text-gray-500">
-                    Chưa có câu hỏi nào. Bấm nút "Thêm Câu Hỏi Từ Kho" để bắt
-                    đầu.
+                    {t("quiz.no_questions_empty", language)}
                   </p>
                 </div>
               )}
@@ -984,7 +1015,7 @@ export default function CreateQuizPage() {
                 width={900}
                 footer={[
                   <Button key="cancel" onClick={handleCloseAddQuestionsModal}>
-                    Hủy
+                    {t("quiz.modal_cancel", language)}
                   </Button>,
                   <Button
                     key="submit"
@@ -993,7 +1024,7 @@ export default function CreateQuizPage() {
                     onClick={handleAddSelectedQuestions}
                     disabled={modalState.selectedQuestionIds.length === 0}
                   >
-                    Thêm{" "}
+                    {t("quiz.modal_submit", language)}{" "}
                     {modalState.selectedQuestionIds.length > 0 &&
                       `(${modalState.selectedQuestionIds.length})`}
                   </Button>,
@@ -1003,7 +1034,10 @@ export default function CreateQuizPage() {
                   <div className="space-y-4">
                     {/* Search Input */}
                     <Input
-                      placeholder="Tìm kiếm câu hỏi..."
+                      placeholder={t(
+                        "quiz.placeholder_search_questions",
+                        language
+                      )}
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       size="large"
@@ -1055,8 +1089,11 @@ export default function CreateQuizPage() {
                         <div className="p-6 text-center bg-white rounded border border-gray-200">
                           <p className="text-gray-500">
                             {searchQuery
-                              ? `Không tìm thấy câu hỏi nào khớp với "${searchQuery}"`
-                              : "Không có câu hỏi nào"}
+                              ? t("quiz.no_questions_match", language).replace(
+                                  "{0}",
+                                  searchQuery
+                                )
+                              : t("quiz.no_questions_available", language)}
                           </p>
                         </div>
                       )}
@@ -1070,49 +1107,68 @@ export default function CreateQuizPage() {
           {/* STEP 3: Xem Lại & Công Bố */}
           {current === 2 && (
             <div>
-              <h2 className="text-2xl font-semibold mb-6">{t("quiz.step_review_publish", language)}</h2>
+              <h2 className="text-2xl font-semibold mb-6">
+                {t("quiz.step_review_publish", language)}
+              </h2>
               <div className="space-y-4 bg-gray-50 p-4 rounded">
                 <div>
-                  <p className="text-sm text-gray-600">{t("quiz.review_label_title", language)}</p>
+                  <p className="text-sm text-gray-600">
+                    {t("quiz.review_label_title", language)}
+                  </p>
                   <p className="text-lg font-semibold">{payload.title}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">{t("quiz.review_label_description", language)}</p>
+                  <p className="text-sm text-gray-600">
+                    {t("quiz.review_label_description", language)}
+                  </p>
                   <p className="text-lg">
                     {payload.description || t("quiz.empty_value", language)}
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">{t("quiz.review_label_time_limit", language)}</p>
+                  <p className="text-sm text-gray-600">
+                    {t("quiz.review_label_time_limit", language)}
+                  </p>
                   <p className="text-lg">
                     {payload.time_limit_minutes === 0 ||
                     payload.time_limit_minutes === undefined
-                      ? "Không giới hạn"
+                      ? t("quiz.option_unlimited", language)
                       : `${payload.time_limit_minutes} ${t("common.minutes", language)}`}
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">{t("quiz.review_label_passing_score", language)}</p>
+                  <p className="text-sm text-gray-600">
+                    {t("quiz.review_label_passing_score", language)}
+                  </p>
                   <p className="text-lg">{payload.passing_score || 80}%</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">{t("quiz.review_label_max_attempts", language)}</p>
+                  <p className="text-sm text-gray-600">
+                    {t("quiz.review_label_max_attempts", language)}
+                  </p>
                   <p className="text-lg">
                     {payload.max_attempts === undefined
-                      ? "Không giới hạn"
+                      ? t("quiz.option_unlimited", language)
                       : `${payload.max_attempts} ${t("common.times", language)}`}
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">{t("quiz.review_label_questions_count", language)}</p>
+                  <p className="text-sm text-gray-600">
+                    {t("quiz.review_label_questions_count", language)}
+                  </p>
                   <p className="text-lg">
-                    {payload.questions?.length || 0} {t("quiz.questions_unit", language)}
+                    {payload.questions?.length || 0}{" "}
+                    {t("quiz.questions_unit", language)}
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">{t("quiz.review_label_status", language)}</p>
+                  <p className="text-sm text-gray-600">
+                    {t("quiz.review_label_status", language)}
+                  </p>
                   <p className="text-lg font-semibold capitalize">
-                    {payload.status === "draft" ? t("quiz.status_draft", language) : payload.status}
+                    {payload.status === "draft"
+                      ? t("quiz.status_draft", language)
+                      : payload.status}
                   </p>
                 </div>
               </div>
@@ -1167,7 +1223,9 @@ export default function CreateQuizPage() {
                             className="w-4 h-4"
                           />
                           <span className="ml-3">
-                            <p className="font-medium">{t("quiz.target_specific_departments", language)}</p>
+                            <p className="font-medium">
+                              {t("quiz.target_specific_departments", language)}
+                            </p>
                             <p className="text-sm text-gray-600">
                               {t("quiz.target_departments_desc", language)}
                             </p>
@@ -1178,10 +1236,16 @@ export default function CreateQuizPage() {
 
                     {/* Department Select - Show only when DEPARTMENTS is selected */}
                     {payload.targetType === "DEPARTMENTS" && (
-                      <Form.Item label={t("quiz.label_target_depts", language)} required>
+                      <Form.Item
+                        label={t("quiz.label_target_depts", language)}
+                        required
+                      >
                         <Select
                           mode="multiple"
-                          placeholder={t("quiz.placeholder_select_depts", language)}
+                          placeholder={t(
+                            "quiz.placeholder_select_depts",
+                            language
+                          )}
                           value={payload.targetDeptIds || []}
                           onChange={(selectedIds) => {
                             setPayload((prev) => ({
@@ -1201,11 +1265,21 @@ export default function CreateQuizPage() {
                     <div className="mt-4 p-3 bg-white rounded border border-gray-200">
                       {payload.targetType === "PUBLIC" ? (
                         <p className="text-sm text-gray-700">
-                          ✓ <strong>{t("quiz.distribution_public_label", language)}</strong> {t("quiz.distribution_public_all_employees", language)}
+                          ✓{" "}
+                          <strong>
+                            {t("quiz.distribution_public_label", language)}
+                          </strong>{" "}
+                          {t(
+                            "quiz.distribution_public_all_employees",
+                            language
+                          )}
                         </p>
                       ) : (
                         <p className="text-sm text-gray-700">
-                          ✓ <strong>{t("quiz.label_target_depts", language)}:</strong>{" "}
+                          ✓{" "}
+                          <strong>
+                            {t("quiz.label_target_depts", language)}:
+                          </strong>{" "}
                           {payload.targetDeptIds &&
                           payload.targetDeptIds.length > 0
                             ? departments
@@ -1234,7 +1308,7 @@ export default function CreateQuizPage() {
           icon={<ArrowLeftOutlined />}
           size="large"
         >
-          Quay Lại
+          {t("quiz.btn_back", language)}
         </Button>
 
         <div className="flex gap-4">
@@ -1250,7 +1324,7 @@ export default function CreateQuizPage() {
                   : Object.keys(errors).length > 0
               }
             >
-              Tiếp Theo
+              {t("quiz.btn_next", language)}
             </Button>
           ) : (
             <Button
@@ -1265,7 +1339,7 @@ export default function CreateQuizPage() {
               }
               size="large"
             >
-              Tạo Bài Thi
+              {t("quiz.btn_create_quiz", language)}
             </Button>
           )}
         </div>

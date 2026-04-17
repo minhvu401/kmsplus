@@ -46,6 +46,8 @@ import {
 import { getAllDepartments } from "@/action/department/departmentActions"
 import { hasAnyPermissionDynamic } from "@/service/rolePermission.service"
 import { Role } from "@/enum/role.enum"
+import useLanguageStore from "@/store/useLanguageStore"
+import { t } from "@/lib/i18n"
 
 // Types
 interface Category {
@@ -99,6 +101,9 @@ export default function DocumentManagementPage() {
   const [docForm] = Form.useForm()
   const [catForm] = Form.useForm()
 
+  // Language hook
+  const { language } = useLanguageStore()
+
   // Permission check on mount
   useEffect(() => {
     const checkPermission = async () => {
@@ -144,19 +149,22 @@ export default function DocumentManagementPage() {
         setDepartments(deptsData || [])
       } else if (user?.department?.head_of_department_id) {
         // HOD: Chỉ cho phép chọn phòng ban của chính họ
-        const hodDeptId = user.department.head_of_department_id;
+        const hodDeptId = user.department.head_of_department_id
         const filteredDepts = (deptsData || []).filter((d: Department) => {
           // Trả về đúng phòng ban mà user đang làm HOD
-           return String(hodDeptId) === String(user.id) && d.id === user.department_id // Chú ý user.department_id tuỳ DB trả về
-        });
-        
+          return (
+            String(hodDeptId) === String(user.id) && d.id === user.department_id
+          ) // Chú ý user.department_id tuỳ DB trả về
+        })
+
         // Nếu muốn đơn giản hơn: Chỉ cần lấy phòng ban của user
-        const myDept = (deptsData || []).filter((d: Department) => String(d.id) === String(user.department_id))
+        const myDept = (deptsData || []).filter(
+          (d: Department) => String(d.id) === String(user.department_id)
+        )
         setDepartments(myDept)
       } else {
         setDepartments([])
       }
-
     } catch (error: any) {
       console.error("Lỗi:", error)
       message.error("Lỗi khởi tạo dữ liệu: " + error.message)
@@ -279,7 +287,7 @@ export default function DocumentManagementPage() {
       setIsCategorySubmitting(true)
       await createCategory(values)
       notification.success({
-        message: "T?o danh m?c t�i li?u th�nh c�ng!",
+        message: t("document.create_category_success", language),
         description:
           "Danh m?c v?a m?i du?c th�m th�nh c�ng v� hi?n th? b�n du?i.",
         placement: "topRight",
@@ -299,13 +307,13 @@ export default function DocumentManagementPage() {
   // Render Table Columns
   const columns = [
     {
-      title: "Tiêu đề",
+      title: t("document.table_title", language),
       dataIndex: "title",
       key: "title",
       render: (text: string) => <strong>{text}</strong>,
     },
     {
-      title: "Danh mục",
+      title: t("document.table_category", language),
       dataIndex: "category_name",
       key: "category_name",
       render: (text: string, record: DocumentItem) => {
@@ -313,20 +321,20 @@ export default function DocumentManagementPage() {
         const deptText = cat?.department_name ? ` (${cat.department_name})` : ""
         return (
           <Tag color="blue">
-            {text || "Không xác định"}
+            {text || t("document.category_unknown", language)}
             {deptText}
           </Tag>
         )
       },
     },
     {
-      title: "Phiên bản",
+      title: t("document.table_version", language),
       dataIndex: "version",
       key: "version",
       width: 100,
     },
     {
-      title: "Trạng thái",
+      title: t("document.table_status", language),
       dataIndex: "status",
       key: "status",
       render: (status: DocumentStatus) => {
@@ -339,13 +347,13 @@ export default function DocumentManagementPage() {
       },
     },
     {
-      title: "Ngày cập nhật",
+      title: t("document.table_updated", language),
       dataIndex: "updated_at",
       key: "updated_at",
       render: (date: string) => dayjs(date).format("DD/MM/YYYY HH:mm"),
     },
     {
-      title: "Hành động",
+      title: t("document.table_action", language),
       key: "action",
       width: 150,
       render: (_: any, record: DocumentItem) => (
@@ -356,11 +364,11 @@ export default function DocumentManagementPage() {
             onClick={() => openDrawer(record.id)}
           />
           <Popconfirm
-            title="Xóa tài liệu này?"
-            description="Hành động này không thể hoàn tác"
+            title={t("document.delete_confirm", language)}
+            description={t("document.delete_confirm_desc", language)}
             onConfirm={() => handleDeleteDoc(record.id)}
-            okText="Xóa"
-            cancelText="Hủy"
+            okText={t("document.btn_delete", language)}
+            cancelText={t("document.btn_cancel", language)}
           >
             <Button type="text" danger icon={<DeleteOutlined />} />
           </Popconfirm>
@@ -374,25 +382,23 @@ export default function DocumentManagementPage() {
       <div className="flex justify-between items-center mb-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">
-            Quản trị Tri thức Nội bộ (Wiki)
+            {t("document.page_title", language)}
           </h1>
-          <p className="text-gray-500">
-            Quản lý quy định, chính sách và tài liệu công ty.
-          </p>
+          <p className="text-gray-500">{t("document.page_desc", language)}</p>
         </div>
         <Space>
           <Button
             icon={<FolderAddOutlined />}
             onClick={() => setIsCategoryModalOpen(true)}
           >
-            Thêm danh mục
+            {t("document.btn_add_category", language)}
           </Button>
           <Button
             type="primary"
             icon={<PlusOutlined />}
             onClick={() => openDrawer()}
           >
-            Thêm tài liệu mới
+            {t("document.btn_add_document", language)}
           </Button>
         </Space>
       </div>
@@ -409,19 +415,25 @@ export default function DocumentManagementPage() {
 
       {/* DRAWER: Tạo/Sửa Document */}
       <Drawer
-        title={editingId ? "Chỉnh sửa tài liệu" : "Thêm tài liệu mới"}
+        title={
+          editingId
+            ? t("document.drawer_edit_title", language)
+            : t("document.drawer_add_title", language)
+        }
         width={900} /* Rộng hơn vì có Editor */
         onClose={() => setIsDrawerOpen(false)}
         open={isDrawerOpen}
         extra={
           <Space>
-            <Button onClick={() => setIsDrawerOpen(false)}>Hủy</Button>
+            <Button onClick={() => setIsDrawerOpen(false)}>
+              {t("document.btn_cancel", language)}
+            </Button>
             <Button
               type="primary"
               onClick={handleSaveDoc}
               loading={isSubmitting}
             >
-              Lưu tài liệu
+              {t("document.btn_save", language)}
             </Button>
           </Space>
         }
@@ -431,11 +443,16 @@ export default function DocumentManagementPage() {
             <Col span={16}>
               <Form.Item
                 name="title"
-                label="Tiêu đề tài liệu"
-                rules={[{ required: true, message: "Vui lòng nhập tiêu đề" }]}
+                label={t("document.form_title_label", language)}
+                rules={[
+                  {
+                    required: true,
+                    message: t("document.form_title_required", language),
+                  },
+                ]}
               >
                 <Input
-                  placeholder="VD: Quy định trang phục 2024..."
+                  placeholder={t("document.form_title_placeholder", language)}
                   size="large"
                 />
               </Form.Item>
@@ -443,12 +460,20 @@ export default function DocumentManagementPage() {
             <Col span={8}>
               <Form.Item
                 name="category_id"
-                label="Danh mục"
-                rules={[{ required: true, message: "Vui lòng chọn danh mục" }]}
+                label={t("document.form_category_label", language)}
+                rules={[
+                  {
+                    required: true,
+                    message: t("document.form_category_required", language),
+                  },
+                ]}
               >
                 <Select
                   showSearch
-                  placeholder="Chọn danh mục"
+                  placeholder={t(
+                    "document.form_category_placeholder",
+                    language
+                  )}
                   options={categories.map((c) => ({
                     label: c.name,
                     value: c.id,
@@ -463,7 +488,7 @@ export default function DocumentManagementPage() {
             <Col span={12}>
               <Form.Item
                 name="version"
-                label="Phiên bản"
+                label={t("document.form_version_label", language)}
                 rules={[{ required: true }]}
               >
                 <Input placeholder="1.0" />
@@ -472,14 +497,23 @@ export default function DocumentManagementPage() {
             <Col span={12}>
               <Form.Item
                 name="status"
-                label="Trạng thái"
+                label={t("document.form_status_label", language)}
                 rules={[{ required: true }]}
               >
                 <Select
                   options={[
-                    { label: "Bản nháp", value: DocumentStatus.DRAFT },
-                    { label: "Đã ban hành", value: DocumentStatus.PUBLISHED },
-                    { label: "Lưu trữ", value: DocumentStatus.ARCHIVED },
+                    {
+                      label: t("document.form_status_draft", language),
+                      value: DocumentStatus.DRAFT,
+                    },
+                    {
+                      label: t("document.form_status_published", language),
+                      value: DocumentStatus.PUBLISHED,
+                    },
+                    {
+                      label: t("document.form_status_archived", language),
+                      value: DocumentStatus.ARCHIVED,
+                    },
                   ]}
                 />
               </Form.Item>
@@ -489,19 +523,24 @@ export default function DocumentManagementPage() {
           {/* SỬ DỤNG QUILL EDITOR - LAZY IMPORT GÍUP CẢI THIỆN PERFORMANCE */}
           <Form.Item
             name="content"
-            label="Nội dung"
-            rules={[{ required: true, message: "Vui lòng nhập nội dung" }]}
+            label={t("document.form_content_label", language)}
+            rules={[
+              {
+                required: true,
+                message: t("document.form_content_required", language),
+              },
+            ]}
             valuePropName="value"
           >
             <QuillEditorLazy
               value=""
               onChange={() => {}}
               height={450}
-              placeholder="Soạn thảo chi tiết..."
+              placeholder={t("document.form_content_placeholder", language)}
             />
           </Form.Item>
 
-          <Form.Item label="Đính kèm tệp">
+          <Form.Item label={t("document.form_files_label", language)}>
             <Upload
               name="file"
               action="/api/upload/cloudinary"
@@ -510,7 +549,7 @@ export default function DocumentManagementPage() {
               multiple
             >
               <Button icon={<UploadOutlined />}>
-                Tải lên tệp (Word, Excel, PDF...)
+                {t("document.form_files_button", language)}
               </Button>
             </Upload>
           </Form.Item>
@@ -519,7 +558,7 @@ export default function DocumentManagementPage() {
 
       {/* MODAL: Thêm Danh mục nhanh */}
       <Modal
-        title="Thêm danh mục tài liệu"
+        title={t("document.modal_add_category_title", language)}
         open={isCategoryModalOpen}
         onOk={handleSaveCategory}
         confirmLoading={isCategorySubmitting}
@@ -528,30 +567,43 @@ export default function DocumentManagementPage() {
         <Form layout="vertical" form={catForm}>
           <Form.Item
             name="name"
-            label="Tên danh mục"
-            rules={[{ required: true, message: "Vui lòng nhập tên danh mục" }]}
+            label={t("document.form_category_name_label", language)}
+            rules={[
+              {
+                required: true,
+                message: t("document.form_category_name_required", language),
+              },
+            ]}
           >
-            <Input placeholder="VD: Quy định HR, Chính sách Bảo mật..." />
+            <Input
+              placeholder={t(
+                "document.form_category_name_placeholder",
+                language
+              )}
+            />
           </Form.Item>
 
           <Form.Item
             name="department_id"
-            label="Thuộc phòng ban (Tuỳ chọn)"
-            tooltip="Nếu để trống, toàn bộ công ty có thể thấy danh mục tài liệu này."
+            label={t("document.form_department_label", language)}
+            tooltip={t("document.form_department_note", language)}
           >
             <Select
               allowClear
               showSearch
-              placeholder="Chọn phòng ban..."
+              placeholder={t("document.form_department_placeholder", language)}
               options={departments.map((d) => ({ label: d.name, value: d.id }))}
               optionFilterProp="label"
             />
           </Form.Item>
 
-          <Form.Item name="description" label="Mô tả">
+          <Form.Item
+            name="description"
+            label={t("document.form_description_label", language)}
+          >
             <Input.TextArea
               rows={3}
-              placeholder="Mô tả công dụng của danh mục này"
+              placeholder={t("document.form_description_placeholder", language)}
             />
           </Form.Item>
         </Form>

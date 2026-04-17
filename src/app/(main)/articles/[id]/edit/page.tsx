@@ -39,6 +39,8 @@ import {
   updateArticle,
 } from "@/action/articles/articlesManagementAction"
 import type { Tag } from "@/service/articles.service"
+import useLanguageStore from "@/store/useLanguageStore"
+import { t } from "@/lib/i18n"
 
 const { Title, Text } = Typography
 
@@ -46,6 +48,7 @@ export default function EditArticlePage() {
   const router = useRouter()
   const params = useParams()
   const articleId = params.id as string
+  const language = useLanguageStore((state) => state.language)
 
   const [form] = Form.useForm()
   const [titleContent, setTitleContent] = useState("")
@@ -164,7 +167,7 @@ export default function EditArticlePage() {
           !("data" in articleRes) ||
           !articleRes.data
         ) {
-          message.error("Failed to load article")
+          message.error(t("article.edit.error_load", language))
           router.push("/articles/management")
           return
         }
@@ -192,7 +195,7 @@ export default function EditArticlePage() {
         }
       } catch (err: any) {
         console.error("Error loading article:", err)
-        message.error("Failed to load article")
+        message.error(t("article.edit.error_load", language))
         router.push("/articles/management")
       } finally {
         setLoading(false)
@@ -224,10 +227,12 @@ export default function EditArticlePage() {
       const result = await updateArticle(formData)
 
       if (result.success) {
-        message.success(result.message || "Article updated successfully!")
+        message.success(
+          result.message || t("article.edit.btn_post", language) + " " + "ok"
+        )
         router.push("/articles/management")
       } else {
-        message.error(result.message || "Failed to update article")
+        message.error(result.message || t("article.edit.error_load", language))
       }
     } catch (error: any) {
       console.error("Error updating article:", error)
@@ -240,7 +245,7 @@ export default function EditArticlePage() {
   if (loading) {
     return (
       <Flex vertical className="flex-1 justify-center items-center">
-        <Spin size="large" tip="Loading article..." />
+        <Spin size="large" tip={t("article.edit.loading", language)} />
       </Flex>
     )
   }
@@ -250,7 +255,7 @@ export default function EditArticlePage() {
       <main className="flex-1 overflow-auto px-8 py-6">
         <Card className="max-w-4xl mx-auto">
           <Title level={2} className="!mb-6">
-            Edit Article
+            {t("article.edit.title", language)}
           </Title>
 
           <Form
@@ -263,7 +268,7 @@ export default function EditArticlePage() {
             <Form.Item
               label={
                 <Text strong className="text-base">
-                  Title
+                  {t("article.edit.label_title", language)}
                 </Text>
               }
               name="title"
@@ -275,11 +280,13 @@ export default function EditArticlePage() {
                       .replace(/<[^>]*>/g, "")
                       .trim()
                     if (!textContent) {
-                      return Promise.reject("Please enter a title")
+                      return Promise.reject(
+                        t("article.edit.error_title_required", language)
+                      )
                     }
                     if (textContent.length > 150) {
                       return Promise.reject(
-                        "Title must be less than 150 characters"
+                        t("article.edit.error_title_length", language)
                       )
                     }
                     return Promise.resolve()
@@ -290,7 +297,9 @@ export default function EditArticlePage() {
               <input
                 ref={titleInputRef}
                 type="text"
-                placeholder={titleContent || "Enter article title"}
+                placeholder={
+                  titleContent || t("article.edit.placeholder_title", language)
+                }
                 defaultValue={titleContent}
                 onChange={(e) => setTitleContent(e.target.value)}
                 className="border border-gray-300 rounded p-3 w-full focus:outline-none focus:border-blue-500"
@@ -309,7 +318,7 @@ export default function EditArticlePage() {
             <Form.Item
               label={
                 <Text strong className="text-base">
-                  Content
+                  {t("article.edit.label_content", language)}
                 </Text>
               }
               name="content"
@@ -321,11 +330,13 @@ export default function EditArticlePage() {
                       .replace(/<[^>]*>/g, "")
                       .trim()
                     if (!textContent) {
-                      return Promise.reject("Please enter content")
+                      return Promise.reject(
+                        t("article.edit.error_content_required", language)
+                      )
                     }
                     if (textContent.length > 3000) {
                       return Promise.reject(
-                        "Content must be less than 3000 characters"
+                        t("article.edit.error_content_length", language)
                       )
                     }
                     return Promise.resolve()
@@ -338,12 +349,27 @@ export default function EditArticlePage() {
                   <Select
                     style={{ width: 140 }}
                     size="small"
-                    placeholder="Heading"
+                    placeholder={t(
+                      "article.edit.heading_placeholder",
+                      language
+                    )}
                     options={[
-                      { label: "Normal", value: "p" },
-                      { label: "H1", value: "h1" },
-                      { label: "H2", value: "h2" },
-                      { label: "H3", value: "h3" },
+                      {
+                        label: t("article.edit.heading_normal", language),
+                        value: "p",
+                      },
+                      {
+                        label: t("article.edit.heading_h1", language),
+                        value: "h1",
+                      },
+                      {
+                        label: t("article.edit.heading_h2", language),
+                        value: "h2",
+                      },
+                      {
+                        label: t("article.edit.heading_h3", language),
+                        value: "h3",
+                      },
                     ]}
                     onChange={(value) =>
                       applyHeading(`<${value}>`, contentEditorRef)
@@ -355,24 +381,24 @@ export default function EditArticlePage() {
                     size="small"
                     icon={<BoldOutlined />}
                     onClick={() => applyFormat("bold", contentEditorRef)}
-                    title="Bold"
-                    aria-label="Bold"
+                    title={t("article.edit.btn_bold", language)}
+                    aria-label={t("article.edit.btn_bold", language)}
                   />
                   <Button
                     type="text"
                     size="small"
                     icon={<ItalicOutlined />}
                     onClick={() => applyFormat("italic", contentEditorRef)}
-                    title="Italic"
-                    aria-label="Italic"
+                    title={t("article.edit.btn_italic", language)}
+                    aria-label={t("article.edit.btn_italic", language)}
                   />
                   <Button
                     type="text"
                     size="small"
                     icon={<UnderlineOutlined />}
                     onClick={() => applyFormat("underline", contentEditorRef)}
-                    title="Underline"
-                    aria-label="Underline"
+                    title={t("article.edit.btn_underline", language)}
+                    aria-label={t("article.edit.btn_underline", language)}
                   />
                   <Button
                     type="text"
@@ -381,8 +407,8 @@ export default function EditArticlePage() {
                     onClick={() =>
                       applyFormat("insertOrderedList", contentEditorRef)
                     }
-                    title="Numbered List"
-                    aria-label="Numbered list"
+                    title={t("article.edit.btn_numbered_list", language)}
+                    aria-label={t("article.edit.btn_numbered_list", language)}
                   />
                   <Button
                     type="text"
@@ -391,15 +417,15 @@ export default function EditArticlePage() {
                     onClick={() =>
                       applyFormat("insertUnorderedList", contentEditorRef)
                     }
-                    title="Bullet List"
-                    aria-label="Bullet list"
+                    title={t("article.edit.btn_bullet_list", language)}
+                    aria-label={t("article.edit.btn_bullet_list", language)}
                   />
                   <Button
                     type="text"
                     size="small"
                     onClick={() => applyQuote(contentEditorRef)}
-                    title="Quote"
-                    aria-label="Quote"
+                    title={t("article.edit.btn_quote", language)}
+                    aria-label={t("article.edit.btn_quote", language)}
                   >
                     &quot;
                   </Button>
@@ -416,7 +442,10 @@ export default function EditArticlePage() {
                   onFocus={handleContentSelectionChange}
                   className="border border-gray-300 rounded p-3 min-h-[300px] focus:outline-none focus:border-blue-500"
                   style={{ backgroundColor: "white" }}
-                  data-placeholder="Type something here..."
+                  data-placeholder={t(
+                    "article.edit.content_placeholder",
+                    language
+                  )}
                 />
               </div>
             </Form.Item>
@@ -433,15 +462,20 @@ export default function EditArticlePage() {
             <Form.Item
               label={
                 <Text strong className="text-base">
-                  Category
+                  {t("article.edit.label_category", language)}
                 </Text>
               }
               name="categoryId"
-              rules={[{ required: true, message: "Please select a category" }]}
+              rules={[
+                {
+                  required: true,
+                  message: t("article.edit.error_category_required", language),
+                },
+              ]}
             >
               <Select
                 size="large"
-                placeholder="Select a category"
+                placeholder={t("article.edit.placeholder_category", language)}
                 loading={loadingCategories}
                 options={categories.map((cat) => ({
                   label: cat.name,
@@ -459,7 +493,7 @@ export default function EditArticlePage() {
             <Form.Item
               label={
                 <Text strong className="text-base">
-                  Tags
+                  {t("article.edit.label_tags", language)}
                 </Text>
               }
               name="tags"
@@ -472,7 +506,7 @@ export default function EditArticlePage() {
                 }))}
                 size="large"
                 loading={loadingTags}
-                placeholder="Type to search or add new tags"
+                placeholder={t("article.edit.placeholder_tags", language)}
                 value={selectedTags}
                 onChange={setSelectedTags}
                 maxTagCount="responsive"
@@ -496,7 +530,7 @@ export default function EditArticlePage() {
                   onClick={() => router.push("/articles/management")}
                   disabled={submitting}
                 >
-                  Cancel
+                  {t("article.edit.btn_cancel", language)}
                 </Button>
                 <Button
                   type="primary"
@@ -505,7 +539,7 @@ export default function EditArticlePage() {
                   icon={<SendOutlined />}
                   loading={submitting}
                 >
-                  Post
+                  {t("article.edit.btn_post", language)}
                 </Button>
               </Flex>
             </Form.Item>
@@ -515,15 +549,15 @@ export default function EditArticlePage() {
 
       {/* Confirmation Modal */}
       <Modal
-        title="Confirm Update"
+        title={t("article.edit.modal_confirm_title", language)}
         open={showConfirm}
         onOk={handleConfirmUpdate}
         onCancel={() => setShowConfirm(false)}
-        okText="Post"
-        cancelText="Cancel"
+        okText={t("article.edit.btn_post", language)}
+        cancelText={t("article.edit.btn_cancel", language)}
         okButtonProps={{ loading: submitting }}
       >
-        <Text>Are you sure you want to post this updated article?</Text>
+        <Text>{t("article.edit.modal_confirm_message", language)}</Text>
       </Modal>
 
       {/* Footer */}

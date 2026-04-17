@@ -6,12 +6,14 @@ import { loginAction } from "@/action/auth/authActions"
 import { getUserRoleAction } from "@/action/user/userActions"
 import { Form, Input, Button, Alert, Checkbox, Typography, Divider } from "antd"
 import useUserStore from "@/store/useUserStore"
+import useLanguageStore from "@/store/useLanguageStore"
 import {
   EyeInvisibleOutlined,
   EyeTwoTone,
   UserOutlined,
   LockOutlined,
 } from "@ant-design/icons"
+import { t } from "@/lib/i18n"
 import React from "react"
 
 const { Title, Text } = Typography
@@ -30,6 +32,7 @@ export default function LoginForm({
   const [form] = Form.useForm()
   const router = useRouter()
   const searchParams = useSearchParams()
+  const language = useLanguageStore((state) => state.language)
 
   const initialState = {
     success: false,
@@ -45,7 +48,8 @@ export default function LoginForm({
     setIsGoogleLoading(true)
     try {
       // Let NextAuth handle the full redirect flow
-      const callbackUrl = searchParams?.get("callbackUrl") || "/dashboard-metrics"
+      const callbackUrl =
+        searchParams?.get("callbackUrl") || "/dashboard-metrics"
       await signIn("google", {
         callbackUrl: callbackUrl,
         redirect: true, // Let NextAuth handle redirect after session is set
@@ -54,7 +58,7 @@ export default function LoginForm({
       console.error("Google login error:", error)
       setState((prev) => ({
         ...prev,
-        message: "Google login failed. Please try again.",
+        message: t("login.google_error", language),
       }))
       setIsGoogleLoading(false)
     }
@@ -116,7 +120,7 @@ export default function LoginForm({
       console.error("Login error:", error)
       setState((prev) => ({
         ...prev,
-        message: "An error occurred during login. Please try again.",
+        message: t("login.error_message", language),
       }))
     } finally {
       setIsLoading(false)
@@ -128,9 +132,9 @@ export default function LoginForm({
       {/* Header */}
       <div className="text-center mb-8">
         <div className="flex items-center justify-center gap-3 mb-6">
-          <img 
-            src="/logo.png" 
-            alt="KMSPlus Logo" 
+          <img
+            src="/logo.png"
+            alt="KMSPlus Logo"
             className="w-12 h-12 rounded-xl object-contain shadow-lg"
           />
           <div className="text-left">
@@ -138,15 +142,15 @@ export default function LoginForm({
               KMSPlus
             </Title>
             <Text className="text-xs text-[#1677ff]">
-              Knowledge Management System
+              {t("login.system_desc", language)}
             </Text>
           </div>
         </div>
         <Title level={2} className="!m-0 !text-gray-800 !font-bold">
-          Đăng nhập
+          {t("login.title", language)}
         </Title>
         <Text className="text-gray-500 mt-2 block">
-          Chào mừng bạn trở lại! Vui lòng đăng nhập để tiếp tục.
+          {t("login.welcome_back", language)}
         </Text>
       </div>
 
@@ -169,28 +173,38 @@ export default function LoginForm({
         size="large"
       >
         <Form.Item
-          label={<span className="font-medium text-gray-700">Email</span>}
+          label={
+            <span className="font-medium text-gray-700">
+              {t("login.email_label", language)}
+            </span>
+          }
           name="email"
           rules={[
-            { required: true, message: "Vui lòng nhập email!" },
-            { type: "email", message: "Email không hợp lệ!" },
+            { required: true, message: t("login.email_required", language) },
+            { type: "email", message: t("login.email_invalid", language) },
           ]}
         >
           <Input
             prefix={<UserOutlined className="text-gray-400" />}
-            placeholder="Enter email here..."
+            placeholder={t("login.email_placeholder", language)}
             className="!rounded-lg"
           />
         </Form.Item>
 
         <Form.Item
-          label={<span className="font-medium text-gray-700">Mật khẩu</span>}
+          label={
+            <span className="font-medium text-gray-700">
+              {t("login.password_label", language)}
+            </span>
+          }
           name="password"
-          rules={[{ required: true, message: "Vui lòng nhập mật khẩu!" }]}
+          rules={[
+            { required: true, message: t("login.password_required", language) },
+          ]}
         >
           <Input.Password
             prefix={<LockOutlined className="text-gray-400" />}
-            placeholder="••••••••"
+            placeholder={t("login.password_placeholder", language)}
             iconRender={(visible) =>
               visible ? <EyeTwoTone /> : <EyeInvisibleOutlined />
             }
@@ -200,14 +214,16 @@ export default function LoginForm({
 
         <div className="flex justify-between items-center mb-6">
           <Form.Item name="remember" valuePropName="checked" noStyle>
-            <Checkbox className="text-gray-600">Ghi nhớ đăng nhập</Checkbox>
+            <Checkbox className="text-gray-600">
+              {t("login.remember_me", language)}
+            </Checkbox>
           </Form.Item>
           <Button
             type="link"
             onClick={onForgotPassword}
             className="!p-0 !h-auto"
           >
-            Quên mật khẩu?
+            {t("login.forgot_password", language)}
           </Button>
         </div>
 
@@ -218,15 +234,18 @@ export default function LoginForm({
             block
             loading={isLoading}
             className="!h-12 !rounded-lg !font-semibold !text-base"
-            style={{ background: "linear-gradient(135deg, #69b1ff 0%, #1677ff 100%)", border: "none" }}
+            style={{
+              background: "linear-gradient(135deg, #69b1ff 0%, #1677ff 100%)",
+              border: "none",
+            }}
           >
-            Đăng nhập
+            {t("login.submit_button", language)}
           </Button>
         </Form.Item>
       </Form>
 
       {/* Divider */}
-      <Divider className="!my-6">Hoặc</Divider>
+      <Divider className="!my-6">{t("login.or_divider", language)}</Divider>
 
       {/* Google Login Button */}
       <Button
@@ -256,13 +275,13 @@ export default function LoginForm({
           </svg>
         }
       >
-        <span className="ml-2">Đăng nhập bằng Google</span>
+        <span className="ml-2">{t("login.google_button", language)}</span>
       </Button>
 
       {/* Footer */}
       <div className="mt-8 pt-6 border-t border-gray-100 text-center">
         <Text className="text-gray-400 text-sm">
-          © 2026 KMSPlus. All rights reserved.
+          {t("login.copyright", language)}
         </Text>
       </div>
     </div>

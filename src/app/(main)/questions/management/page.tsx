@@ -13,6 +13,8 @@ import { getActiveCategories } from "@/action/question/questionActions"
 import { Flex } from "antd"
 import PageWrapper from "@/components/ui/questions/page-wrapper"
 import QuestionsNotification from "@/components/ui/questions/questions-notification"
+import QuestionsManagementHeader from "@/components/ui/questions/management-header"
+import QuestionsPaginationInfo from "@/components/ui/questions/pagination-info"
 
 export default async function QuestionsManagePage(props: {
   searchParams?: Promise<{
@@ -56,14 +58,7 @@ export default async function QuestionsManagePage(props: {
       <Flex className="p-6" vertical>
         <QuestionsNotification />
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-blue-900 bg-clip-text text-transparent mb-4">
-            Q&amp;A Management
-          </h1>
-          <p className="text-gray-600 max-w-2xl leading-relaxed">
-            Manage and organize forum questions
-          </p>
-        </div>
+        <QuestionsManagementHeader />
 
         <Flex align="center" gap={28} style={{ marginBottom: 24 }}>
           <Search placeholder="Search questions..." />
@@ -88,11 +83,12 @@ export default async function QuestionsManagePage(props: {
         </Flex>
 
         {/* Info */}
-        <Flex className="flex justify-center text-gray-600 mt-4 text-sm">
-          Showing {questions.length > 0 ? (currentPage - 1) * pageSize + 1 : 0}-
-          {Math.min(currentPage * pageSize, totalItems)} of {totalItems}{" "}
-          questions
-        </Flex>
+        <QuestionsPaginationInfo
+          currentPage={currentPage}
+          pageSize={pageSize}
+          totalItems={totalItems}
+          questionsLength={questions.length}
+        />
       </Flex>
     </PageWrapper>
   )

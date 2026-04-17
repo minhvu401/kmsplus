@@ -4,14 +4,26 @@ import {
   CommentOutlined,
   QuestionCircleOutlined,
   ReadOutlined,
-  CheckCircleOutlined
+  CheckCircleOutlined,
 } from "@ant-design/icons"
 import { Card, Col, Row, Space, Typography, Spin } from "antd"
+import { t } from "@/lib/i18n"
+import useLanguageStore from "@/store/useLanguageStore"
 
-type Counts = { questions: number; answers: number; comments: number; courses?: number }
+type Counts = {
+  questions: number
+  answers: number
+  comments: number
+  courses?: number
+}
 
-export default function SummaryTabContent({ counts }: { counts?: Counts | null }) {
+export default function SummaryTabContent({
+  counts,
+}: {
+  counts?: Counts | null
+}) {
   const { Title, Text } = Typography
+  const { language } = useLanguageStore()
 
   if (!counts) {
     return (
@@ -24,49 +36,93 @@ export default function SummaryTabContent({ counts }: { counts?: Counts | null }
   return (
     <div>
       <Title level={4} style={{ marginBottom: "24px" }}>
-        Summary
+        {t("profile.summary_title", language)}
       </Title>
       <Row gutter={[16, 16]}>
         <Col xs={24} md={6}>
           <Card>
-            <Space direction="vertical" align="center" style={{ width: "100%" }}>
-              <QuestionCircleOutlined style={{ fontSize: "48px", color: "#858585" }} />
-              <Title level={4} style={{ margin: 0 }}>{counts.questions}</Title>
-              <Title level={5} style={{ margin: 0 }}>Your Questions</Title>
-              <Text type="secondary">Questions you've posted</Text>
+            <Space
+              direction="vertical"
+              align="center"
+              style={{ width: "100%" }}
+            >
+              <QuestionCircleOutlined
+                style={{ fontSize: "48px", color: "#858585" }}
+              />
+              <Title level={4} style={{ margin: 0 }}>
+                {counts.questions}
+              </Title>
+              <Title level={5} style={{ margin: 0 }}>
+                {t("profile.summary_your_questions", language)}
+              </Title>
+              <Text type="secondary">
+                {t("profile.summary_questions_posted", language)}
+              </Text>
             </Space>
           </Card>
         </Col>
 
         <Col xs={24} md={6}>
           <Card>
-            <Space direction="vertical" align="center" style={{ width: "100%" }}>
-              <CheckCircleOutlined style={{ fontSize: "48px", color: "#858585" }} />
-              <Title level={4} style={{ margin: 0 }}>{counts.answers}</Title>
-              <Title level={5} style={{ margin: 0 }}>Your Answers</Title>
-              <Text type="secondary">Answers you've contributed</Text>
+            <Space
+              direction="vertical"
+              align="center"
+              style={{ width: "100%" }}
+            >
+              <CheckCircleOutlined
+                style={{ fontSize: "48px", color: "#858585" }}
+              />
+              <Title level={4} style={{ margin: 0 }}>
+                {counts.answers}
+              </Title>
+              <Title level={5} style={{ margin: 0 }}>
+                {t("profile.summary_your_answers", language)}
+              </Title>
+              <Text type="secondary">
+                {t("profile.summary_answers_contributed", language)}
+              </Text>
             </Space>
           </Card>
         </Col>
 
         <Col xs={24} md={6}>
           <Card>
-            <Space direction="vertical" align="center" style={{ width: "100%" }}>
+            <Space
+              direction="vertical"
+              align="center"
+              style={{ width: "100%" }}
+            >
               <CommentOutlined style={{ fontSize: "48px", color: "#858585" }} />
-              <Title level={4} style={{ margin: 0 }}>{counts.comments}</Title>
-              <Title level={5} style={{ margin: 0 }}>Your Comments</Title>
-              <Text type="secondary">Comments you've posted</Text>
+              <Title level={4} style={{ margin: 0 }}>
+                {counts.comments}
+              </Title>
+              <Title level={5} style={{ margin: 0 }}>
+                {t("profile.summary_your_comments", language)}
+              </Title>
+              <Text type="secondary">
+                {t("profile.summary_comments_posted", language)}
+              </Text>
             </Space>
           </Card>
         </Col>
 
         <Col xs={24} md={6}>
           <Card>
-            <Space direction="vertical" align="center" style={{ width: "100%" }}>
+            <Space
+              direction="vertical"
+              align="center"
+              style={{ width: "100%" }}
+            >
               <ReadOutlined style={{ fontSize: "48px", color: "#858585" }} />
-              <Title level={4} style={{ margin: 0 }}>{counts.courses ?? 0}</Title>
-              <Title level={5} style={{ margin: 0 }}>Enrolled Courses</Title>
-              <Text type="secondary">Courses you're enrolled in</Text>
+              <Title level={4} style={{ margin: 0 }}>
+                {counts.courses ?? 0}
+              </Title>
+              <Title level={5} style={{ margin: 0 }}>
+                {t("profile.summary_enrolled_courses", language)}
+              </Title>
+              <Text type="secondary">
+                {t("profile.summary_courses_enrolled", language)}
+              </Text>
             </Space>
           </Card>
         </Col>
