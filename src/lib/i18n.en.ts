@@ -641,6 +641,16 @@ export const en = {
   "quiz.create_success": "Quiz created successfully!",
   "quiz.user_not_found": "User ID not found",
   "quiz.course_required": "Course ID is required",
+
+  // Quiz Create Question - Validation errors
+  "quiz.question_validation_text_required": "Question content cannot be empty",
+  "quiz.question_validation_text_min":
+    "Question content must be at least 10 characters",
+  "quiz.question_validation_options_required": "Please provide all 4 options",
+  "quiz.question_validation_single_choice_required":
+    "Please select one correct answer",
+  "quiz.question_validation_multiple_choice_required":
+    "Please select at least one correct answer",
   "quiz.questions_unit": "question(s)",
   "quiz.add_question": "Add Question",
   "quiz.remove_question": "Remove Question",

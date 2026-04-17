@@ -566,6 +566,17 @@ export const vi = {
   "quiz.user_not_found": "User ID not found",
   "quiz.course_required": "Course ID is required",
 
+  // Quiz Create Question - Validation errors
+  "quiz.question_validation_text_required":
+    "Nội dung câu hỏi không được để trống",
+  "quiz.question_validation_text_min":
+    "Nội dung câu hỏi phải có ít nhất 10 ký tự",
+  "quiz.question_validation_options_required": "Vui lòng nhập đầy đủ 4 đáp án",
+  "quiz.question_validation_single_choice_required":
+    "Vui lòng chọn 1 đáp án đúng",
+  "quiz.question_validation_multiple_choice_required":
+    "Vui lòng chọn ít nhất 1 đáp án đúng",
+
   // Quiz Create - Review & Distribution
   "quiz.create_title": "Tạo Bài Thi Mới",
   "quiz.review_label_title": "Tên bài thi:",

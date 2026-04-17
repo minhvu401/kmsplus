@@ -12,6 +12,7 @@ import {
   Checkbox,
   Steps,
   Radio,
+  Alert,
 } from "antd"
 import {
   ArrowLeftOutlined,
@@ -29,9 +30,7 @@ import {
   getQuestionsByCategory,
   createQuestion,
 } from "@/action/question-bank/questionBankActions"
-import {
-  getCategoriesAPI,
-} from "@/action/courses/courseAction"
+import { getCategoriesAPI } from "@/action/courses/courseAction"
 import useLanguageStore from "@/store/useLanguageStore"
 
 // Constants
@@ -92,20 +91,40 @@ export default function CreateQuizModal({
     stepBasic: isVi ? "Thông Tin Cơ Bản" : "Basic Information",
     stepQuestions: isVi ? "Thêm Câu Hỏi" : "Add Questions",
     stepReview: isVi ? "Xem Lại & Công Bố" : "Review & Publish",
-    requiredQuizName: isVi ? "Vui lòng nhập tên bài thi" : "Please enter quiz title",
-    quizNameMin: isVi ? "Tên bài thi không được ít hơn 10 ký tự" : "Quiz title must be at least 10 characters",
-    quizNameMax: isVi ? "Tên bài thi không vượt quá 255 ký tự" : "Quiz title must not exceed 255 characters",
-    descMax: isVi ? "Mô tả không vượt quá 1000 ký tự" : "Description must not exceed 1000 characters",
-    requiredCategory: isVi ? "Vui lòng chọn danh mục" : "Please select a category",
-    durationRange: isVi ? "Thời gian làm bài phải từ 0 đến 1440 phút" : "Time limit must be between 0 and 1440 minutes",
-    passingRange: isVi ? "Điểm đạt phải từ 1 đến 100" : "Passing score must be between 1 and 100",
-    min10Questions: isVi ? "Vui lòng thêm ít nhất 10 câu hỏi" : "Please add at least 10 questions",
+    requiredQuizName: isVi
+      ? "Vui lòng nhập tên bài thi"
+      : "Please enter quiz title",
+    quizNameMin: isVi
+      ? "Tên bài thi không được ít hơn 10 ký tự"
+      : "Quiz title must be at least 10 characters",
+    quizNameMax: isVi
+      ? "Tên bài thi không vượt quá 255 ký tự"
+      : "Quiz title must not exceed 255 characters",
+    descMax: isVi
+      ? "Mô tả không vượt quá 1000 ký tự"
+      : "Description must not exceed 1000 characters",
+    requiredCategory: isVi
+      ? "Vui lòng chọn danh mục"
+      : "Please select a category",
+    durationRange: isVi
+      ? "Thời gian làm bài phải từ 0 đến 1440 phút"
+      : "Time limit must be between 0 and 1440 minutes",
+    passingRange: isVi
+      ? "Điểm đạt phải từ 1 đến 100"
+      : "Passing score must be between 1 and 100",
+    min10Questions: isVi
+      ? "Vui lòng thêm ít nhất 10 câu hỏi"
+      : "Please add at least 10 questions",
     needMoreQuestions: (count: number) =>
       isVi
         ? `Bạn cần thêm ít nhất 10 câu hỏi (hiện tại: ${count} câu)`
         : `You need at least 10 questions (current: ${count})`,
-    completeRequired: isVi ? "Vui lòng hoàn thành các trường bắt buộc" : "Please complete required fields",
-    completeAllSteps: isVi ? "Vui lòng hoàn thành tất cả các bước" : "Please complete all steps",
+    completeRequired: isVi
+      ? "Vui lòng hoàn thành các trường bắt buộc"
+      : "Please complete required fields",
+    completeAllSteps: isVi
+      ? "Vui lòng hoàn thành tất cả các bước"
+      : "Please complete all steps",
     userNotFound: isVi ? "Không tìm thấy người dùng" : "User ID not found",
     categoryLocked: isVi
       ? "Danh mục đã bị khóa vì đã thêm câu hỏi. Hãy xóa hết câu hỏi để đổi danh mục."
@@ -143,16 +162,24 @@ export default function CreateQuizModal({
       ? "Không thể tạo câu hỏi mới"
       : "Failed to create question",
     removeQuestionSuccess: isVi ? "Đã xóa câu hỏi" : "Question removed",
-    createQuizSuccess: isVi ? "Tạo bài thi thành công!" : "Quiz created successfully!",
-    createQuizFailPrefix: isVi ? "Lỗi khi tạo bài thi" : "Failed to create quiz",
+    createQuizSuccess: isVi
+      ? "Tạo bài thi thành công!"
+      : "Quiz created successfully!",
+    createQuizFailPrefix: isVi
+      ? "Lỗi khi tạo bài thi"
+      : "Failed to create quiz",
     createQuizModalTitle: isVi ? "Tạo Bài Thi Mới" : "Create New Quiz",
     quizTitleLabel: isVi ? "Tên Bài Thi" : "Quiz Title",
     categoryLabel: isVi ? "Danh Mục" : "Category",
-    descriptionOptionalLabel: isVi ? "Mô Tả (Tùy Chọn)" : "Description (Optional)",
+    descriptionOptionalLabel: isVi
+      ? "Mô Tả (Tùy Chọn)"
+      : "Description (Optional)",
     timeLimitLabel: isVi ? "Thời Gian Làm Bài (phút)" : "Time Limit (minutes)",
     passingScoreLabel: isVi ? "Điểm Đạt (%)" : "Passing Score (%)",
     maxAttemptsLabel: isVi ? "Số Lần Làm Bài (Max Attempts)" : "Max Attempts",
-    quizTitlePlaceholder: isVi ? "VD: Kiểm tra kiến thức Product" : "e.g. Product knowledge quiz",
+    quizTitlePlaceholder: isVi
+      ? "VD: Kiểm tra kiến thức Product"
+      : "e.g. Product knowledge quiz",
     categoryPlaceholder: isVi ? "Chọn danh mục" : "Select category",
     categoryLockedHint: isVi
       ? "Danh mục đã khóa sau khi thêm câu hỏi. Xóa toàn bộ câu hỏi để thay đổi."
@@ -165,31 +192,40 @@ export default function CreateQuizModal({
       : "e.g. For new employees learning the product",
     durationPlaceholder: isVi ? "VD: 30" : "e.g. 30",
     passingPlaceholder: isVi ? "VD: 80" : "e.g. 80",
-    selectAttemptsPlaceholder:
-      isVi ? "Chọn số lần được phép làm bài" : "Select max attempts",
+    selectAttemptsPlaceholder: isVi
+      ? "Chọn số lần được phép làm bài"
+      : "Select max attempts",
     addFromBank: isVi ? "Thêm Câu Hỏi Từ Kho" : "Add Questions from Bank",
     createNewQuestion: isVi ? "Tạo Câu Hỏi Mới" : "Create New Question",
     selectedQuestions: (count: number) =>
       isVi ? `Câu hỏi đã chọn (${count}):` : `Selected questions (${count}):`,
     needMore: (count: number) =>
-      isVi ? `⚠️ Cần thêm ít nhất ${count} câu nữa` : `⚠️ Need at least ${count} more questions`,
+      isVi
+        ? `⚠️ Cần thêm ít nhất ${count} câu nữa`
+        : `⚠️ Need at least ${count} more questions`,
     pointsPerQuestion: isVi ? "📊 Điểm/câu:" : "📊 Points/question:",
     totalPoints: isVi ? "Tổng điểm:" : "Total points:",
-    noQuestionSelected: isVi ? "Chưa có câu hỏi nào được chọn" : "No questions selected yet",
+    noQuestionSelected: isVi
+      ? "Chưa có câu hỏi nào được chọn"
+      : "No questions selected yet",
     clickAddFromBank: isVi
       ? 'Nhấn "Thêm Câu Hỏi Từ Kho" để bắt đầu'
       : 'Click "Add Questions from Bank" to start',
-    selectFromBankTitle: isVi ? "Chọn Câu Hỏi Từ Kho" : "Select Questions from Bank",
+    selectFromBankTitle: isVi
+      ? "Chọn Câu Hỏi Từ Kho"
+      : "Select Questions from Bank",
     cancel: isVi ? "Hủy" : "Cancel",
     addNQuestions: (count: number) =>
       isVi ? `Thêm ${count} Câu Hỏi` : `Add ${count} Questions`,
-    searchQuestionsPlaceholder:
-      isVi ? "Tìm kiếm câu hỏi..." : "Search questions...",
+    searchQuestionsPlaceholder: isVi
+      ? "Tìm kiếm câu hỏi..."
+      : "Search questions...",
     createQuestionModalTitle: isVi ? "Tạo Câu Hỏi Mới" : "Create New Question",
     createAndAdd: isVi ? "Tạo & Thêm Vào Bài Thi" : "Create & Add to Quiz",
     categoryInline: isVi ? "Danh mục:" : "Category:",
-    questionPlaceholder:
-      isVi ? "Nhập nội dung câu hỏi..." : "Enter question content...",
+    questionPlaceholder: isVi
+      ? "Nhập nội dung câu hỏi..."
+      : "Enter question content...",
     singleChoice: isVi ? "Một đáp án" : "Single Choice",
     multipleChoice: isVi ? "Nhiều đáp án" : "Multiple Choice",
     optionPlaceholder: (letter: string) =>
@@ -245,7 +281,9 @@ export default function CreateQuizModal({
     selectedQuestionIds: [],
   })
 
-  const [categories, setCategories] = useState<Array<{ id: number; name: string }>>([])
+  const [categories, setCategories] = useState<
+    Array<{ id: number; name: string }>
+  >([])
   const [loadingCategories, setLoadingCategories] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [isCreateQuestionModalVisible, setIsCreateQuestionModalVisible] =
@@ -259,6 +297,11 @@ export default function CreateQuizModal({
   const [newCorrectIndex, setNewCorrectIndex] = useState<number | null>(null)
   const [newCorrectIndexes, setNewCorrectIndexes] = useState<number[]>([])
   const [newExplanation, setNewExplanation] = useState("")
+  const [createQuestionErrors, setCreateQuestionErrors] = useState<{
+    questionText?: string
+    options?: string
+    correctAnswer?: string
+  }>({})
   const isCategoryLocked = (payload.questions?.length || 0) > 0
   const isCategorySelectionLocked =
     isCategoryLocked || (lockPresetCategory && presetCategoryId != null)
@@ -270,6 +313,7 @@ export default function CreateQuizModal({
     setNewCorrectIndex(null)
     setNewCorrectIndexes([])
     setNewExplanation("")
+    setCreateQuestionErrors({})
   }
 
   // Reset state when modal opens
@@ -299,7 +343,9 @@ export default function CreateQuizModal({
       setLoadingCategories(true)
       try {
         const categoryData = await getCategoriesAPI()
-        setCategories((categoryData || []).filter((category) => category.id !== 1))
+        setCategories(
+          (categoryData || []).filter((category) => category.id !== 1)
+        )
       } catch (error) {
         console.error("Failed to load categories:", error)
         setCategories([])
@@ -553,27 +599,33 @@ export default function CreateQuizModal({
       return
     }
 
+    const newErrors: typeof createQuestionErrors = {}
+
     const trimmedText = newQuestionText.trim()
-    if (trimmedText.length < 10) {
-      message.error(t.questionMin)
-      return
+    if (trimmedText.length === 0) {
+      newErrors.questionText = t.questionMin
+    } else if (trimmedText.length < 10) {
+      newErrors.questionText = t.questionMin
     }
 
     if (newOptions.some((opt) => !opt.trim())) {
-      message.error(t.requireOptions)
-      return
+      newErrors.options = t.requireOptions
     }
 
     if (newQuestionType === "single_choice" && newCorrectIndex === null) {
-      message.error(t.requireOneCorrect)
-      return
+      newErrors.correctAnswer = t.requireOneCorrect
     }
 
     if (
       newQuestionType === "multiple_choice" &&
       newCorrectIndexes.length === 0
     ) {
-      message.error(t.requireAtLeastOneCorrect)
+      newErrors.correctAnswer = t.requireAtLeastOneCorrect
+    }
+
+    // If there are errors, set them and return
+    if (Object.keys(newErrors).length > 0) {
+      setCreateQuestionErrors(newErrors)
       return
     }
 
@@ -962,9 +1014,7 @@ export default function CreateQuizModal({
                   </div>
                 ) : (
                   <div className="text-center py-10 bg-gray-50 rounded">
-                    <p className="text-gray-500">
-                      {t.noQuestionSelected}
-                    </p>
+                    <p className="text-gray-500">{t.noQuestionSelected}</p>
                     <p className="text-sm text-gray-400 mt-1">
                       {t.clickAddFromBank}
                     </p>
@@ -1051,17 +1101,46 @@ export default function CreateQuizModal({
                 >
                   <div className="space-y-4">
                     <div className="text-sm text-gray-600">
-                      {t.categoryInline} <strong>{categories.find((c) => c.id === payload.category_id)?.name || "N/A"}</strong>
+                      {t.categoryInline}{" "}
+                      <strong>
+                        {categories.find((c) => c.id === payload.category_id)
+                          ?.name || "N/A"}
+                      </strong>
                     </div>
 
-                    <Input.TextArea
-                      placeholder={t.questionPlaceholder}
-                      value={newQuestionText}
-                      onChange={(e) => setNewQuestionText(e.target.value)}
-                      autoSize={{ minRows: 3, maxRows: 8 }}
-                      showCount
-                      maxLength={1000}
-                    />
+                    <div>
+                      <Input.TextArea
+                        placeholder={t.questionPlaceholder}
+                        value={newQuestionText}
+                        onChange={(e) => {
+                          setNewQuestionText(e.target.value)
+                          if (createQuestionErrors.questionText) {
+                            setCreateQuestionErrors((prev) => ({
+                              ...prev,
+                              questionText: undefined,
+                            }))
+                          }
+                        }}
+                        autoSize={{ minRows: 3, maxRows: 8 }}
+                        showCount
+                        maxLength={1000}
+                        status={
+                          createQuestionErrors.questionText
+                            ? "error"
+                            : undefined
+                        }
+                      />
+                      {createQuestionErrors.questionText && (
+                        <div className="mt-2 animate-in fade-in-50 duration-200">
+                          <Alert
+                            type="error"
+                            message={createQuestionErrors.questionText}
+                            showIcon
+                            className="border-0 bg-red-50 text-red-700"
+                          />
+                        </div>
+                      )}
+                    </div>
 
                     <Radio.Group
                       value={newQuestionType}
@@ -1072,53 +1151,110 @@ export default function CreateQuizModal({
                         setNewQuestionType(nextType)
                         setNewCorrectIndex(null)
                         setNewCorrectIndexes([])
+                        if (createQuestionErrors.correctAnswer) {
+                          setCreateQuestionErrors((prev) => ({
+                            ...prev,
+                            correctAnswer: undefined,
+                          }))
+                        }
                       }}
                     >
-                      <Radio.Button value="single_choice">{t.singleChoice}</Radio.Button>
-                      <Radio.Button value="multiple_choice">{t.multipleChoice}</Radio.Button>
+                      <Radio.Button value="single_choice">
+                        {t.singleChoice}
+                      </Radio.Button>
+                      <Radio.Button value="multiple_choice">
+                        {t.multipleChoice}
+                      </Radio.Button>
                     </Radio.Group>
 
-                    <div className="space-y-2">
-                      {newOptions.map((optionText, index) => (
-                        <div
-                          key={index}
-                          className={`flex items-center gap-3 rounded-md border-2 px-3 py-2 transition-colors ${
-                            (newQuestionType === "single_choice" &&
-                              newCorrectIndex === index) ||
-                            (newQuestionType === "multiple_choice" &&
-                              newCorrectIndexes.includes(index))
-                              ? "border-blue-500 bg-blue-50"
-                              : "border-gray-200 bg-white"
-                          }`}
-                        >
-                          <span className="w-6 text-center font-semibold">
-                            {String.fromCharCode(65 + index)}
-                          </span>
-                          <Input
-                            value={optionText}
-                            onChange={(e) =>
-                              handleCreateOptionChange(e.target.value, index)
-                            }
-                            placeholder={t.optionPlaceholder(
-                              String.fromCharCode(65 + index)
-                            )}
-                          />
-                          <div className="rounded border border-gray-300 bg-white px-2 py-1">
-                            {newQuestionType === "single_choice" ? (
-                              <Radio
-                                checked={newCorrectIndex === index}
-                                onChange={() => handleCreateAnswerToggle(index)}
-                              />
-                            ) : (
-                              <Checkbox
-                                checked={newCorrectIndexes.includes(index)}
-                                onChange={() => handleCreateAnswerToggle(index)}
-                              />
-                            )}
+                    <div>
+                      <div className="space-y-2">
+                        {newOptions.map((optionText, index) => (
+                          <div
+                            key={index}
+                            className={`flex items-center gap-3 rounded-md border-2 px-3 py-2 transition-colors ${
+                              (newQuestionType === "single_choice" &&
+                                newCorrectIndex === index) ||
+                              (newQuestionType === "multiple_choice" &&
+                                newCorrectIndexes.includes(index))
+                                ? "border-blue-500 bg-blue-50"
+                                : createQuestionErrors.options
+                                  ? "border-red-300 bg-red-50"
+                                  : "border-gray-200 bg-white"
+                            }`}
+                          >
+                            <span className="w-6 text-center font-semibold">
+                              {String.fromCharCode(65 + index)}
+                            </span>
+                            <Input
+                              value={optionText}
+                              onChange={(e) => {
+                                handleCreateOptionChange(e.target.value, index)
+                                if (createQuestionErrors.options) {
+                                  setCreateQuestionErrors((prev) => ({
+                                    ...prev,
+                                    options: undefined,
+                                  }))
+                                }
+                              }}
+                              placeholder={t.optionPlaceholder(
+                                String.fromCharCode(65 + index)
+                              )}
+                            />
+                            <div className="rounded border border-gray-300 bg-white px-2 py-1">
+                              {newQuestionType === "single_choice" ? (
+                                <Radio
+                                  checked={newCorrectIndex === index}
+                                  onChange={() => {
+                                    handleCreateAnswerToggle(index)
+                                    if (createQuestionErrors.correctAnswer) {
+                                      setCreateQuestionErrors((prev) => ({
+                                        ...prev,
+                                        correctAnswer: undefined,
+                                      }))
+                                    }
+                                  }}
+                                />
+                              ) : (
+                                <Checkbox
+                                  checked={newCorrectIndexes.includes(index)}
+                                  onChange={() => {
+                                    handleCreateAnswerToggle(index)
+                                    if (createQuestionErrors.correctAnswer) {
+                                      setCreateQuestionErrors((prev) => ({
+                                        ...prev,
+                                        correctAnswer: undefined,
+                                      }))
+                                    }
+                                  }}
+                                />
+                              )}
+                            </div>
                           </div>
+                        ))}
+                      </div>
+                      {createQuestionErrors.options && (
+                        <div className="mt-3 animate-in fade-in-50 duration-200">
+                          <Alert
+                            type="error"
+                            message={createQuestionErrors.options}
+                            showIcon
+                            className="border-0 bg-red-50 text-red-700"
+                          />
                         </div>
-                      ))}
+                      )}
                     </div>
+
+                    {createQuestionErrors.correctAnswer && (
+                      <div className="animate-in fade-in-50 duration-200">
+                        <Alert
+                          type="error"
+                          message={createQuestionErrors.correctAnswer}
+                          showIcon
+                          className="border-0 bg-red-50 text-red-700"
+                        />
+                      </div>
+                    )}
 
                     <div className="pb-2">
                       <Input.TextArea
@@ -1146,7 +1282,8 @@ export default function CreateQuizModal({
                     </p>
                     <p>
                       <strong>{t.timeLabel}</strong>{" "}
-                      {payload.time_limit_minutes || t.unlimited} {isVi ? "phút" : "min"}
+                      {payload.time_limit_minutes || t.unlimited}{" "}
+                      {isVi ? "phút" : "min"}
                     </p>
                     <p>
                       <strong>{t.passingLabel}</strong> {payload.passing_score}%
@@ -1160,7 +1297,8 @@ export default function CreateQuizModal({
                   </div>
                   {payload.description && (
                     <p className="mt-2 text-sm">
-                      <strong>{t.descriptionLabel}</strong> {payload.description}
+                      <strong>{t.descriptionLabel}</strong>{" "}
+                      {payload.description}
                     </p>
                   )}
                 </div>
@@ -1170,8 +1308,8 @@ export default function CreateQuizModal({
                     {t.questionsSummary(payload.questions?.length || 0)}
                   </h3>
                   <p className="text-sm text-gray-600">
-                    {t.pointsEachLabel} {pointsPerQuestion.toFixed(2)} | {t.totalPoints}{" "}
-                    {TOTAL_QUIZ_POINTS}
+                    {t.pointsEachLabel} {pointsPerQuestion.toFixed(2)} |{" "}
+                    {t.totalPoints} {TOTAL_QUIZ_POINTS}
                   </p>
                 </div>
 
