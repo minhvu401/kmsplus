@@ -94,7 +94,9 @@ export default function UserListTable({
       email: user.email,
       fullName: user.full_name,
       roleId: user.role_id ? parseInt(user.role_id) : undefined,
-      departmentId: user.department_id ? parseInt(String(user.department_id)) : undefined,
+      departmentId: user.department_id
+        ? parseInt(String(user.department_id))
+        : undefined,
     })
     setIsEditModalVisible(true)
   }
@@ -124,7 +126,9 @@ export default function UserListTable({
   // Handle update info state - success
   useEffect(() => {
     if (updateInfoState.success) {
-      message.success(updateInfoState.message || t("user.updated_success", language))
+      message.success(
+        updateInfoState.message || t("user.updated_success", language)
+      )
       setIsEditModalVisible(false)
       editForm.resetFields()
       setIsLoading(false)
@@ -141,10 +145,7 @@ export default function UserListTable({
   }, [updateInfoState.message, updateInfoState.success])
 
   // Handle ban user
-  const handleBanUser = (
-    userId: string,
-    currentStatus: string | boolean
-  ) => {
+  const handleBanUser = (userId: string, currentStatus: string | boolean) => {
     const formData = new FormData()
     formData.append("userId", userId)
     const statusString =
@@ -317,15 +318,6 @@ export default function UserListTable({
 
   return (
     <>
-      <Input
-        placeholder={t("user.search_placeholder", language)}
-        prefix={<SearchOutlined />}
-        style={{ marginBottom: 16 }}
-        value={searchQuery}
-        onChange={(e) => setSearchQuery(e.target.value)}
-        allowClear
-      />
-
       <Table
         columns={columns}
         dataSource={filteredUsers}
@@ -350,7 +342,13 @@ export default function UserListTable({
               label={t("user.form_email", language)}
               name="email"
               rules={[
-                { required: true, message: t("form.please_enter", language) + " " + t("user.form_email", language) },
+                {
+                  required: true,
+                  message:
+                    t("form.please_enter", language) +
+                    " " +
+                    t("user.form_email", language),
+                },
                 { type: "email", message: t("form.invalid_email", language) },
               ]}
             >
@@ -360,7 +358,15 @@ export default function UserListTable({
             <Form.Item
               label={t("user.form_full_name", language)}
               name="fullName"
-              rules={[{ required: true, message: t("form.please_enter", language) + " " + t("user.form_full_name", language) }]}
+              rules={[
+                {
+                  required: true,
+                  message:
+                    t("form.please_enter", language) +
+                    " " +
+                    t("user.form_full_name", language),
+                },
+              ]}
             >
               <Input />
             </Form.Item>
@@ -368,7 +374,15 @@ export default function UserListTable({
             <Form.Item
               label={t("user.form_role", language)}
               name="roleId"
-              rules={[{ required: true, message: t("form.please_select", language) + " " + t("user.form_role", language) }]}
+              rules={[
+                {
+                  required: true,
+                  message:
+                    t("form.please_select", language) +
+                    " " +
+                    t("user.form_role", language),
+                },
+              ]}
             >
               <Select
                 placeholder={t("common.select_placeholder", language)}
@@ -382,7 +396,15 @@ export default function UserListTable({
             <Form.Item
               label={t("user.form_department", language)}
               name="departmentId"
-              rules={[{ required: true, message: t("form.please_select", language) + " " + t("user.form_department", language) }]}
+              rules={[
+                {
+                  required: true,
+                  message:
+                    t("form.please_select", language) +
+                    " " +
+                    t("user.form_department", language),
+                },
+              ]}
             >
               <Select
                 placeholder={t("common.select_placeholder", language)}
