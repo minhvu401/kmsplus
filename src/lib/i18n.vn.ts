@@ -413,6 +413,21 @@ export const vi = {
   "document.shared_with": "Chia sẻ với",
   "document.create_category_success": "Tạo danh mục tài liệu thành công!",
 
+  // Document Filter
+  "document.filter_title": "Bộ lọc tài liệu",
+  "document.filter_search_placeholder": "Tìm kiếm theo tiêu đề...",
+  "document.filter_status_placeholder": "Lọc theo trạng thái",
+  "document.filter_category_placeholder": "Lọc theo danh mục",
+  "document.filter_department_placeholder": "Lọc theo phòng ban",
+  "document.sort_label": "Sắp xếp",
+  "document.sort_updated_newest": "Cập nhật mới nhất",
+  "document.sort_updated_oldest": "Cập nhật cũ nhất",
+  "document.sort_title_asc": "Tiêu đề A-Z",
+  "document.sort_title_desc": "Tiêu đề Z-A",
+  "document.btn_clear_filter": "Xóa bộ lọc",
+  "document.results_count": "Tìm thấy {count} tài liệu",
+  "document.no_results": "Không tìm thấy tài liệu nào",
+
   // Dashboard Metrics - General
   "dashboard.metrics.access_denied": "Truy cập bị từ chối",
   "dashboard.metrics.access_denied_desc":

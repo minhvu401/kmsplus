@@ -19,6 +19,7 @@ import {
   Col,
   Modal,
   Upload,
+  Typography,
 } from "antd"
 import {
   PlusOutlined,
@@ -26,7 +27,11 @@ import {
   DeleteOutlined,
   FolderAddOutlined,
   UploadOutlined,
+  FilterOutlined,
+  ClearOutlined,
+  SearchOutlined,
 } from "@ant-design/icons"
+import { DatePicker } from "antd"
 import type { UploadFile, UploadProps } from "antd/es/upload/interface"
 import dayjs from "dayjs"
 
@@ -96,6 +101,14 @@ export default function DocumentManagementPage() {
   // State: Modal quản lý Danh mục
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false)
   const [isCategorySubmitting, setIsCategorySubmitting] = useState(false)
+
+  // State: Filter
+  const [filterStatus, setFilterStatus] = useState<string>("")
+  const [filterCategory, setFilterCategory] = useState<string>("")
+  const [filterDepartment, setFilterDepartment] = useState<string>("")
+  const [filterSearch, setFilterSearch] = useState<string>("")
+  const [sortBy, setSortBy] = useState<string>("updated_at_desc")
+  const [hasActiveFilters, setHasActiveFilters] = useState(false)
 
   // Forms
   const [docForm] = Form.useForm()
@@ -176,6 +189,82 @@ export default function DocumentManagementPage() {
   useEffect(() => {
     loadData()
   }, [])
+
+  // Track if filters are active
+  useEffect(() => {
+    const active =
+      filterSearch !== "" ||
+      filterStatus !== "" ||
+      filterCategory !== "" ||
+      filterDepartment !== ""
+    setHasActiveFilters(active)
+  }, [filterSearch, filterStatus, filterCategory, filterDepartment])
+
+  // Filter & Sort Documents
+  const getFilteredDocuments = () => {
+    let filtered = documents
+
+    // Filter by search text
+    if (filterSearch) {
+      filtered = filtered.filter((doc) =>
+        doc.title.toLowerCase().includes(filterSearch.toLowerCase())
+      )
+    }
+
+    // Filter by status
+    if (filterStatus) {
+      filtered = filtered.filter((doc) => doc.status === filterStatus)
+    }
+
+    // Filter by category
+    if (filterCategory) {
+      filtered = filtered.filter((doc) => doc.category_id === filterCategory)
+    }
+
+    // Filter by department (for ADMIN only)
+    if (filterDepartment && currentUser?.role === "ADMIN") {
+      filtered = filtered.filter((doc) => {
+        const category = categories.find((c) => c.id === doc.category_id)
+        return (
+          category?.department_id === Number(filterDepartment) ||
+          category?.department_id === null
+        )
+      })
+    }
+
+    // Sort
+    filtered.sort((a, b) => {
+      switch (sortBy) {
+        case "updated_at_desc":
+          return (
+            new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+          )
+        case "updated_at_asc":
+          return (
+            new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime()
+          )
+        case "title_asc":
+          return a.title.localeCompare(b.title)
+        case "title_desc":
+          return b.title.localeCompare(a.title)
+        default:
+          return 0
+      }
+    })
+
+    return filtered
+  }
+
+  // Clear all filters
+  const handleClearFilters = () => {
+    setFilterStatus("")
+    setFilterCategory("")
+    setFilterDepartment("")
+    setFilterSearch("")
+    setSortBy("updated_at_desc")
+  }
+
+  const filteredDocuments = getFilteredDocuments()
 
   // 2. Mở Drawer & Lấy chi tiết nội dung (nếu sửa)
   const openDrawer = async (docId?: string) => {
@@ -403,10 +492,164 @@ export default function DocumentManagementPage() {
         </Space>
       </div>
 
+      <Card className="shadow-sm rounded-lg overflow-hidden mb-6">
+        <div className="space-y-4">
+          {/* Search Bar - Full Width */}
+          <Input.Search
+            placeholder={t("document.filter_search_placeholder", language)}
+            prefix={<SearchOutlined />}
+            value={filterSearch}
+            onChange={(e) => setFilterSearch(e.target.value)}
+            size="middle"
+            allowClear
+            enterButton={<SearchOutlined />}
+            className="mb-2"
+          />
+
+          {/* Filters Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+            {/* Status Filter */}
+            <div className="flex flex-col">
+              <Typography.Text
+                type="secondary"
+                className="text-sm font-medium mb-2"
+              >
+                {t("document.filter_status_placeholder", language)}
+              </Typography.Text>
+              <Select
+                allowClear
+                value={filterStatus || undefined}
+                onChange={(value) => setFilterStatus(value)}
+                size="middle"
+                options={[
+                  {
+                    label: t("document.form_status_draft", language),
+                    value: DocumentStatus.DRAFT,
+                  },
+                  {
+                    label: t("document.form_status_published", language),
+                    value: DocumentStatus.PUBLISHED,
+                  },
+                  {
+                    label: t("document.form_status_archived", language),
+                    value: DocumentStatus.ARCHIVED,
+                  },
+                ]}
+              />
+            </div>
+
+            {/* Category Filter */}
+            <div className="flex flex-col">
+              <Typography.Text
+                type="secondary"
+                className="text-sm font-medium mb-2"
+              >
+                {t("document.filter_category_placeholder", language)}
+              </Typography.Text>
+              <Select
+                allowClear
+                value={filterCategory || undefined}
+                onChange={(value) => setFilterCategory(value)}
+                size="middle"
+                showSearch
+                optionFilterProp="label"
+                options={categories.map((c) => ({
+                  label: c.name,
+                  value: c.id,
+                }))}
+              />
+            </div>
+
+            {/* Department Filter (ADMIN only) */}
+            {currentUser?.role === "ADMIN" && (
+              <div className="flex flex-col">
+                <Typography.Text
+                  type="secondary"
+                  className="text-sm font-medium mb-2"
+                >
+                  {t("document.filter_department_placeholder", language)}
+                </Typography.Text>
+                <Select
+                  allowClear
+                  value={filterDepartment || undefined}
+                  onChange={(value) => setFilterDepartment(value)}
+                  size="middle"
+                  showSearch
+                  optionFilterProp="label"
+                  options={departments.map((d) => ({
+                    label: d.name,
+                    value: String(d.id),
+                  }))}
+                />
+              </div>
+            )}
+
+            {/* Sort Filter */}
+            <div className="flex flex-col">
+              <Typography.Text
+                type="secondary"
+                className="text-sm font-medium mb-2"
+              >
+                {t("document.sort_label", language)}
+              </Typography.Text>
+              <Select
+                value={sortBy}
+                onChange={(value) => setSortBy(value)}
+                size="middle"
+                options={[
+                  {
+                    label: t("document.sort_updated_newest", language),
+                    value: "updated_at_desc",
+                  },
+                  {
+                    label: t("document.sort_updated_oldest", language),
+                    value: "updated_at_asc",
+                  },
+                  {
+                    label: t("document.sort_title_asc", language),
+                    value: "title_asc",
+                  },
+                  {
+                    label: t("document.sort_title_desc", language),
+                    value: "title_desc",
+                  },
+                ]}
+              />
+            </div>
+
+            {/* Clear Filters Button */}
+            {hasActiveFilters && (
+              <div className="flex flex-col justify-end">
+                <Button
+                  type="dashed"
+                  danger
+                  size="small"
+                  icon={<ClearOutlined />}
+                  onClick={handleClearFilters}
+                  className="w-full"
+                >
+                  {t("document.btn_clear_filter", language)}
+                </Button>
+              </div>
+            )}
+          </div>
+
+          {/* Results Count */}
+          <div className="flex justify-end items-center mt-2">
+            <Typography.Text type="secondary" className="text-sm">
+              {t("document.results_count", language).replace(
+                "{count}",
+                String(filteredDocuments.length)
+              )}
+            </Typography.Text>
+          </div>
+        </div>
+      </Card>
+
       <Card className="shadow-sm rounded-lg overflow-hidden">
         <Table
           columns={columns}
-          dataSource={documents}
+          dataSource={filteredDocuments}
           loading={loading}
           rowKey="id"
           pagination={{ pageSize: 10 }}

@@ -398,6 +398,21 @@ export const en = {
   "document.shared_with": "Shared with",
   "document.create_category_success": "Create document category successfully!",
 
+  // Document Filter
+  "document.filter_title": "Filter Documents",
+  "document.filter_search_placeholder": "Search by title...",
+  "document.filter_status_placeholder": "Filter by status",
+  "document.filter_category_placeholder": "Filter by category",
+  "document.filter_department_placeholder": "Filter by department",
+  "document.sort_label": "Sort",
+  "document.sort_updated_newest": "Most Recent",
+  "document.sort_updated_oldest": "Oldest First",
+  "document.sort_title_asc": "Title A-Z",
+  "document.sort_title_desc": "Title Z-A",
+  "document.btn_clear_filter": "Clear Filters",
+  "document.results_count": "Found {count} documents",
+  "document.no_results": "No documents found",
+
   // Dashboard Metrics - General
   "dashboard.metrics.access_denied": "Access Denied",
   "dashboard.metrics.access_denied_desc":
