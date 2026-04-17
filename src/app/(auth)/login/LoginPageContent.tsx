@@ -68,7 +68,7 @@ export default function LoginPageContent() {
         {/* Content on image */}
         <div className="relative z-10 flex flex-col justify-center items-center w-full p-12 text-white">
           <img
-            src="/logo.png"
+            src="/favico.png"
             alt="KMSPlus Logo"
             className="w-24 h-24 object-contain mb-3 animate-bounce-in drop-shadow-2xl"
           />
@@ -125,8 +125,13 @@ export default function LoginPageContent() {
                     const userRole = data.role || data.user?.role
                     
                     // Nếu là Employee thì đổi đường dẫn mặc định thành lịch sử học tập
-                    if (userRole === "EMPLOYEE") {
+                    if (userRole === "Employee") {
                       window.location.replace("/history")
+                      return                    
+                    }
+
+                    if (userRole === "Contributor") {
+                      window.location.replace("/articles/management")
                       return                    
                     }
                   }

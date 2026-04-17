@@ -170,7 +170,7 @@ const AppSidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
               placement="right"
             >
               <img
-                src="/logo.png"
+                src="/favico.png"
                 alt="KMSPlus Logo"
                 style={{
                   width: 40,

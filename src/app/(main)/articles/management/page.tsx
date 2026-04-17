@@ -2526,7 +2526,7 @@ export default function ArticleManagement() {
 
       {/* Delete Confirmation Modal */}
       <Modal
-        title={deleteConfirmIsDeleted ? "Restore Article" : "Delete Article"}
+        title={deleteConfirmIsDeleted ? "Restore Article" : "Archive Article"}
         open={isDeleteConfirmOpen}
         onCancel={() => {
           setIsDeleteConfirmOpen(false)
@@ -2578,7 +2578,7 @@ export default function ArticleManagement() {
           <p className="text-base">
             {deleteConfirmIsDeleted
               ? "Are you sure you want to restore this article?"
-              : "Are you sure you want to delete this article? This action marks it as archived and excludes it from active views."}
+              : "Are you sure you want to archive this article? This action marks it as archived and excludes it from active views."}
           </p>
         </div>
       </Modal>

@@ -51,7 +51,7 @@ export default function QuestionCard({ question: q }: QuestionCardProps) {
 
     const text = isVi
         ? {
-            asked: 'da hoi',
+            asked: 'đã hỏi',
             readMore: '...xem thêm',
             closed: 'Đã đóng',
             open: 'Đang mở',

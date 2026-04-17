@@ -132,9 +132,9 @@ export default function LoginForm({
       {/* Header */}
       <div className="text-center mb-8">
         <div className="flex items-center justify-center gap-3 mb-6">
-          <img
-            src="/logo.png"
-            alt="KMSPlus Logo"
+          <img 
+            src="/favico.png" 
+            alt="KMSPlus Logo" 
             className="w-12 h-12 rounded-xl object-contain shadow-lg"
           />
           <div className="text-left">

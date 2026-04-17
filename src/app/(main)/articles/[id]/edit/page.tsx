@@ -559,27 +559,6 @@ export default function EditArticlePage() {
       >
         <Text>{t("article.edit.modal_confirm_message", language)}</Text>
       </Modal>
-
-      {/* Footer */}
-      <footer className="bg-white border-t px-8 py-4">
-        <Flex justify="space-between" align="center">
-          <Text type="secondary" className="text-sm">
-            © 2025 - KMSPlus. Designed by <Text strong>KMS Team</Text>. All
-            rights reserved
-          </Text>
-          <Space size="large">
-            <a href="#" className="text-sm text-gray-600 hover:text-gray-900">
-              FAQs
-            </a>
-            <a href="#" className="text-sm text-gray-600 hover:text-gray-900">
-              Privacy Policy
-            </a>
-            <a href="#" className="text-sm text-gray-600 hover:text-gray-900">
-              Terms & Condition
-            </a>
-          </Space>
-        </Flex>
-      </footer>
     </Flex>
   )
 }

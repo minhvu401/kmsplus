@@ -412,6 +412,21 @@ body {
   color: #2563eb !important;
 }
 
+/* Disable hover / pointer for non-interactive header items */
+.custom-sidebar-menu .ant-menu-item.ant-menu-item-disabled,
+.custom-sidebar-menu .ant-menu-item-group-title {
+  background: transparent !important;
+  color: #94a3b8 !important;
+  pointer-events: none !important;
+  box-shadow: none !important;
+}
+
+.custom-sidebar-menu .ant-menu-item.ant-menu-item-disabled:hover,
+.custom-sidebar-menu .ant-menu-item-group-title:hover {
+  background: transparent !important;
+  color: #94a3b8 !important;
+}
+
 .custom-sidebar-menu .ant-menu-submenu .ant-menu-item {
   padding-left: 48px !important;
 }

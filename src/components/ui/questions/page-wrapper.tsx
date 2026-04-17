@@ -16,7 +16,7 @@ export default function PageWrapper({ children }: { children: React.ReactNode })
         </Flex>
 
         {/* Footer always at bottom */}
-        <Footer />
+        {/* <Footer /> */}
       </Flex>
     </main>
   );

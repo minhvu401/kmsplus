@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { Modal, Button, Rate, Input, Form } from "antd"
 import { createReview } from "@/action/reviews/reviewActions"
+import useLanguageStore from "@/store/useLanguageStore"
 
 interface FeedbackBannerProps {
   courseId: number
@@ -20,6 +21,28 @@ const FeedbackBanner = ({
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [form] = Form.useForm()
   const [rating, setRating] = useState(0)
+  const { language } = useLanguageStore()
+
+  const L = {
+    title: language === "vi" ? "Chia sẻ phản hồi của bạn" : "Share Your Feedback",
+    body:
+      language === "vi"
+        ? "Giúp chúng tôi cải thiện bằng cách chia sẻ trải nghiệm của bạn về khóa học này."
+        : "Help us improve by sharing your experience with this course.",
+    giveFeedback: language === "vi" ? "Gửi phản hồi" : "Give Feedback",
+    modalTitle: language === "vi" ? "Để lại đánh giá" : "Leave a Review",
+    ratingLabel: language === "vi" ? "Đánh giá của bạn" : "Your Rating",
+    feedbackLabel: language === "vi" ? "Phản hồi của bạn" : "Your Feedback",
+    ratingRequired: language === "vi" ? "Vui lòng cho điểm." : "Please provide a rating.",
+    submit: language === "vi" ? "Gửi đánh giá" : "Submit Review",
+    thankYou: language === "vi" ? "Cảm ơn phản hồi của bạn!" : "Thank you for your feedback!",
+    submitFailed:
+      language === "vi" ? "Gửi phản hồi thất bại." : "Failed to submit feedback.",
+    submitError:
+      language === "vi"
+        ? "Gửi phản hồi gặp sự cố."
+        : "Something went wrong while submitting feedback.",
+  }
 
   const showModal = () => {
     setIsModalOpen(true)
@@ -75,12 +98,8 @@ const FeedbackBanner = ({
         }}
       >
         <div>
-          <h3 style={{ color: "white", margin: 0, fontWeight: "bold" }}>
-            Share Your Feedback
-          </h3>
-          <p style={{ margin: "5px 0 0 0" }}>
-            Help us improve by sharing your experience with this course.
-          </p>
+          <h3 style={{ color: "white", margin: 0, fontWeight: "bold" }}>{L.title}</h3>
+          <p style={{ margin: "5px 0 0 0" }}>{L.body}</p>
         </div>
         <Button
           type="default"
@@ -91,12 +110,12 @@ const FeedbackBanner = ({
             border: "none",
           }}
         >
-          Give Feedback
+          {L.giveFeedback}
         </Button>
       </div>
 
       <Modal
-        title="Leave a Review"
+        title={L.modalTitle}
         open={isModalOpen}
         onCancel={handleCancel}
         footer={null}
@@ -110,8 +129,8 @@ const FeedbackBanner = ({
         >
           <Form.Item
             name="rating"
-            label="Your Rating"
-            rules={[{ required: true, message: "Please provide a rating." }]}
+            label={L.ratingLabel}
+            rules={[{ required: true, message: L.ratingRequired }]}
           >
             <Rate
               className="feedback-rating"
@@ -121,12 +140,12 @@ const FeedbackBanner = ({
             />
           </Form.Item>
 
-          <Form.Item name="content" label="Your Feedback">
+          <Form.Item name="content" label={L.feedbackLabel}>
             <Input.TextArea
               rows={4}
               maxLength={600}
               showCount
-              placeholder="What did you like or dislike? What could be improved?"
+              placeholder={language === "vi" ? "Bạn thích hoặc không thích điều gì? Có thể cải thiện gì?" : "What did you like or dislike? What could be improved?"}
             />
           </Form.Item>
 
@@ -137,7 +156,7 @@ const FeedbackBanner = ({
               disabled={rating === 0}
               style={{ width: "100%" }}
             >
-              Submit Review
+              {L.submit}
             </Button>
           </Form.Item>
         </Form>

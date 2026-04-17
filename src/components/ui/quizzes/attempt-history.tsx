@@ -4,6 +4,7 @@ import Link from "next/link"
 import { Card, Empty, Progress, Space, Tag, Typography } from "antd"
 import { ArrowRightOutlined, MessageOutlined } from "@ant-design/icons"
 import type { AttemptHistoryItem } from "@/service/quiz.service"
+import useLanguageStore from "@/store/useLanguageStore"
 
 const { Title, Text } = Typography
 
@@ -14,10 +15,21 @@ type AttemptHistoryProps = {
   maxAttempts: number | null
 }
 
-const getStatusTag = (status: AttemptHistoryItem["status"]) => {
-  if (status === "passed") return <Tag color="success">Passed</Tag>
-  if (status === "failed") return <Tag color="error">Failed</Tag>
-  return <Tag color="processing">In Progress</Tag>
+type AttemptLabels = {
+  title: string
+  attemptsLeftSuffix: string
+  noAttempts: string
+  attemptLabel: string
+  feedback: string
+  passed: string
+  failed: string
+  inProgress: string
+}
+
+const getStatusTag = (status: AttemptHistoryItem["status"], labels: AttemptLabels) => {
+  if (status === "passed") return <Tag color="success">{labels.passed}</Tag>
+  if (status === "failed") return <Tag color="error">{labels.failed}</Tag>
+  return <Tag color="processing">{labels.inProgress}</Tag>
 }
 
 const getProgressColor = (status: AttemptHistoryItem["status"]) => {
@@ -34,10 +46,23 @@ export default function AttemptHistory({
 }: AttemptHistoryProps) {
   const isLastAttemptWarning = attemptsLeft === 1
 
+  const { language } = useLanguageStore()
+
+  const labels: AttemptLabels = {
+    title: language === "vi" ? "Lịch sử làm bài" : "Attempt History",
+    attemptsLeftSuffix: language === "vi" ? "lần làm" : "attempts left",
+    noAttempts: language === "vi" ? "Chưa có lượt làm nào" : "No attempts yet",
+    attemptLabel: language === "vi" ? "Lần làm" : "Attempt",
+    feedback: language === "vi" ? "Phản hồi" : "Feedback",
+    passed: language === "vi" ? "Đạt" : "Passed",
+    failed: language === "vi" ? "Thất bại" : "Failed",
+    inProgress: language === "vi" ? "Đang làm" : "In Progress",
+  }
+
   const attemptsLeftText =
     maxAttempts != null && attemptsLeft != null
-      ? `${attemptsLeft}/${maxAttempts} attempts left`
-      : `${attempts.length}/${attempts.length} attempts left`
+      ? `${attemptsLeft}/${maxAttempts} ${language === "vi" ? "lần làm" : "attempts left"}`
+      : `${attempts.length}/${attempts.length} ${language === "vi" ? "lần" : "attempts left"}`
 
   return (
     <Card
@@ -47,7 +72,7 @@ export default function AttemptHistory({
     >
       <div className="flex items-center justify-between gap-3">
         <Title level={5} style={{ margin: 0 }}>
-          Attempt History
+          {labels.title}
         </Title>
         <Text
           type={isLastAttemptWarning ? undefined : "secondary"}
@@ -61,7 +86,7 @@ export default function AttemptHistory({
         {attempts.length === 0 ? (
           <Empty
             image={Empty.PRESENTED_IMAGE_SIMPLE}
-            description="No attempts yet"
+            description={labels.noAttempts}
           />
         ) : (
           attempts.map((attempt) => {
@@ -82,9 +107,9 @@ export default function AttemptHistory({
                   />
                   <div className="min-w-0">
                     <div className="font-semibold text-gray-800 truncate">
-                      Attempt #{attempt.attempt_number}
+                      {labels.attemptLabel} #{attempt.attempt_number}
                     </div>
-                    <div className="mt-1">{getStatusTag(attempt.status)}</div>
+                    <div className="mt-1">{getStatusTag(attempt.status, labels)}</div>
                   </div>
                 </div>
 
@@ -94,7 +119,7 @@ export default function AttemptHistory({
                     className="inline-flex items-center gap-1 text-blue-600 font-medium whitespace-nowrap"
                   >
                     <MessageOutlined />
-                    <span>Feedback</span>
+                    <span>{labels.feedback}</span>
                     <ArrowRightOutlined />
                   </Link>
                 )}

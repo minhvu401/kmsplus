@@ -29,8 +29,7 @@ export default function Footer() {
         {/* Left text */}
         <p style={{ margin: 0 }}>
           © 2026 - <span style={{ fontWeight: 600 }}>KMSPlus</span>. Designed by{" "}
-          <span style={{ fontWeight: 600 }}>KMS Team</span>. All rights
-          reserved.
+          <span style={{ fontWeight: 600 }}>KMS Team</span>. All rights reserved.
         </p>
 
         {/* Links */}

@@ -6,6 +6,7 @@ import type { Quiz } from "@/service/quiz.service";
 import { Card, Row, Col, Typography, Space, message, Button, Modal } from 'antd'
 import { ClockCircleOutlined, TrophyOutlined, NumberOutlined, CalendarOutlined, PlayCircleOutlined } from '@ant-design/icons';
 import { format } from 'date-fns'
+import useLanguageStore from '@/store/useLanguageStore'
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -16,6 +17,26 @@ export default function QuizDetails({ quiz, curriculumItemId, courseId }: { quiz
     const formatDate = (date?: string | Date | null) => {
         if (!date) return null
         return format(new Date(date), 'dd MMM yyyy, HH:mm')
+    }
+
+    const { language } = useLanguageStore()
+
+    const L = {
+        timeLimit: language === 'vi' ? 'Giới hạn thời gian' : 'Time Limit',
+        mins: language === 'vi' ? 'phút' : 'mins',
+        noLimit: language === 'vi' ? 'Không giới hạn' : 'No Limit',
+        passingScore: language === 'vi' ? 'Điểm đạt' : 'Passing Score',
+        none: language === 'vi' ? 'Không có' : 'None',
+        attemptsAllowed: language === 'vi' ? 'Số lần làm' : 'Attempts Allowed',
+        unlimited: language === 'vi' ? 'Không giới hạn' : 'Unlimited',
+        opens: language === 'vi' ? 'Mở:' : 'Opens:',
+        closes: language === 'vi' ? 'Đóng:' : 'Closes:',
+        continueLabel: language === 'vi' ? 'Tiếp tục' : 'Continue',
+        startQuiz: language === 'vi' ? 'Bắt đầu' : 'Start Quiz',
+        readyTitle: language === 'vi' ? 'Sẵn sàng bắt đầu?' : 'Ready to start?',
+        continueTitle: language === 'vi' ? 'Tiếp tục làm bài?' : 'Continue quiz?',
+        continueBody: language === 'vi' ? 'Bạn đã có một lượt làm dang dở dang. Tiếp tục chỗ trước đó.' : 'You already have an in-progress attempt. Continue where you left off.',
+        startBody: language === 'vi' ? 'Khi bắt đầu, đồng hồ sẽ chạy ngay lập tức. Vui lòng đảm bảo mạng ổn định.' : 'Once you start the quiz, the timer will begin immediately. Please ensure you have a stable internet connection.',
     }
 
     return (
@@ -39,22 +60,22 @@ export default function QuizDetails({ quiz, curriculumItemId, courseId }: { quiz
                     <Col xs={24} sm={8}>
                         <StatCard 
                             icon={<ClockCircleOutlined style={{ fontSize: 28, color: '#1677ff' }} />}
-                            label="Time Limit"
-                            value={quiz.time_limit_minutes ? `${quiz.time_limit_minutes} mins` : 'No Limit'}
+                            label={L.timeLimit}
+                            value={quiz.time_limit_minutes ? `${quiz.time_limit_minutes} ${L.mins}` : L.noLimit}
                         />
                     </Col>
                     <Col xs={24} sm={8}>
                         <StatCard 
                             icon={<TrophyOutlined style={{ fontSize: 28, color: '#faad14' }} />}
-                            label="Passing Score"
-                            value={quiz.passing_score ? `${quiz.passing_score}%` : 'None'}
+                            label={L.passingScore}
+                            value={quiz.passing_score ? `${quiz.passing_score}%` : L.none}
                         />
                     </Col>
                     <Col xs={24} sm={8}>
                         <StatCard 
                             icon={<NumberOutlined style={{ fontSize: 28, color: '#52c41a' }} />}
-                            label="Attempts Allowed"
-                            value={quiz.max_attempts ? `${quiz.max_attempts}` : 'Unlimited'}
+                            label={L.attemptsAllowed}
+                            value={quiz.max_attempts ? `${quiz.max_attempts}` : L.unlimited}
                         />
                     </Col>
                 </Row>
@@ -72,14 +93,14 @@ export default function QuizDetails({ quiz, curriculumItemId, courseId }: { quiz
                             {hasFrom && (
                                 <Space>
                                     <CalendarOutlined style={{ color: '#8c8c8c' }}/>
-                                    <Text type="secondary">Opens:</Text>
+                                    <Text type="secondary">{L.opens}</Text>
                                     <Text strong>{formatDate(quiz.available_from)}</Text>
                                 </Space>
                             )}
                             {hasTo && (
                                 <Space>
                                     <CalendarOutlined style={{ color: '#8c8c8c' }}/>
-                                    <Text type="secondary">Closes:</Text>
+                                    <Text type="secondary">{L.closes}</Text>
                                     <Text strong>{formatDate(quiz.available_until)}</Text>
                                 </Space>
                             )}
@@ -183,7 +204,18 @@ export function StartQuizButton({
     }
 
     const hasInProgressAttempt = !!existingAttemptId;
-    const buttonLabel = hasInProgressAttempt ? 'Continue' : 'Start Quiz';
+    const { language } = useLanguageStore()
+    const S = {
+        continueLabel: language === 'vi' ? 'Tiếp tục' : 'Continue',
+        startQuiz: language === 'vi' ? 'Bắt đầu' : 'Start Quiz',
+        readyTitle: language === 'vi' ? 'Sẵn sàng bắt đầu?' : 'Ready to start?',
+        continueTitle: language === 'vi' ? 'Tiếp tục làm bài?' : 'Continue quiz?',
+        continueBody: language === 'vi' ? 'Bạn đã có một lượt làm dang dở. Tiếp tục chỗ trước đó.' : 'You already have an in-progress attempt. Continue where you left off.',
+        startBody: language === 'vi' ? 'Khi bắt đầu, đồng hồ sẽ chạy ngay lập tức. Vui lòng đảm bảo mạng ổn định.' : 'Once you start the quiz, the timer will begin immediately. Please ensure you have a stable internet connection.',
+        cancel: language === 'vi' ? 'Hủy' : 'Cancel',
+    }
+
+    const buttonLabel = hasInProgressAttempt ? S.continueLabel : S.startQuiz;
 
     const handleMainButtonClick = async () => {
         if (hasInProgressAttempt) {
@@ -217,18 +249,16 @@ export function StartQuizButton({
 
             <Modal
                 open={open}
-                title={hasInProgressAttempt ? "Continue quiz?" : "Ready to start?"}
-                okText={hasInProgressAttempt ? "Continue" : "Start Quiz"}
-                cancelText="Cancel"
+                title={hasInProgressAttempt ? S.continueTitle : S.readyTitle}
+                okText={hasInProgressAttempt ? S.continueLabel : S.startQuiz}
+                cancelText={S.cancel}
                 confirmLoading={loading}
                 onOk={handleConfirmStart}
                 onCancel={() => setOpen(false)}
                 centered
             >
                 <Paragraph>
-                    {hasInProgressAttempt
-                        ? 'You already have an in-progress attempt. Continue where you left off.'
-                        : 'Once you start the quiz, the timer will begin immediately. Please ensure you have a stable internet connection.'}
+                    {hasInProgressAttempt ? S.continueBody : S.startBody}
                 </Paragraph>
             </Modal>
         </>
