@@ -56,7 +56,9 @@ export type CommentRow = {
   updated_at?: string | null
 }
 
-export async function getUserCommentsAction(userId: string | number): Promise<CommentRow[]> {
+export async function getUserCommentsAction(
+  userId: string | number
+): Promise<CommentRow[]> {
   try {
     const rows = await sql`
       SELECT c.id, c.article_id, a.title AS article_title, c.content, c.created_at, c.updated_at
@@ -207,7 +209,9 @@ export async function updateCommentAction(input: {
     }
 
     const comment = commentCheck[0]
-    if (comment.user_id !== user_id) {
+
+    // ✅ FIX LỖI Ở ĐÂY: Đồng bộ kiểu dữ liệu về String trước khi so sánh
+    if (String(comment.user_id) !== String(user_id)) {
       return {
         success: false,
         message: "You don't have permission to edit this comment",
@@ -250,7 +254,9 @@ export async function deleteCommentAction(
     }
 
     const comment = commentCheck[0]
-    if (comment.user_id !== userId) {
+
+    // ✅ FIX LỖI Ở ĐÂY: Đồng bộ kiểu dữ liệu về String trước khi so sánh
+    if (String(comment.user_id) !== String(userId)) {
       return {
         success: false,
         message: "You don't have permission to delete this comment",
