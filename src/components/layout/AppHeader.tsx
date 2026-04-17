@@ -200,16 +200,16 @@ export default function AppHeader({ collapsed }: HeaderProps) {
   }, [user, fetchUser])
 
   useEffect(() => {
-    if (!user) return;
+    if (!user) return
     loadNotifications()
     const interval = setInterval(loadNotifications, 30000)
     return () => clearInterval(interval)
   }, [user])
 
   useEffect(() => {
-    if (!user) return;
+    if (!user) return
     let eventSource: EventSource | null = null
-    let retryTimeoutId: NodeJS.Timeout | null = null;
+    let retryTimeoutId: NodeJS.Timeout | null = null
 
     const connect = () => {
       eventSource = new EventSource("/api/notifications/stream", {
@@ -238,7 +238,7 @@ export default function AppHeader({ collapsed }: HeaderProps) {
     connect()
 
     return () => {
-      if (retryTimeoutId) clearTimeout(retryTimeoutId);
+      if (retryTimeoutId) clearTimeout(retryTimeoutId)
       if (eventSource) {
         eventSource.close()
       }
@@ -268,7 +268,7 @@ export default function AppHeader({ collapsed }: HeaderProps) {
   const notificationDropdown = (
     <div className="w-[380px] max-h-[420px] overflow-y-auto rounded-lg border border-gray-100 bg-white shadow-lg">
       <div className="px-4 py-3 border-b border-gray-100">
-        <Text strong>Notifications</Text>
+        <Text strong>{t("notification.title", language)}</Text>
       </div>
 
       {loadingNotifications ? (
@@ -277,7 +277,7 @@ export default function AppHeader({ collapsed }: HeaderProps) {
         </div>
       ) : notifications.length === 0 ? (
         <div className="px-4 py-8 text-center text-gray-500 text-sm">
-          No notifications yet
+          {t("notification.no_notifications", language)}
         </div>
       ) : (
         notifications.map((notification) => (

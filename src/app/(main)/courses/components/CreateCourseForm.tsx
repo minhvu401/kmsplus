@@ -433,7 +433,9 @@ export default function CreateCourseForm({
     }))
   }
   const handleQuizDeleted = (deletedId: number) => {
-    setAvailableQuizzes((prev) => prev.filter((q) => Number(q.id) !== deletedId))
+    setAvailableQuizzes((prev) =>
+      prev.filter((q) => Number(q.id) !== deletedId)
+    )
     setPayload((prev) => ({
       ...prev,
       curriculum: prev.curriculum.map((section) => ({
@@ -575,11 +577,7 @@ export default function CreateCourseForm({
   }
 
   function changeStep(newIndex: number) {
-    if (
-      newIndex === current ||
-      newIndex < 0 ||
-      newIndex >= stepLabels.length
-    )
+    if (newIndex === current || newIndex < 0 || newIndex >= stepLabels.length)
       return
     const isCurrentStepValid = validateStep(current)
     setStepStatus((prev) => {
@@ -635,7 +633,8 @@ export default function CreateCourseForm({
         if (onSuccess) onSuccess()
         router.refresh()
       } else {
-        if (onError) onError(res.error || (isVi ? "Tạo thất bại" : "Creation failed"))
+        if (onError)
+          onError(res.error || (isVi ? "Tạo thất bại" : "Creation failed"))
       }
     } catch (err) {
       if (onError)
@@ -687,7 +686,8 @@ export default function CreateCourseForm({
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium mb-1">
-                      {isVi ? "Tiêu đề" : "Title"} <span className="text-red-500">*</span>
+                      {isVi ? "Tiêu đề" : "Title"}{" "}
+                      <span className="text-red-500">*</span>
                     </label>
                     <Input
                       value={payload.title || ""}
@@ -703,7 +703,8 @@ export default function CreateCourseForm({
                   </div>
                   <div>
                     <label className="block text-sm font-medium mb-1">
-                      {isVi ? "Danh mục" : "Category"} <span className="text-red-500">*</span>
+                      {isVi ? "Danh mục" : "Category"}{" "}
+                      <span className="text-red-500">*</span>
                     </label>
                     <Select
                       placeholder={isVi ? "Chọn danh mục" : "Select category"}
@@ -719,7 +720,8 @@ export default function CreateCourseForm({
                       }}
                       disabled={isCategoryLockedByCurriculum}
                       status={
-                        stepStatus[0] === "invalid" && payload.category_id == null
+                        stepStatus[0] === "invalid" &&
+                        payload.category_id == null
                           ? "error"
                           : ""
                       }
@@ -774,7 +776,9 @@ export default function CreateCourseForm({
                             showUploadList={false}
                             customRequest={handleUploadThumbnail}
                           >
-                            <Button ghost>{isVi ? "Thay Đổi Ảnh" : "Change Image"}</Button>
+                            <Button ghost>
+                              {isVi ? "Thay Đổi Ảnh" : "Change Image"}
+                            </Button>
                           </Upload>
                           <Button
                             ghost
@@ -829,7 +833,9 @@ export default function CreateCourseForm({
                   <div className="space-y-6">
                     <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                       <label className="block font-semibold text-gray-700 mb-2">
-                        {isVi ? "1. Hiển Thị Trong Thư Viện" : "1. Visibility in Library"}
+                        {isVi
+                          ? "1. Hiển Thị Trong Thư Viện"
+                          : "1. Visibility in Library"}
                       </label>
                       <Radio.Group
                         value={payload.visibility || "private"}
@@ -841,7 +847,9 @@ export default function CreateCourseForm({
                           className="bg-white p-3 border rounded-md shadow-sm w-full"
                         >
                           <span className="font-semibold text-blue-600">
-                            {isVi ? "Công Khai (Thư Viện Mở)" : "Public (Open Library)"}
+                            {isVi
+                              ? "Công Khai (Thư Viện Mở)"
+                              : "Public (Open Library)"}
                           </span>
                           <span className="block text-xs text-gray-500 mt-1">
                             {isVi
@@ -869,7 +877,9 @@ export default function CreateCourseForm({
                     <div className="flex justify-between items-start mb-4">
                       <div>
                         <label className="block font-semibold text-blue-900 mb-1">
-                          {isVi ? "2. Phân Công Bắt Buộc" : "2. Mandatory Assignment"}
+                          {isVi
+                            ? "2. Phân Công Bắt Buộc"
+                            : "2. Mandatory Assignment"}
                         </label>
                         <p className="text-xs text-blue-700">
                           {isVi
@@ -937,15 +947,28 @@ export default function CreateCourseForm({
                                       value: "all_employees",
                                       label: isVi ? "Tất Cả NV" : "All Staff",
                                     },
-                                    { value: "department", label: isVi ? "Phòng Ban" : "Department" },
-                                    { value: "role", label: isVi ? "Vai Trò" : "Role" },
-                                    { value: "user", label: isVi ? "Người Dùng" : "User" },
+                                    {
+                                      value: "department",
+                                      label: isVi ? "Phòng Ban" : "Department",
+                                    },
+                                    {
+                                      value: "role",
+                                      label: isVi ? "Vai Trò" : "Role",
+                                    },
+                                    {
+                                      value: "user",
+                                      label: isVi ? "Người Dùng" : "User",
+                                    },
                                   ]}
                                 />
                                 <div className="flex-1">
                                   {rule.target_type === "department" && (
                                     <Select
-                                      placeholder={isVi ? "Chọn Phòng Ban..." : "Select Department..."}
+                                      placeholder={
+                                        isVi
+                                          ? "Chọn Phòng Ban..."
+                                          : "Select Department..."
+                                      }
                                       className="w-full"
                                       value={rule.department_id}
                                       onChange={(val) => {
@@ -967,7 +990,11 @@ export default function CreateCourseForm({
                                   )}
                                   {rule.target_type === "role" && (
                                     <Select
-                                      placeholder={isVi ? "Chọn Vai Trò..." : "Select Role..."}
+                                      placeholder={
+                                        isVi
+                                          ? "Chọn Vai Trò..."
+                                          : "Select Role..."
+                                      }
                                       className="w-full"
                                       value={rule.role_id}
                                       onChange={(val) => {
@@ -976,14 +1003,24 @@ export default function CreateCourseForm({
                                         update("assignment_rules", r)
                                       }}
                                       options={[
-                                        { value: 1, label: isVi ? "Quản Lý" : "Manager" },
-                                        { value: 2, label: isVi ? "Nhân Viên" : "Staff" },
+                                        {
+                                          value: 1,
+                                          label: isVi ? "Quản Lý" : "Manager",
+                                        },
+                                        {
+                                          value: 2,
+                                          label: isVi ? "Nhân Viên" : "Staff",
+                                        },
                                       ]}
                                     />
                                   )}
                                   {rule.target_type === "user" && (
                                     <Select
-                                      placeholder={isVi ? "Tìm người dùng..." : "Search users..."}
+                                      placeholder={
+                                        isVi
+                                          ? "Tìm người dùng..."
+                                          : "Search users..."
+                                      }
                                       className="w-full"
                                       value={rule.user_id}
                                       onChange={(val) => {
@@ -1006,7 +1043,9 @@ export default function CreateCourseForm({
                                   {rule.target_type === "all_employees" && (
                                     <Input
                                       disabled
-                                      value={isVi ? "Toàn Công Ty" : "Whole Company"}
+                                      value={
+                                        isVi ? "Toàn Công Ty" : "Whole Company"
+                                      }
                                       className="bg-gray-50 text-center"
                                     />
                                   )}
@@ -1026,9 +1065,18 @@ export default function CreateCourseForm({
                                     update("assignment_rules", r)
                                   }}
                                   options={[
-                                    { value: "none", label: isVi ? "Không" : "None" },
-                                    { value: "relative", label: isVi ? "Ngày" : "Days" },
-                                    { value: "fixed", label: isVi ? "Cố Định" : "Fixed" },
+                                    {
+                                      value: "none",
+                                      label: isVi ? "Không" : "None",
+                                    },
+                                    {
+                                      value: "relative",
+                                      label: isVi ? "Ngày" : "Days",
+                                    },
+                                    {
+                                      value: "fixed",
+                                      label: isVi ? "Cố Định" : "Fixed",
+                                    },
                                   ]}
                                 />
                                 <div className="flex-1 flex justify-end">
@@ -1208,7 +1256,9 @@ export default function CreateCourseForm({
             <img src={imageUrl} alt="Crop Preview" className="max-w-full" />
           )}
           <p className="mt-2 text-gray-500">
-            {isVi ? "Chức năng cắt ảnh placeholder." : "Image crop placeholder feature."}
+            {isVi
+              ? "Chức năng cắt ảnh placeholder."
+              : "Image crop placeholder feature."}
           </p>
         </div>
       </Modal>
@@ -1294,7 +1344,9 @@ function CurriculumContentBank({
 
   const lockedCourseCategoryName = useMemo(() => {
     if (courseCategoryId == null)
-      return isVi ? "Chưa chọn danh mục ở Bước 1" : "No category selected in Step 1"
+      return isVi
+        ? "Chưa chọn danh mục ở Bước 1"
+        : "No category selected in Step 1"
     return (
       categories.find((c) => String(c.id) === String(courseCategoryId))?.name ||
       (isVi ? "Danh mục không hợp lệ" : "Invalid category")
@@ -1347,10 +1399,9 @@ function CurriculumContentBank({
             lessonId,
             {
               locked: true,
-              reason:
-                isVi
-                  ? "Không thể xác minh trạng thái sử dụng của bài học. Vui lòng thử lại."
-                  : "Unable to verify lesson usage. Please try again.",
+              reason: isVi
+                ? "Không thể xác minh trạng thái sử dụng của bài học. Vui lòng thử lại."
+                : "Unable to verify lesson usage. Please try again.",
             },
           ])
         ) as Record<number, { locked: boolean; reason: string }>
@@ -1403,10 +1454,9 @@ function CurriculumContentBank({
             quizId,
             {
               locked: true,
-              reason:
-                isVi
-                  ? "Không thể xác minh trạng thái sử dụng của bài kiểm tra. Vui lòng thử lại."
-                  : "Unable to verify quiz usage. Please try again.",
+              reason: isVi
+                ? "Không thể xác minh trạng thái sử dụng của bài kiểm tra. Vui lòng thử lại."
+                : "Unable to verify quiz usage. Please try again.",
             },
           ])
         ) as Record<number, { locked: boolean; reason: string }>
@@ -1466,27 +1516,41 @@ function CurriculumContentBank({
     type: "lesson" | "quiz"
   ) => {
     onChange(
-      sections.map((s) =>
-        s.id === sectionId
-          ? {
-              ...s,
-              items: [
-                ...s.items,
-                {
-                  id: `item-${Date.now()}`,
-                  order: s.items.length,
-                  resource_id: item.id,
-                  type,
-                  title: item.title,
-                  duration_minutes:
-                    type === "lesson" ? item.duration_minutes : undefined,
-                  question_count:
-                    type === "quiz" ? item.question_count : undefined,
-                },
-              ],
-            }
-          : s
-      )
+      sections.map((s) => {
+        if (s.id === sectionId) {
+          // Check if item already exists in this section
+          const existingItem = s.items.find(
+            (existing) =>
+              existing.resource_id === item.id && existing.type === type
+          )
+
+          if (existingItem) {
+            message.warning(
+              `${type === "lesson" ? "Lesson" : "Quiz"} "${item.title}" already exists in this section`
+            )
+            return s
+          }
+
+          return {
+            ...s,
+            items: [
+              ...s.items,
+              {
+                id: `item-${Date.now()}`,
+                order: s.items.length,
+                resource_id: item.id,
+                type,
+                title: item.title,
+                duration_minutes:
+                  type === "lesson" ? item.duration_minutes : undefined,
+                question_count:
+                  type === "quiz" ? item.question_count : undefined,
+              },
+            ],
+          }
+        }
+        return s
+      })
     )
   }
   const handleRemoveItem = (
@@ -1601,7 +1665,9 @@ function CurriculumContentBank({
       onLessonDeleted(id)
       message.success("Đã xóa bài học")
     } catch (error) {
-      message.error(type === "quiz" ? "Không thể xóa bài kiểm tra" : "Không thể xóa bài học")
+      message.error(
+        type === "quiz" ? "Không thể xóa bài kiểm tra" : "Không thể xóa bài học"
+      )
     }
   }
 
@@ -1613,7 +1679,9 @@ function CurriculumContentBank({
 
   const parseOptionsArray = (value: unknown): string[] => {
     if (Array.isArray(value)) {
-      return value.map((item) => String(item ?? "")).filter((v) => v.trim() !== "")
+      return value
+        .map((item) => String(item ?? ""))
+        .filter((v) => v.trim() !== "")
     }
     if (typeof value === "string") {
       try {
@@ -1632,9 +1700,7 @@ function CurriculumContentBank({
 
   const parseIndexArray = (value: unknown): number[] => {
     if (Array.isArray(value)) {
-      return value
-        .map((v) => Number(v))
-        .filter((n) => Number.isFinite(n))
+      return value.map((v) => Number(v)).filter((n) => Number.isFinite(n))
     }
     if (typeof value === "number") {
       return Number.isFinite(value) ? [value] : []
@@ -1643,9 +1709,7 @@ function CurriculumContentBank({
       try {
         const parsed = JSON.parse(value)
         if (Array.isArray(parsed)) {
-          return parsed
-            .map((v) => Number(v))
-            .filter((n) => Number.isFinite(n))
+          return parsed.map((v) => Number(v)).filter((n) => Number.isFinite(n))
         }
         const single = Number(parsed)
         return Number.isFinite(single) ? [single] : []
@@ -1690,7 +1754,9 @@ function CurriculumContentBank({
           category_id: courseCategoryId ?? null,
         })
         onLessonUpdated(updated as unknown as Lesson)
-        message.success(isVi ? "Đã cập nhật bài học!" : "Lesson updated successfully!")
+        message.success(
+          isVi ? "Đã cập nhật bài học!" : "Lesson updated successfully!"
+        )
         setIsCreateModalOpen(false)
         setEditingLessonId(null)
       } else {
@@ -1766,7 +1832,13 @@ function CurriculumContentBank({
           <Button
             type="primary"
             size="small"
-            icon={activeTab === "lessons" ? <Plus size={16} /> : <FileQuestion size={16} />}
+            icon={
+              activeTab === "lessons" ? (
+                <Plus size={16} />
+              ) : (
+                <FileQuestion size={16} />
+              )
+            }
             onClick={() => {
               if (activeTab === "lessons") {
                 setEditingLessonId(null)
@@ -1849,7 +1921,7 @@ function CurriculumContentBank({
         </div>
         <div className="overflow-y-auto flex-1 max-h-[400px] pr-1">
           {activeTab === "lessons" &&
-            filteredLessons.map((l) => (
+            filteredLessons.map((l) =>
               (() => {
                 const lockInfo = lockedLessons[Number(l.id)]
                 const isCheckingLock = !lockInfo
@@ -1860,32 +1932,34 @@ function CurriculumContentBank({
                     : "Checking usage status..."
                   : lockInfo?.reason
                 return (
-              <ContentBankItem
-                key={String(l.id)}
-                icon={<BookOpen size={16} />}
-                title={l.title}
-                meta={`${l.duration_minutes || 0} min`}
-                onPreview={() => handlePreviewItemAction(l, "lesson")}
-                disableEdit={isLocked}
-                disableDelete={isLocked}
-                lockedReason={lockedReason}
-                onEdit={() => handleEditItemAction(l, "lesson")}
-                onDelete={() => handleDeleteItemAction(Number(l.id), "lesson")}
-                onAdd={() =>
-                  activeSectionId
-                    ? handleAddItem(activeSectionId, l, "lesson")
-                    : message.warning(
-                        isVi
-                          ? "Vui lòng chọn một chương trước"
-                          : "Please select a section first"
-                      )
-                }
-              />
+                  <ContentBankItem
+                    key={String(l.id)}
+                    icon={<BookOpen size={16} />}
+                    title={l.title}
+                    meta={`${l.duration_minutes || 0} min`}
+                    onPreview={() => handlePreviewItemAction(l, "lesson")}
+                    disableEdit={isLocked}
+                    disableDelete={isLocked}
+                    lockedReason={lockedReason}
+                    onEdit={() => handleEditItemAction(l, "lesson")}
+                    onDelete={() =>
+                      handleDeleteItemAction(Number(l.id), "lesson")
+                    }
+                    onAdd={() =>
+                      activeSectionId
+                        ? handleAddItem(activeSectionId, l, "lesson")
+                        : message.warning(
+                            isVi
+                              ? "Vui lòng chọn một chương trước"
+                              : "Please select a section first"
+                          )
+                    }
+                  />
                 )
               })()
-            ))}
+            )}
           {activeTab === "quizzes" &&
-            filteredQuizzes.map((q) => (
+            filteredQuizzes.map((q) =>
               (() => {
                 const lockInfo = lockedQuizzes[Number(q.id)]
                 const isCheckingLock = !lockInfo
@@ -1896,30 +1970,30 @@ function CurriculumContentBank({
                     : "Checking usage status..."
                   : lockInfo?.reason
                 return (
-              <ContentBankItem
-                key={q.id}
-                icon={<FileQuestion size={16} />}
-                title={q.title}
-                meta={`${q.question_count} Qs`}
-                onPreview={() => handlePreviewQuizAction(q)}
-                disableEdit={isLocked}
-                disableDelete={isLocked}
-                lockedReason={lockedReason}
-                onEdit={undefined}
-                onDelete={() => handleDeleteItemAction(q.id, "quiz")}
-                onAdd={() =>
-                  activeSectionId
-                    ? handleAddItem(activeSectionId, q, "quiz")
-                    : message.warning(
-                        isVi
-                          ? "Vui lòng chọn một chương trước"
-                          : "Please select a section first"
-                      )
-                }
-              />
+                  <ContentBankItem
+                    key={q.id}
+                    icon={<FileQuestion size={16} />}
+                    title={q.title}
+                    meta={`${q.question_count} Qs`}
+                    onPreview={() => handlePreviewQuizAction(q)}
+                    disableEdit={isLocked}
+                    disableDelete={isLocked}
+                    lockedReason={lockedReason}
+                    onEdit={undefined}
+                    onDelete={() => handleDeleteItemAction(q.id, "quiz")}
+                    onAdd={() =>
+                      activeSectionId
+                        ? handleAddItem(activeSectionId, q, "quiz")
+                        : message.warning(
+                            isVi
+                              ? "Vui lòng chọn một chương trước"
+                              : "Please select a section first"
+                          )
+                    }
+                  />
                 )
               })()
-            ))}
+            )}
           {activeTab === "lessons" && filteredLessons.length === 0 && (
             <p className="text-center text-gray-400 py-4 text-sm">
               {isVi
@@ -2090,16 +2164,33 @@ function CurriculumContentBank({
               name="title"
               label={
                 <span className="font-semibold">
-                  {isVi ? "Tiêu đề bài học" : "Lesson title"} <span className="text-red-500">*</span>
+                  {isVi ? "Tiêu đề bài học" : "Lesson title"}{" "}
+                  <span className="text-red-500">*</span>
                 </span>
               }
-              rules={[{ required: true, message: isVi ? "Vui lòng nhập tiêu đề" : "Please enter title" }]}
+              rules={[
+                {
+                  required: true,
+                  message: isVi
+                    ? "Vui lòng nhập tiêu đề"
+                    : "Please enter title",
+                },
+              ]}
             >
-              <Input placeholder={isVi ? "ví dụ: Giới thiệu chung" : "e.g. General introduction"} size="large" />
+              <Input
+                placeholder={
+                  isVi ? "ví dụ: Giới thiệu chung" : "e.g. General introduction"
+                }
+                size="large"
+              />
             </Form.Item>
             <Form.Item
               name="category_id"
-              label={<span className="font-semibold">{isVi ? "Danh mục bài học" : "Lesson category"}</span>}
+              label={
+                <span className="font-semibold">
+                  {isVi ? "Danh mục bài học" : "Lesson category"}
+                </span>
+              }
             >
               <div className="h-10 w-full rounded-md border border-[#d9d9d9] bg-white px-3 text-gray-900 flex items-center cursor-default">
                 {lockedCourseCategoryName}
@@ -2109,15 +2200,23 @@ function CurriculumContentBank({
               name="duration_minutes"
               label={
                 <span className="font-semibold">
-                  {isVi ? "Thời lượng (phút)" : "Duration (minutes)"} <span className="text-red-500">*</span>
+                  {isVi ? "Thời lượng (phút)" : "Duration (minutes)"}{" "}
+                  <span className="text-red-500">*</span>
                 </span>
               }
               rules={[
-                { required: true, message: isVi ? "Vui lòng nhập thời lượng" : "Please enter duration" },
+                {
+                  required: true,
+                  message: isVi
+                    ? "Vui lòng nhập thời lượng"
+                    : "Please enter duration",
+                },
                 {
                   type: "number",
                   min: 1,
-                  message: isVi ? "Thời lượng phải lớn hơn 0" : "Duration must be greater than 0",
+                  message: isVi
+                    ? "Thời lượng phải lớn hơn 0"
+                    : "Duration must be greater than 0",
                 },
               ]}
             >
@@ -2136,7 +2235,11 @@ function CurriculumContentBank({
 
           <Form.Item
             name="type"
-            label={<span className="font-semibold">{isVi ? "Loại Nội Dung" : "Content Type"}</span>}
+            label={
+              <span className="font-semibold">
+                {isVi ? "Loại Nội Dung" : "Content Type"}
+              </span>
+            }
           >
             <Radio.Group
               onChange={(e) => {
@@ -2164,8 +2267,22 @@ function CurriculumContentBank({
           {contentType === "text_media" && (
             <Form.Item
               name="content"
-              label={<><span className="font-semibold">{isVi ? "Nội dung Bài Học" : "Lesson content"}</span>&nbsp;<span className="text-red-500">*</span></>}
-              rules={[{ required: true, message: isVi ? "Vui lòng nhập nội dung" : "Please enter content" }]}
+              label={
+                <>
+                  <span className="font-semibold">
+                    {isVi ? "Nội dung Bài Học" : "Lesson content"}
+                  </span>
+                  &nbsp;<span className="text-red-500">*</span>
+                </>
+              }
+              rules={[
+                {
+                  required: true,
+                  message: isVi
+                    ? "Vui lòng nhập nội dung"
+                    : "Please enter content",
+                },
+              ]}
             >
               <RichTextEditor
                 value={form.getFieldValue("content")}
@@ -2184,14 +2301,29 @@ function CurriculumContentBank({
                 name="content"
                 label={
                   <span className="font-semibold">
-                    {isVi ? "Nhập URL Video" : "Enter video URL"} <span className="text-red-500">*</span>
+                    {isVi ? "Nhập URL Video" : "Enter video URL"}{" "}
+                    <span className="text-red-500">*</span>
                   </span>
                 }
                 rules={[
-                  { required: true, message: isVi ? "Vui lòng nhập URL video" : "Please enter video URL" },
-                  { type: "url", message: isVi ? "Vui lòng nhập URL hợp lệ" : "Please enter a valid URL" },
+                  {
+                    required: true,
+                    message: isVi
+                      ? "Vui lòng nhập URL video"
+                      : "Please enter video URL",
+                  },
+                  {
+                    type: "url",
+                    message: isVi
+                      ? "Vui lòng nhập URL hợp lệ"
+                      : "Please enter a valid URL",
+                  },
                 ]}
-                help={isVi ? "Hỗ trợ: YouTube, Vimeo, Wistia." : "Supported: YouTube, Vimeo, Wistia."}
+                help={
+                  isVi
+                    ? "Hỗ trợ: YouTube, Vimeo, Wistia."
+                    : "Supported: YouTube, Vimeo, Wistia."
+                }
               >
                 <Input
                   placeholder="https://www.youtube.com/watch?v=..."
@@ -2217,7 +2349,11 @@ function CurriculumContentBank({
                     <PlayCircleOutlined
                       style={{ fontSize: "32px", marginBottom: "8px" }}
                     />
-                    <span>{isVi ? "Preview video sẽ hiển thị ở đây" : "Video preview will appear here"}</span>
+                    <span>
+                      {isVi
+                        ? "Preview video sẽ hiển thị ở đây"
+                        : "Video preview will appear here"}
+                    </span>
                   </div>
                 )}
               </div>
@@ -2227,14 +2363,26 @@ function CurriculumContentBank({
             <div>
               <Form.Item
                 name="content"
-                label={<span className="font-semibold">{isVi ? "Tệp PDF" : "PDF file"}</span>}
-                rules={[{ required: true, message: isVi ? "Vui lòng tải lên PDF" : "Please upload a PDF" }]}
+                label={
+                  <span className="font-semibold">
+                    {isVi ? "Tệp PDF" : "PDF file"}
+                  </span>
+                }
+                rules={[
+                  {
+                    required: true,
+                    message: isVi
+                      ? "Vui lòng tải lên PDF"
+                      : "Please upload a PDF",
+                  },
+                ]}
                 style={{ display: "none" }}
               >
                 <Input />
               </Form.Item>
               <label className="block font-semibold mb-2">
-                {isVi ? "Tệp PDF" : "PDF file"} <span className="text-red-500">*</span>
+                {isVi ? "Tệp PDF" : "PDF file"}{" "}
+                <span className="text-red-500">*</span>
               </label>
               <div className="mb-4">
                 <Dragger
@@ -2248,7 +2396,9 @@ function CurriculumContentBank({
                     <InboxOutlined style={{ color: "#3b82f6" }} />
                   </p>
                   <p className="ant-upload-text">
-                    {isVi ? "Kéo thả hoặc nhấp để tải PDF lên" : "Drag and drop or click to upload PDF"}
+                    {isVi
+                      ? "Kéo thả hoặc nhấp để tải PDF lên"
+                      : "Drag and drop or click to upload PDF"}
                   </p>
                 </Dragger>
               </div>
@@ -2313,9 +2463,12 @@ function CurriculumContentBank({
       >
         <div className="text-center py-4">
           <CheckCircleFilled className="text-green-500 text-5xl mb-4" />
-          <h2 className="text-xl font-bold mb-2">{isVi ? "Thành Công!" : "Success!"}</h2>
+          <h2 className="text-xl font-bold mb-2">
+            {isVi ? "Thành Công!" : "Success!"}
+          </h2>
           <p className="text-gray-500 mb-6">
-            {isVi ? "Bài học" : "Lesson"} <strong>"{createdLessonName}"</strong> {isVi ? "đã được lưu." : "has been saved."}
+            {isVi ? "Bài học" : "Lesson"} <strong>"{createdLessonName}"</strong>{" "}
+            {isVi ? "đã được lưu." : "has been saved."}
           </p>
           <Button
             block
@@ -2354,7 +2507,9 @@ function CurriculumContentBank({
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
               <div className="rounded border bg-gray-50 p-3">
-                <p className="text-gray-500 m-0">{isVi ? "Tiêu đề" : "Title"}</p>
+                <p className="text-gray-500 m-0">
+                  {isVi ? "Tiêu đề" : "Title"}
+                </p>
                 <p className="font-semibold m-0 mt-1">{previewLesson.title}</p>
               </div>
               <div className="rounded border bg-gray-50 p-3">
@@ -2364,7 +2519,9 @@ function CurriculumContentBank({
                 </p>
               </div>
               <div className="rounded border bg-gray-50 p-3">
-                <p className="text-gray-500 m-0">{isVi ? "Thời lượng" : "Duration"}</p>
+                <p className="text-gray-500 m-0">
+                  {isVi ? "Thời lượng" : "Duration"}
+                </p>
                 <p className="font-semibold m-0 mt-1">
                   {previewLesson.duration_minutes || 0} {isVi ? "phút" : "min"}
                 </p>
@@ -2373,7 +2530,8 @@ function CurriculumContentBank({
 
             {previewLesson.type === "video" ? (
               <div className="bg-gray-100 rounded-lg p-4 border border-gray-200">
-                {previewLesson.content && getYoutubeEmbedId(previewLesson.content) ? (
+                {previewLesson.content &&
+                getYoutubeEmbedId(previewLesson.content) ? (
                   <div className="w-full aspect-video">
                     <iframe
                       width="100%"
@@ -2387,7 +2545,9 @@ function CurriculumContentBank({
                   </div>
                 ) : (
                   <p className="text-gray-500 m-0">
-                    {isVi ? "Không có dữ liệu video để xem trước." : "No video data available for preview."}
+                    {isVi
+                      ? "Không có dữ liệu video để xem trước."
+                      : "No video data available for preview."}
                   </p>
                 )}
               </div>
@@ -2400,10 +2560,16 @@ function CurriculumContentBank({
                     rel="noreferrer"
                     className="text-blue-600 hover:text-blue-700"
                   >
-                    {isVi ? "Mở tệp PDF trong tab mới" : "Open PDF in a new tab"}
+                    {isVi
+                      ? "Mở tệp PDF trong tab mới"
+                      : "Open PDF in a new tab"}
                   </a>
                 ) : (
-                  <p className="text-gray-500 m-0">{isVi ? "Không có tệp PDF để xem trước." : "No PDF available for preview."}</p>
+                  <p className="text-gray-500 m-0">
+                    {isVi
+                      ? "Không có tệp PDF để xem trước."
+                      : "No PDF available for preview."}
+                  </p>
                 )}
               </div>
             ) : (
@@ -2415,7 +2581,11 @@ function CurriculumContentBank({
                     dangerouslySetInnerHTML={{ __html: previewLesson.content }}
                   />
                 ) : (
-                  <p className="text-gray-500 m-0">{isVi ? "Không có nội dung để xem trước." : "No content available for preview."}</p>
+                  <p className="text-gray-500 m-0">
+                    {isVi
+                      ? "Không có nội dung để xem trước."
+                      : "No content available for preview."}
+                  </p>
                 )}
               </div>
             )}
@@ -2439,13 +2609,19 @@ function CurriculumContentBank({
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
               <div className="rounded border bg-gray-50 p-3">
-                <p className="text-gray-500 m-0">{isVi ? "Tiêu đề" : "Title"}</p>
+                <p className="text-gray-500 m-0">
+                  {isVi ? "Tiêu đề" : "Title"}
+                </p>
                 <p className="font-semibold m-0 mt-1">{previewQuiz.title}</p>
               </div>
               <div className="rounded border bg-gray-50 p-3">
-                <p className="text-gray-500 m-0">{isVi ? "Số câu hỏi" : "Question count"}</p>
+                <p className="text-gray-500 m-0">
+                  {isVi ? "Số câu hỏi" : "Question count"}
+                </p>
                 <p className="font-semibold m-0 mt-1">
-                  {previewQuizQuestions.length || previewQuiz.question_count || 0}
+                  {previewQuizQuestions.length ||
+                    previewQuiz.question_count ||
+                    0}
                 </p>
               </div>
             </div>
@@ -2454,60 +2630,77 @@ function CurriculumContentBank({
               {previewQuizQuestions.length > 0 ? (
                 <Collapse
                   accordion
-                  items={previewQuizQuestions.map((question: any, index: number) => {
-                    const options = parseOptionsArray(question.options)
-                    const correctIndexes = parseIndexArray(question.correct_answer)
-                    const correctAnswerText = correctIndexes
-                      .map((idx) => options[idx] ?? `Lựa chọn ${idx}`)
-                      .join(", ")
+                  items={previewQuizQuestions.map(
+                    (question: any, index: number) => {
+                      const options = parseOptionsArray(question.options)
+                      const correctIndexes = parseIndexArray(
+                        question.correct_answer
+                      )
+                      const correctAnswerText = correctIndexes
+                        .map((idx) => options[idx] ?? `Lựa chọn ${idx}`)
+                        .join(", ")
 
-                    return {
-                      key: String(question.question_id || question.quiz_question_id || index),
-                      label: `${isVi ? "Câu" : "Question"} ${index + 1}: ${question.question_text || ""}`,
-                      children: (
-                        <div className="space-y-3">
-                          <div className="space-y-2">
-                            <p className="font-semibold m-0">{isVi ? "Các lựa chọn" : "Options"}</p>
-                            <div className="space-y-1">
-                              {options.length > 0 ? (
-                                options.map((option, optIndex) => (
-                                  (() => {
-                                    const isCorrectOption = correctIndexes.includes(optIndex)
-                                    return (
-                                  <div
-                                    key={`${question.question_id || index}-opt-${optIndex}`}
-                                    className={`rounded border px-3 py-2 text-sm ${
-                                      isCorrectOption
-                                        ? "border-green-300 bg-green-50 text-green-800"
-                                        : "border-gray-100 bg-gray-50"
-                                    }`}
-                                  >
-                                    <span className="font-medium mr-2">
-                                      {String.fromCharCode(65 + optIndex)}.
-                                    </span>
-                                    <span>{option}</span>
-                                    {isCorrectOption && (
-                                      <span className="ml-2 text-xs font-semibold uppercase tracking-wide text-green-700">
-                                        {isVi ? "Đúng" : "Correct"}
-                                      </span>
-                                    )}
-                                  </div>
-                                    )
-                                  })()
-                                ))
-                              ) : (
-                                <p className="text-sm text-gray-500 m-0">{isVi ? "Không có lựa chọn" : "No options"}</p>
-                              )}
+                      return {
+                        key: String(
+                          question.question_id ||
+                            question.quiz_question_id ||
+                            index
+                        ),
+                        label: `${isVi ? "Câu" : "Question"} ${index + 1}: ${question.question_text || ""}`,
+                        children: (
+                          <div className="space-y-3">
+                            <div className="space-y-2">
+                              <p className="font-semibold m-0">
+                                {isVi ? "Các lựa chọn" : "Options"}
+                              </p>
+                              <div className="space-y-1">
+                                {options.length > 0 ? (
+                                  options.map((option, optIndex) =>
+                                    (() => {
+                                      const isCorrectOption =
+                                        correctIndexes.includes(optIndex)
+                                      return (
+                                        <div
+                                          key={`${question.question_id || index}-opt-${optIndex}`}
+                                          className={`rounded border px-3 py-2 text-sm ${
+                                            isCorrectOption
+                                              ? "border-green-300 bg-green-50 text-green-800"
+                                              : "border-gray-100 bg-gray-50"
+                                          }`}
+                                        >
+                                          <span className="font-medium mr-2">
+                                            {String.fromCharCode(65 + optIndex)}
+                                            .
+                                          </span>
+                                          <span>{option}</span>
+                                          {isCorrectOption && (
+                                            <span className="ml-2 text-xs font-semibold uppercase tracking-wide text-green-700">
+                                              {isVi ? "Đúng" : "Correct"}
+                                            </span>
+                                          )}
+                                        </div>
+                                      )
+                                    })()
+                                  )
+                                ) : (
+                                  <p className="text-sm text-gray-500 m-0">
+                                    {isVi ? "Không có lựa chọn" : "No options"}
+                                  </p>
+                                )}
+                              </div>
                             </div>
                           </div>
-
-                        </div>
-                      ),
+                        ),
+                      }
                     }
-                  })}
+                  )}
                 />
               ) : (
-                <p className="text-sm text-gray-500 m-0 py-2">{isVi ? "Không có câu hỏi để xem trước." : "No questions available for preview."}</p>
+                <p className="text-sm text-gray-500 m-0 py-2">
+                  {isVi
+                    ? "Không có câu hỏi để xem trước."
+                    : "No questions available for preview."}
+                </p>
               )}
             </Spin>
           </div>

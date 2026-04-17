@@ -12,6 +12,8 @@ import {
 import { Button, Tooltip, Dropdown, Spin, Empty, Modal, Input } from "antd"
 import type { MenuProps } from "antd"
 import ChatBox from "./ChatBox"
+import useLanguageStore from "@/store/useLanguageStore"
+import { t } from "@/lib/i18n"
 
 interface Conversation {
   id: number
@@ -21,6 +23,7 @@ interface Conversation {
 }
 
 export default function FloatingChatBubble() {
+  const language = useLanguageStore((state) => state.language)
   const [isOpen, setIsOpen] = useState(false)
   const [showHistoryDrawer, setShowHistoryDrawer] = useState(false)
   const [conversations, setConversations] = useState<Conversation[]>([])
@@ -121,8 +124,8 @@ export default function FloatingChatBubble() {
     } catch (error) {
       console.error("Error deleting conversation:", error)
       Modal.error({
-        title: "Delete Failed",
-        content: "Could not delete conversation. Please try again.",
+        title: t("chat.delete_failed_title", language),
+        content: t("chat.delete_failed_msg", language),
       })
     } finally {
       setDeleteLoading(false)
@@ -175,8 +178,8 @@ export default function FloatingChatBubble() {
     } catch (error) {
       console.error("Error renaming conversation:", error)
       Modal.error({
-        title: "Rename Failed",
-        content: "Could not rename conversation. Please try again.",
+        title: t("chat.rename_failed_title", language),
+        content: t("chat.rename_failed_msg", language),
       })
     } finally {
       setRenameLoading(false)
@@ -190,7 +193,7 @@ export default function FloatingChatBubble() {
         <button
           onClick={() => setIsOpen(true)}
           className="fixed bottom-6 right-6 w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-full shadow-lg hover:shadow-xl hover:scale-110 active:scale-95 transition-all duration-200 flex items-center justify-center text-2xl z-50"
-          title="Mở chat AI"
+          title={t("chat.title", language)}
         >
           <MessageOutlined />
         </button>
@@ -207,8 +210,12 @@ export default function FloatingChatBubble() {
           {/* Header with buttons */}
           <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-6 py-4 rounded-t-2xl flex items-center justify-between">
             <div>
-              <h3 className="font-bold text-md">Chat AI Assistant</h3>
-              <p className="text-xs text-blue-100">Hỏi đáp về KMS Plus</p>
+              <h3 className="font-bold text-md">
+                {t("chat.header_title", language)}
+              </h3>
+              <p className="text-xs text-blue-100">
+                {t("chat.header_subtitle", language)}
+              </p>
             </div>
             <div className="flex items-center gap-2">
               <Dropdown
@@ -217,14 +224,14 @@ export default function FloatingChatBubble() {
                     items: [
                       {
                         key: "new-conversation",
-                        label: "New Conversation",
+                        label: t("chat.new_conversation", language),
                         onClick: handleNewConversation,
                       },
                     ],
                   } as MenuProps
                 }
               >
-                <Tooltip title="Menu">
+                <Tooltip title={t("common.select", language)}>
                   <Button
                     type="text"
                     icon={<EllipsisOutlined />}
@@ -232,7 +239,7 @@ export default function FloatingChatBubble() {
                   />
                 </Tooltip>
               </Dropdown>
-              <Tooltip title="Lịch sử">
+              <Tooltip title={t("sidebar.learning_history", language)}>
                 <Button
                   type="text"
                   icon={<HistoryOutlined />}
@@ -243,7 +250,7 @@ export default function FloatingChatBubble() {
               <button
                 onClick={() => setIsOpen(false)}
                 className="hover:bg-blue-700 p-1 rounded-full transition-colors"
-                title="Đóng chat"
+                title={t("chat.close", language)}
               >
                 <CloseOutlined className="text-lg" />
               </button>
@@ -269,7 +276,7 @@ export default function FloatingChatBubble() {
                 {listLoading ? (
                   <Spin />
                 ) : conversations.length === 0 ? (
-                  <Empty description="Không có cuộc hội thoại" />
+                  <Empty description={t("empty.no_data", language)} />
                 ) : (
                   conversations?.map((conv) => (
                     <div
@@ -283,7 +290,7 @@ export default function FloatingChatBubble() {
                     >
                       <div className="flex-1 min-w-0">
                         <div className="font-semibold text-sm truncate text-gray-900">
-                          {conv.title || "Cuộc hội thoại mới"}
+                          {conv.title || t("chat.new_conversation", language)}
                         </div>
                         <div className="text-xs text-gray-700">
                           {new Date(conv.createdAt).toLocaleDateString(
@@ -302,14 +309,14 @@ export default function FloatingChatBubble() {
                             items: [
                               {
                                 key: "rename",
-                                label: "Rename",
+                                label: t("chat.rename", language) || "Rename",
                                 icon: <EditOutlined />,
                                 onClick: (info) =>
                                   handleRenameClick(info.domEvent as any, conv),
                               },
                               {
                                 key: "delete",
-                                label: "Delete",
+                                label: t("common.delete", language),
                                 icon: <DeleteOutlined />,
                                 danger: true,
                                 onClick: (info) =>
@@ -338,7 +345,7 @@ export default function FloatingChatBubble() {
 
       {/* Delete Confirmation Modal */}
       <Modal
-        title="Delete Conversation"
+        title={t("modal.confirm", language)}
         open={deleteModalOpen}
         onCancel={() => {
           setDeleteModalOpen(false)
@@ -352,7 +359,7 @@ export default function FloatingChatBubble() {
               setConversationToDelete(null)
             }}
           >
-            Cancel
+            {t("common.cancel", language)}
           </Button>,
           <Button
             key="delete"
@@ -361,21 +368,27 @@ export default function FloatingChatBubble() {
             loading={deleteLoading}
             onClick={handleConfirmDelete}
           >
-            Delete
+            {t("common.delete", language)}
           </Button>,
         ]}
       >
         <p>
-          Are you sure you want to delete the conversation "
-          <strong>{conversationToDelete?.title || "Cuộc hội thoại mới"}</strong>
-          "?
+          {t("modal.are_you_sure", language)}? "
+          <strong>
+            {conversationToDelete?.title ||
+              t("chat.new_conversation", language) ||
+              "New Conversation"}
+          </strong>
+          "
         </p>
-        <p className="text-gray-600 text-sm">This action cannot be undone.</p>
+        <p className="text-gray-600 text-sm">
+          {t("modal.this_action_cannot_be_undone", language)}
+        </p>
       </Modal>
 
       {/* Rename Conversation Modal */}
       <Modal
-        title="Rename Conversation"
+        title={t("chat.rename", language) || "Rename Conversation"}
         open={renameModalOpen}
         onCancel={() => {
           setRenameModalOpen(false)
@@ -391,7 +404,7 @@ export default function FloatingChatBubble() {
               setNewTitle("")
             }}
           >
-            Cancel
+            {t("common.cancel", language)}
           </Button>,
           <Button
             key="rename"
@@ -400,14 +413,20 @@ export default function FloatingChatBubble() {
             onClick={handleConfirmRename}
             disabled={!newTitle.trim()}
           >
-            Rename
+            {t("chat.rename", language) || "Rename"}
           </Button>,
         ]}
       >
         <div className="space-y-3">
-          <p>Nhập tên mới cho cuộc trò chuyện:</p>
+          <p>
+            {t("chat.enter_new_title", language) ||
+              "Enter new name for conversation:"}
+          </p>
           <Input
-            placeholder="Tên cuộc trò chuyện"
+            placeholder={
+              t("chat.conversation_title_placeholder", language) ||
+              "Conversation name"
+            }
             value={newTitle}
             onChange={(e) => setNewTitle(e.target.value)}
             onPressEnter={handleConfirmRename}

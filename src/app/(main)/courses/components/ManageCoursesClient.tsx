@@ -55,6 +55,7 @@ import { COURSE_STATUS_LABELS } from "@/enum/course-status.enum"
 import UpdateCourseForm, { CoursePayload } from "./UpdateCourseForm"
 import CreateCourseForm from "./CreateCourseForm"
 import useLanguageStore from "@/store/useLanguageStore"
+import { t } from "@/lib/i18n"
 
 const { Text } = Typography
 
@@ -105,33 +106,35 @@ type AssignmentRulePreview = {
   due_date?: string | Date | null
 }
 
-type CoursePreviewData = (Course & {
-  assignment_rules?: AssignmentRulePreview[]
-  curriculum?: Array<{
-    id: string | number
-    title: string
-    order?: number
-    items?: Array<{
-      id: string | number
-      order?: number
-      type: "lesson" | "quiz"
-      title: string
-      duration_minutes?: number
-      question_count?: number
-      lesson_type?: string
-      lesson_content?: string
-      video_url?: string
-      file_path?: string
-      quiz_questions?: Array<{
-        question_id: number
-        question_text: string
-        question_type?: string
-        options?: unknown
-        correct_answer?: unknown
+type CoursePreviewData =
+  | (Course & {
+      assignment_rules?: AssignmentRulePreview[]
+      curriculum?: Array<{
+        id: string | number
+        title: string
+        order?: number
+        items?: Array<{
+          id: string | number
+          order?: number
+          type: "lesson" | "quiz"
+          title: string
+          duration_minutes?: number
+          question_count?: number
+          lesson_type?: string
+          lesson_content?: string
+          video_url?: string
+          file_path?: string
+          quiz_questions?: Array<{
+            question_id: number
+            question_text: string
+            question_type?: string
+            options?: unknown
+            correct_answer?: unknown
+          }>
+        }>
       }>
-    }>
-  }>
-}) | null
+    })
+  | null
 
 export default function ManageCoursesClient({
   courses,
@@ -156,10 +159,9 @@ export default function ManageCoursesClient({
   const [messageApi, contextHolder] = message.useMessage()
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [searchInput, setSearchInput] = useState(query)
-  const [selectedCategoryList, setSelectedCategoryList] =
-    useState<string[]>(
-      selectedCategories.filter((categoryId) => Number(categoryId) !== 1)
-    )
+  const [selectedCategoryList, setSelectedCategoryList] = useState<string[]>(
+    selectedCategories.filter((categoryId) => Number(categoryId) !== 1)
+  )
   const [hasActiveFilters, setHasActiveFilters] = useState(false)
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false)
   const [selectedCourse, setSelectedCourse] = useState<
@@ -385,9 +387,7 @@ export default function ManageCoursesClient({
     }
   }
 
-  const formatAssignmentRule = (
-    rule: AssignmentRulePreview
-  ) => {
+  const formatAssignmentRule = (rule: AssignmentRulePreview) => {
     const targetMap: Record<string, string> = {
       all_employees: language === "vi" ? "Tất cả nhân viên" : "All employees",
       department: language === "vi" ? "Phòng ban" : "Department",
@@ -820,19 +820,19 @@ export default function ManageCoursesClient({
   // Status options for filter
   const statusOptions = [
     {
-      label: language === "vi" ? "Tất cả trạng thái" : "All Statuses",
+      label: t("course.status_all", language),
       value: "All",
     },
-    { label: language === "vi" ? "Nháp" : "Draft", value: "draft" },
+    { label: t("course.status_draft", language), value: "draft" },
     {
       label: language === "vi" ? "Chờ duyệt" : "Pending Approval",
       value: "pending_approval",
     },
     {
-      label: language === "vi" ? "Đã xuất bản" : "Published",
+      label: t("course.status_published", language),
       value: "published",
     },
-    { label: language === "vi" ? "Đã từ chối" : "Rejected", value: "rejected" },
+    { label: t("course.status_rejected", language), value: "rejected" },
   ]
 
   // --- Columns ---
@@ -918,7 +918,7 @@ export default function ManageCoursesClient({
       },
     },
     {
-      title: language === "vi" ? "Trạng thái" : "Status",
+      title: t("course.label_status", language),
       dataIndex: "status",
       key: "status",
       render: (status: string, record: Course) => {
@@ -1014,7 +1014,7 @@ export default function ManageCoursesClient({
       ),
     },
     {
-      title: language === "vi" ? "Hành động" : "Actions",
+      title: t("course.table_actions", language),
       key: "actions",
       align: "center" as const,
       render: (_: any, record: Course) => (
@@ -1163,16 +1163,14 @@ export default function ManageCoursesClient({
       {/* Page Header */}
       <div className="mb-8">
         <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-blue-900 bg-clip-text text-transparent mb-4">
-          {language === "vi" ? "Quản lý Khóa học" : "Manage Courses"}
+          {t("course.management.title", language)}
         </h1>
         <div
           className="flex align-center justify-between gap-6"
           style={{ marginBottom: 16 }}
         >
           <p className="text-gray-600 max-w-2xl leading-relaxed">
-            {language === "vi"
-              ? "Quản lý và tổ chức khóa học của bạn"
-              : "Manage and organize your courses"}
+            {t("course.management.description", language)}
           </p>
           <Button
             style={{
@@ -1188,7 +1186,7 @@ export default function ManageCoursesClient({
             icon={<PlusOutlined />}
             onClick={() => setIsCreateModalOpen(true)}
           >
-            {language === "vi" ? "Tạo Khóa học" : "Create Course"}
+            {t("course.btn_create", language)}
           </Button>
         </div>
         <Divider
@@ -1257,11 +1255,11 @@ export default function ManageCoursesClient({
                 onChange={handleSortChange}
                 options={[
                   {
-                    label: language === "vi" ? "Mới nhất" : "Newest",
+                    label: t("course.sort_newest", language),
                     value: "newest",
                   },
                   {
-                    label: language === "vi" ? "Cũ nhất" : "Oldest",
+                    label: t("course.sort_oldest", language),
                     value: "oldest",
                   },
                 ]}
@@ -1280,10 +1278,10 @@ export default function ManageCoursesClient({
                 onChange={(value) => setViewMode(value as "list" | "grid")}
                 options={[
                   {
-                    label: language === "vi" ? "Danh sách" : "List",
+                    label: t("course.view_list", language),
                     value: "list",
                   },
-                  { label: language === "vi" ? "Lưới" : "Grid", value: "grid" },
+                  { label: t("course.view_grid", language), value: "grid" },
                 ]}
                 block
               />
@@ -1337,298 +1335,306 @@ export default function ManageCoursesClient({
         ) : (
           <Spin spinning={isFilterPending}>
             <div className="p-6">
-            {courses.length === 0 ? (
-              <div className="text-center py-8">
-                {language === "vi"
-                  ? "Không tìm thấy khóa học"
-                  : "No courses found"}
-              </div>
-            ) : (
-              <Row gutter={[16, 16]}>
-                {courses.map((course) => (
-                  <Col xs={24} sm={12} lg={8} xl={6} key={course.id}>
-                    <Card
-                      hoverable
-                      cover={
-                        course.thumbnail_url ? (
-                          <img
-                            src={course.thumbnail_url}
-                            alt={course.title}
-                            className="h-40 w-full object-cover"
-                            onError={(e) => {
-                              ;(e.target as HTMLImageElement).src =
-                                "https://via.placeholder.com/240x160?text=Không có hình ảnh"
-                            }}
-                          />
-                        ) : (
-                          <div className="h-40 w-full bg-gray-200 flex items-center justify-center">
-                            <span className="text-gray-400">
-                              {language === "vi"
-                                ? "Không có hình ảnh"
-                                : "No image available"}
-                            </span>
+              {courses.length === 0 ? (
+                <div className="text-center py-8">
+                  {language === "vi"
+                    ? "Không tìm thấy khóa học"
+                    : "No courses found"}
+                </div>
+              ) : (
+                <Row gutter={[16, 16]}>
+                  {courses.map((course) => (
+                    <Col xs={24} sm={12} lg={8} xl={6} key={course.id}>
+                      <Card
+                        hoverable
+                        cover={
+                          course.thumbnail_url ? (
+                            <img
+                              src={course.thumbnail_url}
+                              alt={course.title}
+                              className="h-40 w-full object-cover"
+                              onError={(e) => {
+                                ;(e.target as HTMLImageElement).src =
+                                  "https://via.placeholder.com/240x160?text=Không có hình ảnh"
+                              }}
+                            />
+                          ) : (
+                            <div className="h-40 w-full bg-gray-200 flex items-center justify-center">
+                              <span className="text-gray-400">
+                                {language === "vi"
+                                  ? "Không có hình ảnh"
+                                  : "No image available"}
+                              </span>
+                            </div>
+                          )
+                        }
+                        extra={
+                          <div className="flex items-center gap-2">
+                            <Tag
+                              color={statusColors[course.status] || "default"}
+                              className="text-xs"
+                            >
+                              {COURSE_STATUS_LABELS[
+                                course.status as keyof typeof COURSE_STATUS_LABELS
+                              ] || course.status}
+                            </Tag>
+                            {course.status === "rejected" &&
+                              course.rejection_reason && (
+                                <Tooltip
+                                  title={
+                                    language === "vi"
+                                      ? "Xem lý do từ chối"
+                                      : "View rejection reason"
+                                  }
+                                >
+                                  <InfoCircleOutlined
+                                    className="text-blue-600 cursor-pointer hover:text-blue-800"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      handleViewReason(
+                                        course.rejection_reason || ""
+                                      )
+                                    }}
+                                  />
+                                </Tooltip>
+                              )}
                           </div>
-                        )
-                      }
-                      extra={
-                        <div className="flex items-center gap-2">
-                          <Tag
-                            color={statusColors[course.status] || "default"}
-                            className="text-xs"
-                          >
-                            {COURSE_STATUS_LABELS[
-                              course.status as keyof typeof COURSE_STATUS_LABELS
-                            ] || course.status}
-                          </Tag>
-                          {course.status === "rejected" &&
-                            course.rejection_reason && (
+                        }
+                        className="cursor-pointer hover:shadow-lg transition-shadow h-full flex flex-col"
+                        styles={{
+                          body: {
+                            flex: 1,
+                            display: "flex",
+                            flexDirection: "column",
+                          },
+                        }}
+                        onClick={() => {
+                          handleOpenPreview(course)
+                        }}
+                      >
+                        <Card.Meta
+                          title={
+                            <button
+                              type="button"
+                              className="text-blue-600 hover:text-blue-800 hover:underline bg-transparent border-none p-0 cursor-pointer text-left"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleOpenPreview(course)
+                              }}
+                            >
+                              {course.title}
+                            </button>
+                          }
+                          description={
+                            <div className="mt-2 flex items-center gap-2 text-gray-500">
+                              <span className="text-xs">by</span>
+                              <Avatar
+                                size={22}
+                                className="flex-shrink-0"
+                                src={
+                                  (course as any).creator_avatar ||
+                                  (course as any).creator_avatar_url ||
+                                  (course as any).avatar_url ||
+                                  (course as any).user_avatar ||
+                                  undefined
+                                }
+                              >
+                                {!(course as any).creator_avatar &&
+                                !(course as any).creator_avatar_url &&
+                                !(course as any).avatar_url &&
+                                !(course as any).user_avatar
+                                  ? (
+                                      ((course as any).creator_name ||
+                                        (course as any).creator_full_name ||
+                                        (course as any).full_name ||
+                                        "Unknown user") as string
+                                    )
+                                      .split(" ")
+                                      .filter(Boolean)
+                                      .slice(0, 2)
+                                      .map((part) => part[0]?.toUpperCase())
+                                      .join("") || "U"
+                                  : null}
+                              </Avatar>
+                              <Text className="!mb-0 !text-gray-600 text-sm">
+                                {(course as any).creator_name ||
+                                  (course as any).creator_full_name ||
+                                  (course as any).full_name ||
+                                  "Unknown user"}
+                              </Text>
+                            </div>
+                          }
+                        />
+                        <div className="mt-3 space-y-2 text-sm">
+                          <div className="flex justify-between">
+                            <Text type="secondary">Danh mục:</Text>
+                            <Text strong>{course.category_name || "--"}</Text>
+                          </div>
+                          <div className="flex justify-between">
+                            <Text type="secondary">Ngày tạo:</Text>
+                            <Text strong>
+                              {new Date(course.created_at).toLocaleDateString(
+                                "vi-VN"
+                              )}
+                            </Text>
+                          </div>
+                        </div>
+                        <div className="mt-4 space-y-2 mt-auto">
+                          {canApproveCourse &&
+                            course.status === "pending_approval" && (
+                              <div className="flex gap-2">
+                                <span className="flex-1">
+                                  <Button
+                                    type="primary"
+                                    size="small"
+                                    className="w-full bg-blue-500 hover:bg-blue-600 border-blue-500 hover:border-blue-600"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      handleApprove(course)
+                                    }}
+                                  >
+                                    {language === "vi" ? "Duyệt" : "Approve"}
+                                  </Button>
+                                </span>
+                                <span className="flex-1">
+                                  <Button
+                                    danger
+                                    size="small"
+                                    className="w-full"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      handleReject(course)
+                                    }}
+                                  >
+                                    {language === "vi" ? "Từ chối" : "Reject"}
+                                  </Button>
+                                </span>
+                              </div>
+                            )}
+                          <div className="flex gap-2">
+                            {canEditCourse(course) && (
                               <Tooltip
                                 title={
                                   language === "vi"
-                                    ? "Xem lý do từ chối"
-                                    : "View rejection reason"
+                                    ? "Chỉnh sửa khóa học"
+                                    : "Edit Course"
                                 }
                               >
-                                <InfoCircleOutlined
-                                  className="text-blue-600 cursor-pointer hover:text-blue-800"
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    handleViewReason(
-                                      course.rejection_reason || ""
-                                    )
-                                  }}
-                                />
+                                <span className="flex-1">
+                                  <Button
+                                    type="text"
+                                    size="small"
+                                    icon={<EditOutlined />}
+                                    className="w-full text-blue-600 hover:!text-blue-700"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      handleOpenUpdate(course)
+                                    }}
+                                  >
+                                    {language === "vi" ? "Chỉnh sửa" : "Edit"}
+                                  </Button>
+                                </span>
                               </Tooltip>
                             )}
-                        </div>
-                      }
-                      className="cursor-pointer hover:shadow-lg transition-shadow h-full flex flex-col"
-                      styles={{ body: { flex: 1, display: 'flex', flexDirection: 'column' } }}
-                      onClick={() => {
-                        handleOpenPreview(course)
-                      }}
-                    >
-                      <Card.Meta
-                        title={
-                          <button
-                            type="button"
-                            className="text-blue-600 hover:text-blue-800 hover:underline bg-transparent border-none p-0 cursor-pointer text-left"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              handleOpenPreview(course)
-                            }}
-                          >
-                            {course.title}
-                          </button>
-                        }
-                        description={
-                          <div className="mt-2 flex items-center gap-2 text-gray-500">
-                            <span className="text-xs">by</span>
-                            <Avatar
-                              size={22}
-                              className="flex-shrink-0"
-                              src={
-                                (course as any).creator_avatar ||
-                                (course as any).creator_avatar_url ||
-                                (course as any).avatar_url ||
-                                (course as any).user_avatar ||
-                                undefined
-                              }
-                            >
-                              {!(course as any).creator_avatar &&
-                              !(course as any).creator_avatar_url &&
-                              !(course as any).avatar_url &&
-                              !(course as any).user_avatar
-                                ? (
-                                    ((course as any).creator_name ||
-                                      (course as any).creator_full_name ||
-                                      (course as any).full_name ||
-                                      "Unknown user") as string
-                                  )
-                                    .split(" ")
-                                    .filter(Boolean)
-                                    .slice(0, 2)
-                                    .map((part) => part[0]?.toUpperCase())
-                                    .join("") || "U"
-                                : null}
-                            </Avatar>
-                            <Text className="!mb-0 !text-gray-600 text-sm">
-                              {(course as any).creator_name ||
-                                (course as any).creator_full_name ||
-                                (course as any).full_name ||
-                                "Unknown user"}
-                            </Text>
-                          </div>
-                        }
-                      />
-                      <div className="mt-3 space-y-2 text-sm">
-                        <div className="flex justify-between">
-                          <Text type="secondary">Danh mục:</Text>
-                          <Text strong>{course.category_name || "--"}</Text>
-                        </div>
-                        <div className="flex justify-between">
-                          <Text type="secondary">Ngày tạo:</Text>
-                          <Text strong>
-                            {new Date(course.created_at).toLocaleDateString(
-                              "vi-VN"
-                            )}
-                          </Text>
-                        </div>
-                      </div>
-                      <div className="mt-4 space-y-2 mt-auto">
-                        {canApproveCourse && course.status === "pending_approval" && (
-                          <div className="flex gap-2">
-                            <span className="flex-1">
-                              <Button
-                                type="primary"
-                                size="small"
-                                className="w-full bg-blue-500 hover:bg-blue-600 border-blue-500 hover:border-blue-600"
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  handleApprove(course)
-                                }}
-                              >
-                                {language === "vi" ? "Duyệt" : "Approve"}
-                              </Button>
-                            </span>
-                            <span className="flex-1">
-                              <Button
-                                danger
-                                size="small"
-                                className="w-full"
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  handleReject(course)
-                                }}
-                              >
-                                {language === "vi" ? "Từ chối" : "Reject"}
-                              </Button>
-                            </span>
-                          </div>
-                        )}
-                        <div className="flex gap-2">
-                          {canEditCourse(course) && (
-                            <Tooltip
-                              title={
-                                language === "vi"
-                                  ? "Chỉnh sửa khóa học"
-                                  : "Edit Course"
-                              }
-                            >
-                              <span className="flex-1">
-                                <Button
-                                  type="text"
-                                  size="small"
-                                  icon={<EditOutlined />}
-                                  className="w-full text-blue-600 hover:!text-blue-700"
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    handleOpenUpdate(course)
-                                  }}
+                            {course.status !== "published" &&
+                              course.status !== "pending_approval" && (
+                                <Tooltip
+                                  title={
+                                    language === "vi"
+                                      ? "Xóa khóa học"
+                                      : "Delete Course"
+                                  }
                                 >
-                                  {language === "vi" ? "Chỉnh sửa" : "Edit"}
-                                </Button>
-                              </span>
-                            </Tooltip>
+                                  <span className="flex-1">
+                                    <Button
+                                      type="text"
+                                      danger
+                                      size="small"
+                                      icon={<DeleteOutlined />}
+                                      className="w-full hover:bg-red-50"
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        handleDelete(course)
+                                      }}
+                                    >
+                                      {language === "vi" ? "Xóa" : "Delete"}
+                                    </Button>
+                                  </span>
+                                </Tooltip>
+                              )}
+                          </div>
+                          {course.status === "published" && (
+                            <div className="flex gap-2">
+                              <Tooltip
+                                title={
+                                  course.status !== "published"
+                                    ? language === "vi"
+                                      ? "Khóa học chưa được xuất bản"
+                                      : "Course not published"
+                                    : ""
+                                }
+                              >
+                                <span className="w-full">
+                                  <Button
+                                    type="text"
+                                    size="small"
+                                    icon={<ReadOutlined />}
+                                    className="w-full text-green-600 hover:!text-green-700 hover:bg-green-50"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      if (course.status !== "published") return
+                                      router.push(
+                                        `/courses/management/${course.id}/enrollments`
+                                      )
+                                    }}
+                                  >
+                                    {language === "vi"
+                                      ? "Xem Ghi danh"
+                                      : "View Enrollments"}
+                                  </Button>
+                                </span>
+                              </Tooltip>
+                            </div>
                           )}
-                          {(course.status !== "published" && course.status !== "pending_approval") && (
-                            <Tooltip
-                              title={
-                                language === "vi"
-                                  ? "Xóa khóa học"
-                                  : "Delete Course"
-                              }
-                            >
-                              <span className="flex-1">
-                                <Button
-                                  type="text"
-                                  danger
-                                  size="small"
-                                  icon={<DeleteOutlined />}
-                                  className="w-full hover:bg-red-50"
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    handleDelete(course)
-                                  }}
-                                >
-                                  {language === "vi" ? "Xóa" : "Delete"}
-                                </Button>
-                              </span>
-                            </Tooltip>
+                          {course.status === "published" && (
+                            <div className="flex gap-2">
+                              <Tooltip
+                                title={
+                                  course.status !== "published"
+                                    ? language === "vi"
+                                      ? "Khóa học chưa được xuất bản"
+                                      : "Course not published"
+                                    : ""
+                                }
+                              >
+                                <span className="w-full">
+                                  <Button
+                                    type="text"
+                                    size="small"
+                                    icon={<StarOutlined />}
+                                    className="w-full !text-yellow-700 hover:!text-amber-700 hover:bg-yellow-50"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      if (course.status !== "published") return
+                                      router.push(
+                                        `/courses/management/${course.id}/feedback`
+                                      )
+                                    }}
+                                  >
+                                    {language === "vi"
+                                      ? "Xem phản hồi"
+                                      : "View Feedback"}
+                                  </Button>
+                                </span>
+                              </Tooltip>
+                            </div>
                           )}
                         </div>
-                        {course.status === "published" && (
-                          <div className="flex gap-2">
-                            <Tooltip
-                              title={
-                                course.status !== "published"
-                                  ? language === "vi"
-                                    ? "Khóa học chưa được xuất bản"
-                                    : "Course not published"
-                                  : ""
-                              }
-                            >
-                              <span className="w-full">
-                                <Button
-                                  type="text"
-                                  size="small"
-                                  icon={<ReadOutlined />}
-                                  className="w-full text-green-600 hover:!text-green-700 hover:bg-green-50"
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    if (course.status !== "published") return
-                                    router.push(
-                                      `/courses/management/${course.id}/enrollments`
-                                    )
-                                  }}
-                                >
-                                  {language === "vi"
-                                    ? "Xem Ghi danh"
-                                    : "View Enrollments"}
-                                </Button>
-                              </span>
-                            </Tooltip>
-                          </div>
-                        )}
-                        {course.status === "published" && (
-                          <div className="flex gap-2">
-                            <Tooltip
-                              title={
-                                course.status !== "published"
-                                  ? language === "vi"
-                                    ? "Khóa học chưa được xuất bản"
-                                    : "Course not published"
-                                  : ""
-                              }
-                            >
-                              <span className="w-full">
-                                <Button
-                                  type="text"
-                                  size="small"
-                                  icon={<StarOutlined />}
-                                  className="w-full !text-yellow-700 hover:!text-amber-700 hover:bg-yellow-50"
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    if (course.status !== "published") return
-                                    router.push(
-                                      `/courses/management/${course.id}/feedback`
-                                    )
-                                  }}
-                                >
-                                  {language === "vi"
-                                    ? "Xem phản hồi"
-                                    : "View Feedback"}
-                                </Button>
-                              </span>
-                            </Tooltip>
-                          </div>
-                        )}
-                      </div>
-                    </Card>
-                  </Col>
-                ))}
-              </Row>
-            )}
+                      </Card>
+                    </Col>
+                  ))}
+                </Row>
+              )}
             </div>
           </Spin>
         )}
@@ -1678,24 +1684,38 @@ export default function ManageCoursesClient({
                       ) : null}
 
                       <Descriptions column={2} bordered size="small">
-                        <Descriptions.Item label={language === "vi" ? "Tiêu đề" : "Title"}>
+                        <Descriptions.Item
+                          label={language === "vi" ? "Tiêu đề" : "Title"}
+                        >
                           {previewCourse.title || "-"}
                         </Descriptions.Item>
-                        <Descriptions.Item label={language === "vi" ? "Danh mục" : "Category"}>
+                        <Descriptions.Item
+                          label={language === "vi" ? "Danh mục" : "Category"}
+                        >
                           {previewCourse.category_name ? (
-                            <Tag color="blue">{previewCourse.category_name}</Tag>
+                            <Tag color="blue">
+                              {previewCourse.category_name}
+                            </Tag>
                           ) : (
                             "-"
                           )}
                         </Descriptions.Item>
-                        <Descriptions.Item label={language === "vi" ? "Trạng thái" : "Status"}>
-                          <Tag color={statusColors[previewCourse.status] || "default"}>
+                        <Descriptions.Item
+                          label={language === "vi" ? "Trạng thái" : "Status"}
+                        >
+                          <Tag
+                            color={
+                              statusColors[previewCourse.status] || "default"
+                            }
+                          >
                             {COURSE_STATUS_LABELS[
                               previewCourse.status as keyof typeof COURSE_STATUS_LABELS
                             ] || previewCourse.status}
                           </Tag>
                         </Descriptions.Item>
-                        <Descriptions.Item label={language === "vi" ? "Người tạo" : "Creator"}>
+                        <Descriptions.Item
+                          label={language === "vi" ? "Người tạo" : "Creator"}
+                        >
                           <div className="flex items-center gap-2">
                             <Avatar
                               size={28}
@@ -1713,7 +1733,8 @@ export default function ManageCoursesClient({
                               !(previewCourse as any).user_avatar
                                 ? (
                                     ((previewCourse as any).creator_name ||
-                                      (previewCourse as any).creator_full_name ||
+                                      (previewCourse as any)
+                                        .creator_full_name ||
                                       (previewCourse as any).full_name ||
                                       "Unknown user") as string
                                   )
@@ -1732,19 +1753,35 @@ export default function ManageCoursesClient({
                             </Text>
                           </div>
                         </Descriptions.Item>
-                        <Descriptions.Item label={language === "vi" ? "Thời lượng" : "Duration"}>
+                        <Descriptions.Item
+                          label={language === "vi" ? "Thời lượng" : "Duration"}
+                        >
                           {previewCourse.duration_hours ?? 0}h
                         </Descriptions.Item>
-                        <Descriptions.Item label={language === "vi" ? "Số lượt ghi danh" : "Enrollment count"}>
+                        <Descriptions.Item
+                          label={
+                            language === "vi"
+                              ? "Số lượt ghi danh"
+                              : "Enrollment count"
+                          }
+                        >
                           {previewCourse.enrollment_count ?? 0}
                         </Descriptions.Item>
-                        <Descriptions.Item label={language === "vi" ? "Đánh giá trung bình" : "Average rating"}>
+                        <Descriptions.Item
+                          label={
+                            language === "vi"
+                              ? "Đánh giá trung bình"
+                              : "Average rating"
+                          }
+                        >
                           <span className="inline-flex items-center gap-1">
                             <StarOutlined className="!text-amber-500" />
                             <span>{previewCourse.average_rating ?? 0}</span>
                           </span>
                         </Descriptions.Item>
-                        <Descriptions.Item label={language === "vi" ? "Hiển thị" : "Visibility"}>
+                        <Descriptions.Item
+                          label={language === "vi" ? "Hiển thị" : "Visibility"}
+                        >
                           {previewCourse.visibility ? (
                             <Tag
                               color={
@@ -1767,18 +1804,28 @@ export default function ManageCoursesClient({
                         </Descriptions.Item>
                         {previewCourse.visibility === "private" && (
                           <Descriptions.Item
-                            label={language === "vi" ? "Đối tượng được gán" : "Assignees"}
+                            label={
+                              language === "vi"
+                                ? "Đối tượng được gán"
+                                : "Assignees"
+                            }
                             span={2}
                           >
-                            {(previewCourse.assignment_rules || []).length === 0 ? (
+                            {(previewCourse.assignment_rules || []).length ===
+                            0 ? (
                               <Text type="secondary">-</Text>
                             ) : (
                               <Flex wrap gap={8}>
-                                {(previewCourse.assignment_rules || []).map((rule, index) => (
-                                  <Tag key={`${rule.id || "rule"}-${index}`} color="blue">
-                                    {formatAssignmentRule(rule)}
-                                  </Tag>
-                                ))}
+                                {(previewCourse.assignment_rules || []).map(
+                                  (rule, index) => (
+                                    <Tag
+                                      key={`${rule.id || "rule"}-${index}`}
+                                      color="blue"
+                                    >
+                                      {formatAssignmentRule(rule)}
+                                    </Tag>
+                                  )
+                                )}
                               </Flex>
                             )}
                           </Descriptions.Item>
@@ -1799,59 +1846,75 @@ export default function ManageCoursesClient({
                             : "No curriculum has been added to this course yet."}
                         </Text>
                       ) : (
-                        (previewCourse.curriculum || []).map((section, sectionIndex) => (
-                          <Card
-                            key={String(section.id)}
-                            size="small"
-                            title={`${language === "vi" ? "Phần" : "Section"} ${sectionIndex + 1}: ${section.title}`}
-                          >
-                            {(section.items || []).length === 0 ? (
-                              <Text type="secondary">
-                                {language === "vi" ? "Chưa có nội dung." : "No items yet."}
-                              </Text>
-                            ) : (
-                              <div className="space-y-2">
-                                {(section.items || []).map((item, itemIndex) => (
-                                  <div
-                                    key={String(item.id)}
-                                    className="flex items-center justify-between rounded border border-gray-100 px-3 py-2"
-                                  >
-                                    <div className="min-w-0">
-                                      <div className="font-medium text-gray-800 truncate">
-                                        {itemIndex + 1}. {item.title}
+                        (previewCourse.curriculum || []).map(
+                          (section, sectionIndex) => (
+                            <Card
+                              key={String(section.id)}
+                              size="small"
+                              title={`${language === "vi" ? "Phần" : "Section"} ${sectionIndex + 1}: ${section.title}`}
+                            >
+                              {(section.items || []).length === 0 ? (
+                                <Text type="secondary">
+                                  {language === "vi"
+                                    ? "Chưa có nội dung."
+                                    : "No items yet."}
+                                </Text>
+                              ) : (
+                                <div className="space-y-2">
+                                  {(section.items || []).map(
+                                    (item, itemIndex) => (
+                                      <div
+                                        key={String(item.id)}
+                                        className="flex items-center justify-between rounded border border-gray-100 px-3 py-2"
+                                      >
+                                        <div className="min-w-0">
+                                          <div className="font-medium text-gray-800 truncate">
+                                            {itemIndex + 1}. {item.title}
+                                          </div>
+                                          <div className="text-xs text-gray-500">
+                                            {item.type === "lesson"
+                                              ? `${language === "vi" ? "Bài học" : "Lesson"} | ${getLessonTypeLabel(item.lesson_type)}${item.duration_minutes ? ` • ${item.duration_minutes} ${language === "vi" ? "phút" : "min"}` : ""}`
+                                              : `${language === "vi" ? "Bài kiểm tra" : "Quiz"}${item.question_count ? ` • ${item.question_count} ${language === "vi" ? "câu" : "questions"}` : ""}`}
+                                          </div>
+                                        </div>
+                                        <Tooltip
+                                          title={
+                                            language === "vi"
+                                              ? "Xem trước nội dung"
+                                              : "Preview item"
+                                          }
+                                        >
+                                          <Button
+                                            type="text"
+                                            icon={<EyeOutlined />}
+                                            onClick={() =>
+                                              handleOpenCurriculumItemPreview({
+                                                id: String(item.id),
+                                                title: item.title,
+                                                type: item.type,
+                                                lesson_type: item.lesson_type,
+                                                duration_minutes:
+                                                  item.duration_minutes,
+                                                question_count:
+                                                  item.question_count,
+                                                lesson_content:
+                                                  item.lesson_content,
+                                                video_url: item.video_url,
+                                                file_path: item.file_path,
+                                                quiz_questions:
+                                                  item.quiz_questions,
+                                              })
+                                            }
+                                          />
+                                        </Tooltip>
                                       </div>
-                                      <div className="text-xs text-gray-500">
-                                        {item.type === "lesson"
-                                          ? `${language === "vi" ? "Bài học" : "Lesson"} | ${getLessonTypeLabel(item.lesson_type)}${item.duration_minutes ? ` • ${item.duration_minutes} ${language === "vi" ? "phút" : "min"}` : ""}`
-                                          : `${language === "vi" ? "Bài kiểm tra" : "Quiz"}${item.question_count ? ` • ${item.question_count} ${language === "vi" ? "câu" : "questions"}` : ""}`}
-                                      </div>
-                                    </div>
-                                    <Tooltip title={language === "vi" ? "Xem trước nội dung" : "Preview item"}>
-                                      <Button
-                                        type="text"
-                                        icon={<EyeOutlined />}
-                                        onClick={() =>
-                                          handleOpenCurriculumItemPreview({
-                                            id: String(item.id),
-                                            title: item.title,
-                                            type: item.type,
-                                            lesson_type: item.lesson_type,
-                                            duration_minutes: item.duration_minutes,
-                                            question_count: item.question_count,
-                                            lesson_content: item.lesson_content,
-                                            video_url: item.video_url,
-                                            file_path: item.file_path,
-                                            quiz_questions: item.quiz_questions,
-                                          })
-                                        }
-                                      />
-                                    </Tooltip>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </Card>
-                        ))
+                                    )
+                                  )}
+                                </div>
+                              )}
+                            </Card>
+                          )
+                        )
                       )}
                     </div>
                   ),
@@ -1895,7 +1958,11 @@ export default function ManageCoursesClient({
         {previewCurriculumItem && (
           <div className="space-y-4">
             <div className="flex items-center gap-2">
-              <Tag color={previewCurriculumItem.type === "quiz" ? "geekblue" : "green"}>
+              <Tag
+                color={
+                  previewCurriculumItem.type === "quiz" ? "geekblue" : "green"
+                }
+              >
                 {previewCurriculumItem.type === "quiz"
                   ? language === "vi"
                     ? "Bài kiểm tra"
@@ -1912,20 +1979,27 @@ export default function ManageCoursesClient({
                 <div className="flex items-center gap-2 text-gray-600 text-sm">
                   <FileTextOutlined />
                   <span>
-                    {language === "vi" ? "Loại bài học:" : "Lesson type:"} {previewCurriculumItem.lesson_type || "-"}
+                    {language === "vi" ? "Loại bài học:" : "Lesson type:"}{" "}
+                    {previewCurriculumItem.lesson_type || "-"}
                   </span>
                 </div>
                 <div className="flex items-center gap-2 text-gray-600 text-sm">
                   <PlayCircleOutlined />
                   <span>
-                    {language === "vi" ? "Thời lượng:" : "Duration:"} {previewCurriculumItem.duration_minutes || 0} {language === "vi" ? "phút" : "min"}
+                    {language === "vi" ? "Thời lượng:" : "Duration:"}{" "}
+                    {previewCurriculumItem.duration_minutes || 0}{" "}
+                    {language === "vi" ? "phút" : "min"}
                   </span>
                 </div>
                 {previewCurriculumItem.video_url && (
                   <div className="space-y-2">
                     {getEmbeddedVideoUrl(previewCurriculumItem.video_url) ? (
                       <iframe
-                        src={getEmbeddedVideoUrl(previewCurriculumItem.video_url) || ""}
+                        src={
+                          getEmbeddedVideoUrl(
+                            previewCurriculumItem.video_url
+                          ) || ""
+                        }
                         title={previewCurriculumItem.title}
                         className="w-full h-80 rounded-lg border border-gray-200"
                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
@@ -1961,7 +2035,9 @@ export default function ManageCoursesClient({
                       >
                         <FilePdfOutlined style={{ fontSize: 32 }} />
                         <span className="font-medium">
-                          {language === "vi" ? "Mở tài liệu PDF" : "Open PDF file"}
+                          {language === "vi"
+                            ? "Mở tài liệu PDF"
+                            : "Open PDF file"}
                         </span>
                       </a>
                     ) : (
@@ -1971,7 +2047,9 @@ export default function ManageCoursesClient({
                         rel="noreferrer"
                         className="text-blue-600 hover:underline"
                       >
-                        {language === "vi" ? "Mở tệp đính kèm" : "Open attachment"}
+                        {language === "vi"
+                          ? "Mở tệp đính kèm"
+                          : "Open attachment"}
                       </a>
                     )}
                   </div>
@@ -1991,15 +2069,20 @@ export default function ManageCoursesClient({
                         {previewCurriculumItem.lesson_content}
                       </div>
                     )
+                  ) : language === "vi" ? (
+                    "Không có nội dung."
                   ) : (
-                    language === "vi" ? "Không có nội dung." : "No lesson content."
+                    "No lesson content."
                   )}
                 </div>
               </div>
             ) : (
               <div className="space-y-2">
                 <Text>
-                  {language === "vi" ? "Số lượng câu hỏi:" : "Question count:"} {previewCurriculumItem.quiz_questions?.length || previewCurriculumItem.question_count || 0}
+                  {language === "vi" ? "Số lượng câu hỏi:" : "Question count:"}{" "}
+                  {previewCurriculumItem.quiz_questions?.length ||
+                    previewCurriculumItem.question_count ||
+                    0}
                 </Text>
 
                 {(previewCurriculumItem.quiz_questions || []).length > 0 ? (
@@ -2012,7 +2095,11 @@ export default function ManageCoursesClient({
                           question.correct_answer
                         )
                         const correctAnswerText = correctIndexes
-                          .map((idx) => options[idx] ?? `${language === "vi" ? "Lựa chọn" : "Option"} ${idx}`)
+                          .map(
+                            (idx) =>
+                              options[idx] ??
+                              `${language === "vi" ? "Lựa chọn" : "Option"} ${idx}`
+                          )
                           .join(", ")
 
                         return {
@@ -2022,7 +2109,9 @@ export default function ManageCoursesClient({
                             <div className="space-y-3">
                               <div className="space-y-2">
                                 <Text strong>
-                                  {language === "vi" ? "Các lựa chọn" : "Options"}
+                                  {language === "vi"
+                                    ? "Các lựa chọn"
+                                    : "Options"}
                                 </Text>
                                 <div className="space-y-1">
                                   {options.length > 0 ? (

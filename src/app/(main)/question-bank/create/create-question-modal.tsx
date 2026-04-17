@@ -15,6 +15,8 @@ import {
 import React, { useState, useEffect } from "react"
 import * as actions from "@/action/question-bank/questionBankActions"
 import { FullQuestionType, QuestionType } from "@/service/questionbank.service"
+import useLanguageStore from "@/store/useLanguageStore"
+import { t } from "@/lib/i18n"
 
 interface CreateQuestionModalProps {
   isModalOpen: boolean
@@ -42,6 +44,7 @@ const CreateQuestionModal = ({
   const [isFormTouched, setIsFormTouched] = useState(false)
   const [isLoadingEditRecord, setIsLoadingEditRecord] = useState(false)
   const [form] = Form.useForm()
+  const { language } = useLanguageStore()
 
   //Handler: Khi người dùng gõ chữ vào ô Input
   const handleOptionChange = (text: string, index: number) => {
@@ -168,7 +171,9 @@ const CreateQuestionModal = ({
       //nếu đang edit
       setIsLoadingEditRecord(true)
       const safeCategoryId =
-        Number(editingRecord.category_id) === 1 ? undefined : editingRecord.category_id
+        Number(editingRecord.category_id) === 1
+          ? undefined
+          : editingRecord.category_id
       form.setFieldsValue({
         //đổ dữ liệu vào form
         questionText: editingRecord.question_text,
@@ -253,15 +258,15 @@ const CreateQuestionModal = ({
           rules={[
             {
               required: true,
-              message: "Vui lòng nhập nội dung câu hỏi!",
+              message: t("question.form_content_required", language),
             },
             {
               min: 10,
-              message: "Nội dung câu hỏi phải dài ít nhất 10 ký tự.",
+              message: t("question.form_content_min", language),
             },
             {
               max: 1000,
-              message: "Nội dung câu hỏi không được vượt quá 1000 ký tự.",
+              message: t("question.form_content_max", language),
             },
             {
               validator: (_, value) => {
@@ -408,7 +413,7 @@ const CreateQuestionModal = ({
           rules={[
             {
               required: true,
-              message: "Vui lòng chọn chủ đề câu hỏi",
+              message: t("question.form_category_required", language),
             },
           ]}
           style={{ marginTop: "16px" }}
@@ -447,7 +452,7 @@ const CreateQuestionModal = ({
           rules={[
             {
               max: 2000,
-              message: "Giải thích không được vượt quá 2000 ký tự.",
+              message: t("question.form_explanation_max", language),
             },
           ]}
         >

@@ -21,6 +21,8 @@ import {
   updateQuizQuestions,
 } from "@/action/quiz/quizActions"
 import { getQuestions } from "@/action/question-bank/questionBankActions"
+import useLanguageStore from "@/store/useLanguageStore"
+import { t } from "@/lib/i18n"
 
 interface Quiz {
   id: number
@@ -65,6 +67,7 @@ export default function EditQuizModal({
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [activeTab, setActiveTab] = useState("info")
+  const { language } = useLanguageStore()
 
   // Questions state
   const [allQuestions, setAllQuestions] = useState<QuestionBankItem[]>([])
@@ -220,9 +223,12 @@ export default function EditQuizModal({
             name="title"
             label="Tên Bài Thi"
             rules={[
-              { required: true, message: "Vui lòng nhập tên bài thi" },
-              { min: 10, message: "Tên bài thi không được ít hơn 10 ký tự" },
-              { max: 255, message: "Tên bài thi không vượt quá 255 ký tự" },
+              {
+                required: true,
+                message: t("quiz.edit_form_title_required", language),
+              },
+              { min: 10, message: t("quiz.edit_form_title_min", language) },
+              { max: 255, message: t("quiz.edit_form_title_max", language) },
             ]}
           >
             <Input placeholder="Nhập tên bài thi" maxLength={255} showCount />
@@ -231,7 +237,9 @@ export default function EditQuizModal({
           <Form.Item
             name="description"
             label="Mô Tả"
-            rules={[{ max: 1000, message: "Mô tả không vượt quá 1000 ký tự" }]}
+            rules={[
+              { max: 1000, message: t("quiz.edit_form_desc_max", language) },
+            ]}
           >
             <Input.TextArea
               placeholder="Nhập mô tả bài thi"
@@ -250,7 +258,7 @@ export default function EditQuizModal({
                   type: "number",
                   min: 0,
                   max: 1440,
-                  message: "Thời gian từ 0-1440 phút",
+                  message: t("quiz.edit_form_time_range", language),
                   transform: (value) => (value ? Number(value) : undefined),
                 },
               ]}
@@ -262,12 +270,15 @@ export default function EditQuizModal({
               name="passing_score"
               label="Điểm Đạt (%)"
               rules={[
-                { required: true, message: "Vui lòng nhập điểm đạt" },
+                {
+                  required: true,
+                  message: t("quiz.edit_form_pass_score_required", language),
+                },
                 {
                   type: "number",
                   min: 1,
                   max: 100,
-                  message: "Điểm đạt từ 1-100%",
+                  message: t("quiz.edit_form_pass_score_range", language),
                   transform: (value) => (value ? Number(value) : undefined),
                 },
               ]}
@@ -284,7 +295,7 @@ export default function EditQuizModal({
                 { label: "2 lần", value: 2 },
                 { label: "3 lần", value: 3 },
                 { label: "5 lần", value: 5 },
-                { label: "Không giới hạn", value: 999 },
+                { label: t("quiz.edit_form_unlimited", language), value: 999 },
               ]}
             />
           </Form.Item>

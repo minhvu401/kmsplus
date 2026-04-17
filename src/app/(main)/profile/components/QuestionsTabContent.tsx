@@ -1,7 +1,17 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { List, Button, Modal, Typography, Space, Spin, Tooltip, Tag, Divider } from "antd"
+import {
+  List,
+  Button,
+  Modal,
+  Typography,
+  Space,
+  Spin,
+  Tooltip,
+  Tag,
+  Divider,
+} from "antd"
 import { EyeOutlined, ArrowRightOutlined } from "@ant-design/icons"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -18,7 +28,13 @@ type QuestionItem = {
   category?: string | null
 }
 
-export default function QuestionsTabContent({ initialItems = [], userId }: { initialItems?: QuestionItem[], userId?: number | string }) {
+export default function QuestionsTabContent({
+  initialItems = [],
+  userId,
+}: {
+  initialItems?: QuestionItem[]
+  userId?: number | string
+}) {
   const language = useLanguageStore((s) => s.language)
   const [items, setItems] = useState<QuestionItem[]>(initialItems)
   const [preview, setPreview] = useState<QuestionItem | null>(null)
@@ -28,7 +44,6 @@ export default function QuestionsTabContent({ initialItems = [], userId }: { ini
     let mounted = true
     if ((items?.length ?? 0) > 0) return
     if (!userId) return
-
     ;(async () => {
       try {
         const res = await fetch(`/api/users/${userId}/questions`)
@@ -47,7 +62,9 @@ export default function QuestionsTabContent({ initialItems = [], userId }: { ini
 
   return (
     <div>
-      <Typography.Title level={4}>{t("profile.tab_questions", language)}</Typography.Title>
+      <Typography.Title level={4}>
+        {t("profile.tab_questions", language)}
+      </Typography.Title>
       <List
         itemLayout="horizontal"
         dataSource={items}
@@ -56,7 +73,9 @@ export default function QuestionsTabContent({ initialItems = [], userId }: { ini
           <List.Item
             actions={[
               <Link key="view" href={`/questions/${item.id}`}>
-                <Button type="link" icon={<ArrowRightOutlined />}>View question</Button>
+                <Button type="link" icon={<ArrowRightOutlined />}>
+                  {t("profile.view_question", language)}
+                </Button>
               </Link>,
             ]}
           >
@@ -73,7 +92,9 @@ export default function QuestionsTabContent({ initialItems = [], userId }: { ini
               title={<span className="font-medium">{item.title}</span>}
               description={
                 <Space direction="vertical" size={0}>
-                  <span className="text-sm text-gray-600">{item.category ?? ""}</span>
+                  <span className="text-sm text-gray-600">
+                    {item.category ?? ""}
+                  </span>
                 </Space>
               }
             />
@@ -87,39 +108,77 @@ export default function QuestionsTabContent({ initialItems = [], userId }: { ini
         width={760}
         open={!!preview}
         onCancel={() => setPreview(null)}
-        footer={preview ? [
-          <Button key="view-full" type="primary" onClick={() => router.push(`/questions/${preview.id}`)}>
-            {language === 'vi' ? 'Xem đầy đủ' : 'View Full Question'}
-          </Button>,
-          <Button key="close" onClick={() => setPreview(null)}>
-            {t('common.close', language)}
-          </Button>
-        ] : null}
+        footer={
+          preview
+            ? [
+                <Button
+                  key="view-full"
+                  type="primary"
+                  onClick={() => router.push(`/questions/${preview.id}`)}
+                >
+                  {t("profile.view_full_question", language)}
+                </Button>,
+                <Button key="close" onClick={() => setPreview(null)}>
+                  {t("common.close", language)}
+                </Button>,
+              ]
+            : null
+        }
       >
         {preview && (
           <div className="space-y-4">
             <div>
-              <Typography.Text type="secondary">{t('quiz.review_label_title', language)}</Typography.Text>
-              <div className="font-semibold text-base text-gray-900">{preview.title}</div>
+              <Typography.Text type="secondary">
+                {t("quiz.review_label_title", language)}
+              </Typography.Text>
+              <div className="font-semibold text-base text-gray-900">
+                {preview.title}
+              </div>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
               {preview.category && <Tag color="blue">{preview.category}</Tag>}
-              <Tag color={preview.is_closed ? 'red' : 'green'}>
-                {preview.is_closed ? (language === 'vi' ? 'Đã đóng' : 'Closed') : (language === 'vi' ? 'Mở' : 'Open')}
+              <Tag color={preview.is_closed ? "red" : "green"}>
+                {t(
+                  preview.is_closed
+                    ? "profile.question_closed"
+                    : "profile.question_open",
+                  language
+                )}
               </Tag>
             </div>
 
-            <Divider style={{ margin: '8px 0' }} />
+            <Divider style={{ margin: "8px 0" }} />
 
             <div>
-              <Typography.Text type="secondary">{t('quiz.review_label_status', language) === 'Trạng thái:' ? t('quiz.review_label_status', language) : 'Content'}</Typography.Text>
-              <div className="mt-2 prose max-w-none" dangerouslySetInnerHTML={{ __html: preview.content || '' }} />
+              <Typography.Text type="secondary">
+                {t("quiz.review_label_status", language) === "Trạng thái:"
+                  ? t("quiz.review_label_status", language)
+                  : "Content"}
+              </Typography.Text>
+              <div
+                className="mt-2 prose max-w-none"
+                dangerouslySetInnerHTML={{ __html: preview.content || "" }}
+              />
             </div>
 
             <div className="text-sm text-gray-600 flex gap-6">
-              <div><strong>{t("profile.created_at", language)}:</strong> {preview.created_at ? new Date(preview.created_at).toLocaleString(language === "vi" ? "vi-VN" : "en-US") : "N/A"}</div>
-              <div><strong>{t("profile.updated_at", language)}:</strong> {preview.updated_at ? new Date(preview.updated_at).toLocaleString(language === "vi" ? "vi-VN" : "en-US") : "N/A"}</div>
+              <div>
+                <strong>{t("profile.created_at", language)}:</strong>{" "}
+                {preview.created_at
+                  ? new Date(preview.created_at).toLocaleString(
+                      language === "vi" ? "vi-VN" : "en-US"
+                    )
+                  : "N/A"}
+              </div>
+              <div>
+                <strong>{t("profile.updated_at", language)}:</strong>{" "}
+                {preview.updated_at
+                  ? new Date(preview.updated_at).toLocaleString(
+                      language === "vi" ? "vi-VN" : "en-US"
+                    )
+                  : "N/A"}
+              </div>
             </div>
           </div>
         )}

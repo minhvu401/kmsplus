@@ -223,20 +223,14 @@ export default function RolePermissionPage() {
           {t("sidebar.role_permission", language)}
         </h1>
         <p className="text-gray-600 mt-2">
-          {language === "vi"
-            ? "Xem cấu hình quyền truy cập cho từng vai trò (Read-only)"
-            : "View access permissions for each role (Read-only)"}
+          {t("role_permission.page_subtitle", language)}
         </p>
       </div>
 
       {/* Alert: Static Configuration */}
       <Alert
-        message={language === "vi" ? "Cấu hình tĩnh" : "Static Configuration"}
-        description={
-          language === "vi"
-            ? "Quyền truy cập được định nghĩa tĩnh trong tệp cấu hình. Để thay đổi quyền, vui lòng chỉnh sửa tệp RolePermission.config.ts."
-            : "Permissions are defined statically in the configuration file. To change permissions, please edit the RolePermission.config.ts file."
-        }
+        message={t("role_permission.static_config_title", language)}
+        description={t("role_permission.static_config_desc", language)}
         type="info"
         icon={<InfoCircleOutlined />}
         showIcon
@@ -262,11 +256,9 @@ export default function RolePermissionPage() {
       <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
         <p className="text-sm text-gray-700">
           <span className="font-semibold">
-            {language === "vi" ? "Hướng dẫn:" : "Legend:"}
+            {t("role_permission.legend_title", language)}
           </span>{" "}
-          {language === "vi"
-            ? "✓ = Quyền được gán, - = Quyền không được gán"
-            : "✓ = Permission assigned, - = Permission not assigned"}
+          {t("role_permission.legend_desc", language)}
         </p>
       </div>
 

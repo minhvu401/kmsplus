@@ -181,10 +181,10 @@ export default function NewUsersGrowthChart() {
           value={timePeriod}
           onChange={(value) => setTimePeriod(value as TimePeriodType)}
           options={[
-            { label: "Ngày", value: "day" },
-            { label: "Tuần", value: "week" },
-            { label: "Tháng", value: "month" },
-            { label: "Năm", value: "year" },
+            { label: t("dashboard.filter_day", language), value: "day" },
+            { label: t("dashboard.filter_week", language), value: "week" },
+            { label: t("dashboard.filter_month", language), value: "month" },
+            { label: t("dashboard.filter_year", language), value: "year" },
           ]}
         />
       }

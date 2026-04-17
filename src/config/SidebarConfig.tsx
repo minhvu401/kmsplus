@@ -82,7 +82,11 @@ const createEmployeeSidebarItems = (
       key: PageRoute.ARTICLES,
       icon: <FileTextOutlined />,
       label: t("sidebar.articles", language),
-      title: byLang(language, "Bài viết - Xem và bình luận (CRUD)", "Articles - View & Comment (CRUD)"),
+      title: byLang(
+        language,
+        "Bài viết - Xem và bình luận (CRUD)",
+        "Articles - View & Comment (CRUD)"
+      ),
       route: PageRoute.ARTICLES,
       onClick: () => navigate(PageRoute.ARTICLES),
     },
@@ -91,7 +95,11 @@ const createEmployeeSidebarItems = (
       key: PageRoute.COURSES,
       icon: <BookOutlined />,
       label: t("sidebar.courses", language),
-      title: "Courses - Search, View, Enroll & Participate in Quizzes",
+      title: byLang(
+        language,
+        "Khóa học - Tìm kiếm, Xem, Đăng ký & Tham gia Bài kiểm tra",
+        "Courses - Search, View, Enroll & Participate in Quizzes"
+      ),
       route: PageRoute.COURSES,
       onClick: () => navigate(PageRoute.COURSES),
     },
@@ -189,7 +197,11 @@ const createContributorSidebarItems = (
       key: PageRoute.COURSES,
       icon: <BookOutlined />,
       label: t("sidebar.courses", language) || "Courses",
-      title: "Courses - View Courses",
+      title: byLang(
+        language,
+        "Khóa học - Xem Các Khóa học",
+        "Courses - View Courses"
+      ),
       route: PageRoute.COURSES,
       onClick: () => navigate(PageRoute.COURSES),
     },
@@ -206,7 +218,7 @@ const createContributorSidebarItems = (
     // Management Section Header
     {
       key: "management-header",
-      label: "MANAGEMENT",
+      label: t("nav.management_header", language) || "MANAGEMENT",
       disabled: true,
       style: {
         textAlign: "left",
@@ -220,7 +232,11 @@ const createContributorSidebarItems = (
       key: PageRoute.ARTICLE_MANAGEMENT,
       icon: <FileTextOutlined />,
       label: t("sidebar.article_management", language),
-      title: byLang(language, "Bài viết - Quản lý bài viết", "Articles - Manage Articles"),
+      title: byLang(
+        language,
+        "Bài viết - Quản lý bài viết",
+        "Articles - Manage Articles"
+      ),
       route: PageRoute.ARTICLE_MANAGEMENT,
       onClick: () => navigate(PageRoute.ARTICLE_MANAGEMENT),
     },
@@ -287,7 +303,11 @@ const createTrainingManagerSidebarItems = (
       key: PageRoute.DASHBOARD_METRICS,
       icon: <DashboardOutlined />,
       label: byLang(language, "Chỉ số tổng quan", "Dashboard Metrics"),
-      title: byLang(language, "Chỉ số tổng quan - Xem phân tích hiệu suất", "Dashboard Metrics - View performance analytics"),
+      title: byLang(
+        language,
+        "Chỉ số tổng quan - Xem phân tích hiệu suất",
+        "Dashboard Metrics - View performance analytics"
+      ),
       route: PageRoute.DASHBOARD_METRICS,
       onClick: () => navigate(PageRoute.DASHBOARD_METRICS),
     },
@@ -325,7 +345,11 @@ const createTrainingManagerSidebarItems = (
       key: PageRoute.ARTICLES,
       icon: <FileTextOutlined />,
       label: t("sidebar.articles", language),
-      title: "Articles - View Articles",
+      title: byLang(
+        language,
+        "Bài viết - Xem Bài viết",
+        "Articles - View Articles"
+      ),
       route: PageRoute.ARTICLES,
       onClick: () => navigate(PageRoute.ARTICLES),
     },
@@ -334,7 +358,11 @@ const createTrainingManagerSidebarItems = (
       key: PageRoute.COURSES,
       icon: <BookOutlined />,
       label: t("sidebar.courses", language),
-      title: byLang(language, "Khóa học - Xem và quản lý khóa học", "Courses - View & Manage Courses"),
+      title: byLang(
+        language,
+        "Khóa học - Xem và quản lý khóa học",
+        "Courses - View & Manage Courses"
+      ),
       route: PageRoute.COURSES,
       onClick: () => navigate(PageRoute.COURSES),
     },
@@ -381,7 +409,11 @@ const createTrainingManagerSidebarItems = (
       key: PageRoute.COURSE_MANAGEMENT,
       icon: <BookOutlined />,
       label: byLang(language, "Quản lý khóa học", "Course Management"),
-      title: byLang(language, "Quản lý khóa học - Tạo/Cập nhật/Xóa/Phê duyệt khóa học", "Course Management - Create/Update/Delete/Approve Courses"),
+      title: byLang(
+        language,
+        "Quản lý khóa học - Tạo/Cập nhật/Xóa/Phê duyệt khóa học",
+        "Course Management - Create/Update/Delete/Approve Courses"
+      ),
       route: PageRoute.COURSE_MANAGEMENT,
       onClick: () => navigate(PageRoute.COURSE_MANAGEMENT),
     },
@@ -399,7 +431,11 @@ const createTrainingManagerSidebarItems = (
       key: PageRoute.QUESTION_BANK_MANAGEMENT,
       icon: <DatabaseOutlined />,
       label: byLang(language, "Ngân hàng câu hỏi", "Question Bank"),
-      title: byLang(language, "Ngân hàng câu hỏi - Quản lý câu hỏi cho bài thi", "Question Bank - Manage Questions for Quizzes"),
+      title: byLang(
+        language,
+        "Ngân hàng câu hỏi - Quản lý câu hỏi cho bài thi",
+        "Question Bank - Manage Questions for Quizzes"
+      ),
       route: PageRoute.QUESTION_BANK_MANAGEMENT,
       onClick: () => navigate(PageRoute.QUESTION_BANK_MANAGEMENT),
     },
@@ -453,7 +489,6 @@ const createTrainingManagerSidebarItems = (
   ] as MenuItem[]
 }
 
-
 /**
  * System Admin Sidebar: Dashboard, Knowledge, Management, Settings sections with all items visible
  */
@@ -480,7 +515,11 @@ const createSystemAdminSidebarItems = (
       key: PageRoute.DASHBOARD_METRICS,
       icon: <DashboardOutlined />,
       label: byLang(language, "Chỉ số tổng quan", "Dashboard Metrics"),
-      title: byLang(language, "Chỉ số tổng quan - Xem phân tích hiệu suất", "Dashboard Metrics - View performance analytics"),
+      title: byLang(
+        language,
+        "Chỉ số tổng quan - Xem phân tích hiệu suất",
+        "Dashboard Metrics - View performance analytics"
+      ),
       route: PageRoute.DASHBOARD_METRICS,
       onClick: () => navigate(PageRoute.DASHBOARD_METRICS),
     },
@@ -518,7 +557,11 @@ const createSystemAdminSidebarItems = (
       key: PageRoute.ARTICLES,
       icon: <FileTextOutlined />,
       label: t("sidebar.articles", language),
-      title: byLang(language, "Bài viết - Tạo/Xem/Xóa bài viết", "Articles - Create/Read/Delete Articles"),
+      title: byLang(
+        language,
+        "Bài viết - Tạo/Xem/Xóa bài viết",
+        "Articles - Create/Read/Delete Articles"
+      ),
       route: PageRoute.ARTICLES,
       onClick: () => navigate(PageRoute.ARTICLES),
     },
@@ -527,7 +570,11 @@ const createSystemAdminSidebarItems = (
       key: PageRoute.COURSES,
       icon: <BookOutlined />,
       label: t("sidebar.courses", language),
-      title: byLang(language, "Khóa học - Quản lý tất cả khóa học", "Courses - Manage All Courses"),
+      title: byLang(
+        language,
+        "Khóa học - Quản lý tất cả khóa học",
+        "Courses - Manage All Courses"
+      ),
       route: PageRoute.COURSES,
       onClick: () => navigate(PageRoute.COURSES),
     },
@@ -561,7 +608,11 @@ const createSystemAdminSidebarItems = (
       key: PageRoute.QA_MANAGEMENT,
       icon: <MessageOutlined />,
       label: byLang(language, "Quản lý Hỏi đáp", "Q&A Management"),
-      title: byLang(language, "Quản lý Hỏi đáp - Quản lý câu hỏi và câu trả lời", "Q&A Management - Manage Questions & Answers"),
+      title: byLang(
+        language,
+        "Quản lý Hỏi đáp - Quản lý câu hỏi và câu trả lời",
+        "Q&A Management - Manage Questions & Answers"
+      ),
       route: PageRoute.QA_MANAGEMENT,
       onClick: () => navigate(PageRoute.QA_MANAGEMENT),
     },
@@ -570,7 +621,11 @@ const createSystemAdminSidebarItems = (
       key: PageRoute.ARTICLE_MANAGEMENT,
       icon: <FormOutlined />,
       label: byLang(language, "Quản lý bài viết", "Article Management"),
-      title: byLang(language, "Quản lý bài viết - Tạo/Cập nhật/Xóa bài viết", "Article Management - Create/Update/Delete Articles"),
+      title: byLang(
+        language,
+        "Quản lý bài viết - Tạo/Cập nhật/Xóa bài viết",
+        "Article Management - Create/Update/Delete Articles"
+      ),
       route: PageRoute.ARTICLE_MANAGEMENT,
       onClick: () => navigate(PageRoute.ARTICLE_MANAGEMENT),
     },
@@ -588,7 +643,11 @@ const createSystemAdminSidebarItems = (
       key: PageRoute.QUIZ_MANAGEMENT,
       icon: <FormOutlined />,
       label: byLang(language, "Quản lý bài thi", "Quiz Management"),
-      title: byLang(language, "Quản lý bài thi - Tạo/Cập nhật/Xóa bài thi", "Quiz Management - Create/Update/Delete Quizzes"),
+      title: byLang(
+        language,
+        "Quản lý bài thi - Tạo/Cập nhật/Xóa bài thi",
+        "Quiz Management - Create/Update/Delete Quizzes"
+      ),
       route: PageRoute.QUIZ_MANAGEMENT,
       onClick: () => navigate(PageRoute.QUIZ_MANAGEMENT),
     },
@@ -606,7 +665,11 @@ const createSystemAdminSidebarItems = (
       key: PageRoute.CATEGORY_MANAGEMENT,
       icon: <FolderOpenOutlined />,
       label: byLang(language, "Quản lý danh mục", "Category Management"),
-      title: byLang(language, "Quản lý danh mục - Tạo/Cập nhật/Xóa danh mục", "Category Management - Create/Update/Delete Categories"),
+      title: byLang(
+        language,
+        "Quản lý danh mục - Tạo/Cập nhật/Xóa danh mục",
+        "Category Management - Create/Update/Delete Categories"
+      ),
       route: PageRoute.CATEGORY_MANAGEMENT,
       onClick: () => navigate(PageRoute.CATEGORY_MANAGEMENT),
     },
@@ -640,7 +703,11 @@ const createSystemAdminSidebarItems = (
       key: PageRoute.USER_MANAGEMENT,
       icon: <TeamOutlined />,
       label: t("sidebar.user_management", language),
-      title: byLang(language, "Quản lý người dùng - Tạo/Xem/Cập nhật/Xóa người dùng", "User Management - Create/Read/Update/Delete Users"),
+      title: byLang(
+        language,
+        "Quản lý người dùng - Tạo/Xem/Cập nhật/Xóa người dùng",
+        "User Management - Create/Read/Update/Delete Users"
+      ),
       route: PageRoute.USER_MANAGEMENT,
       onClick: () => navigate(PageRoute.USER_MANAGEMENT),
     },
@@ -649,7 +716,11 @@ const createSystemAdminSidebarItems = (
       key: PageRoute.ROLE_PERMISSIONS,
       icon: <CopyOutlined />,
       label: t("sidebar.role_permission", language),
-      title: byLang(language, "Vai trò - Quyền hạn: Xem và quản lý ma trận phân quyền", "Role-Permission - View & Manage Role Permissions Matrix"),
+      title: byLang(
+        language,
+        "Vai trò - Quyền hạn: Xem và quản lý ma trận phân quyền",
+        "Role-Permission - View & Manage Role Permissions Matrix"
+      ),
       route: PageRoute.ROLE_PERMISSIONS,
       onClick: () => navigate(PageRoute.ROLE_PERMISSIONS),
     },
@@ -658,7 +729,11 @@ const createSystemAdminSidebarItems = (
       key: PageRoute.SYSTEM_SETTINGS,
       icon: <SettingOutlined />,
       label: byLang(language, "Cài đặt hệ thống", "System Settings"),
-      title: byLang(language, "Cài đặt hệ thống - Cấu hình tham số hệ thống", "System Settings - Configure System Parameters"),
+      title: byLang(
+        language,
+        "Cài đặt hệ thống - Cấu hình tham số hệ thống",
+        "System Settings - Configure System Parameters"
+      ),
       route: PageRoute.SYSTEM_SETTINGS,
       onClick: () => navigate(PageRoute.SYSTEM_SETTINGS),
     },
@@ -725,7 +800,11 @@ const createDirectorSidebarItems = (
       key: PageRoute.DASHBOARD_METRICS,
       icon: <DashboardOutlined />,
       label: byLang(language, "Chỉ số tổng quan", "Dashboard Metrics"),
-      title: byLang(language, "Chỉ số tổng quan - Xem phân tích hiệu suất", "Dashboard Metrics - View performance analytics"),
+      title: byLang(
+        language,
+        "Chỉ số tổng quan - Xem phân tích hiệu suất",
+        "Dashboard Metrics - View performance analytics"
+      ),
       route: PageRoute.DASHBOARD_METRICS,
       onClick: () => navigate(PageRoute.DASHBOARD_METRICS),
     },
@@ -750,7 +829,11 @@ const createDirectorSidebarItems = (
       key: PageRoute.QUESTIONS,
       icon: <MessageOutlined />,
       label: t("sidebar.qa", language) || "Q&A",
-      title: byLang(language, "Hỏi đáp - Xem câu hỏi và câu trả lời", "Q&A - View Questions & Answers"),
+      title: byLang(
+        language,
+        "Hỏi đáp - Xem câu hỏi và câu trả lời",
+        "Q&A - View Questions & Answers"
+      ),
       route: PageRoute.QUESTIONS,
       onClick: () => navigate(PageRoute.QUESTIONS),
     },
@@ -759,7 +842,11 @@ const createDirectorSidebarItems = (
       key: PageRoute.ARTICLES,
       icon: <FileTextOutlined />,
       label: t("sidebar.articles", language),
-      title: byLang(language, "Bài viết - Xem bài viết", "Articles - View Articles"),
+      title: byLang(
+        language,
+        "Bài viết - Xem bài viết",
+        "Articles - View Articles"
+      ),
       route: PageRoute.ARTICLES,
       onClick: () => navigate(PageRoute.ARTICLES),
     },
@@ -768,7 +855,11 @@ const createDirectorSidebarItems = (
       key: PageRoute.COURSES,
       icon: <BookOutlined />,
       label: t("sidebar.courses", language),
-      title: byLang(language, "Khóa học - Xem khóa học", "Courses - View Courses"),
+      title: byLang(
+        language,
+        "Khóa học - Xem khóa học",
+        "Courses - View Courses"
+      ),
       route: PageRoute.COURSES,
       onClick: () => navigate(PageRoute.COURSES),
     },
@@ -805,7 +896,6 @@ const createMenuItems = (
   userRole?: Role,
   language: "vi" | "en" = "vi",
   isHeadOfDepartment: boolean = false
-
 ): MenuItem[] => {
   let items: MenuItem[] = []
 
@@ -815,7 +905,11 @@ const createMenuItems = (
   } else if (userRole === Role.CONTRIBUTOR) {
     items = createContributorSidebarItems(navigate, language)
   } else if (userRole === Role.TRAINING_MANAGER) {
-    items = createTrainingManagerSidebarItems(navigate, language, isHeadOfDepartment)
+    items = createTrainingManagerSidebarItems(
+      navigate,
+      language,
+      isHeadOfDepartment
+    )
   } else if (userRole === Role.ADMIN) {
     items = createSystemAdminSidebarItems(navigate, language)
   } else if (userRole === Role.DIRECTOR) {
@@ -825,9 +919,13 @@ const createMenuItems = (
   if (items.length > 0) {
     // --- Kiểm tra ép kiểu cho tất cả HOD (CHÈN THÊM VÀO ĐÂY) ---
     if (isHeadOfDepartment && userRole !== Role.ADMIN) {
-      const hasDocMenu = items.some((item) => item?.key === PageRoute.DOCUMENT_MANAGEMENT)
+      const hasDocMenu = items.some(
+        (item) => item?.key === PageRoute.DOCUMENT_MANAGEMENT
+      )
       if (!hasDocMenu) {
-        const profileIndex = items.findIndex((item) => item?.key === PageRoute.PROFILE)
+        const profileIndex = items.findIndex(
+          (item) => item?.key === PageRoute.PROFILE
+        )
         const docMenu = {
           key: PageRoute.DOCUMENT_MANAGEMENT,
           icon: <FileTextOutlined />,
@@ -936,7 +1034,10 @@ const createMenuItems = (
   return baseItems
 }
 
-export const useSidebarItems = (userRole?: Role, isHeadOfDepartment: boolean = false) => {
+export const useSidebarItems = (
+  userRole?: Role,
+  isHeadOfDepartment: boolean = false
+) => {
   const { navigate } = useNavigation()
   const { language } = useLanguageStore()
   const items = useMemo(() => {

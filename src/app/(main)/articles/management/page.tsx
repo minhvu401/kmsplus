@@ -66,11 +66,10 @@ import {
   type CurrentUserInfo,
 } from "@/action/articles/articlesManagementAction"
 import type { Article, Tag } from "@/service/articles.service"
-import {
-  uploadImageToCloudinary,
-} from "@/lib/cloudinary"
+import { uploadImageToCloudinary } from "@/lib/cloudinary"
 import QuillEditor from "@/components/QuillEditorLazy"
 import useLanguageStore from "@/store/useLanguageStore"
+import { t } from "@/lib/i18n"
 
 if (typeof window !== "undefined") {
   ;(window as any).React = React
@@ -244,7 +243,9 @@ export default function ArticleManagement() {
   const [editCategoryId, setEditCategoryId] = useState<number | undefined>(
     undefined
   )
-  const [editCategoryName, setEditCategoryName] = useState<string | undefined>(undefined)
+  const [editCategoryName, setEditCategoryName] = useState<string | undefined>(
+    undefined
+  )
 
   // Reject modal states
   const [isRejectModalOpen, setIsRejectModalOpen] = useState(false)
@@ -502,7 +503,9 @@ export default function ArticleManagement() {
       setLoadingCategories(true)
       try {
         const res = await getAllCategories()
-        let filteredCategories = (res || []).filter((cat) => Number(cat.id) !== 1)
+        let filteredCategories = (res || []).filter(
+          (cat) => Number(cat.id) !== 1
+        )
 
         // Nếu user không phải admin, chỉ hiển thị categories của department user đó
         if (!isAdmin && currentUser?.department_id) {
@@ -548,7 +551,7 @@ export default function ArticleManagement() {
 
   const columns: ColumnsType<Article> = [
     {
-      title: "Article Title",
+      title: t("article.table_title", language),
       dataIndex: "title",
       key: "title",
       width: 300,
@@ -571,25 +574,26 @@ export default function ArticleManagement() {
             type="button"
             className="min-w-0 text-left"
             onClick={() => openPreviewModal(Number(record.id))}
-            title={title?.trim() || "(No title)"}
+            title={title?.trim() || t("article.no_title", language)}
           >
             <div className="text-blue-600 hover:text-blue-800 hover:underline cursor-pointer truncate">
-              {title?.trim() || "(No title)"}
+              {title?.trim() || t("article.no_title", language)}
             </div>
             <Text type="secondary" className="text-xs block truncate">
-              {record.category_name || "No category"}
+              {record.category_name || t("article.no_category", language)}
             </Text>
           </button>
         </div>
       ),
     },
     {
-      title: "Author",
+      title: t("article.table_author", language),
       dataIndex: "author_name",
       key: "author_name",
       width: 220,
       render: (_: string | null, record: Article) => {
-        const authorName = record.author_name || "Unknown"
+        const authorName =
+          record.author_name || t("article.unknown_author", language)
         const initials = authorName
           .split(" ")
           .map((part) => part[0])
@@ -610,12 +614,13 @@ export default function ArticleManagement() {
       },
     },
     {
-      title: "Tag",
+      title: t("article.table_tag", language),
       dataIndex: "article_tags",
       key: "article_tags",
       width: 130,
       render: (tagString: string) => {
-        if (!tagString) return <Text type="secondary">No tags</Text>
+        if (!tagString)
+          return <Text type="secondary">{t("article.no_tags", language)}</Text>
         const tagList = tagString
           .split(",")
           .map((t) => t.trim())
@@ -641,7 +646,7 @@ export default function ArticleManagement() {
       },
     },
     {
-      title: "Status",
+      title: t("article.table_status", language),
       dataIndex: "status",
       key: "status",
       width: 100,
@@ -649,42 +654,38 @@ export default function ArticleManagement() {
         const displayStatus = record.is_deleted ? "archived" : status
         const displayText = formatStatusLabel(displayStatus)
         return (
-        <div className="flex items-center gap-0.2">
-          <AntTag
-            color={statusColors[displayStatus] || "default"}
-            className="text-xs font-semibold px-2 py-0.5 rounded-full"
-          >
-            {displayText}
-          </AntTag>
-          {displayStatus === "rejected" && (record as any).reason && (
-            <Tooltip
-              title={
-                language === "vi" ? "Xem lý do từ chối" : "View rejection reason"
-              }
+          <div className="flex items-center gap-0.2">
+            <AntTag
+              color={statusColors[displayStatus] || "default"}
+              className="text-xs font-semibold px-2 py-0.5 rounded-full"
             >
-              <InfoCircleOutlined
-                className="text-red-600 cursor-pointer hover:text-red-800"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  setViewReason((record as any).reason || "")
-                  setIsViewReasonModalOpen(true)
-                }}
-              />
-            </Tooltip>
-          )}
-        </div>
+              {displayText}
+            </AntTag>
+            {displayStatus === "rejected" && (record as any).reason && (
+              <Tooltip title={t("article.view_rejection_reason", language)}>
+                <InfoCircleOutlined
+                  className="text-red-600 cursor-pointer hover:text-red-800"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setViewReason((record as any).reason || "")
+                    setIsViewReasonModalOpen(true)
+                  }}
+                />
+              </Tooltip>
+            )}
+          </div>
         )
       },
     },
     {
-      title: "Created At",
+      title: t("article.table_created", language),
       dataIndex: "created_at",
       key: "created_at",
       width: 160,
       render: (date: Date) => <Text>{formatVietnamDateTime(date)}</Text>,
     },
     {
-      title: "Action",
+      title: t("article.table_action", language),
       key: "action",
       width: 120,
       render: (_, record) => {
@@ -703,7 +704,7 @@ export default function ArticleManagement() {
               size="small"
               style={{ color: "#1677ff" }}
               onClick={() => openEditModal(Number(record.id))}
-              title="Edit"
+              title={t("article.btn_edit", language)}
             />
           )
         }
@@ -720,7 +721,11 @@ export default function ArticleManagement() {
               e.stopPropagation()
               handleArchiveClick(Number(record.id), !!record.is_deleted)
             }}
-            title={record.is_deleted ? "Restore" : "Delete"}
+            title={
+              record.is_deleted
+                ? t("article.btn_restore", language)
+                : t("article.btn_delete", language)
+            }
           />
         )
 
@@ -733,7 +738,7 @@ export default function ArticleManagement() {
               size="small"
               icon={<SendOutlined />}
               onClick={() => handleResubmitClick(Number(record.id))}
-              title="Resubmit"
+              title={t("article.btn_resubmit", language)}
             />
           )
         }
@@ -791,14 +796,14 @@ export default function ArticleManagement() {
             )}
           </Flex>
         )
-        }
+      },
     },
   ]
 
   const tagOptions = tags.map((tag) => ({ label: tag.name, value: tag.name }))
 
   const categoryOptions = [
-    { label: "All Categories", value: "All" },
+    { label: t("article.filter_all_categories", language), value: "All" },
     ...categories.map((cat) => ({
       label: cat.name,
       value: cat.id,
@@ -806,12 +811,12 @@ export default function ArticleManagement() {
   ]
 
   const statusOptions = [
-    { label: "All Status", value: "All" },
-    { label: "Draft", value: "draft" },
-    { label: "Published", value: "published" },
-    { label: "Pending", value: "pending" },
-    { label: "Rejected", value: "rejected" },
-    { label: "Archived", value: "archived" },
+    { label: t("article.filter_all_status", language), value: "All" },
+    { label: t("article.status.draft", language), value: "draft" },
+    { label: t("article.status.published", language), value: "published" },
+    { label: t("article.status.pending", language), value: "pending" },
+    { label: t("article.status.rejected", language), value: "rejected" },
+    { label: t("article.status.archived", language), value: "archived" },
   ]
 
   const scopedCategoriesByUserDepartment = !isAdmin
@@ -1106,14 +1111,14 @@ export default function ArticleManagement() {
       {/* Page Header */}
       <div className="mb-8">
         <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-blue-900 bg-clip-text text-transparent mb-4">
-          Article Management
+          {t("article.management.title", language)}
         </h1>
         <div
           className="flex align-center justify-between gap-6"
           style={{ marginBottom: 16 }}
         >
           <p className="text-gray-600 max-w-2xl leading-relaxed">
-            Manage and organize your articles
+            {t("article.management.description", language)}
           </p>
           <Button
             style={{
@@ -1155,7 +1160,7 @@ export default function ArticleManagement() {
               button.style.borderColor = "#1e40af"
             }}
           >
-            Create Article
+            {t("article.btn_create", language) || "Create Article"}
           </Button>
         </div>
         <Divider
@@ -1180,7 +1185,7 @@ export default function ArticleManagement() {
         <div className="space-y-3">
           {/* Search Bar - Full Width */}
           <Input.Search
-            placeholder="Search articles..."
+            placeholder={t("article.search_placeholder", language)}
             prefix={<SearchOutlined />}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -1196,7 +1201,7 @@ export default function ArticleManagement() {
           >
             <div className="flex flex-col">
               <Text type="secondary" className="text-sm font-medium mb-2">
-                Tags
+                {t("article.filter_tags", language)}
               </Text>
               <Select
                 mode="multiple"
@@ -1210,14 +1215,14 @@ export default function ArticleManagement() {
                 loading={loadingTags}
                 size="middle"
                 className="w-full"
-                placeholder="Select tags"
+                placeholder={t("article.filter_tags", language)}
                 maxTagCount="responsive"
               />
             </div>
 
             <div className="flex flex-col">
               <Text type="secondary" className="text-sm font-medium mb-2">
-                Category
+                {t("article.filter_category", language)}
               </Text>
               <Select
                 value={selectedCategory}
@@ -1231,7 +1236,7 @@ export default function ArticleManagement() {
 
             <div className="flex flex-col">
               <Text type="secondary" className="text-sm font-medium mb-2">
-                Status
+                {t("article.filter_status", language)}
               </Text>
               <Select
                 value={selectedStatus}
@@ -1244,14 +1249,20 @@ export default function ArticleManagement() {
 
             <div className="flex flex-col">
               <Text type="secondary" className="text-sm font-medium mb-2">
-                Sort By
+                {t("article.filter_sort_by", language)}
               </Text>
               <Select
                 value={sortOrder}
                 onChange={setSortOrder}
                 options={[
-                  { label: "Newest First", value: "newest" },
-                  { label: "Oldest First", value: "oldest" },
+                  {
+                    label: t("article.sort_newest", language),
+                    value: "newest",
+                  },
+                  {
+                    label: t("article.sort_oldest", language),
+                    value: "oldest",
+                  },
                 ]}
                 size="middle"
                 className="w-full"
@@ -1260,15 +1271,15 @@ export default function ArticleManagement() {
 
             <div className="flex flex-col justify-end">
               <Text type="secondary" className="text-sm font-medium mb-2">
-                View Mode
+                {t("article.filter_view_mode", language)}
               </Text>
               <Segmented
                 size="middle"
                 value={viewMode}
                 onChange={(value) => setViewMode(value as "list" | "grid")}
                 options={[
-                  { label: "List", value: "list" },
-                  { label: "Grid", value: "grid" },
+                  { label: t("article.view_list", language), value: "list" },
+                  { label: t("article.view_grid", language), value: "grid" },
                 ]}
                 block
               />
@@ -1277,9 +1288,9 @@ export default function ArticleManagement() {
             {/* Clear Filters Button */}
             <div className="flex flex-col justify-end">
               <Text type="secondary" className="text-sm font-medium mb-2">
-                Actions
+                {t("article.filter_actions", language)}
               </Text>
-              <Tooltip title="Clear all filters">
+              <Tooltip title={t("article.btn_clear_filters", language)}>
                 <Button
                   onClick={() => {
                     setSearchQuery("")
@@ -1300,7 +1311,7 @@ export default function ArticleManagement() {
                   size="middle"
                   block
                 >
-                  Clear Filters
+                  {t("article.btn_clear_filters", language)}
                 </Button>
               </Tooltip>
             </div>
@@ -1391,18 +1402,23 @@ export default function ArticleManagement() {
                                 <Text>{article.author_name || "Unknown"}</Text>
                               </Space>
                               <Text type="secondary">
-                                Created:{" "}
+                                {t("article.grid_created_label", language)}{" "}
                                 {formatVietnamDateTime(article.created_at)}
                               </Text>
                               <div>
                                 <Text type="secondary" strong>
-                                  Category:{" "}
+                                  {t(
+                                    "article.grid_category_label",
+                                    language
+                                  )}{" "}
                                 </Text>
                                 <Text>{article.category_name || "null"}</Text>
                               </div>
                               <Space wrap size={[4, 4]}>
                                 {tagList.length === 0 && (
-                                  <Text type="secondary">No tags</Text>
+                                  <Text type="secondary">
+                                    {t("article.no_tags", language)}
+                                  </Text>
                                 )}
                                 {tagList.map((tag) => (
                                   <AntTag
@@ -1426,7 +1442,7 @@ export default function ArticleManagement() {
                                         openEditModal(Number(article.id))
                                       }}
                                     >
-                                      Edit article
+                                      {t("article.grid_edit_article", language)}
                                     </Button>
                                   </span>
                                 )}
@@ -1457,8 +1473,14 @@ export default function ArticleManagement() {
                                     }}
                                   >
                                     {article.is_deleted
-                                      ? "Restore article"
-                                      : "Archive article"}
+                                      ? t(
+                                          "article.grid_restore_article",
+                                          language
+                                        )
+                                      : t(
+                                          "article.grid_delete_article",
+                                          language
+                                        )}
                                   </Button>
                                 </span>
                               </div>
@@ -1510,7 +1532,7 @@ export default function ArticleManagement() {
                     {!loadingArticles && articles.length === 0 && (
                       <Col span={24}>
                         <Alert
-                          message="No articles found"
+                          message={t("article.grid_no_articles", language)}
                           type="info"
                           showIcon
                         />
@@ -1539,7 +1561,7 @@ export default function ArticleManagement() {
       <Modal
         title={
           <Title level={3} className="!mb-0">
-            Create An Article
+            {t("article.form_create_modal_title", language)}
           </Title>
         }
         open={isModalOpen}
@@ -1589,7 +1611,7 @@ export default function ArticleManagement() {
               const result = await createArticle(formData)
               if (result.success) {
                 message.success(
-                  result.message || "Article created successfully!"
+                  result.message || t("article.form_create_success", language)
                 )
                 setIsModalOpen(false)
                 createForm.resetFields()
@@ -1603,10 +1625,14 @@ export default function ArticleManagement() {
                 setCategoryIdFormValue(undefined)
                 await refreshCurrentArticles(false)
               } else {
-                message.error(result.message || "Failed to create article")
+                message.error(
+                  result.message || t("article.form_create_error", language)
+                )
               }
             } catch (error: any) {
-              message.error(error?.message || "An error occurred")
+              message.error(
+                error?.message || t("article.form_error_generic", language)
+              )
             } finally {
               setCreatingArticle(false)
             }
@@ -1676,7 +1702,7 @@ export default function ArticleManagement() {
           <Form.Item
             label={
               <Text strong className="text-base">
-                Thumbnail Image
+                {t("article.form_thumbnail_label", language)}
               </Text>
             }
             name="thumbnail"
@@ -1718,8 +1744,8 @@ export default function ArticleManagement() {
                     disabled={uploadingThumbnail}
                   >
                     {uploadingThumbnail
-                      ? "Uploading..."
-                      : "Click to Upload Thumbnail"}
+                      ? t("article.form_thumbnail_uploading", language)
+                      : t("article.form_thumbnail_button", language)}
                   </Button>
                 </Upload>
               </ImgCrop>
@@ -1766,7 +1792,7 @@ export default function ArticleManagement() {
             <QuillEditor
               value={contentValue}
               onChange={handleEditorChange}
-              placeholder="Write your content here..."
+              placeholder={t("article.form_content_label", language) + " ..."}
               height={400}
             />
           </Form.Item>
@@ -1971,7 +1997,9 @@ export default function ArticleManagement() {
       >
         <Spin
           spinning={loadingPreviewData}
-          tip={language === "vi" ? "Đang tải xem trước..." : "Loading preview..."}
+          tip={
+            language === "vi" ? "Đang tải xem trước..." : "Loading preview..."
+          }
         >
           {previewArticle && (
             <Space direction="vertical" size="middle" className="w-full">
@@ -1980,12 +2008,18 @@ export default function ArticleManagement() {
                 alt={previewArticle.title || "Article thumbnail"}
                 className="w-full max-h-72 object-cover rounded-lg border border-gray-200"
                 onError={(e) => {
-                  ;(e.target as HTMLImageElement).src = DEFAULT_ARTICLE_THUMBNAIL
+                  ;(e.target as HTMLImageElement).src =
+                    DEFAULT_ARTICLE_THUMBNAIL
                 }}
               />
               <Space size="small" align="center">
-                <Text type="secondary">{language === "vi" ? "Tác giả:" : "Author:"}</Text>
-                <Avatar size="small" src={previewArticle.authorAvatarUrl || undefined}>
+                <Text type="secondary">
+                  {language === "vi" ? "Tác giả:" : "Author:"}
+                </Text>
+                <Avatar
+                  size="small"
+                  src={previewArticle.authorAvatarUrl || undefined}
+                >
                   {(previewArticle.authorName || "Unknown")
                     .split(" ")
                     .map((part) => part[0])
@@ -1995,11 +2029,14 @@ export default function ArticleManagement() {
                 </Avatar>
                 <Text>{previewArticle.authorName}</Text>
                 <Text type="secondary">|</Text>
-                <Text type="secondary">{language === "vi" ? "Danh mục:" : "Category:"}</Text>
+                <Text type="secondary">
+                  {language === "vi" ? "Danh mục:" : "Category:"}
+                </Text>
                 <Text>{previewArticle.categoryName}</Text>
               </Space>
               <Text type="secondary">
-                {language === "vi" ? "Ngày tạo:" : "Created:"} {formatVietnamDateTime(previewArticle.createdAt)}
+                {language === "vi" ? "Ngày tạo:" : "Created:"}{" "}
+                {formatVietnamDateTime(previewArticle.createdAt)}
               </Text>
               <Divider style={{ margin: "8px 0" }} />
               {previewArticle.content ? (
@@ -2058,7 +2095,7 @@ export default function ArticleManagement() {
             <Form.Item
               label={
                 <Text strong className="text-base">
-                    Title <span className="text-red-500">*</span>
+                  Title <span className="text-red-500">*</span>
                 </Text>
               }
               name="title"
@@ -2249,7 +2286,10 @@ export default function ArticleManagement() {
                       editCategoryName &&
                       !base.some((o) => o.value === editCategoryId)
                     ) {
-                      base.unshift({ label: editCategoryName, value: editCategoryId })
+                      base.unshift({
+                        label: editCategoryName,
+                        value: editCategoryId,
+                      })
                     }
                     return base
                   })()
@@ -2478,7 +2518,9 @@ export default function ArticleManagement() {
         width={600}
       >
         <div className="space-y-4">
-          <Paragraph className="whitespace-pre-wrap">{viewReason || "-"}</Paragraph>
+          <Paragraph className="whitespace-pre-wrap">
+            {viewReason || "-"}
+          </Paragraph>
         </div>
       </Modal>
 
@@ -2525,7 +2567,9 @@ export default function ArticleManagement() {
               }
             }}
           >
-            {deleteConfirmIsDeleted ? "Restore" : "Archive"}
+            {deleteConfirmIsDeleted
+              ? t("article.btn_restore", language)
+              : t("article.btn_delete", language)}
           </Button>,
         ]}
         width={600}

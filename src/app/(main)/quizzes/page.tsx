@@ -39,6 +39,7 @@ import {
 import { getCategoriesAPI } from "@/action/courses/courseAction"
 import CreateQuizModal from "./components/CreateQuizModal"
 import useLanguageStore from "@/store/useLanguageStore"
+import { t } from "@/lib/i18n"
 
 interface Quiz {
   id: number
@@ -58,67 +59,6 @@ export default function QuizzesPage() {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const { language } = useLanguageStore()
-
-  const t = {
-    pageTitle: language === "vi" ? "Quản Lý Bài Thi" : "Quiz Management",
-    pageSubtitle:
-      language === "vi"
-        ? "Quản lý và tổ chức các bài thi"
-        : "Manage and organize your quizzes",
-    createQuiz: language === "vi" ? "Tạo Bài Thi" : "Create Quiz",
-    searchPlaceholder:
-      language === "vi" ? "Tìm kiếm bài thi..." : "Search quizzes...",
-    category: language === "vi" ? "Danh mục" : "Category",
-    allCategories: language === "vi" ? "Tất cả danh mục" : "All Categories",
-    sortBy: language === "vi" ? "Sắp xếp" : "Sort By",
-    newestFirst: language === "vi" ? "Mới nhất" : "Newest First",
-    oldestFirst: language === "vi" ? "Cũ nhất" : "Oldest First",
-    viewMode: language === "vi" ? "Chế độ xem" : "View Mode",
-    list: language === "vi" ? "Danh sách" : "List",
-    grid: language === "vi" ? "Lưới" : "Grid",
-    clearFilters: language === "vi" ? "Xóa bộ lọc" : "Clear Filters",
-    clearFiltersTooltip:
-      language === "vi" ? "Xóa tất cả bộ lọc" : "Clear all filters",
-    tableQuizName: language === "vi" ? "Tên Bài Thi" : "Quiz Name",
-    tableDescription: language === "vi" ? "Mô Tả" : "Description",
-    tableTime: language === "vi" ? "Thời Gian (phút)" : "Time Limit (min)",
-    tablePassing: language === "vi" ? "Điểm Đạt" : "Passing Score",
-    tableAction: language === "vi" ? "Hành Động" : "Actions",
-    noCategory: language === "vi" ? "Không có danh mục" : "No category",
-    noDescription: language === "vi" ? "Không có mô tả" : "No description",
-    unlimited: language === "vi" ? "Không giới hạn" : "Unlimited",
-    viewEdit: language === "vi" ? "Xem & Chỉnh sửa" : "View & Edit",
-    delete: language === "vi" ? "Xóa" : "Delete",
-    deleteTitle: language === "vi" ? "Xóa bài thi" : "Delete quiz",
-    deleteConfirm:
-      language === "vi"
-        ? "Bạn có chắc chắn muốn xóa bài thi này? Hành động này không thể hoàn tác."
-        : "Are you sure you want to delete this quiz? This action cannot be undone.",
-    yes: language === "vi" ? "Có" : "Yes",
-    no: language === "vi" ? "Không" : "No",
-    cannotDeleteDefault:
-      language === "vi" ? "Không thể xóa bài thi này" : "Cannot delete this quiz",
-    categoryLabel: language === "vi" ? "Danh mục:" : "Category:",
-    timeLabel: language === "vi" ? "Thời gian:" : "Time Limit:",
-    passingLabel: language === "vi" ? "Điểm đạt:" : "Passing Score:",
-    attemptsLabel: language === "vi" ? "Số lần làm:" : "Max Attempts:",
-    createdLabel: language === "vi" ? "Ngày tạo:" : "Created:",
-    empty: language === "vi" ? "Không có bài thi nào" : "No quizzes found",
-    createFirst:
-      language === "vi" ? "Tạo Bài Thi Đầu Tiên" : "Create First Quiz",
-    total: language === "vi" ? "Tổng" : "Total",
-    itemSuffix: language === "vi" ? "bài thi" : "quizzes",
-    loadError:
-      language === "vi"
-        ? "Không thể tải danh sách bài thi"
-        : "Failed to load quizzes",
-    deleteSuccess:
-      language === "vi"
-        ? "Đã xóa bài thi thành công"
-        : "Quiz deleted successfully",
-    deleteError:
-      language === "vi" ? "Không thể xóa bài thi" : "Failed to delete quiz",
-  }
 
   const [quizzes, setQuizzes] = useState<Quiz[]>([])
   const [loading, setLoading] = useState(true)
@@ -140,7 +80,10 @@ export default function QuizzesPage() {
   const [hasActiveFilters, setHasActiveFilters] = useState(false)
   const [isQueryHydrated, setIsQueryHydrated] = useState(false)
   const [deleteGuards, setDeleteGuards] = useState<
-    Record<number, { canDelete: boolean; reason?: string; isUsedInCourse: boolean }>
+    Record<
+      number,
+      { canDelete: boolean; reason?: string; isUsedInCourse: boolean }
+    >
   >({})
 
   useEffect(() => {
@@ -193,7 +136,9 @@ export default function QuizzesPage() {
     if (currentPage !== 1) params.set("page", String(currentPage))
     if (pageSize !== 10) params.set("limit", String(pageSize))
 
-    const nextUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname
+    const nextUrl = params.toString()
+      ? `${pathname}?${params.toString()}`
+      : pathname
     router.replace(nextUrl, { scroll: false })
   }, [
     isQueryHydrated,
@@ -241,11 +186,13 @@ export default function QuizzesPage() {
       applySorting(quizzesData)
       setTotalQuizzes(data.total || 0)
 
-      const guards = await getQuizDeleteGuards(quizzesData.map((quiz) => quiz.id))
+      const guards = await getQuizDeleteGuards(
+        quizzesData.map((quiz) => quiz.id)
+      )
       setDeleteGuards(guards)
     } catch (error) {
       console.error("Failed to load quizzes:", error)
-      message.error(t.loadError)
+      message.error(t("quiz.msg_load_error", language))
       setDeleteGuards({})
     } finally {
       setLoading(false)
@@ -283,11 +230,11 @@ export default function QuizzesPage() {
   const handleDelete = async (id: number) => {
     try {
       await deleteQuiz(id)
-      message.success(t.deleteSuccess)
+      message.success(t("quiz.msg_delete_success", language))
       loadQuizzes()
     } catch (error) {
       console.error("Failed to delete quiz:", error)
-      message.error(t.deleteError)
+      message.error(t("quiz.msg_delete_error", language))
     }
   }
 
@@ -299,7 +246,7 @@ export default function QuizzesPage() {
 
   const columns = [
     {
-      title: t.tableQuizName,
+      title: t("quiz.table_quiz_name", language),
       dataIndex: "title",
       key: "title",
       width: "40%",
@@ -307,34 +254,38 @@ export default function QuizzesPage() {
         <div>
           <div className="font-medium text-gray-900">{record.title}</div>
           <Typography.Text type="secondary" className="text-xs">
-            {record.category_name || t.noCategory}
+            {record.category_name || t("quiz.msg_no_category", language)}
           </Typography.Text>
         </div>
       ),
     },
     {
-      title: t.tableDescription,
+      title: t("quiz.table_description", language),
       dataIndex: "description",
       key: "description",
       width: "30%",
-      render: (text: string | null) => <span>{text || t.noDescription}</span>,
+      render: (text: string | null) => (
+        <span>{text || t("quiz.msg_no_description", language)}</span>
+      ),
     },
     {
-      title: t.tableTime,
+      title: t("quiz.table_time_limit", language),
       dataIndex: "time_limit_minutes",
       key: "time_limit_minutes",
       width: "12%",
-      render: (text: number | null) => <span>{text || t.unlimited}</span>,
+      render: (text: number | null) => (
+        <span>{text || t("quiz.msg_unlimited", language)}</span>
+      ),
     },
     {
-      title: t.tablePassing,
+      title: t("quiz.table_passing_score", language),
       dataIndex: "passing_score",
       key: "passing_score",
       width: "10%",
       render: (text: number) => <span>{text}%</span>,
     },
     {
-      title: t.tableAction,
+      title: t("quiz.table_actions", language),
       key: "action",
       width: "8%",
       align: "center" as const,
@@ -342,28 +293,29 @@ export default function QuizzesPage() {
         const guard = deleteGuards[record.id]
         const isUsedInCourse = guard?.isUsedInCourse ?? false
         const canDeleteLocal = !isUsedInCourse
-        const deleteReason = guard?.reason || t.cannotDeleteDefault
+        const deleteReason =
+          guard?.reason || t("quiz.msg_cannot_delete", language)
 
         return (
           <Space size="middle">
             <Link href={`/quizzes/${record.id}`}>
               <EyeOutlined
                 style={{ cursor: "pointer", color: "#1890ff" }}
-                title={t.viewEdit}
+                title={t("quiz.btn_view_edit", language)}
               />
             </Link>
             {canDeleteLocal ? (
               <Popconfirm
-                title={t.deleteTitle}
-                description={t.deleteConfirm}
+                title={t("quiz.modal_delete_title", language)}
+                description={t("quiz.msg_delete_confirm", language)}
                 onConfirm={() => handleDelete(record.id)}
-                okText={t.yes}
-                cancelText={t.no}
+                okText={t("quiz.btn_yes", language)}
+                cancelText={t("quiz.btn_no", language)}
                 okButtonProps={{ danger: true }}
               >
                 <DeleteOutlined
                   style={{ cursor: "pointer", color: "#ff4d4f" }}
-                  title={t.delete}
+                  title={t("quiz.btn_delete", language)}
                 />
               </Popconfirm>
             ) : (
@@ -371,7 +323,7 @@ export default function QuizzesPage() {
                 <span>
                   <DeleteOutlined
                     style={{ cursor: "not-allowed", color: "#d1d5db" }}
-                    title={t.delete}
+                    title={t("quiz.btn_delete", language)}
                   />
                 </span>
               </Tooltip>
@@ -387,14 +339,14 @@ export default function QuizzesPage() {
       {/* Page Header */}
       <div className="mb-8">
         <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-blue-900 bg-clip-text text-transparent mb-4">
-          {t.pageTitle}
+          {t("quiz.management.title", language)}
         </h1>
         <div
           className="flex align-center justify-between gap-6"
           style={{ marginBottom: 16 }}
         >
           <p className="text-gray-600 max-w-2xl leading-relaxed">
-            {t.pageSubtitle}
+            {t("quiz.management.description", language)}
           </p>
           <Button
             style={{
@@ -427,7 +379,7 @@ export default function QuizzesPage() {
               button.style.borderColor = "#1e40af"
             }}
           >
-            {t.createQuiz}
+            {t("quiz.btn_create_quiz", language)}
           </Button>
         </div>
         <Divider
@@ -440,7 +392,7 @@ export default function QuizzesPage() {
         <div className="space-y-3">
           {/* Search Bar - Full Width */}
           <Input.Search
-            placeholder={t.searchPlaceholder}
+            placeholder={t("quiz.search_placeholder", language)}
             prefix={<SearchOutlined />}
             value={searchText}
             onChange={(e) => handleSearch(e.target.value)}
@@ -457,13 +409,16 @@ export default function QuizzesPage() {
                 type="secondary"
                 className="text-sm font-medium mb-2"
               >
-                {t.category}
+                {t("quiz.label_category", language)}
               </Typography.Text>
               <Select
                 value={selectedCategory}
                 onChange={handleCategoryChange}
                 options={[
-                  { label: t.allCategories, value: "All" },
+                  {
+                    label: t("quiz.option_all_categories", language),
+                    value: "All",
+                  },
                   ...categories.map((cat) => ({
                     label: cat.name,
                     value: cat.id,
@@ -480,14 +435,20 @@ export default function QuizzesPage() {
                 type="secondary"
                 className="text-sm font-medium mb-2"
               >
-                {t.sortBy}
+                {t("quiz.label_sort_by", language)}
               </Typography.Text>
               <Select
                 value={sortOrder}
                 onChange={setSortOrder}
                 options={[
-                  { label: t.newestFirst, value: "newest" },
-                  { label: t.oldestFirst, value: "oldest" },
+                  {
+                    label: t("quiz.sort_newest_first", language),
+                    value: "newest",
+                  },
+                  {
+                    label: t("quiz.sort_oldest_first", language),
+                    value: "oldest",
+                  },
                 ]}
                 size="middle"
                 className="w-full"
@@ -499,15 +460,15 @@ export default function QuizzesPage() {
                 type="secondary"
                 className="text-sm font-medium mb-2"
               >
-                {t.viewMode}
+                {t("quiz.label_view_mode", language)}
               </Typography.Text>
               <Segmented
                 size="middle"
                 value={viewMode}
                 onChange={(value) => setViewMode(value as "list" | "grid")}
                 options={[
-                  { label: t.list, value: "list" },
-                  { label: t.grid, value: "grid" },
+                  { label: t("quiz.view_list", language), value: "list" },
+                  { label: t("quiz.view_grid", language), value: "grid" },
                 ]}
                 block
               />
@@ -515,7 +476,7 @@ export default function QuizzesPage() {
 
             {hasActiveFilters && (
               <div className="flex flex-col justify-end">
-                <Tooltip title={t.clearFiltersTooltip}>
+                <Tooltip title={t("quiz.tooltip_clear_filters", language)}>
                   <Button
                     type="dashed"
                     danger
@@ -524,7 +485,7 @@ export default function QuizzesPage() {
                     onClick={handleClearFilters}
                     className="w-full"
                   >
-                    {t.clearFilters}
+                    {t("quiz.btn_clear_filters", language)}
                   </Button>
                 </Tooltip>
               </div>
@@ -557,119 +518,126 @@ export default function QuizzesPage() {
                         const guard = deleteGuards[quiz.id]
                         const isUsedInCourse = guard?.isUsedInCourse ?? false
                         const canDeleteLocal = !isUsedInCourse
-                        const deleteReason = guard?.reason || "Cannot delete this quiz"
+                        const deleteReason =
+                          guard?.reason || "Cannot delete this quiz"
 
                         return (
-                      <Card
-                        hoverable
-                        className="h-full cursor-pointer hover:shadow-lg transition-shadow"
-                      >
-                        <Card.Meta
-                          title={
-                            <div className="text-gray-900 hover:text-blue-600 truncate font-medium">
-                              {quiz.title}
+                          <Card
+                            hoverable
+                            className="h-full cursor-pointer hover:shadow-lg transition-shadow"
+                          >
+                            <Card.Meta
+                              title={
+                                <div className="text-gray-900 hover:text-blue-600 truncate font-medium">
+                                  {quiz.title}
+                                </div>
+                              }
+                              description={
+                                <span className="text-gray-600 line-clamp-2">
+                                  {quiz.description || "Không có mô tả"}
+                                </span>
+                              }
+                            />
+                            <div className="mt-4 space-y-2 text-sm">
+                              <div className="flex justify-between">
+                                <Typography.Text type="secondary">
+                                  {t("quiz.label_category_grid", language)}
+                                </Typography.Text>
+                                <Typography.Text strong>
+                                  {quiz.category_name || "N/A"}
+                                </Typography.Text>
+                              </div>
+                              <div className="flex justify-between">
+                                <Typography.Text type="secondary">
+                                  {t("quiz.label_time_grid", language)}
+                                </Typography.Text>
+                                <Typography.Text strong>
+                                  {quiz.time_limit_minutes
+                                    ? `${quiz.time_limit_minutes} min`
+                                    : t("quiz.msg_unlimited", language)}
+                                </Typography.Text>
+                              </div>
+                              <div className="flex justify-between">
+                                <Typography.Text type="secondary">
+                                  {t("quiz.label_passing_grid", language)}
+                                </Typography.Text>
+                                <Typography.Text strong>
+                                  <Tag color="blue">{quiz.passing_score}%</Tag>
+                                </Typography.Text>
+                              </div>
+                              <div className="flex justify-between">
+                                <Typography.Text type="secondary">
+                                  {t("quiz.label_attempts_grid", language)}
+                                </Typography.Text>
+                                <Typography.Text strong>
+                                  {quiz.max_attempts}
+                                </Typography.Text>
+                              </div>
+                              <div className="flex justify-between">
+                                <Typography.Text type="secondary">
+                                  {t("quiz.label_created_grid", language)}
+                                </Typography.Text>
+                                <Typography.Text strong>
+                                  {new Date(quiz.created_at).toLocaleDateString(
+                                    "vi-VN"
+                                  )}
+                                </Typography.Text>
+                              </div>
                             </div>
-                          }
-                          description={
-                            <span className="text-gray-600 line-clamp-2">
-                              {quiz.description || "Không có mô tả"}
-                            </span>
-                          }
-                        />
-                        <div className="mt-4 space-y-2 text-sm">
-                          <div className="flex justify-between">
-                            <Typography.Text type="secondary">
-                              {t.categoryLabel}
-                            </Typography.Text>
-                            <Typography.Text strong>
-                              {quiz.category_name || "N/A"}
-                            </Typography.Text>
-                          </div>
-                          <div className="flex justify-between">
-                            <Typography.Text type="secondary">
-                              {t.timeLabel}
-                            </Typography.Text>
-                            <Typography.Text strong>
-                              {quiz.time_limit_minutes
-                                ? `${quiz.time_limit_minutes} min`
-                                : t.unlimited}
-                            </Typography.Text>
-                          </div>
-                          <div className="flex justify-between">
-                            <Typography.Text type="secondary">
-                              {t.passingLabel}
-                            </Typography.Text>
-                            <Typography.Text strong>
-                              <Tag color="blue">{quiz.passing_score}%</Tag>
-                            </Typography.Text>
-                          </div>
-                          <div className="flex justify-between">
-                            <Typography.Text type="secondary">
-                              {t.attemptsLabel}
-                            </Typography.Text>
-                            <Typography.Text strong>
-                              {quiz.max_attempts}
-                            </Typography.Text>
-                          </div>
-                          <div className="flex justify-between">
-                            <Typography.Text type="secondary">
-                              {t.createdLabel}
-                            </Typography.Text>
-                            <Typography.Text strong>
-                              {new Date(quiz.created_at).toLocaleDateString(
-                                "vi-VN"
-                              )}
-                            </Typography.Text>
-                          </div>
-                        </div>
-                        <div className="mt-4 flex gap-2">
-                          <Link href={`/quizzes/${quiz.id}`} className="flex-1">
-                            <Button
-                              type="text"
-                              size="small"
-                              icon={<EyeOutlined />}
-                              className="w-full text-blue-600 hover:!text-blue-700"
-                            >
-                              {t.viewEdit}
-                            </Button>
-                          </Link>
-                          {canDeleteLocal ? (
-                            <Popconfirm
-                              title={t.deleteTitle}
-                              description={t.deleteConfirm}
-                              onConfirm={() => handleDelete(quiz.id)}
-                              okText={t.yes}
-                              cancelText={t.no}
-                              okButtonProps={{ danger: true }}
-                            >
-                              <Button
-                                type="text"
-                                danger
-                                size="small"
-                                icon={<DeleteOutlined />}
-                                className="w-full"
+                            <div className="mt-4 flex gap-2">
+                              <Link
+                                href={`/quizzes/${quiz.id}`}
+                                className="flex-1"
                               >
-                                {t.delete}
-                              </Button>
-                            </Popconfirm>
-                          ) : (
-                            <Tooltip title={deleteReason}>
-                              <span className="flex-1">
                                 <Button
                                   type="text"
-                                  danger
                                   size="small"
-                                  icon={<DeleteOutlined />}
-                                  className="w-full"
-                                  disabled
+                                  icon={<EyeOutlined />}
+                                  className="w-full text-blue-600 hover:!text-blue-700"
                                 >
-                                  {t.delete}
+                                  {t("quiz.btn_view_edit", language)}
                                 </Button>
-                              </span>
-                            </Tooltip>
-                          )}
-                        </div>
-                      </Card>
+                              </Link>
+                              {canDeleteLocal ? (
+                                <Popconfirm
+                                  title={t("quiz.modal_delete_title", language)}
+                                  description={t(
+                                    "quiz.msg_delete_confirm",
+                                    language
+                                  )}
+                                  onConfirm={() => handleDelete(quiz.id)}
+                                  okText={t("quiz.btn_yes", language)}
+                                  cancelText={t("quiz.btn_no", language)}
+                                  okButtonProps={{ danger: true }}
+                                >
+                                  <Button
+                                    type="text"
+                                    danger
+                                    size="small"
+                                    icon={<DeleteOutlined />}
+                                    className="w-full"
+                                  >
+                                    {t("quiz.btn_delete", language)}
+                                  </Button>
+                                </Popconfirm>
+                              ) : (
+                                <Tooltip title={deleteReason}>
+                                  <span className="flex-1">
+                                    <Button
+                                      type="text"
+                                      danger
+                                      size="small"
+                                      icon={<DeleteOutlined />}
+                                      className="w-full"
+                                      disabled
+                                    >
+                                      {t("quiz.btn_delete", language)}
+                                    </Button>
+                                  </span>
+                                </Tooltip>
+                              )}
+                            </div>
+                          </Card>
                         )
                       })()}
                     </Col>
@@ -678,7 +646,7 @@ export default function QuizzesPage() {
               )
             ) : (
               <Empty
-                description={t.empty}
+                description={t("quiz.msg_no_quizzes", language)}
                 style={{ marginTop: "60px" }}
               >
                 <Button
@@ -687,7 +655,7 @@ export default function QuizzesPage() {
                   icon={<PlusOutlined />}
                   onClick={() => setIsCreateModalVisible(true)}
                 >
-                  {t.createFirst}
+                  {t("quiz.btn_create_first", language)}
                 </Button>
               </Empty>
             )}
@@ -700,7 +668,9 @@ export default function QuizzesPage() {
                 total={totalQuizzes}
                 showSizeChanger
                 onChange={handlePaginationChange}
-                showTotal={(total) => `${t.total} ${total} ${t.itemSuffix}`}
+                showTotal={(total) =>
+                  `${t("quiz.label_total", language)} ${total} ${t("quiz.suffix_quizzes", language)}`
+                }
               />
             </div>
           )}

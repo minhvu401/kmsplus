@@ -81,9 +81,7 @@ const normalizeCorrectAnswer = (value: unknown): number[] => {
   return toNumberArray(value)
 }
 
-const normalizeSelectedAnswer = (
-  value: number | number[]
-): number[] => {
+const normalizeSelectedAnswer = (value: number | number[]): number[] => {
   const raw = Array.isArray(value) ? value : [value]
   return [...new Set(raw.map((v) => Number(v)).filter(Number.isFinite))].sort(
     (a, b) => a - b
@@ -203,9 +201,11 @@ export async function getAllQuizzesAction(
       FROM quizzes q
       LEFT JOIN categories cat ON cat.id = q.category_id
       WHERE q.is_deleted = false
-      ${category_id && category_id !== "All"
-        ? sql`AND q.category_id = ${category_id}`
-        : sql``}
+      ${
+        category_id && category_id !== "All"
+          ? sql`AND q.category_id = ${category_id}`
+          : sql``
+      }
       ${query ? sql`AND q.title ILIKE ${"%" + query + "%"}` : sql``}
       ORDER BY q.created_at DESC
       LIMIT ${limit} OFFSET ${offset}
@@ -216,9 +216,11 @@ export async function getAllQuizzesAction(
       SELECT COUNT(*) as total
       FROM quizzes q
       WHERE q.is_deleted = false
-      ${category_id && category_id !== "All"
-        ? sql`AND q.category_id = ${category_id}`
-        : sql``}
+      ${
+        category_id && category_id !== "All"
+          ? sql`AND q.category_id = ${category_id}`
+          : sql``
+      }
       ${query ? sql`AND q.title ILIKE ${"%" + query + "%"}` : sql``}
     `
 
@@ -306,7 +308,9 @@ export async function createQuizAction(data: {
 
     const createdQuiz = result[0] as Quiz
     const normalizedQuestionIds = Array.from(
-      new Set((data.questionIds || []).map((id) => Number(id)).filter(Number.isFinite))
+      new Set(
+        (data.questionIds || []).map((id) => Number(id)).filter(Number.isFinite)
+      )
     )
 
     if (normalizedQuestionIds.length > 0) {
@@ -1040,13 +1044,14 @@ export async function getQuizByCurriculumItemIdAction(
 ) {
   try {
     const rows = await sql`
-      SELECT q.*
+      SELECT q.*, s.course_id
       FROM curriculum_items ci
       JOIN quizzes q ON q.id = ci.quiz_id
+      JOIN sections s ON s.id = ci.section_id
       WHERE ci.id = ${curriculumItemId} AND q.is_deleted = FALSE
       LIMIT 1
     `
-    return rows.length > 0 ? (rows[0] as Quiz) : null
+    return rows.length > 0 ? (rows[0] as Quiz & { course_id: number }) : null
   } catch (error) {
     console.error("getQuizByCurriculumItemIdAction error:", error)
     return null
@@ -1179,7 +1184,11 @@ export async function isQuizUsedInCourseAction(quizId: number) {
  */
 export async function isQuizzesUsedInCourseBatchAction(quizIds: number[]) {
   const normalizedQuizIds = Array.from(
-    new Set((quizIds || []).map((id) => Number(id)).filter((id) => Number.isFinite(id) && id > 0))
+    new Set(
+      (quizIds || [])
+        .map((id) => Number(id))
+        .filter((id) => Number.isFinite(id) && id > 0)
+    )
   )
 
   if (normalizedQuizIds.length === 0) {

@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react"
 import { Form, Input, Button, Typography, message, Alert } from "antd"
 import { LockOutlined } from "@ant-design/icons"
+import useLanguageStore from "@/store/useLanguageStore"
+import { t } from "@/lib/i18n"
 
 const { Text, Title } = Typography
 
@@ -13,6 +15,7 @@ interface PasswordFormProps {
 export default function PasswordForm({ onSuccess }: PasswordFormProps) {
   const [form] = Form.useForm()
   const [isLoading, setIsLoading] = useState(false)
+  const language = useLanguageStore((state) => state.language)
 
   const handleSubmit = async (values: any) => {
     try {
@@ -20,7 +23,7 @@ export default function PasswordForm({ onSuccess }: PasswordFormProps) {
 
       // Validate passwords match
       if (values.newPassword !== values.confirmPassword) {
-        message.error("New passwords do not match")
+        message.error(t("password.passwords_not_match", language))
         return
       }
 
@@ -39,16 +42,16 @@ export default function PasswordForm({ onSuccess }: PasswordFormProps) {
       const data = await response.json()
 
       if (!response.ok) {
-        message.error(data.message || "Failed to update password")
+        message.error(data.message || t("password.change_error", language))
         return
       }
 
-      message.success(data.message || "Password updated successfully")
+      message.success(data.message || t("password.change_success", language))
       form.resetFields()
       if (onSuccess) onSuccess()
     } catch (error) {
       console.error("Error updating password:", error)
-      message.error("Failed to update password")
+      message.error(t("password.change_error", language))
     } finally {
       setIsLoading(false)
     }
@@ -57,7 +60,7 @@ export default function PasswordForm({ onSuccess }: PasswordFormProps) {
   return (
     <Form form={form} layout="vertical" onFinish={handleSubmit}>
       <Alert
-        message="Password Security"
+        message={t("password.reset_title", language)}
         description="Make sure to use a strong password with a mix of uppercase, lowercase, numbers, and special characters."
         type="info"
         showIcon
@@ -65,52 +68,63 @@ export default function PasswordForm({ onSuccess }: PasswordFormProps) {
       />
 
       <Form.Item
-        label="Current Password"
+        label={t("password.old_password", language)}
         name="currentPassword"
         rules={[
-          { required: true, message: "Please enter your current password" },
+          {
+            required: true,
+            message: t("form.validation_password_required", language),
+          },
         ]}
       >
         <Input.Password
-          placeholder="Enter your current password"
+          placeholder={t("password.old_password", language)}
           prefix={<LockOutlined />}
           size="large"
         />
       </Form.Item>
 
       <Form.Item
-        label="New Password"
+        label={t("password.new_password", language)}
         name="newPassword"
         rules={[
-          { required: true, message: "Please enter a new password" },
-          { min: 6, message: "Password must be at least 6 characters" },
+          {
+            required: true,
+            message: t("form.validation_password_required", language),
+          },
+          { min: 6, message: t("form.validation_password_min", language) },
         ]}
       >
         <Input.Password
-          placeholder="Enter your new password"
+          placeholder={t("password.new_password", language)}
           prefix={<LockOutlined />}
           size="large"
         />
       </Form.Item>
 
       <Form.Item
-        label="Confirm New Password"
+        label={t("password.confirm_password", language)}
         name="confirmPassword"
         dependencies={["newPassword"]}
         rules={[
-          { required: true, message: "Please confirm your new password" },
+          {
+            required: true,
+            message: t("form.validation_password_required", language),
+          },
           ({ getFieldValue }) => ({
             validator(_, value) {
               if (!value || getFieldValue("newPassword") === value) {
                 return Promise.resolve()
               }
-              return Promise.reject(new Error("Passwords do not match"))
+              return Promise.reject(
+                new Error(t("password.passwords_not_match", language))
+              )
             },
           }),
         ]}
       >
         <Input.Password
-          placeholder="Confirm your new password"
+          placeholder={t("password.confirm_password", language)}
           prefix={<LockOutlined />}
           size="large"
         />
@@ -126,7 +140,7 @@ export default function PasswordForm({ onSuccess }: PasswordFormProps) {
           size="large"
           icon={<LockOutlined />}
         >
-          Update Password
+          {t("password.change_success", language).split(" ")[0]}
         </Button>
       </Form.Item>
     </Form>
