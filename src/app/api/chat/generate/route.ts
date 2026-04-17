@@ -8,7 +8,6 @@ import {
   getMessagesByConversationId,
 } from "@/service/chat.service"
 import { generateAIResponse } from "@/service/gemini.service"
-import { getDatabaseOverview } from "@/service/database-schema.service"
 
 export async function POST(request: Request) {
   try {
@@ -59,49 +58,14 @@ export async function POST(request: Request) {
       .map((msg) => `${msg.role}: ${msg.content}`)
       .join("\n")
 
-    // Get or retrieve cached database schema
-    const schemaKey = "kms_db_schema"
-    let dbSchemaContext = ""
-
-    if (redisClient) {
-      try {
-        const cachedSchema = await redisClient.get(schemaKey)
-        if (cachedSchema) {
-          dbSchemaContext = cachedSchema as string
-        } else {
-          // Get fresh schema and cache it for 24 hours
-          dbSchemaContext = await getDatabaseOverview()
-          await redisClient.set(schemaKey, dbSchemaContext, { ex: 86400 })
-        }
-      } catch (schemaError) {
-        console.warn(
-          "Could not use Redis cache, fetching fresh schema:",
-          schemaError
-        )
-        try {
-          dbSchemaContext = await getDatabaseOverview()
-        } catch (e) {
-          console.warn("Could not get database schema:", e)
-          // Continue without schema context
-        }
-      }
-    } else {
-      // Redis not available, fetch fresh schema
-      try {
-        dbSchemaContext = await getDatabaseOverview()
-      } catch (e) {
-        console.warn("Could not get database schema:", e)
-      }
-    }
-
     // Prepare final prompt with history if this is follow-up message
     let finalPrompt = message
     if (conversationContext) {
       finalPrompt = `Previous conversation:\n${conversationContext}\n\nNew question/statement: ${message}`
     }
 
-    // Generate AI response with database context
-    const aiResponse = await generateAIResponse(finalPrompt, dbSchemaContext)
+    // Generate AI response (without exposing database schema)
+    const aiResponse = await generateAIResponse(finalPrompt)
 
     // Add AI message to database
     const assistantMessage = await addMessage(

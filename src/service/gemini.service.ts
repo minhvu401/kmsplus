@@ -110,10 +110,7 @@ Always respond as an encouraging, knowledgeable teacher - not as a technical sys
   return ""
 }
 
-export async function generateAIResponse(
-  prompt: string,
-  dbContext: string = ""
-): Promise<string> {
+export async function generateAIResponse(prompt: string): Promise<string> {
   try {
     // Get system prompt from database or cache
     const SYSTEM_PROMPT = await getSystemPrompt("chat_assistant")
@@ -121,10 +118,8 @@ export async function generateAIResponse(
     // Use gemini-2.5-flash (faster, more efficient model)
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" })
 
-    // Combine system prompt with database context and user prompt
-    const fullPrompt = dbContext
-      ? `${SYSTEM_PROMPT}\n\n## Current Database Schema:\n${dbContext}\n\n## User Question:\n${prompt}`
-      : `${SYSTEM_PROMPT}\n\n## User Question:\n${prompt}`
+    // Use only system prompt and user prompt (no database schema)
+    const fullPrompt = `${SYSTEM_PROMPT}\n\n## User Question:\n${prompt}`
 
     const result = await model.generateContent(fullPrompt)
     const response = await result.response
