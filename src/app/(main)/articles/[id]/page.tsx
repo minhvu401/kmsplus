@@ -738,10 +738,9 @@ export default function ArticleDetailPage() {
                 {/* Tags - parse if string or use array */}
                 {article?.tags && (
                   <div className="flex items-center gap-1 flex-wrap">
-                    {(
-                      Array.isArray(article.tags)
-                        ? article.tags
-                        : String(article.tags || "").split(",")
+                    {(Array.isArray(article.tags)
+                      ? article.tags
+                      : String(article.tags || "").split(",")
                     )
                       .map((t: any) => String(t).trim())
                       .filter((t: string) => t)
