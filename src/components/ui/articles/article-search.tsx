@@ -2,6 +2,8 @@
 
 import React, { useState, useCallback } from "react"
 import { SearchOutlined } from "@ant-design/icons"
+import useLanguageStore, { type Language } from "@/store/useLanguageStore"
+import { t } from "@/lib/i18n"
 
 interface ArticleSearchProps {
   onSearch: (query: string) => void
@@ -11,10 +13,15 @@ interface ArticleSearchProps {
 
 export const ArticleSearch: React.FC<ArticleSearchProps> = ({
   onSearch,
-  placeholder = "Tìm kiếm bài viết...",
+  placeholder,
   value: initialValue = "",
 }) => {
+  const { language: rawLanguage } = useLanguageStore()
+  const language = rawLanguage as Language
   const [value, setValue] = useState(initialValue)
+
+  const searchPlaceholder =
+    placeholder || t("article.search_placeholder", language)
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setValue(e.target.value)
@@ -61,7 +68,7 @@ export const ArticleSearch: React.FC<ArticleSearchProps> = ({
           value={value}
           onChange={handleChange}
           onKeyPress={handleKeyPress}
-          placeholder={placeholder}
+          placeholder={searchPlaceholder}
           style={{
             width: "100%",
             paddingLeft: "36px",
@@ -139,7 +146,7 @@ export const ArticleSearch: React.FC<ArticleSearchProps> = ({
         }}
       >
         <SearchOutlined style={{ fontSize: "14px" }} />
-        Tìm kiếm
+        {t("article.search_button", language)}
       </button>
     </div>
   )

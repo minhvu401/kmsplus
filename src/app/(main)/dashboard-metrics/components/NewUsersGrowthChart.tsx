@@ -46,13 +46,13 @@ export default function NewUsersGrowthChart() {
         // 7 days of current week
         const first = today.getDate() - today.getDay() + 1
         const dayNames = [
-          "Thứ 2",
-          "Thứ 3",
-          "Thứ 4",
-          "Thứ 5",
-          "Thứ 6",
-          "Thứ 7",
-          "CN",
+          t("dashboard.metrics.day_monday", language),
+          t("dashboard.metrics.day_tuesday", language),
+          t("dashboard.metrics.day_wednesday", language),
+          t("dashboard.metrics.day_thursday", language),
+          t("dashboard.metrics.day_friday", language),
+          t("dashboard.metrics.day_saturday", language),
+          t("dashboard.metrics.day_sunday", language),
         ]
         return dayNames.map((name, i) => {
           const day = new Date(today)
@@ -77,7 +77,7 @@ export default function NewUsersGrowthChart() {
           d.setDate(d.getDate() + 7)
         ) {
           weeks.push({
-            label: `Tuần ${weekNum}`,
+            label: `${t("dashboard.metrics.week_label", language)} ${weekNum}`,
             value: weekNum.toString(),
           })
           weekNum++
@@ -87,18 +87,18 @@ export default function NewUsersGrowthChart() {
       case "month": {
         // 12 months
         const monthNames = [
-          "Tháng 1",
-          "Tháng 2",
-          "Tháng 3",
-          "Tháng 4",
-          "Tháng 5",
-          "Tháng 6",
-          "Tháng 7",
-          "Tháng 8",
-          "Tháng 9",
-          "Tháng 10",
-          "Tháng 11",
-          "Tháng 12",
+          t("dashboard.metrics.month_1", language),
+          t("dashboard.metrics.month_2", language),
+          t("dashboard.metrics.month_3", language),
+          t("dashboard.metrics.month_4", language),
+          t("dashboard.metrics.month_5", language),
+          t("dashboard.metrics.month_6", language),
+          t("dashboard.metrics.month_7", language),
+          t("dashboard.metrics.month_8", language),
+          t("dashboard.metrics.month_9", language),
+          t("dashboard.metrics.month_10", language),
+          t("dashboard.metrics.month_11", language),
+          t("dashboard.metrics.month_12", language),
         ]
         return monthNames.map((name, i) => ({
           label: name,
@@ -109,14 +109,14 @@ export default function NewUsersGrowthChart() {
         // 3 years: prev, last year, current
         const years = [currentYear - 2, currentYear - 1, currentYear]
         return years.map((year) => ({
-          label: `Năm ${year}`,
+          label: `${t("dashboard.metrics.year_label", language)} ${year}`,
           value: year.toString(),
         }))
       }
       default:
         return []
     }
-  }, [timePeriod])
+  }, [timePeriod, language])
 
   // Initialize selected value when period changes
   useEffect(() => {
@@ -149,6 +149,94 @@ export default function NewUsersGrowthChart() {
     }
   }
 
+  // Custom formatter for X-axis labels based on timePeriod
+  const formatXAxisLabel = (value: string) => {
+    if (timePeriod === "month") {
+      // For month view, data is daily (format: "13/3", "14/3", etc)
+      // Keep as-is or can be enhanced to show day name
+      return value
+    } else if (timePeriod === "day") {
+      // Map Vietnamese day names to translation keys
+      const dayMap: { [key: string]: string } = {
+        "Thứ 2": "dashboard.metrics.day_monday",
+        "Thứ 3": "dashboard.metrics.day_tuesday",
+        "Thứ 4": "dashboard.metrics.day_wednesday",
+        "Thứ 5": "dashboard.metrics.day_thursday",
+        "Thứ 6": "dashboard.metrics.day_friday",
+        "Thứ 7": "dashboard.metrics.day_saturday",
+        CN: "dashboard.metrics.day_sunday",
+      }
+
+      // Extract day name from format like "Thứ 2 (20/4)"
+      for (const [viDay, key] of Object.entries(dayMap)) {
+        if (value.includes(viDay)) {
+          const dayName = t(key, language)
+          const dateMatch = value.match(/\(\d+\/\d+\)/)
+          return dateMatch ? `${dayName} ${dateMatch[0]}` : dayName
+        }
+      }
+    } else if (timePeriod === "week") {
+      // Extract week number from format like "Tuần 1" or "Week 1"
+      const match = value.match(/\d+/)
+      if (match) {
+        const weekNum = parseInt(match[0])
+        return `${t("dashboard.metrics.week_label", language)} ${weekNum}`
+      }
+    } else if (timePeriod === "year") {
+      // Map Vietnamese month names to month numbers
+      const monthMap: { [key: string]: number } = {
+        "Tháng 1": 1,
+        "Tháng 2": 2,
+        "Tháng 3": 3,
+        "Tháng 4": 4,
+        "Tháng 5": 5,
+        "Tháng 6": 6,
+        "Tháng 7": 7,
+        "Tháng 8": 8,
+        "Tháng 9": 9,
+        "Tháng 10": 10,
+        "Tháng 11": 11,
+        "Tháng 12": 12,
+      }
+
+      // Find the month number and translate
+      for (const [viMonth, monthNum] of Object.entries(monthMap)) {
+        if (value.includes(viMonth)) {
+          return t(`dashboard.metrics.month_${monthNum}`, language)
+        }
+      }
+    }
+
+    return value
+  }
+
+  // Custom Tooltip Component
+  const CustomTooltip = (props: any) => {
+    const { active, payload } = props
+    if (active && payload && payload.length > 0) {
+      const data = payload[0]
+      const translatedPeriod = formatXAxisLabel(data.payload.period)
+      return (
+        <div
+          style={{
+            backgroundColor: "rgba(255, 255, 255, 0.95)",
+            border: "1px solid #ccc",
+            padding: "8px",
+            borderRadius: "4px",
+          }}
+        >
+          <p style={{ margin: "0 0 4px 0", color: "#333" }}>
+            {translatedPeriod}
+          </p>
+          <p style={{ margin: 0, color: "#52c41a" }}>
+            {t("dashboard.metrics.new_users", language)}: {data.value}
+          </p>
+        </div>
+      )
+    }
+    return null
+  }
+
   useEffect(() => {
     const loadData = async () => {
       setLoading(true)
@@ -173,7 +261,7 @@ export default function NewUsersGrowthChart() {
       title={
         <div className="flex items-center gap-2">
           <UserAddOutlined className="text-green-600 text-lg" />
-          <span>Tốc độ tăng trưởng người dùng mới</span>
+          <span>{t("dashboard.metrics.new_users_growth", language)}</span>
         </div>
       }
       extra={
@@ -221,23 +309,21 @@ export default function NewUsersGrowthChart() {
               margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
             >
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="period" />
+              <XAxis dataKey="period" tickFormatter={formatXAxisLabel} />
               <YAxis
                 label={{
-                  value: "Người dùng mới",
+                  value: t("dashboard.metrics.new_users", language),
                   angle: -90,
                   position: "insideLeft",
                 }}
               />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: "rgba(255, 255, 255, 0.95)",
-                  border: "1px solid #ccc",
-                }}
-                formatter={(value) => [value, "Người dùng mới"]}
-              />
+              <Tooltip content={<CustomTooltip />} />
               <Legend />
-              <Bar dataKey="newUsers" fill="#52c41a" name="Người dùng mới" />
+              <Bar
+                dataKey="newUsers"
+                fill="#52c41a"
+                name={t("dashboard.metrics.new_users", language)}
+              />
             </BarChart>
           </ResponsiveContainer>
         </div>

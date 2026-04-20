@@ -3,6 +3,8 @@
 import React from "react"
 import { Empty, Spin } from "antd"
 import { FireOutlined } from "@ant-design/icons"
+import useLanguageStore, { type Language } from "@/store/useLanguageStore"
+import { t } from "@/lib/i18n"
 import { CourseCard } from "./course-card"
 import type { Course } from "@/service/course.service"
 
@@ -17,6 +19,9 @@ export const TrendingCourses: React.FC<TrendingCoursesProps> = ({
   isLoading = false,
   onViewAll,
 }) => {
+  const { language: rawLanguage } = useLanguageStore()
+  const language = rawLanguage as Language
+
   if (isLoading) {
     return (
       <div style={{ textAlign: "center", padding: "60px 20px" }}>
@@ -28,7 +33,7 @@ export const TrendingCourses: React.FC<TrendingCoursesProps> = ({
   if (courses.length === 0) {
     return (
       <div style={{ textAlign: "center", padding: "60px 20px" }}>
-        <Empty description="Không có khóa học phổ biến nào" />
+        <Empty description={t("course.trending_empty", language)} />
       </div>
     )
   }
@@ -53,7 +58,7 @@ export const TrendingCourses: React.FC<TrendingCoursesProps> = ({
               margin: 0,
             }}
           >
-            Đang thịnh hành
+            {t("course.trending_title", language)}
           </h2>
           <p
             style={{
@@ -62,7 +67,7 @@ export const TrendingCourses: React.FC<TrendingCoursesProps> = ({
               margin: "4px 0 0 0",
             }}
           >
-            Những khóa học được nhiều người đăng ký trong 7 ngày qua
+            {t("course.trending_subtitle", language)}
           </p>
         </div>
       </div>
@@ -101,7 +106,7 @@ export const TrendingCourses: React.FC<TrendingCoursesProps> = ({
               }}
             >
               <FireOutlined style={{ fontSize: "10px" }} />
-              Trending
+              {t("course.trending_badge", language)}
             </div>
             <CourseCard
               course={course}

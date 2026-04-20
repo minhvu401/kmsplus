@@ -71,7 +71,11 @@ export default function CourseDropoffRateChart() {
               fontSize={12}
             />
             <YAxis
-              label={{ value: "Tỷ lệ (%)", angle: -90, position: "insideLeft" }}
+              label={{
+                value: t("dashboard.metrics.course_dropoff_desc", language),
+                angle: -90,
+                position: "insideLeft",
+              }}
             />
             <Tooltip
               contentStyle={{
@@ -81,7 +85,11 @@ export default function CourseDropoffRateChart() {
               formatter={(value: any) => `${value}%`}
             />
             <Legend />
-            <Bar dataKey="dropoffRate" fill="#ff7875" name="Tỷ lệ bỏ học" />
+            <Bar
+              dataKey="dropoffRate"
+              fill="#ff7875"
+              name={t("dashboard.metrics.dropoff_rate", language)}
+            />
           </BarChart>
         </ResponsiveContainer>
       )}

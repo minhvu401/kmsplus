@@ -69,7 +69,7 @@ export default function AppHeader({ collapsed }: HeaderProps) {
 
   const profileItems: MenuProps["items"] = [
     {
-      label: "Profile",
+      label: t("header.profile", language),
       key: "profile",
       icon: <UserOutlined />,
       onClick: () => {
@@ -80,7 +80,9 @@ export default function AppHeader({ collapsed }: HeaderProps) {
       type: "divider",
     },
     {
-      label: <span className="text-red-600">Đăng xuất</span>,
+      label: (
+        <span className="text-red-600">{t("header.logout", language)}</span>
+      ),
       icon: <LogoutIcon className="fill-red-600" />,
       key: "logout",
       className: "text-red-600",

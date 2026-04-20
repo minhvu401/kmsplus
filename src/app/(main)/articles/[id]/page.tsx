@@ -54,6 +54,8 @@ import MarkdownIt from "markdown-it"
 // @ts-ignore
 import markdownItUnderline from "markdown-it-underline"
 import "react-markdown-editor-lite/lib/index.css"
+import useLanguageStore, { type Language } from "@/store/useLanguageStore"
+import { t } from "@/lib/i18n"
 
 const { Title, Text, Paragraph } = Typography
 const { TextArea } = Input
@@ -71,6 +73,8 @@ export default function ArticleDetailPage() {
   const router = useRouter()
   const params = useParams()
   const articleId = params.id as string
+  const { language: rawLanguage } = useLanguageStore()
+  const language = rawLanguage as Language
 
   const [article, setArticle] = useState<any>(null)
   const [comments, setComments] = useState<Comment[]>([])
@@ -220,7 +224,7 @@ export default function ArticleDetailPage() {
       setComments([])
     } catch (err: any) {
       console.error("Error loading article:", err)
-      message.error("Failed to load article")
+      message.error(t("article_detail.error_loading", language))
       setArticle(null)
       setComments([])
     } finally {
@@ -230,7 +234,7 @@ export default function ArticleDetailPage() {
 
   const handleSubmitComment = async () => {
     if (!commentText.trim()) {
-      message.error("Comment content is required")
+      message.error(t("article_detail.comment_required", language))
       return
     }
 
@@ -242,15 +246,17 @@ export default function ArticleDetailPage() {
 
       const result = await createComment(formData)
       if (result.success) {
-        message.success("Comment posted successfully")
+        message.success(t("article_detail.comment_posted", language))
         setCommentText("")
         window.dispatchEvent(new Event("notifications:refresh"))
         await loadComments(parseInt(articleId))
       } else {
-        message.error(result.message || "Failed to post comment")
+        message.error(
+          result.message || t("article_detail.error_posting", language)
+        )
       }
     } catch (error: any) {
-      message.error("An error occurred")
+      message.error(t("article_detail.error_general", language))
     } finally {
       setSubmitting(false)
     }
@@ -269,7 +275,7 @@ export default function ArticleDetailPage() {
   const handleSubmitReply = async () => {
     if (!replyToId) return
     if (!replyText.trim()) {
-      message.error("Reply content is required")
+      message.error(t("article_detail.comment_required", language))
       return
     }
 
@@ -282,16 +288,18 @@ export default function ArticleDetailPage() {
 
       const result = await createComment(formData)
       if (result.success) {
-        message.success("Reply posted successfully")
+        message.success(t("article_detail.reply_posted", language))
         setReplyToId(null)
         setReplyText("")
         window.dispatchEvent(new Event("notifications:refresh"))
         await loadComments(parseInt(articleId))
       } else {
-        message.error(result.message || "Failed to post reply")
+        message.error(
+          result.message || t("article_detail.error_posting_reply", language)
+        )
       }
     } catch (error: any) {
-      message.error("An error occurred")
+      message.error(t("article_detail.error_general", language))
     } finally {
       setReplying(false)
     }
@@ -309,7 +317,7 @@ export default function ArticleDetailPage() {
 
   const handleUpdateComment = async (commentId: string) => {
     if (!editingCommentText.trim()) {
-      message.error("Comment content is required")
+      message.error(t("article_detail.comment_required", language))
       return
     }
 
@@ -321,15 +329,17 @@ export default function ArticleDetailPage() {
 
       const result = await updateComment(formData)
       if (result.success) {
-        message.success("Comment updated successfully")
+        message.success(t("article_detail.comment_updated", language))
         setEditingCommentId(null)
         setEditingCommentText("")
         await loadComments(parseInt(articleId))
       } else {
-        message.error(result.message || "Failed to update comment")
+        message.error(
+          result.message || t("article_detail.error_updating", language)
+        )
       }
     } catch (error: any) {
-      message.error("An error occurred")
+      message.error(t("article_detail.error_general", language))
     } finally {
       setUpdatingComment(false)
     }
@@ -346,15 +356,17 @@ export default function ArticleDetailPage() {
     try {
       const result = await deleteComment(parseInt(deleteCommentId))
       if (result.success) {
-        message.success("Comment deleted successfully")
+        message.success(t("article_detail.comment_deleted", language))
         setShowDeleteCommentModal(false)
         setDeleteCommentId(null)
         await loadComments(parseInt(articleId))
       } else {
-        message.error(result.message || "Failed to delete comment")
+        message.error(
+          result.message || t("article_detail.error_deleting", language)
+        )
       }
     } catch (error: any) {
-      message.error("An error occurred")
+      message.error(t("article_detail.error_general", language))
     } finally {
       setDeletingComment(false)
     }
@@ -377,17 +389,21 @@ export default function ArticleDetailPage() {
       const result = await response.json()
 
       if (response.ok && result.success) {
-        message.success(result.message || "Article approved successfully")
+        message.success(
+          result.message || t("article_detail.article_approved", language)
+        )
         setShowApproveModal(false)
         window.dispatchEvent(new Event("notifications:refresh"))
         await loadArticle()
       } else {
         console.error("❌ Approve failed:", result)
-        message.error(result.message || "Failed to approve article")
+        message.error(
+          result.message || t("article_detail.error_approving", language)
+        )
       }
     } catch (err: any) {
       console.error("❌ Approve error:", err)
-      message.error(err?.message || "Failed to approve")
+      message.error(err?.message || t("article_detail.error_general", language))
     } finally {
       setApproving(false)
     }
@@ -405,7 +421,7 @@ export default function ArticleDetailPage() {
 
   const confirmRejectWithReason = async () => {
     if (!rejectReason.trim()) {
-      message.warning("Please enter a reason for rejection")
+      message.warning(t("article_detail.reject_reason_placeholder", language))
       return
     }
 
@@ -424,18 +440,22 @@ export default function ArticleDetailPage() {
       const result = await response.json()
 
       if (response.ok && result.success) {
-        message.success(result.message || "Article rejected successfully")
+        message.success(
+          result.message || t("article_detail.article_rejected", language)
+        )
         setShowRejectReasonModal(false)
         setRejectReason("")
         window.dispatchEvent(new Event("notifications:refresh"))
         await loadArticle()
       } else {
         console.error("❌ Reject failed:", result)
-        message.error(result.message || "Failed to reject article")
+        message.error(
+          result.message || t("article_detail.error_rejecting", language)
+        )
       }
     } catch (err: any) {
       console.error("❌ Reject error:", err)
-      message.error(err?.message || "Failed to reject")
+      message.error(err?.message || t("article_detail.error_general", language))
     } finally {
       setRejecting(false)
     }
@@ -503,7 +523,9 @@ export default function ArticleDetailPage() {
       const result = await response.json()
 
       if (response.ok && result.success) {
-        message.success(result.message || "Article resubmitted successfully")
+        message.success(
+          result.message || t("article_detail.article_resubmitted", language)
+        )
         setShowResubmitModal(false)
         setResubmitTitle("")
         setResubmitContent("")
@@ -513,11 +535,13 @@ export default function ArticleDetailPage() {
         resubmitForm.resetFields()
         await loadArticle()
       } else {
-        message.error(result.message || "Failed to resubmit article")
+        message.error(
+          result.message || t("article_detail.error_resubmitting", language)
+        )
       }
     } catch (err: any) {
       console.error("Resubmit error:", err)
-      message.error(err?.message || "Failed to resubmit")
+      message.error(err?.message || t("article_detail.error_general", language))
     } finally {
       setResubmitting(false)
     }
@@ -554,10 +578,10 @@ export default function ArticleDetailPage() {
                   onClick={() => handleUpdateComment(comment.id)}
                   loading={updatingComment}
                 >
-                  Save
+                  {t("article_detail.save", language)}
                 </Button>
                 <Button size="small" onClick={handleCancelEdit}>
-                  Cancel
+                  {t("article_detail.cancel", language)}
                 </Button>
               </Space>
             </div>
@@ -579,14 +603,14 @@ export default function ArticleDetailPage() {
                           items: [
                             {
                               key: "edit",
-                              label: "Edit",
+                              label: t("article_detail.edit", language),
                               icon: <EditOutlined />,
                               onClick: () =>
                                 handleEditComment(comment.id, comment.content),
                             },
                             {
                               key: "delete",
-                              label: "Delete",
+                              label: t("article_detail.delete", language),
                               icon: <DeleteOutlined />,
                               danger: true,
                               onClick: () => handleDeleteComment(comment.id),
@@ -625,7 +649,7 @@ export default function ArticleDetailPage() {
                   className="!px-0"
                   onClick={() => handleReplyClick(comment.id)}
                 >
-                  Reply
+                  {t("article_detail.reply", language)}
                 </Button>
               </div>
             </>
@@ -637,7 +661,7 @@ export default function ArticleDetailPage() {
                 value={replyText}
                 onChange={(e) => setReplyText(e.target.value)}
                 autoSize={{ minRows: 2, maxRows: 6 }}
-                placeholder="Write a reply..."
+                placeholder={t("article_detail.comment_placeholder", language)}
               />
               <Space>
                 <Button
@@ -646,10 +670,10 @@ export default function ArticleDetailPage() {
                   onClick={handleSubmitReply}
                   loading={replying}
                 >
-                  Reply
+                  {t("article_detail.reply", language)}
                 </Button>
                 <Button size="small" onClick={handleCancelReply}>
-                  Cancel
+                  {t("article_detail.cancel", language)}
                 </Button>
               </Space>
             </div>
@@ -669,7 +693,9 @@ export default function ArticleDetailPage() {
     return (
       <div className="flex justify-center items-center min-h-screen">
         <Spin size="large">
-          <div className="mt-4 text-gray-600">Loading article...</div>
+          <div className="mt-4 text-gray-600">
+            {t("article_detail.loading", language)}
+          </div>
         </Spin>
       </div>
     )
@@ -678,7 +704,7 @@ export default function ArticleDetailPage() {
   if (!article) {
     return (
       <div className="container mx-auto py-8 px-4">
-        <Empty description="Article not found" />
+        <Empty description={t("article_detail.not_found", language)} />
       </div>
     )
   }
@@ -702,8 +728,8 @@ export default function ArticleDetailPage() {
                       ? "/articles"
                       : "/articles/management"
                     const backLabel = backToPublished
-                      ? "Back to Articles"
-                      : "Back to Articles Management"
+                      ? t("article_detail.back_to_articles", language)
+                      : t("article_detail.back_to_management", language)
 
                     return (
                       <Button
@@ -796,7 +822,7 @@ export default function ArticleDetailPage() {
                     loading={approving}
                     onClick={handleApprove}
                   >
-                    Approve
+                    {t("article_detail.approve", language)}
                   </Button>
                   <Button
                     danger
@@ -805,7 +831,7 @@ export default function ArticleDetailPage() {
                     loading={rejecting}
                     onClick={handleReject}
                   >
-                    Reject
+                    {t("article_detail.reject", language)}
                   </Button>
                 </Space>
               </div>
@@ -816,14 +842,14 @@ export default function ArticleDetailPage() {
               <div className="space-y-4">
                 <Card className="border-l-4 border-l-red-500">
                   <Title level={4} className="!text-red-500 !mb-2">
-                    Rejection Reason
+                    {t("article_detail.rejection_reason", language)}
                   </Title>
                   <Paragraph className="!mb-0 whitespace-pre-wrap">
                     {article.reason}
                   </Paragraph>
                 </Card>
                 <Button type="primary" size="large" onClick={handleResubmit}>
-                  Resubmit Article
+                  {t("article_detail.resubmit", language)}
                 </Button>
               </div>
             )}
@@ -833,7 +859,8 @@ export default function ArticleDetailPage() {
               <Card
                 title={
                   <Title level={4} className="!mb-0">
-                    Comments ({comments.length})
+                    {t("article_detail.comments_title", language)} (
+                    {comments.length})
                   </Title>
                 }
               >
@@ -846,7 +873,10 @@ export default function ArticleDetailPage() {
                     />
                     <div className="flex-1">
                       <TextArea
-                        placeholder="Comment"
+                        placeholder={t(
+                          "article_detail.comment_placeholder",
+                          language
+                        )}
                         value={commentText}
                         onChange={(e) => setCommentText(e.target.value)}
                         autoSize={{ minRows: 3, maxRows: 6 }}
@@ -866,6 +896,7 @@ export default function ArticleDetailPage() {
                               : "pointer",
                           }}
                         >
+                          {t("article_detail.send", language)}
                           Send
                         </Button>
                       </div>
@@ -882,9 +913,13 @@ export default function ArticleDetailPage() {
                     className="!px-0 mb-4"
                     onClick={() => setShowAllComments(!showAllComments)}
                   >
-                    {showAllComments ? "Hide" : "Show"} {comments.length}{" "}
-                    comment
-                    {comments.length > 1 ? "s" : ""}
+                    {showAllComments
+                      ? t("article_detail.hide_comments", language)
+                      : t("article_detail.show_comments", language)}{" "}
+                    {comments.length}{" "}
+                    {comments.length > 1
+                      ? t("article_detail.comment_plural", language)
+                      : t("article_detail.comment_singular", language)}
                   </Button>
                 )}
 
@@ -947,51 +982,54 @@ export default function ArticleDetailPage() {
 
         {/* Approve Modal */}
         <Modal
-          title="Approve article"
+          title={t("article_detail.approve_modal_title", language)}
           open={showApproveModal}
           onOk={confirmApprove}
           onCancel={() => setShowApproveModal(false)}
-          okText="Approve"
-          cancelText="Cancel"
+          okText={t("article_detail.approve", language)}
+          cancelText={t("article_detail.cancel", language)}
           confirmLoading={approving}
         >
-          <p>Are you sure you want to publish this article?</p>
+          <p>{t("article_detail.approve_modal_desc", language)}</p>
         </Modal>
 
         {/* Reject Modal */}
         <Modal
-          title="Reject article"
+          title={t("article_detail.reject_modal_title", language)}
           open={showRejectModal}
           onOk={confirmReject}
           onCancel={() => setShowRejectModal(false)}
-          okText="Reject"
-          cancelText="Cancel"
+          okText={t("article_detail.reject", language)}
+          cancelText={t("article_detail.cancel", language)}
           okButtonProps={{ danger: true }}
           confirmLoading={rejecting}
         >
-          <p>Are you sure you want to reject this article?</p>
+          <p>{t("article_detail.reject_modal_desc", language)}</p>
         </Modal>
 
         {/* Reject Reason Modal */}
         <Modal
-          title="Rejection Reason"
+          title={t("article_detail.reject_reason_placeholder", language)}
           open={showRejectReasonModal}
           onOk={confirmRejectWithReason}
           onCancel={() => {
             setShowRejectReasonModal(false)
             setRejectReason("")
           }}
-          okText="Submit"
-          cancelText="Cancel"
+          okText={t("article_detail.send", language)}
+          cancelText={t("article_detail.cancel", language)}
           confirmLoading={rejecting}
         >
           <p className="mb-4">
-            Please provide a reason for rejecting this article:
+            {t("article_detail.reject_reason_placeholder", language)}
           </p>
           <TextArea
             value={rejectReason}
             onChange={(e) => setRejectReason(e.target.value)}
-            placeholder="Enter rejection reason..."
+            placeholder={t(
+              "article_detail.reject_reason_placeholder",
+              language
+            )}
             autoSize={{ minRows: 4, maxRows: 8 }}
           />
         </Modal>

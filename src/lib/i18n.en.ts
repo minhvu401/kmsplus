@@ -9,6 +9,8 @@ export const en = {
 
   // Header
   "header.notifications": "Notifications",
+  "header.profile": "Profile",
+  "header.logout": "Logout",
 
   // Sidebar
   "sidebar.dashboard": "Dashboard",
@@ -212,7 +214,7 @@ export const en = {
     "View access permissions for each role (Read-only)",
   "role_permission.static_config_title": "Static Configuration",
   "role_permission.static_config_desc":
-    "Permissions are defined statically in the configuration file. To change permissions, please edit the RolePermission.config.ts file.",
+    "Permissions are defined statically in the configuration file. To change permissions, please contact the system administrator.",
   "role_permission.legend_title": "Legend:",
   "role_permission.legend_desc":
     "✓ = Permission assigned, - = Permission not assigned",
@@ -256,10 +258,7 @@ export const en = {
   "article.status.published": "Published",
   "article.status.rejected": "Rejected",
   "article.status.archived": "Archived",
-  "article.filter_all_categories": "All Categories",
   "article.filter_all_status": "All Status",
-  "article.sort_newest": "Newest First",
-  "article.sort_oldest": "Oldest First",
   "article.view_list": "List",
   "article.view_grid": "Grid",
   "article.error_select_category": "Please select a category",
@@ -271,6 +270,8 @@ export const en = {
   "article.menu_delete": "Delete",
   "article.page_read_title": "Read Article",
   "article.search_placeholder": "Search articles...",
+  "article.search_button": "Search",
+  "article.reading_time_unit": "min",
   "article.filter_tags": "Tags",
   "article.filter_category": "Category",
   "article.filter_status": "Status",
@@ -279,7 +280,6 @@ export const en = {
   "article.filter_actions": "Actions",
   "article.btn_clear_filters": "Clear Filters",
   "article.form_create_modal_title": "Create An Article",
-  "article.form_thumbnail_label": "Thumbnail Image",
   "article.form_thumbnail_button": "Click to Upload Thumbnail",
   "article.form_thumbnail_uploading": "Uploading...",
   "article.grid_created_label": "Created:",
@@ -287,7 +287,6 @@ export const en = {
   "article.grid_edit_article": "Edit article",
   "article.grid_delete_article": "Delete article",
   "article.grid_restore_article": "Restore article",
-  "article.grid_no_articles": "No articles found",
   "article.form_create_success": "Article created successfully!",
   "article.form_create_error": "Failed to create article",
   "article.form_error_generic": "An error occurred",
@@ -326,6 +325,55 @@ export const en = {
     "Are you sure you want to post this updated article?",
   "article.edit.loading": "Loading article...",
   "article.edit.error_load": "Failed to load article",
+
+  // Article List Page
+  "article.page_title": "Articles",
+  "article.page_subtitle":
+    "A repository of knowledge & experience sharing from the KMSPlus community.",
+  "article.filter_all_categories": "All Categories",
+  "article.filter_all_tags": "All Tags",
+  "article.sort_newest": "Newest",
+  "article.sort_oldest": "Oldest",
+  "article.btn_clear_all_filters": "Clear all filters",
+  "article.form_title_placeholder": "Enter article title",
+  "article.form_title_label": "Title",
+  "article.form_thumbnail_label": "Cover Image",
+  "article.form_thumbnail_max_size": "Max",
+  "article.form_thumbnail_uploading_text": "Uploading...",
+  "article.form_thumbnail_upload_text": "Upload cover image",
+  "article.form_thumbnail_success": "Cover image uploaded",
+  "article.form_content_label": "Content",
+  "article.form_content_placeholder": "Write article content...",
+  "article.form_content_max": "/ 5,000",
+  "article.form_category_label": "Category",
+  "article.form_category_required": "Please select a category",
+  "article.form_category_no_available": "No categories available",
+  "article.form_tags_label": "Tags",
+  "article.form_tags_placeholder": "Add or select tags (max 5)",
+  "article.form_tags_max_warning": "Max",
+  "article.form_tags_max_number": "5",
+  "article.form_tags_counter": "/ 5",
+  "article.form_btn_save_draft": "Save Draft",
+  "article.form_btn_cancel": "Cancel",
+  "article.form_btn_submit_approval": "Submit for Approval",
+  "article.form_btn_submit_approval_tooltip":
+    "Article will be pending approval from Admin",
+  "article.form_modal_title": "Create New Article",
+  "article.form_title_max": "/ 150",
+  "article.error_load_articles": "Error loading articles",
+  "article.error_load_filters": "Error loading article filters",
+  "article.error_load_authors": "Error loading featured authors",
+  "article.error_create_article": "Failed to create article",
+  "article.error_title_content_required": "Please enter title and content",
+  "article.error_title_exceeds_limit": "Title exceeds the maximum characters",
+  "article.success_create": "Article created successfully!",
+  "article.pagination_showing": "Showing",
+  "article.pagination_to": "-",
+  "article.pagination_of": "of",
+  "article.pagination_articles": "articles",
+  "article.tooltip_filter_category": "Filter by category",
+  "article.tooltip_filter_sort": "Sort",
+  "article.btn_create_article": "Create Article",
 
   // Document Management
   "document.page_title": "Internal Knowledge Base (Wiki)",
@@ -486,6 +534,84 @@ export const en = {
   "dashboard.filter_week": "Week",
   "dashboard.filter_month": "Month",
   "dashboard.filter_year": "Year",
+
+  // Dashboard Metrics - Component Descriptions & Details
+  "dashboard.metrics.total_active_users": "Total Active Users",
+  "dashboard.metrics.mau_dau_trend":
+    "Monthly Active Users (MAU) and Daily Active Users (DAU) trend",
+  "dashboard.metrics.track_engagement":
+    "Track user engagement and platform adoption over time",
+  "dashboard.metrics.adoption_rate_desc":
+    "Percentage of employees using the platform",
+  "dashboard.metrics.adoption_higher":
+    "Higher adoption indicates better platform integration",
+  "dashboard.metrics.course_completion_rate": "Course Completion Rate",
+  "dashboard.metrics.training_effectiveness":
+    "Overall training effectiveness across the organization",
+  "dashboard.metrics.completion_percent":
+    "Measures percentage of enrolled courses completed",
+  "dashboard.metrics.top_categories_desc":
+    "Most popular knowledge domains and course categories",
+  "dashboard.metrics.based_enrollments":
+    "Based on enrollments and course views",
+  "dashboard.metrics.avg_content_rating": "Average Content Rating",
+  "dashboard.metrics.satisfaction_rating":
+    "Overall satisfaction and quality rating of courses and content",
+  "dashboard.metrics.based_feedback":
+    "Based on employee feedback and course reviews",
+  "dashboard.metrics.current_avg_rating": "Current Average Rating",
+  "dashboard.metrics.previous_month": "Previous Month:",
+  "dashboard.metrics.change": "Change:",
+
+  // Dashboard Metrics - Training Manager Details
+  "dashboard.metrics.keyword": "Keyword",
+  "dashboard.metrics.keyword_status": "Status",
+  "dashboard.metrics.trending_keywords_desc": "Top Trending Keywords",
+  "dashboard.metrics.times": "times",
+  "dashboard.metrics.no_data": "No data available",
+  "dashboard.metrics.course_dropoff_desc": "Course Dropoff Rate (%)",
+  "dashboard.metrics.dropoff_rate": "Dropoff Rate",
+
+  // Dashboard Metrics - Top Contributors & Learners
+  "dashboard.metrics.contributors_tab": "Contributors",
+  "dashboard.metrics.learners_tab": "Learners",
+  "dashboard.metrics.contributor_type": "Contributor",
+  "dashboard.metrics.learner_type": "Top Learner",
+  "dashboard.metrics.from_last_month": "from last month",
+
+  // Dashboard Metrics - Employee Dashboard Details
+  "dashboard.metrics.personal_learning_progress": "My Learning Progress",
+  "dashboard.metrics.due_date": "Due date:",
+  "dashboard.metrics.overdue": "Overdue by",
+  "dashboard.metrics.days_left": "Only",
+
+  // Dashboard Metrics - Time Period Labels
+  "dashboard.metrics.day_monday": "Monday",
+  "dashboard.metrics.day_tuesday": "Tuesday",
+  "dashboard.metrics.day_wednesday": "Wednesday",
+  "dashboard.metrics.day_thursday": "Thursday",
+  "dashboard.metrics.day_friday": "Friday",
+  "dashboard.metrics.day_saturday": "Saturday",
+  "dashboard.metrics.day_sunday": "Sunday",
+  "dashboard.metrics.week_label": "Week",
+  "dashboard.metrics.month_label": "Month",
+  "dashboard.metrics.year_label": "Year",
+
+  // Dashboard Metrics - Month Names
+  "dashboard.metrics.month_1": "January",
+  "dashboard.metrics.month_2": "February",
+  "dashboard.metrics.month_3": "March",
+  "dashboard.metrics.month_4": "April",
+  "dashboard.metrics.month_5": "May",
+  "dashboard.metrics.month_6": "June",
+  "dashboard.metrics.month_7": "July",
+  "dashboard.metrics.month_8": "August",
+  "dashboard.metrics.month_9": "September",
+  "dashboard.metrics.month_10": "October",
+  "dashboard.metrics.month_11": "November",
+  "dashboard.metrics.month_12": "December",
+
+  "dashboard.metrics.enrollment_views": "Enrollments/Views",
 
   // User Management
   "user.table_email": "Email",
@@ -1008,6 +1134,26 @@ export const en = {
   "history.filter_all": "All",
   "history.filter_completed": "Completed",
   "history.filter_assigned": "Required",
+  "history.filter_in_progress": "In Progress",
+  "history.page_title": "Learning History",
+  "history.page_subtitle":
+    "Track your progress, view enrolled courses, and access certificates upon completion.",
+  "history.export_report": "Export Report",
+  "history.stat_lifelong_access": "Lifelong Access",
+  "history.stat_completion_rate": "Completion Rate",
+  "history.stat_continue_learning": "Keep Learning!",
+  "history.category_general": "General Course",
+  "history.status_required": "🚨 Required",
+  "history.status_completed": "Completed",
+  "history.status_in_progress": "In Progress",
+  "history.action_start_now": "Start Now",
+  "history.action_continue": "Continue",
+  "history.action_certificate": "Certificate",
+  "history.msg_certificate_coming": "Certificate feature coming soon!",
+  "history.search_placeholder": "Search courses...",
+  "history.empty_state": "You haven't enrolled in any courses yet",
+  "history.pagination_show_total":
+    "Showing {{start}}-{{end}} of {{total}} courses",
 
   // Reviews & Ratings
   "review.title": "Reviews",
@@ -1042,6 +1188,36 @@ export const en = {
   "pagination.items": "Items",
   "pagination.showing": "Showing",
   "pagination.to": "to",
+
+  // AI Suggestion Panel
+  "ai_suggestion.title": "🤖 AI Course Suggestion",
+  "ai_suggestion.tag_from_ai": "AI Suggestion",
+  "ai_suggestion.suggestion_text":
+    'In the past <strong>{days} days</strong>, the topic <strong>"{topic}"</strong> was mentioned by users <strong>{count} times</strong>.',
+  "ai_suggestion.question_create":
+    "Would you like to create a course on this topic?",
+  "ai_suggestion.btn_approve": "Agree - Create Course",
+  "ai_suggestion.btn_dismiss": "No - Hide Suggestion",
+  "ai_suggestion.dismissed_message": "Suggestion hidden",
+  "ai_suggestion.dismissed_desc":
+    "The system will create a new suggestion when other topics are detected as mentioned frequently",
+  "ai_suggestion.analysis_title": "Topic Analysis",
+  "ai_suggestion.analyze_within": "Analyze within:",
+  "ai_suggestion.btn_days_7": "7 days",
+  "ai_suggestion.btn_days_14": "14 days",
+  "ai_suggestion.btn_days_30": "30 days",
+  "ai_suggestion.btn_analyze": "Analyze",
+  "ai_suggestion.loading": "Analyzing...",
+  "ai_suggestion.no_topics": "No topics to analyze",
+  "ai_suggestion.mentioned": "Mentioned",
+  "ai_suggestion.times_label": "times",
+  "ai_suggestion.relevance_label": "% relevance",
+  "ai_suggestion.how_to_use": "How to Use",
+  "ai_suggestion.help_1": "System automatically analyzes Q&A questions",
+  "ai_suggestion.help_2": "Groups similar questions into topics",
+  "ai_suggestion.help_3":
+    "Suggests creating a course for the most mentioned topic",
+  "ai_suggestion.help_4": "You can agree to jump to the course management page",
 
   // Notifications & Alerts
   "notification.title": "Notifications",
@@ -1106,4 +1282,126 @@ export const en = {
   "login.copyright": "© 2026 KMSPlus. All rights reserved.",
   "login.google_error": "Google login failed. Please try again.",
   "login.error_message": "An error occurred during login. Please try again.",
+
+  // Featured Authors
+  "article.featured_authors_title": "Featured Authors",
+  "article.featured_authors_empty": "No authors yet",
+  "article.featured_authors_article_count": "{count} articles",
+
+  // Article Detail
+  "article_detail.loading": "Loading article...",
+  "article_detail.not_found": "Article not found",
+  "article_detail.back_to_articles": "Back to Articles",
+  "article_detail.back_to_management": "Back to Article Management",
+  "article_detail.rejection_reason": "Rejection Reason",
+  "article_detail.resubmit": "Resubmit Article",
+  "article_detail.comments_title": "Comments",
+  "article_detail.comment_placeholder": "Leave a comment...",
+  "article_detail.send": "Send",
+  "article_detail.reply": "Reply",
+  "article_detail.cancel": "Cancel",
+  "article_detail.hide_comments": "Hide",
+  "article_detail.show_comments": "Show",
+  "article_detail.comment_singular": "comment",
+  "article_detail.comment_plural": "comments",
+  "article_detail.edit": "Edit",
+  "article_detail.delete": "Delete",
+  "article_detail.save": "Save",
+  "article_detail.approve": "Approve",
+  "article_detail.reject": "Reject",
+  "article_detail.approve_modal_title": "Approve Article",
+  "article_detail.approve_modal_desc":
+    "Are you sure you want to approve this article?",
+  "article_detail.reject_modal_title": "Reject Article",
+  "article_detail.reject_modal_desc":
+    "Are you sure you want to reject this article?",
+  "article_detail.reject_reason_placeholder":
+    "Please provide a reason for rejection",
+  "article_detail.delete_comment_modal_title": "Delete Comment",
+  "article_detail.delete_comment_modal_desc":
+    "Are you sure you want to delete this comment?",
+  "article_detail.comment_required": "Comment content is required",
+  "article_detail.comment_posted": "Comment posted successfully",
+  "article_detail.comment_updated": "Comment updated successfully",
+  "article_detail.comment_deleted": "Comment deleted successfully",
+  "article_detail.reply_posted": "Reply posted successfully",
+  "article_detail.article_approved": "Article approved successfully",
+  "article_detail.article_rejected": "Article rejected successfully",
+  "article_detail.article_resubmitted": "Article resubmitted successfully",
+  "article_detail.error_loading": "Failed to load article",
+  "article_detail.error_posting": "Failed to post comment",
+  "article_detail.error_posting_reply": "Failed to post reply",
+  "article_detail.error_updating": "Failed to update comment",
+  "article_detail.error_deleting": "Failed to delete comment",
+  "article_detail.error_approving": "Failed to approve article",
+  "article_detail.error_rejecting": "Failed to reject article",
+  "article_detail.error_resubmitting": "Failed to resubmit article",
+  "article_detail.error_general": "An error occurred",
+
+  // Courses Page
+  "course.continue_learning": "Continue Learning",
+  "course.continue_learning_desc": "Review the courses you are taking",
+  "course.assigned_courses": "Assigned Courses",
+  "course.assigned_courses_desc": "Private courses assigned to you",
+  "course.cta_questions": "Have questions?",
+  "course.cta_questions_desc":
+    "Q&A directly from the community and experts. Solve problems and learn from others.",
+  "course.cta_questions_button": "Explore Q&A",
+  "course.cta_articles": "Read in-depth articles",
+  "course.cta_articles_desc":
+    "Learn more through articles, guides, and experience from the KMS-Plus team and experts.",
+  "course.cta_articles_button": "Explore Articles",
+  "course.latest_courses": "Latest from KMS Plus",
+  "course.latest_courses_desc": "Recently added courses",
+  "course.all_courses": "All courses",
+  "course.all_courses_desc": "Explore available courses",
+  "course.no_courses_found": "No courses found",
+  "course.no_courses_desc": "Try searching with other keywords",
+  "course.error_label": "Error:",
+  "course.relevant_department": "Your Department",
+  "course.management_access_denied":
+    "You do not have permission to access course management.",
+
+  // Course Components
+  "course.hero_title": "Develop your next skill",
+  "course.hero_subtitle":
+    "Find the right course and start your learning journey today",
+  "course.hero_search_placeholder": "What do you want to learn today?",
+  "course.hero_search_button": "Search",
+
+  // Course Filters
+  "course.filter_all_categories": "All Categories",
+  "course.filter_all_ratings": "All Ratings",
+  "course.filter_4_stars": "4★ & up",
+  "course.filter_3_stars": "3★ & up",
+  "course.filter_2_stars": "2★ & up",
+  "course.filter_newest": "Newest",
+  "course.filter_trending": "Trending",
+  "course.filter_most_popular": "Most Popular",
+  "course.filter_top_rated": "Top Rated",
+  "course.filter_clear_tooltip": "Clear filters",
+
+  // Course Card
+  "course.card_uncategorized": "Uncategorized",
+  "course.card_enrolled": "people enrolled",
+  "course.card_resume": "Resume",
+  "course.card_view_details": "View Details",
+  "course.card_beginner": "Beginner",
+  "course.card_intermediate": "Intermediate",
+  "course.card_advanced": "Advanced",
+
+  // Trending Courses
+  "course.trending_title": "Trending",
+  "course.trending_subtitle": "Most popular courses in the last 7 days",
+  "course.trending_empty": "No trending courses",
+  "course.trending_badge": "Trending",
+
+  // Documents Page
+  "document.page_subtitle":
+    "The company's knowledge repository, regulations, and standard documentation center.",
+  "document.empty_title": "No document categories yet.",
+  "document.doc_count": "documents",
+  "document.default_description":
+    "Click to view documents and policies in this folder.",
+  "document.view_details": "View Details",
 }

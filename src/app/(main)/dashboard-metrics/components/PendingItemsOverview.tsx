@@ -4,10 +4,13 @@ import React, { useEffect, useState } from "react"
 import { Card, Badge, Button, Spin } from "antd"
 import { FileTextOutlined, BookOutlined } from "@ant-design/icons"
 import { getPendingItemsMetrics } from "@/action/metrics/metricsActions"
+import useLanguageStore from "@/store/useLanguageStore"
+import { t } from "@/lib/i18n"
 import type { PendingItemsData } from "@/service/metrics.service"
 import Link from "next/link"
 
 export default function PendingItemsOverview() {
+  const { language } = useLanguageStore()
   const [data, setData] = useState<PendingItemsData | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -51,13 +54,17 @@ export default function PendingItemsOverview() {
             <div className="text-center">
               <div className="flex items-center justify-center gap-2 mb-2">
                 <FileTextOutlined className="text-lg" />
-                <span className="font-semibold">Bài viết đang chờ duyệt</span>
+                <span className="font-semibold">
+                  {t("dashboard.metrics.pending_articles", language)}
+                </span>
               </div>
-              <p className="text-sm text-gray-500">Cần xem xét và phê duyệt</p>
+              <p className="text-sm text-gray-500">
+                {t("dashboard.metrics.need_review", language)}
+              </p>
             </div>
             <Link href="/content-management/articles?status=pending">
               <Button type="primary" ghost>
-                Xem chi tiết
+                {t("dashboard.metrics.view_details", language)}
               </Button>
             </Link>
           </div>
@@ -87,13 +94,17 @@ export default function PendingItemsOverview() {
             <div className="text-center">
               <div className="flex items-center justify-center gap-2 mb-2">
                 <BookOutlined className="text-lg" />
-                <span className="font-semibold">Khóa học đang chờ duyệt</span>
+                <span className="font-semibold">
+                  {t("dashboard.metrics.pending_courses", language)}
+                </span>
               </div>
-              <p className="text-sm text-gray-500">Cần xem xét và phê duyệt</p>
+              <p className="text-sm text-gray-500">
+                {t("dashboard.metrics.need_review", language)}
+              </p>
             </div>
             <Link href="/course-management?status=pending">
               <Button type="primary" ghost>
-                Xem chi tiết
+                {t("dashboard.metrics.view_details", language)}
               </Button>
             </Link>
           </div>

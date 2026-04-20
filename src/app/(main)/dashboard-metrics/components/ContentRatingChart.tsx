@@ -7,16 +7,27 @@
 
 import React, { useEffect, useState } from "react"
 import { Card, Rate, Empty, Row, Col, Statistic, Space } from "antd"
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts"
 import MetricCard from "./MetricCard"
-import { 
+import {
   getContentRatingMetrics,
   getCurrentAverageRatingAction,
 } from "@/action/metrics/metricsActions"
+import useLanguageStore from "@/store/useLanguageStore"
+import { t } from "@/lib/i18n"
 import type { ContentRatingData } from "@/service/metrics.service"
 import { StarOutlined } from "@ant-design/icons"
 
 export default function ContentRatingChart() {
+  const { language } = useLanguageStore()
   const [data, setData] = useState<ContentRatingData[]>([])
   const [averageRating, setAverageRating] = useState<number>(0)
   const [loading, setLoading] = useState(true)
@@ -28,7 +39,7 @@ export default function ContentRatingChart() {
         setLoading(true)
         const metricsData = await getContentRatingMetrics()
         setData(metricsData)
-        
+
         // Calculate average rating
         const avgRating = await getCurrentAverageRatingAction(metricsData)
         setAverageRating(avgRating)
@@ -43,23 +54,32 @@ export default function ContentRatingChart() {
   }, [])
 
   if (loading) return <Card loading />
-  if (error) return <Card><Empty description={`Error: ${error}`} /></Card>
+  if (error)
+    return (
+      <Card>
+        <Empty description={`Error: ${error}`} />
+      </Card>
+    )
 
   return (
     <MetricCard
-      title="Average Content Rating"
-      description="Overall satisfaction and quality rating of courses and content"
-      info="Based on employee feedback and course reviews"
+      title={t("dashboard.metrics.avg_content_rating", language)}
+      description={t("dashboard.metrics.satisfaction_rating", language)}
+      info={t("dashboard.metrics.based_feedback", language)}
       animate="delay-2"
     >
       <Row gutter={[16, 16]}>
         <Col xs={24} lg={8}>
           <Space direction="vertical" className="w-full">
             <Statistic
-              title="Current Average Rating"
+              title={t("dashboard.metrics.current_avg_rating", language)}
               value={averageRating}
               suffix="/ 5.0"
-              valueStyle={{ color: "#1890ff", fontSize: "2rem", fontWeight: "bold" }}
+              valueStyle={{
+                color: "#1890ff",
+                fontSize: "2rem",
+                fontWeight: "bold",
+              }}
               prefix={<StarOutlined className="mr-1 text-blue-500" />}
             />
             <div className="mt-4">
@@ -74,18 +94,21 @@ export default function ContentRatingChart() {
         </Col>
         <Col xs={24} lg={16}>
           <ResponsiveContainer width="100%" height={250}>
-            <LineChart data={data} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
+            <LineChart
+              data={data}
+              margin={{ top: 5, right: 30, left: 0, bottom: 5 }}
+            >
               <CartesianGrid strokeDasharray="3 3" stroke="#e6f4ff" />
               <XAxis dataKey="month" stroke="#8c8c8c" />
               <YAxis domain={[0, 5]} stroke="#8c8c8c" />
-              <Tooltip 
-                contentStyle={{ 
-                  backgroundColor: "#f6f8fc", 
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: "#f6f8fc",
                   border: "1px solid #d9e8ff",
-                  borderRadius: "8px"
+                  borderRadius: "8px",
                 }}
                 formatter={(value) => `${value} stars`}
-                cursor={{ strokeDasharray: '3 3' }}
+                cursor={{ strokeDasharray: "3 3" }}
               />
               <Line
                 type="monotone"

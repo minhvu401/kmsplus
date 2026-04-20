@@ -269,7 +269,7 @@ export default function DashboardMetricsPage() {
         <>
           <div className="mb-8 animate-fadeInDown">
             <div>
-              <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-purple-900 bg-clip-text text-transparent">
+              <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-blue-900 bg-clip-text text-transparent">
                 {t("dashboard.training_manager.title", language)}
               </h1>
               <p className="text-gray-600 mt-3 max-w-2xl leading-relaxed">
@@ -317,7 +317,7 @@ export default function DashboardMetricsPage() {
         <>
           <div className="mb-8 animate-fadeInDown">
             <div>
-              <h1 className="text-4xl font-bold bg-gradient-to-r from-red-600 to-red-900 bg-clip-text text-transparent">
+              <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-blue-900 bg-clip-text text-transparent">
                 {t("dashboard.admin.title", language)}
               </h1>
               <p className="text-gray-600 mt-3 max-w-2xl leading-relaxed">
@@ -352,7 +352,7 @@ export default function DashboardMetricsPage() {
         <>
           <div className="mb-8 animate-fadeInDown">
             <div>
-              <h1 className="text-4xl font-bold bg-gradient-to-r from-green-600 to-green-900 bg-clip-text text-transparent">
+              <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-blue-900 bg-clip-text text-transparent">
                 {t("dashboard.employee.title", language)}
               </h1>
               <p className="text-gray-600 mt-3 max-w-2xl leading-relaxed">

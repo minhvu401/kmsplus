@@ -10,9 +10,12 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 import { Card, Spin, Empty } from "antd"
 import MetricCard from "./MetricCard"
 import { getActiveUsersMetrics } from "@/action/metrics/metricsActions"
+import useLanguageStore from "@/store/useLanguageStore"
+import { t } from "@/lib/i18n"
 import type { ActiveUsersData } from "@/service/metrics.service"
 
 export default function ActiveUsersChart() {
+  const { language } = useLanguageStore()
   const [data, setData] = useState<ActiveUsersData[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -38,9 +41,9 @@ export default function ActiveUsersChart() {
 
   return (
     <MetricCard
-      title="Total Active Users"
-      description="Monthly Active Users (MAU) and Daily Active Users (DAU) trend"
-      info="Track user engagement and platform adoption over time"
+      title={t("dashboard.metrics.total_active_users", language)}
+      description={t("dashboard.metrics.mau_dau_trend", language)}
+      info={t("dashboard.metrics.track_engagement", language)}
       animate="delay-0"
     >
       <ResponsiveContainer width="100%" height={300}>

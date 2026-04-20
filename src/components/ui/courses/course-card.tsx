@@ -10,6 +10,8 @@ import {
   StarFilled,
   ArrowRightOutlined,
 } from "@ant-design/icons"
+import useLanguageStore, { type Language } from "@/store/useLanguageStore"
+import { t } from "@/lib/i18n"
 import type { Course } from "@/service/course.service"
 
 interface CourseCardProps {
@@ -40,6 +42,8 @@ export const CourseCard: React.FC<CourseCardProps> = React.memo(
     description,
   }) => {
     const router = useRouter()
+    const { language: rawLanguage } = useLanguageStore()
+    const language = rawLanguage as Language
 
     // Get today's date in Vietnamese format
     const today = new Date()
@@ -96,10 +100,10 @@ export const CourseCard: React.FC<CourseCardProps> = React.memo(
     }
 
     const getDifficultyLabel = (duration?: number | null): string => {
-      if (!duration) return "Beginner"
-      if (duration <= 2) return "Beginner"
-      if (duration <= 5) return "Intermediate"
-      return "Advanced"
+      if (!duration) return t("course.card_beginner", language)
+      if (duration <= 2) return t("course.card_beginner", language)
+      if (duration <= 5) return t("course.card_intermediate", language)
+      return t("course.card_advanced", language)
     }
 
     const formatDuration = (hours?: number | null): string => {
@@ -112,7 +116,7 @@ export const CourseCard: React.FC<CourseCardProps> = React.memo(
     }
 
     const categoryBadgeLabel =
-      course.category_name?.trim() || "Chưa phân loại"
+      course.category_name?.trim() || t("course.card_uncategorized", language)
 
     const difficultyColor = getDifficultyColor(course.duration_hours)
     const difficultyLabel = getDifficultyLabel(course.duration_hours)
@@ -264,7 +268,7 @@ export const CourseCard: React.FC<CourseCardProps> = React.memo(
                 }}
               >
                 <PlayCircleOutlined style={{ fontSize: "14px" }} />
-                Tiếp tục
+                {t("course.card_resume", language)}
               </div>
             )}
           </div>
@@ -509,8 +513,7 @@ export const CourseCard: React.FC<CourseCardProps> = React.memo(
           <div
             style={{ marginBottom: "12px", fontSize: "13px", color: "#6b7280" }}
           >
-            {course.enrollment_count}{" "}
-            {course.enrollment_count === 1 ? "người" : "người"} đã đăng ký
+            {course.enrollment_count} {t("course.card_enrolled", language)}
           </div>
 
           {/* Rating and Students */}
@@ -533,7 +536,9 @@ export const CourseCard: React.FC<CourseCardProps> = React.memo(
                     style={{
                       fontSize: "12px",
                       color:
-                        i < Math.floor(normalizedRating) ? "#fbbf24" : "#e5e7eb",
+                        i < Math.floor(normalizedRating)
+                          ? "#fbbf24"
+                          : "#e5e7eb",
                     }}
                   />
                 ))}
@@ -574,7 +579,7 @@ export const CourseCard: React.FC<CourseCardProps> = React.memo(
             className="hover:!bg-blue-700 hover:!border-blue-700 hover:!shadow-lg"
             icon={<ArrowRightOutlined style={{ fontSize: "12px" }} />}
           >
-            Xem chi tiết
+            {t("course.card_view_details", language)}
           </Button>
         </div>
       </div>

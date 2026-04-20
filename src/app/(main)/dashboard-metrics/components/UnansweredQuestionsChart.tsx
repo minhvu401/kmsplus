@@ -40,8 +40,14 @@ export default function UnansweredQuestionsChart() {
 
   const chartData = data
     ? [
-        { name: "Đã trả lời", value: data.resolved },
-        { name: "Chưa trả lời", value: data.unresolved },
+        {
+          name: t("dashboard.metrics.answered", language),
+          value: data.resolved,
+        },
+        {
+          name: t("dashboard.metrics.unanswered", language),
+          value: data.unresolved,
+        },
       ]
     : []
 
@@ -60,7 +66,9 @@ export default function UnansweredQuestionsChart() {
           <Spin />
         </div>
       ) : !data ? (
-        <div className="text-center text-gray-400 py-10">Chưa có dữ liệu</div>
+        <div className="text-center text-gray-400 py-10">
+          {t("dashboard.metrics.no_data", language)}
+        </div>
       ) : (
         <div className="space-y-4">
           <ResponsiveContainer width="100%" height={300}>

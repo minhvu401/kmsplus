@@ -51,15 +51,11 @@ export default function MandatoryCoursesPanel() {
 
   const getStatusText = (course: MandatoryCourseData) => {
     if (course.isOverdue) {
-      return language === "vi"
-        ? `${t("dashboard.metrics.overdue", language)} ${Math.abs(course.daysUntilDue)} ngày`
-        : `${t("dashboard.metrics.overdue", language)} by ${Math.abs(course.daysUntilDue)} days`
+      return `${t("dashboard.metrics.days_overdue", language)} ${Math.abs(course.daysUntilDue)} ${t("dashboard.metrics.days_unit", language)}`
     }
     if (course.daysUntilDue <= 0)
       return t("dashboard.metrics.today_is_due", language)
-    return language === "vi"
-      ? `${t("dashboard.metrics.days_left", language)} ${course.daysUntilDue} ngày`
-      : `${t("dashboard.metrics.days_left", language)} ${course.daysUntilDue} days`
+    return `${t("dashboard.metrics.days_unit", language)} ${course.daysUntilDue} ${t("dashboard.metrics.days_unit", language)}`
   }
 
   return (

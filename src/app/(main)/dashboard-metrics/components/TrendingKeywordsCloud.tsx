@@ -4,9 +4,12 @@ import React, { useEffect, useState } from "react"
 import { Card, Spin } from "antd"
 import { CloudOutlined } from "@ant-design/icons"
 import { getTrendingKeywordsMetrics } from "@/action/metrics/metricsActions"
+import useLanguageStore from "@/store/useLanguageStore"
+import { t } from "@/lib/i18n"
 import type { TrendingKeywordData } from "@/service/metrics.service"
 
 export default function TrendingKeywordsCloud() {
+  const { language } = useLanguageStore()
   const [data, setData] = useState<TrendingKeywordData[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -52,7 +55,7 @@ export default function TrendingKeywordsCloud() {
       title={
         <div className="flex items-center gap-2">
           <CloudOutlined className="text-blue-600 text-lg" />
-          <span>Từ khóa xu hướng (Top Trending Keywords)</span>
+          <span>{t("dashboard.metrics.trending_keywords_desc", language)}</span>
         </div>
       }
       className="h-full shadow-md border-0"
@@ -68,7 +71,7 @@ export default function TrendingKeywordsCloud() {
               key={index}
               className={`${colors[index % colors.length]} hover:opacity-80 cursor-default transition-opacity`}
               style={{ fontSize: `${getSize(item.frequency)}px` }}
-              title={`${item.frequency} lần`}
+              title={`${item.frequency} ${t("dashboard.metrics.times", language)}`}
             >
               {item.keyword}
             </div>

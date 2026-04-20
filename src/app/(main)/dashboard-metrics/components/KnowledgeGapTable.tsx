@@ -30,7 +30,7 @@ export default function KnowledgeGapTable() {
 
   const columns = [
     {
-      title: language === "vi" ? "Từ khóa" : "Keyword",
+      title: t("dashboard.metrics.keyword", language),
       dataIndex: "keyword",
       key: "keyword",
       render: (text: string) => <span className="font-medium">{text}</span>,
@@ -46,7 +46,7 @@ export default function KnowledgeGapTable() {
       ),
     },
     {
-      title: language === "vi" ? "Trạng thái" : "Status",
+      title: t("dashboard.metrics.keyword_status", language),
       key: "action",
       render: () => (
         <span className="text-orange-600 font-medium">

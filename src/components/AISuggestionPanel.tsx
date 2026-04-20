@@ -12,6 +12,8 @@ import {
 import type { Dayjs } from "dayjs"
 import dayjs from "dayjs"
 import { useRouter } from "next/navigation"
+import useLanguageStore from "@/store/useLanguageStore"
+import { t } from "@/lib/i18n"
 
 interface Suggestion {
   id: number
@@ -35,6 +37,7 @@ export default function AISuggestionPanel() {
   const [selectedDays, setSelectedDays] = useState(30)
   const [dismissed, setDismissed] = useState(false)
   const router = useRouter()
+  const { language } = useLanguageStore()
 
   // Load latest suggestion on mount
   useEffect(() => {
@@ -117,24 +120,27 @@ export default function AISuggestionPanel() {
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-lg font-semibold text-gray-800">
-                  🤖 AI Đề Xuất Khóa Học Mới
+                  {t("ai_suggestion.title", language)}
                 </h3>
               </div>
-              <Tag color="blue">Gợi ý từ AI</Tag>
+              <Tag color="blue">{t("ai_suggestion.tag_from_ai", language)}</Tag>
             </div>
           }
         >
           <div className="space-y-4">
             {/* Suggestion Content */}
             <div className="bg-white p-4 rounded-lg">
-              <p className="text-gray-600 mb-3">
-                Trong <strong>{suggestion.date_range} ngày</strong> qua, topic{" "}
-                <strong className="text-blue-600">"{suggestion.topic}"</strong>{" "}
-                được người dùng nhắc tới{" "}
-                <strong>{suggestion.topic_count} lần</strong>.
-              </p>
+              <p
+                className="text-gray-600 mb-3"
+                dangerouslySetInnerHTML={{
+                  __html: t("ai_suggestion.suggestion_text", language)
+                    .replace("{days}", suggestion.date_range.toString())
+                    .replace("{topic}", suggestion.topic)
+                    .replace("{count}", suggestion.topic_count.toString()),
+                }}
+              />
               <p className="text-gray-700">
-                Bạn có muốn tạo một khóa học về chủ đề này không?
+                {t("ai_suggestion.question_create", language)}
               </p>
             </div>
 
@@ -147,7 +153,7 @@ export default function AISuggestionPanel() {
                 loading={actionLoading}
                 size="large"
               >
-                Đồng ý - Tạo Khóa Học
+                {t("ai_suggestion.btn_approve", language)}
               </Button>
               <Button
                 danger
@@ -156,7 +162,7 @@ export default function AISuggestionPanel() {
                 loading={actionLoading}
                 size="large"
               >
-                Không - Ẩn Đề Xuất
+                {t("ai_suggestion.btn_dismiss", language)}
               </Button>
             </div>
           </div>
@@ -165,8 +171,8 @@ export default function AISuggestionPanel() {
 
       {dismissed && (
         <Alert
-          message="Đề xuất đã được ẩn"
-          description="Hệ thống sẽ tạo đề xuất mới khi phát hiện topic khác được nhắc đến nhiều nhất"
+          message={t("ai_suggestion.dismissed_message", language)}
+          description={t("ai_suggestion.dismissed_desc", language)}
           type="info"
           showIcon
           className="mb-4"
@@ -177,14 +183,18 @@ export default function AISuggestionPanel() {
       <Card
         title={
           <div className="flex items-center justify-between">
-            <h3 className="font-semibold">Phân Tích Topics</h3>
+            <h3 className="font-semibold">
+              {t("ai_suggestion.analysis_title", language)}
+            </h3>
           </div>
         }
       >
         <div className="space-y-4">
           {/* Date Range Selector */}
           <div className="flex gap-4 items-center flex-wrap">
-            <label className="font-medium">Phân tích trong:</label>
+            <label className="font-medium">
+              {t("ai_suggestion.analyze_within", language)}
+            </label>
             <div className="flex gap-2">
               {[7, 14, 30].map((days) => (
                 <Button
@@ -192,7 +202,9 @@ export default function AISuggestionPanel() {
                   type={selectedDays === days ? "primary" : "default"}
                   onClick={() => setSelectedDays(days)}
                 >
-                  {days} ngày
+                  {days === 7 && t("ai_suggestion.btn_days_7", language)}
+                  {days === 14 && t("ai_suggestion.btn_days_14", language)}
+                  {days === 30 && t("ai_suggestion.btn_days_30", language)}
                 </Button>
               ))}
             </div>
@@ -201,7 +213,7 @@ export default function AISuggestionPanel() {
               onClick={handleAnalyzeTopics}
               loading={loading}
             >
-              Phân Tích
+              {t("ai_suggestion.btn_analyze", language)}
             </Button>
           </div>
 
@@ -209,10 +221,12 @@ export default function AISuggestionPanel() {
           {loading ? (
             <div className="flex flex-col items-center justify-center py-8 gap-2">
               <Spin />
-              <span className="text-gray-500 text-sm">Đang phân tích...</span>
+              <span className="text-gray-500 text-sm">
+                {t("ai_suggestion.loading", language)}
+              </span>
             </div>
           ) : topics.length === 0 ? (
-            <Empty description="Chưa có topics để phân tích" />
+            <Empty description={t("ai_suggestion.no_topics", language)} />
           ) : (
             <div className="space-y-3">
               {topics.map((topic, idx) => (
@@ -226,12 +240,15 @@ export default function AISuggestionPanel() {
                         #{idx + 1} {topic.topic}
                       </h4>
                       <p className="text-sm text-gray-600 mt-1">
-                        Được nhắc tới <strong>{topic.count}</strong> lần
+                        {t("ai_suggestion.mentioned", language)}{" "}
+                        <strong>{topic.count}</strong>{" "}
+                        {t("ai_suggestion.times_label", language)}
                       </p>
                     </div>
                     <div className="text-right">
                       <Tag color="blue" className="text-xs">
-                        {topic.confidence.toFixed(1)}% relevance
+                        {topic.confidence.toFixed(1)}%{" "}
+                        {t("ai_suggestion.relevance_label", language)}
                       </Tag>
                     </div>
                   </div>
@@ -244,13 +261,13 @@ export default function AISuggestionPanel() {
 
       {/* Info Box */}
       <Alert
-        message="Cách Sử Dụng"
+        message={t("ai_suggestion.how_to_use", language)}
         description={
           <ul className="list-disc list-inside space-y-1 text-sm">
-            <li>Hệ thống tự động phân tích các câu hỏi trong Q&A</li>
-            <li>Nhóm các câu hỏi tương tự thành các topics</li>
-            <li>Gợi ý tạo khóa học cho topic được nhắc đến nhiều nhất</li>
-            <li>Bạn có thể chọn đồng ý để nhảy đến trang quản lý khóa học</li>
+            <li>{t("ai_suggestion.help_1", language)}</li>
+            <li>{t("ai_suggestion.help_2", language)}</li>
+            <li>{t("ai_suggestion.help_3", language)}</li>
+            <li>{t("ai_suggestion.help_4", language)}</li>
           </ul>
         }
         type="info"

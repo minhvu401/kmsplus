@@ -29,6 +29,8 @@ export const vi = {
 
   // Header
   "header.notifications": "Thông báo",
+  "header.profile": "Hồ sơ cá nhân",
+  "header.logout": "Đăng xuất",
 
   // Sidebar
   "sidebar.dashboard": "Tổng quan",
@@ -231,7 +233,7 @@ export const vi = {
     "Xem cấu hình quyền truy cập cho từng vai trò (Read-only)",
   "role_permission.static_config_title": "Cấu hình tĩnh",
   "role_permission.static_config_desc":
-    "Quyền truy cập được định nghĩa tĩnh trong tệp cấu hình. Để thay đổi quyền, vui lòng chỉnh sửa tệp RolePermission.config.ts.",
+    "Quyền truy cập được định nghĩa tĩnh trong tệp cấu hình. Để thay đổi quyền, vui lòng liên hệ quản trị viên hệ thống.",
   "role_permission.legend_title": "Hướng dẫn:",
   "role_permission.legend_desc": "✓ = Quyền được gán, - = Quyền không được gán",
 
@@ -274,10 +276,7 @@ export const vi = {
   "article.status.published": "Công Khai",
   "article.status.rejected": "Từ Chối",
   "article.status.archived": "Lưu Trữ",
-  "article.filter_all_categories": "Tất cả danh mục",
   "article.filter_all_status": "Tất cả trạng thái",
-  "article.sort_newest": "Mới nhất",
-  "article.sort_oldest": "Cũ nhất",
   "article.view_list": "Danh sách",
   "article.view_grid": "Lưới",
   "article.error_select_category": "Vui lòng chọn danh mục",
@@ -289,6 +288,8 @@ export const vi = {
   "article.menu_delete": "Xóa",
   "article.page_read_title": "Đọc bài viết",
   "article.search_placeholder": "Tìm kiếm bài viết...",
+  "article.search_button": "Tìm kiếm",
+  "article.reading_time_unit": "phút",
   "article.filter_tags": "Thẻ",
   "article.filter_category": "Danh mục",
   "article.filter_status": "Trạng Thái",
@@ -297,7 +298,6 @@ export const vi = {
   "article.filter_actions": "Thao Tác",
   "article.btn_clear_filters": "Xóa Bộ Lọc",
   "article.form_create_modal_title": "Tạo Bài Viết Mới",
-  "article.form_thumbnail_label": "Ảnh Thumbnail",
   "article.form_thumbnail_button": "Nhấp để Tải Lên Ảnh Thumb nail",
   "article.form_thumbnail_uploading": "Đang Tải Lên...",
   "article.grid_created_label": "Tạo Lúc:",
@@ -305,7 +305,6 @@ export const vi = {
   "article.grid_edit_article": "Chỉnh sửa bài viết",
   "article.grid_delete_article": "Xóa bài viết",
   "article.grid_restore_article": "Khôi phục bài viết",
-  "article.grid_no_articles": "Không tìm thấy bài viết nào",
   "article.form_create_success": "Tạo bài viết thành công!",
   "article.form_create_error": "Không thể tạo bài viết",
   "article.form_error_generic": "Có lỗi xảy ra",
@@ -343,6 +342,55 @@ export const vi = {
     "Bạn có chắc chắn muốn đăng bài viết đã cập nhật này không?",
   "article.edit.loading": "Đang tải bài viết...",
   "article.edit.error_load": "Không thể tải bài viết",
+
+  // Article List Page
+  "article.page_title": "Bài Viết",
+  "article.page_subtitle":
+    "Kho tàng tri thức & chia sẻ kinh nghiệm từ cộng đồng KMSPlus.",
+  "article.filter_all_categories": "Tất Cả Danh Mục",
+  "article.filter_all_tags": "Tất Cả Thẻ",
+  "article.sort_newest": "Mới Nhất",
+  "article.sort_oldest": "Cũ Nhất",
+  "article.btn_clear_all_filters": "Xóa tất cả bộ lọc",
+  "article.form_title_placeholder": "Nhập tiêu đề bài viết",
+  "article.form_title_label": "Tiêu đề",
+  "article.form_thumbnail_label": "Ảnh bìa",
+  "article.form_thumbnail_max_size": "Tối đa",
+  "article.form_thumbnail_uploading_text": "Đang tải lên...",
+  "article.form_thumbnail_upload_text": "Tải lên ảnh bìa",
+  "article.form_thumbnail_success": "Ảnh bìa đã được tải lên",
+  "article.form_content_label": "Nội dung",
+  "article.form_content_placeholder": "Viết nội dung bài viết...",
+  "article.form_content_max": "/ 5,000",
+  "article.form_category_label": "Danh mục",
+  "article.form_category_required": "Vui lòng chọn danh mục",
+  "article.form_category_no_available": "Không có danh mục nào có sẵn",
+  "article.form_tags_label": "Thẻ",
+  "article.form_tags_placeholder": "Thêm hoặc chọn thẻ (tối đa 5)",
+  "article.form_tags_max_warning": "Tối đa",
+  "article.form_tags_max_number": "5",
+  "article.form_tags_counter": "/ 5",
+  "article.form_btn_save_draft": "Lưu nháp",
+  "article.form_btn_cancel": "Hủy",
+  "article.form_btn_submit_approval": "Gửi để phê duyệt",
+  "article.form_btn_submit_approval_tooltip":
+    "Bài viết sẽ chờ phê duyệt từ Admin",
+  "article.form_modal_title": "Tạo Bài Viết Mới",
+  "article.form_title_max": "/ 150",
+  "article.error_load_articles": "Lỗi tải bài viết",
+  "article.error_load_filters": "Lỗi tải bộ lọc bài viết",
+  "article.error_load_authors": "Lỗi tải tác giả nổi bật",
+  "article.error_create_article": "Lỗi tạo bài viết",
+  "article.error_title_content_required": "Vui lòng nhập tiêu đề và nội dung",
+  "article.error_title_exceeds_limit": "Tiêu đề vượt quá số ký tự tối đa",
+  "article.success_create": "Bài viết đã được tạo thành công!",
+  "article.pagination_showing": "Hiển thị",
+  "article.pagination_to": "-",
+  "article.pagination_of": "trên",
+  "article.pagination_articles": "bài viết",
+  "article.tooltip_filter_category": "Lọc theo danh mục",
+  "article.tooltip_filter_sort": "Sắp xếp",
+  "article.btn_create_article": "Tạo Bài Viết",
 
   // Document Management
   "document.page_title": "Quản trị Tri thức Nội bộ (Wiki)",
@@ -502,6 +550,84 @@ export const vi = {
   "dashboard.filter_week": "Tuần",
   "dashboard.filter_month": "Tháng",
   "dashboard.filter_year": "Năm",
+
+  // Dashboard Metrics - Component Descriptions & Details
+  "dashboard.metrics.total_active_users": "Tổng số người dùng hoạt động",
+  "dashboard.metrics.mau_dau_trend":
+    "Xu hướng Người dùng Hoạt động Hàng tháng (MAU) và Hàng ngày (DAU)",
+  "dashboard.metrics.track_engagement":
+    "Theo dõi sự tham gia của người dùng và áp dụng nền tảng theo thời gian",
+  "dashboard.metrics.adoption_rate_desc":
+    "Phần trăm nhân viên sử dụng nền tảng",
+  "dashboard.metrics.adoption_higher":
+    "Tỷ lệ áp dụng cao hơn cho biết tích hợp nền tảng tốt hơn",
+  "dashboard.metrics.course_completion_rate": "Tỷ lệ hoàn thành khóa học",
+  "dashboard.metrics.training_effectiveness":
+    "Hiệu quả đào tạo tổng thể trên toàn tổ chức",
+  "dashboard.metrics.completion_percent":
+    "Đo phần trăm khóa học đã ghi danh được hoàn thành",
+  "dashboard.metrics.top_categories_desc":
+    "Các lĩnh vực kiến thức và danh mục khóa học phổ biến nhất",
+  "dashboard.metrics.based_enrollments":
+    "Dựa trên số lần ghi danh và lượt xem khóa học",
+  "dashboard.metrics.avg_content_rating": "Đánh giá nội dung trung bình",
+  "dashboard.metrics.satisfaction_rating":
+    "Đánh giá mức độ hài lòng và chất lượng tổng thể của khóa học và nội dung",
+  "dashboard.metrics.based_feedback":
+    "Dựa trên phản hồi của nhân viên và đánh giá khóa học",
+  "dashboard.metrics.current_avg_rating": "Đánh giá trung bình hiện tại",
+  "dashboard.metrics.previous_month": "Tháng trước:",
+  "dashboard.metrics.change": "Thay đổi:",
+
+  // Dashboard Metrics - Training Manager Details
+  "dashboard.metrics.keyword": "Từ khóa",
+  "dashboard.metrics.keyword_status": "Trạng thái",
+  "dashboard.metrics.trending_keywords_desc": "Từ khóa xu hướng hàng đầu",
+  "dashboard.metrics.times": "lần",
+  "dashboard.metrics.no_data": "Không có dữ liệu",
+  "dashboard.metrics.course_dropoff_desc": "Tỷ lệ bỏ học (%)",
+  "dashboard.metrics.dropoff_rate": "Tỷ lệ bỏ học",
+
+  // Dashboard Metrics - Top Contributors & Learners
+  "dashboard.metrics.contributors_tab": "Người đóng góp",
+  "dashboard.metrics.learners_tab": "Người học",
+  "dashboard.metrics.contributor_type": "Người đóng góp",
+  "dashboard.metrics.learner_type": "Người học xuất sắc",
+  "dashboard.metrics.from_last_month": "từ tháng trước",
+
+  // Dashboard Metrics - Employee Dashboard Details
+  "dashboard.metrics.personal_learning_progress": "Tiến độ học tập của tôi",
+  "dashboard.metrics.due_date": "Ngày hết hạn:",
+  "dashboard.metrics.overdue": "Quá hạn",
+  "dashboard.metrics.days_left": "Còn",
+
+  // Dashboard Metrics - Time Period Labels
+  "dashboard.metrics.day_monday": "Thứ 2",
+  "dashboard.metrics.day_tuesday": "Thứ 3",
+  "dashboard.metrics.day_wednesday": "Thứ 4",
+  "dashboard.metrics.day_thursday": "Thứ 5",
+  "dashboard.metrics.day_friday": "Thứ 6",
+  "dashboard.metrics.day_saturday": "Thứ 7",
+  "dashboard.metrics.day_sunday": "CN",
+  "dashboard.metrics.week_label": "Tuần",
+  "dashboard.metrics.month_label": "Tháng",
+  "dashboard.metrics.year_label": "Năm",
+
+  // Dashboard Metrics - Month Names
+  "dashboard.metrics.month_1": "Tháng 1",
+  "dashboard.metrics.month_2": "Tháng 2",
+  "dashboard.metrics.month_3": "Tháng 3",
+  "dashboard.metrics.month_4": "Tháng 4",
+  "dashboard.metrics.month_5": "Tháng 5",
+  "dashboard.metrics.month_6": "Tháng 6",
+  "dashboard.metrics.month_7": "Tháng 7",
+  "dashboard.metrics.month_8": "Tháng 8",
+  "dashboard.metrics.month_9": "Tháng 9",
+  "dashboard.metrics.month_10": "Tháng 10",
+  "dashboard.metrics.month_11": "Tháng 11",
+  "dashboard.metrics.month_12": "Tháng 12",
+
+  "dashboard.metrics.enrollment_views": "Số lần ghi danh/Lượt xem",
 
   // User Management
   "user.table_email": "Email",
@@ -1030,6 +1156,26 @@ export const vi = {
   "history.filter_all": "Tất cả",
   "history.filter_completed": "Hoàn thành",
   "history.filter_assigned": "Bắt buộc",
+  "history.filter_in_progress": "Đang học",
+  "history.page_title": "Lịch Sử Học Tập",
+  "history.page_subtitle":
+    "Theo dõi tiến độ, xem các khóa học đã tham gia và truy cập chứng chỉ khi hoàn thành.",
+  "history.export_report": "Xuất báo cáo",
+  "history.stat_lifelong_access": "Truy cập trọn đời",
+  "history.stat_completion_rate": "Tỷ lệ hoàn thành",
+  "history.stat_continue_learning": "Tiếp tục học nhé!",
+  "history.category_general": "Khóa học tổng quan",
+  "history.status_required": "🚨 Bắt buộc học",
+  "history.status_completed": "Hoàn thành",
+  "history.status_in_progress": "Đang học",
+  "history.action_start_now": "Bắt Đầu Ngay",
+  "history.action_continue": "Tiếp tục",
+  "history.action_certificate": "Chứng chỉ",
+  "history.msg_certificate_coming": "Tính năng chứng chỉ sắp ra mắt!",
+  "history.search_placeholder": "Tìm kiếm khóa học...",
+  "history.empty_state": "Bạn chưa tham gia khóa học nào",
+  "history.pagination_show_total":
+    "Hiển thị {{start}}-{{end}} trong tổng {{total}} khóa học",
 
   // Reviews & Ratings
   "review.title": "Đánh giá",
@@ -1109,4 +1255,157 @@ export const vi = {
   "empty.no_results": "Không tìm thấy kết quả nào",
   "empty.try_again": "Thử lại",
   "empty.go_back": "Quay lại",
+
+  // AI Suggestion Panel
+  "ai_suggestion.title": "🤖 AI Đề Xuất Khóa Học Mới",
+  "ai_suggestion.tag_from_ai": "Gợi ý từ AI",
+  "ai_suggestion.suggestion_text":
+    'Trong <strong>{days} ngày</strong> qua, topic <strong>"{topic}"</strong> được người dùng nhắc tới <strong>{count} lần</strong>.',
+  "ai_suggestion.question_create":
+    "Bạn có muốn tạo một khóa học về chủ đề này không?",
+  "ai_suggestion.btn_approve": "Đồng ý - Tạo Khóa Học",
+  "ai_suggestion.btn_dismiss": "Không - Ẩn Đề Xuất",
+  "ai_suggestion.dismissed_message": "Đề xuất đã được ẩn",
+  "ai_suggestion.dismissed_desc":
+    "Hệ thống sẽ tạo đề xuất mới khi phát hiện topic khác được nhắc đến nhiều nhất",
+  "ai_suggestion.analysis_title": "Phân Tích Topics",
+  "ai_suggestion.analyze_within": "Phân tích trong:",
+  "ai_suggestion.btn_days_7": "7 ngày",
+  "ai_suggestion.btn_days_14": "14 ngày",
+  "ai_suggestion.btn_days_30": "30 ngày",
+  "ai_suggestion.btn_analyze": "Phân Tích",
+  "ai_suggestion.loading": "Đang phân tích...",
+  "ai_suggestion.no_topics": "Chưa có topics để phân tích",
+  "ai_suggestion.mentioned": "Được nhắc tới",
+  "ai_suggestion.times_label": "lần",
+  "ai_suggestion.relevance_label": "% relevance",
+  "ai_suggestion.how_to_use": "Cách Sử Dụng",
+  "ai_suggestion.help_1": "Hệ thống tự động phân tích các câu hỏi trong Q&A",
+  "ai_suggestion.help_2": "Nhóm các câu hỏi tương tự thành các topics",
+  "ai_suggestion.help_3":
+    "Gợi ý tạo khóa học cho topic được nhắc đến nhiều nhất",
+  "ai_suggestion.help_4":
+    "Bạn có thể chọn đồng ý để nhảy đến trang quản lý khóa học",
+
+  // Featured Authors
+  "article.featured_authors_title": "Tác Giả Nổi Bật",
+  "article.featured_authors_empty": "Chưa có tác giả nào",
+  "article.featured_authors_article_count": "{count} bài viết",
+
+  // Article Detail
+  "article_detail.loading": "Đang tải bài viết...",
+  "article_detail.not_found": "Không tìm thấy bài viết",
+  "article_detail.back_to_articles": "Quay Lại Bài Viết",
+  "article_detail.back_to_management": "Quay Lại Quản Lý Bài Viết",
+  "article_detail.rejection_reason": "Lý Do Từ Chối",
+  "article_detail.resubmit": "Gửi Lại Bài Viết",
+  "article_detail.comments_title": "Bình Luận",
+  "article_detail.comment_placeholder": "Viết bình luận...",
+  "article_detail.send": "Gửi",
+  "article_detail.reply": "Trả Lời",
+  "article_detail.cancel": "Hủy",
+  "article_detail.hide_comments": "Ẩn",
+  "article_detail.show_comments": "Hiện",
+  "article_detail.comment_singular": "bình luận",
+  "article_detail.comment_plural": "bình luận",
+  "article_detail.edit": "Chỉnh Sửa",
+  "article_detail.delete": "Xóa",
+  "article_detail.save": "Lưu",
+  "article_detail.approve": "Phê Duyệt",
+  "article_detail.reject": "Từ Chối",
+  "article_detail.approve_modal_title": "Phê Duyệt Bài Viết",
+  "article_detail.approve_modal_desc":
+    "Bạn có chắc chắn muốn phê duyệt bài viết này không?",
+  "article_detail.reject_modal_title": "Từ Chối Bài Viết",
+  "article_detail.reject_modal_desc":
+    "Bạn có chắc chắn muốn từ chối bài viết này không?",
+  "article_detail.reject_reason_placeholder": "Vui lòng cung cấp lý do từ chối",
+  "article_detail.delete_comment_modal_title": "Xóa Bình Luận",
+  "article_detail.delete_comment_modal_desc":
+    "Bạn có chắc chắn muốn xóa bình luận này không?",
+  "article_detail.comment_required": "Nội dung bình luận là bắt buộc",
+  "article_detail.comment_posted": "Bình luận đã được đăng thành công",
+  "article_detail.comment_updated": "Bình luận đã được cập nhật thành công",
+  "article_detail.comment_deleted": "Bình luận đã được xóa thành công",
+  "article_detail.reply_posted": "Trả lời đã được đăng thành công",
+  "article_detail.article_approved": "Bài viết đã được phê duyệt thành công",
+  "article_detail.article_rejected": "Bài viết đã được từ chối thành công",
+  "article_detail.article_resubmitted": "Bài viết đã được gửi lại thành công",
+  "article_detail.error_loading": "Không thể tải bài viết",
+  "article_detail.error_posting": "Không thể đăng bình luận",
+  "article_detail.error_posting_reply": "Không thể đăng trả lời",
+  "article_detail.error_updating": "Không thể cập nhật bình luận",
+  "article_detail.error_deleting": "Không thể xóa bình luận",
+  "article_detail.error_approving": "Không thể phê duyệt bài viết",
+  "article_detail.error_rejecting": "Không thể từ chối bài viết",
+  "article_detail.error_resubmitting": "Không thể gửi lại bài viết",
+  "article_detail.error_general": "Đã xảy ra lỗi",
+
+  // Courses Page
+  "course.continue_learning": "Tiếp tục học",
+  "course.continue_learning_desc": "Xem lại các khóa học bạn đang theo học",
+  "course.assigned_courses": "Khóa học được giao",
+  "course.assigned_courses_desc": "Các khóa học riêu tư được giao cho bạn",
+  "course.cta_questions": "Có câu hỏi?",
+  "course.cta_questions_desc":
+    "Hỏi đáp trực tiếp từ cộng đồng và các chuyên gia. Giải quyết vấn đề và học hỏi từ những người khác.",
+  "course.cta_questions_button": "Khám phá Q&A",
+  "course.cta_articles": "Đọc bài viết chuyên sâu",
+  "course.cta_articles_desc":
+    "Tìm hiểu thêm thông qua các bài viết, hướng dẫn và kinh nghiệm từ đội KMS-Plus và các chuyên gia.",
+  "course.cta_articles_button": "Khám phá Bài viết",
+  "course.latest_courses": "Mới nhất từ KMS Plus",
+  "course.latest_courses_desc": "Các khóa học mới được thêm gần đây",
+  "course.all_courses": "Tất cả khóa học",
+  "course.all_courses_desc": "Khám phá các khóa học có sẵn",
+  "course.no_courses_found": "Không tìm thấy khóa học",
+  "course.no_courses_desc": "Hãy thử tìm kiếm với các từ khóa khác",
+  "course.error_label": "Lỗi:",
+  "course.relevant_department": "Phòng ban của bạn",
+  "course.management_access_denied":
+    "Bạn không có quyền truy cập vào quản lý khóa học.",
+
+  // Course Components
+  "course.hero_title": "Phát triển kỹ năng tiếp theo của bạn",
+  "course.hero_subtitle":
+    "Tìm khóa học phù hợp và bắt đầu hành trình học tập của bạn ngay hôm nay",
+  "course.hero_search_placeholder": "Bạn muốn học gì hôm nay?",
+  "course.hero_search_button": "Tìm kiếm",
+
+  // Course Filters
+  "course.filter_all_categories": "Tất cả danh mục",
+  "course.filter_all_ratings": "Tất cả đánh giá",
+  "course.filter_4_stars": "4★ trở lên",
+  "course.filter_3_stars": "3★ trở lên",
+  "course.filter_2_stars": "2★ trở lên",
+  "course.filter_newest": "Mới nhất",
+  "course.filter_trending": "Đang thịnh hành",
+  "course.filter_most_popular": "Phổ biến nhất",
+  "course.filter_top_rated": "Được đánh giá cao",
+  "course.filter_clear_tooltip": "Xóa tất cả filter",
+
+  // Course Card
+  "course.card_uncategorized": "Chưa phân loại",
+  "course.card_enrolled": "người đã đăng ký",
+  "course.card_resume": "Tiếp tục",
+  "course.card_view_details": "Xem chi tiết",
+  "course.card_beginner": "Cơ bản",
+  "course.card_intermediate": "Trung bình",
+  "course.card_advanced": "Nâng cao",
+
+  // Trending Courses
+  "course.trending_title": "Đang thịnh hành",
+  "course.trending_subtitle":
+    "Những khóa học được nhiều người đăng ký trong 7 ngày qua",
+  "course.trending_empty": "Không có khóa học phổ biến nào",
+  "course.trending_badge": "Đang thịnh hành",
+
+  // Documents Page
+  "document.page_subtitle":
+    "Trung tâm lưu trữ kiến thức, quy định và tài liệu chuẩn của công ty.",
+  "document.empty_title": "Chưa có danh mục tài liệu nào.",
+  "document.doc_count": "tài liệu",
+  "document.default_description":
+    "Nhấn để xem các tài liệu và chính sách trong thư mục này.",
+  "document.view_details": "Xem chi tiết",
 }

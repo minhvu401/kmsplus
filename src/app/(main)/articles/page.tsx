@@ -53,18 +53,23 @@ import { ArticleCard } from "@/components/ui/articles/article-card"
 import { TopAuthors } from "@/components/ui/articles/top-authors"
 import { ArticleSearch } from "@/components/ui/articles/article-search"
 import { stripHtml } from "@/utils/sanitize"
+import useLanguageStore, { type Language } from "@/store/useLanguageStore"
+import { t } from "@/lib/i18n"
 import type { Article, TopAuthor } from "@/service/articles.service"
 
 // Memoized Title Input Component - Using native input
 const TitleInput = React.memo(
   React.forwardRef<
     HTMLInputElement,
-    { onChange: (e: React.ChangeEvent<HTMLInputElement>) => void }
-  >(({ onChange }, ref) => (
+    {
+      onChange: (e: React.ChangeEvent<HTMLInputElement>) => void
+      placeholder: string
+    }
+  >(({ onChange, placeholder }, ref) => (
     <input
       ref={ref}
       type="text"
-      placeholder="Nhập tiêu đề bài viết"
+      placeholder={placeholder}
       onChange={onChange}
       autoComplete="off"
       style={{
@@ -94,9 +99,11 @@ const TitleSection = React.memo(
   ({
     inputRef,
     onInputChange,
+    language,
   }: {
     inputRef: React.Ref<any>
     onInputChange: (e: React.ChangeEvent<HTMLInputElement>) => void
+    language: Language
   }) => {
     const [charCount, setCharCount] = useState(0)
 
@@ -120,13 +127,17 @@ const TitleSection = React.memo(
               marginBottom: "8px",
             }}
           >
-            Tiêu đề
+            {t("article.form_title_label", language)}
           </span>
-          <TitleInput ref={inputRef} onChange={handleChange} />
+          <TitleInput
+            ref={inputRef}
+            onChange={handleChange}
+            placeholder={t("article.form_title_placeholder", language)}
+          />
         </div>
         <Flex justify="flex-end" align="center" className="mb-4">
           <span style={{ fontSize: "11px", color: "#6b7280" }}>
-            {charCount} / 150
+            {charCount} {t("article.form_title_max", language)}
           </span>
         </Flex>
       </>
@@ -142,6 +153,8 @@ export default function ViewArticlePage() {
   const THUMBNAIL_MAX_SIZE_BYTES = THUMBNAIL_MAX_SIZE_MB * 1024 * 1024
   const router = useRouter()
   const screens = useBreakpoint()
+  const { language: rawLanguage } = useLanguageStore()
+  const language = rawLanguage as Language
   const [articles, setArticles] = useState<Article[]>([])
   const [tags, setTags] = useState<string[]>([])
   const [selectedTags, setSelectedTags] = useState<string[]>([])
@@ -196,7 +209,7 @@ export default function ViewArticlePage() {
       setArticles(result?.data || [])
       setTotalArticles(result?.total || 0)
     } catch (err: any) {
-      message.error("Lỗi tải bài viết")
+      message.error(t("article.error_load_articles", language))
       console.error(err)
       setArticles([])
       setTotalArticles(0)
@@ -253,7 +266,7 @@ export default function ViewArticlePage() {
       setTags(tagNames)
       setCategories(normalizedCategories)
     } catch (err) {
-      console.error("Lỗi tải bộ lọc bài viết", err)
+      console.error(t("article.error_load_filters", language), err)
       setTags([])
       setCategories([])
     } finally {
@@ -276,7 +289,7 @@ export default function ViewArticlePage() {
       const authors = await getTopAuthors(5)
       setTopAuthors(authors)
     } catch (err) {
-      console.error("Lỗi tải tác giả nổi bật", err)
+      console.error(t("article.error_load_authors", language), err)
     } finally {
       setLoadingAuthors(false)
     }
@@ -313,11 +326,12 @@ export default function ViewArticlePage() {
       const result = await uploadImageToCloudinary(file, "article-thumbnails")
       setThumbnailUrl(result.secure_url)
       setThumbnailUploadError("")
-      message.success("Ảnh bìa đã được tải lên")
+      message.success(t("article.form_thumbnail_success", language))
     } catch (error: any) {
-      const rawError = error?.message || "Lỗi tải ảnh bìa"
+      const rawError =
+        error?.message || t("article.error_create_article", language)
       if (/file size too large/i.test(rawError)) {
-        const tooLargeError = `Ảnh bìa vượt quá ${THUMBNAIL_MAX_SIZE_MB}MB. Vui lòng chọn ảnh nhỏ hơn.`
+        const tooLargeError = `${t("article.form_thumbnail_label", language)} ${t("article.error_title_exceeds_limit", language).toLowerCase()}. ${t("article.form_title_placeholder", language).toLowerCase()}.`
         setThumbnailUploadError(tooLargeError)
         message.error(tooLargeError)
       } else {
@@ -349,7 +363,7 @@ export default function ViewArticlePage() {
   const handleCreateSubmit = async (values: any) => {
     const titleValue = titleInputRef.current?.input?.value || ""
     if (!titleValue.trim() || !contentValue.trim()) {
-      message.error("Vui lòng nhập tiêu đề và nội dung")
+      message.error(t("article.error_title_content_required", language))
       return
     }
 
@@ -375,16 +389,18 @@ export default function ViewArticlePage() {
 
       const result = await createArticle(formData)
       if (result.success) {
-        message.success("Bài viết đã được tạo thành công!")
+        message.success(t("article.success_create", language))
         setIsModalOpen(false)
         resetCreateForm()
         setCurrentPage(1)
         await loadArticles()
       } else {
-        message.error(result.message || "Lỗi tạo bài viết")
+        message.error(
+          result.message || t("article.error_create_article", language)
+        )
       }
     } catch (error: any) {
-      message.error(error?.message || "Có lỗi xảy ra")
+      message.error(error?.message || t("article.form_error_generic", language))
     } finally {
       setCreatingArticle(false)
     }
@@ -396,11 +412,12 @@ export default function ViewArticlePage() {
         <TitleSection
           inputRef={titleInputRef}
           onInputChange={handleTitleChange}
+          language={language}
         />
         <Divider style={{ margin: "12px 0", borderColor: "#f3f4f6" }} />
       </>
     ),
-    [titleInputRef, handleTitleChange]
+    [titleInputRef, handleTitleChange, language]
   )
 
   if (loading) {
@@ -416,10 +433,10 @@ export default function ViewArticlePage() {
       {/* Page Header */}
       <div className="mb-8">
         <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-blue-900 bg-clip-text text-transparent mb-4">
-          Bài Viết
+          {t("article.page_title", language)}
         </h1>
         <p className="text-gray-600 max-w-2xl leading-relaxed">
-          Kho tàng tri thức & chia sẻ kinh nghiệm từ cộng đồng KMSPlus.
+          {t("article.page_subtitle", language)}
         </p>
         <Divider
           style={{ borderColor: "rgba(37, 99, 235, 0.15)", margin: "16px 0" }}
@@ -483,9 +500,11 @@ export default function ViewArticlePage() {
                   e.currentTarget.style.borderColor =
                     selectedCategory !== null ? "#2563eb" : "#e5e7eb"
                 }}
-                title="Lọc theo danh mục"
+                title={t("article.tooltip_filter_category", language)}
               >
-                <option value="any">Tất Cả Danh Mục</option>
+                <option value="any">
+                  {t("article.filter_all_categories", language)}
+                </option>
                 {categories.map((cat) => (
                   <option key={cat.id} value={cat.id}>
                     {cat.name}
@@ -497,7 +516,7 @@ export default function ViewArticlePage() {
               <Select
                 mode="multiple"
                 allowClear
-                placeholder="Tất Cả Thẻ"
+                placeholder={t("article.filter_all_tags", language)}
                 value={selectedTags}
                 onChange={(values) => {
                   setSelectedTags(values)
@@ -539,14 +558,18 @@ export default function ViewArticlePage() {
                 onMouseLeave={(e) => {
                   e.currentTarget.style.borderColor = "#e5e7eb"
                 }}
-                title="Sắp xếp"
+                title={t("article.tooltip_filter_sort", language)}
               >
-                <option value="newest">Mới Nhất</option>
-                <option value="oldest">Cũ Nhất</option>
+                <option value="newest">
+                  {t("article.sort_newest", language)}
+                </option>
+                <option value="oldest">
+                  {t("article.sort_oldest", language)}
+                </option>
               </select>
 
               {/* Clear Filters Button */}
-              <Tooltip title="Xóa tất cả bộ lọc">
+              <Tooltip title={t("article.btn_clear_all_filters", language)}>
                 <Button
                   type="text"
                   size="small"
@@ -592,7 +615,7 @@ export default function ViewArticlePage() {
                       : "not-allowed",
                   }}
                   icon={<ClearOutlined />}
-                  title="Xóa bộ lọc"
+                  title={t("article.btn_clear_all_filters", language)}
                 />
               </Tooltip>
             </Flex>
@@ -602,7 +625,7 @@ export default function ViewArticlePage() {
           <div className="bg-white rounded-lg shadow-sm p-6">
             {articles.length === 0 ? (
               <Empty
-                description="Không tìm thấy bài viết nào"
+                description={t("article.grid_no_articles", language)}
                 style={{ padding: "48px 0" }}
               />
             ) : (
@@ -656,18 +679,19 @@ export default function ViewArticlePage() {
                       style={{ marginTop: 20 }}
                     >
                       <div style={{ fontSize: "13px", color: "#6b7280" }}>
-                        Hiển thị{" "}
+                        {t("article.pagination_showing", language)}{" "}
                         <span style={{ fontWeight: "500" }}>
                           {articles.length > 0
                             ? (currentPage - 1) * pageSize + 1
                             : 0}
-                          -{Math.min(currentPage * pageSize, totalArticles)}
+                          {t("article.pagination_to", language)}
+                          {Math.min(currentPage * pageSize, totalArticles)}
                         </span>{" "}
-                        trên{" "}
+                        {t("article.pagination_of", language)}{" "}
                         <span style={{ fontWeight: "500" }}>
                           {totalArticles}
                         </span>{" "}
-                        bài viết
+                        {t("article.pagination_articles", language)}
                       </div>
                       <Pagination
                         current={currentPage}
@@ -693,7 +717,7 @@ export default function ViewArticlePage() {
       {/* Create Article Modal */}
       <Modal
         key={isModalOpen ? "open" : "closed"}
-        title="Tạo Bài Viết Mới"
+        title={t("article.form_modal_title", language)}
         open={isModalOpen}
         onCancel={() => {
           setIsModalOpen(false)
@@ -718,12 +742,13 @@ export default function ViewArticlePage() {
                   color: "#111827",
                 }}
               >
-                Ảnh bìa
+                {t("article.form_thumbnail_label", language)}
               </span>
             }
             extra={
               <span style={{ fontSize: "11px", color: "#6b7280" }}>
-                Tối đa {THUMBNAIL_MAX_SIZE_MB}MB
+                {t("article.form_thumbnail_max_size", language)}{" "}
+                {THUMBNAIL_MAX_SIZE_MB}MB
               </span>
             }
           >
@@ -748,7 +773,7 @@ export default function ViewArticlePage() {
                 beforeUpload={(file) => {
                   const isTooLarge = file.size > THUMBNAIL_MAX_SIZE_BYTES
                   if (isTooLarge) {
-                    const tooLargeError = `Ảnh bìa vượt quá ${THUMBNAIL_MAX_SIZE_MB}MB. Vui lòng chọn ảnh nhỏ hơn.`
+                    const tooLargeError = `${t("article.form_thumbnail_label", language)} ${t("article.error_title_exceeds_limit", language).toLowerCase()}. ${t("article.form_title_placeholder", language).toLowerCase()}.`
                     setThumbnailUploadError(tooLargeError)
                     message.error(tooLargeError)
                     return Upload.LIST_IGNORE
@@ -764,7 +789,9 @@ export default function ViewArticlePage() {
                   loading={uploadingThumbnail}
                   disabled={uploadingThumbnail}
                 >
-                  {uploadingThumbnail ? "Đang tải lên..." : "Tải lên ảnh bìa"}
+                  {uploadingThumbnail
+                    ? t("article.form_thumbnail_uploading_text", language)
+                    : t("article.form_thumbnail_upload_text", language)}
                 </Button>
               </Upload>
               {thumbnailUploadError && (
@@ -787,7 +814,7 @@ export default function ViewArticlePage() {
                   color: "#111827",
                 }}
               >
-                Nội dung
+                {t("article.form_content_label", language)}
               </span>
             }
             rules={[
@@ -796,10 +823,14 @@ export default function ViewArticlePage() {
                 validator: () => {
                   const textContent = stripHtml(contentValue).trim()
                   if (!textContent) {
-                    return Promise.reject("Vui lòng nhập nội dung")
+                    return Promise.reject(
+                      t("article.error_title_content_required", language)
+                    )
                   }
                   if (textContent.length > 5000) {
-                    return Promise.reject("Nội dung phải dưới 5000 ký tự")
+                    return Promise.reject(
+                      t("article.error_title_exceeds_limit", language)
+                    )
                   }
                   return Promise.resolve()
                 },
@@ -809,7 +840,7 @@ export default function ViewArticlePage() {
             <QuillEditor
               value={contentValue}
               onChange={handleContentChange}
-              placeholder="Viết nội dung bài viết..."
+              placeholder={t("article.form_content_placeholder", language)}
               height={400}
             />
           </Form.Item>
@@ -821,7 +852,7 @@ export default function ViewArticlePage() {
                   .replace(/<[^>]*>/g, "")
                   .trim().length
               }{" "}
-              / 5,000
+              {t("article.form_content_max", language)}
             </span>
           </Flex>
 
@@ -837,20 +868,26 @@ export default function ViewArticlePage() {
                   color: "#111827",
                 }}
               >
-                Danh mục <span style={{ color: "#dc2626" }}>*</span>
+                {t("article.form_category_label", language)}{" "}
+                <span style={{ color: "#dc2626" }}>*</span>
               </span>
             }
-            rules={[{ required: true, message: "Vui lòng chọn danh mục" }]}
+            rules={[
+              {
+                required: true,
+                message: t("article.form_category_required", language),
+              },
+            ]}
             extra={
               categories.length === 0 && !loadingCategories ? (
                 <span style={{ color: "#ef4444", fontSize: "11px" }}>
-                  Không có danh mục nào có sẵn
+                  {t("article.form_category_no_available", language)}
                 </span>
               ) : null
             }
           >
             <Select
-              placeholder="Chọn danh mục"
+              placeholder={t("article.form_category_label", language)}
               value={selectedCategoryForCreate}
               onChange={setSelectedCategoryForCreate}
               loading={loadingCategories}
@@ -876,14 +913,16 @@ export default function ViewArticlePage() {
                   color: "#111827",
                 }}
               >
-                Thẻ
+                {t("article.form_tags_label", language)}
               </span>
             }
             rules={[
               {
                 validator: (_, value) => {
                   if (value && value.length > MAX_TAGS) {
-                    return Promise.reject(`Tối đa ${MAX_TAGS} thẻ`)
+                    return Promise.reject(
+                      `${t("article.form_tags_max_warning", language)} ${MAX_TAGS} ${t("article.form_tags_label", language).toLowerCase()}`
+                    )
                   }
                   return Promise.resolve()
                 },
@@ -893,7 +932,7 @@ export default function ViewArticlePage() {
           >
             <Select
               mode="tags"
-              placeholder="Thêm hoặc chọn thẻ (tối đa 5)"
+              placeholder={t("article.form_tags_placeholder", language)}
               value={selectedTagsForCreate}
               onChange={(values) => {
                 if (values.length <= MAX_TAGS) {
@@ -901,7 +940,9 @@ export default function ViewArticlePage() {
                   createForm.setFieldsValue({ tags: values })
                   createForm.validateFields(["tags"])
                 } else {
-                  message.warning(`Tối đa ${MAX_TAGS} thẻ`)
+                  message.warning(
+                    `${t("article.form_tags_max_warning", language)} ${MAX_TAGS} ${t("article.form_tags_label", language).toLowerCase()}`
+                  )
                   setTimeout(() => {
                     createForm.setFieldsValue({ tags: selectedTagsForCreate })
                   }, 0)
@@ -928,7 +969,8 @@ export default function ViewArticlePage() {
                     : "#6b7280",
               }}
             >
-              {selectedTagsForCreate.length} / {MAX_TAGS}
+              {selectedTagsForCreate.length}{" "}
+              {t("article.form_tags_counter", language)}
             </span>
           </Flex>
 
@@ -943,7 +985,7 @@ export default function ViewArticlePage() {
                 loading={creatingArticle}
                 disabled={selectedTagsForCreate.length > MAX_TAGS}
               >
-                Lưu nháp
+                {t("article.form_btn_save_draft", language)}
               </Button>
               <Button
                 size="large"
@@ -955,13 +997,13 @@ export default function ViewArticlePage() {
                 }}
                 disabled={creatingArticle}
               >
-                Hủy
+                {t("article.form_btn_cancel", language)}
               </Button>
               <Tooltip
                 title={
                   selectedTagsForCreate.length > MAX_TAGS
-                    ? `Tối đa ${MAX_TAGS} thẻ`
-                    : "Bài viết sẽ chờ phê duyệt từ Admin"
+                    ? `${t("article.form_tags_max_warning", language)} ${MAX_TAGS} ${t("article.form_tags_label", language).toLowerCase()}`
+                    : t("article.form_btn_submit_approval_tooltip", language)
                 }
               >
                 <Button
@@ -973,7 +1015,7 @@ export default function ViewArticlePage() {
                   loading={creatingArticle}
                   disabled={selectedTagsForCreate.length > MAX_TAGS}
                 >
-                  Gửi để phê duyệt
+                  {t("article.form_btn_submit_approval", language)}
                 </Button>
               </Tooltip>
             </Flex>

@@ -10,10 +10,13 @@ import { Card, Spin, Empty, Row, Col, Statistic } from "antd"
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts"
 import MetricCard from "./MetricCard"
 import { getAdoptionRateMetrics } from "@/action/metrics/metricsActions"
+import useLanguageStore from "@/store/useLanguageStore"
+import { t } from "@/lib/i18n"
 import type { AdoptionRateData } from "@/service/metrics.service"
 import { ArrowUpOutlined } from "@ant-design/icons"
 
 export default function SystemAdoptionRateChart() {
+  const { language } = useLanguageStore()
   const [data, setData] = useState<AdoptionRateData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -35,8 +38,18 @@ export default function SystemAdoptionRateChart() {
   }, [])
 
   if (loading) return <Card loading />
-  if (error) return <Card><Empty description={`Error: ${error}`} /></Card>
-  if (!data) return <Card><Empty /></Card>
+  if (error)
+    return (
+      <Card>
+        <Empty description={`Error: ${error}`} />
+      </Card>
+    )
+  if (!data)
+    return (
+      <Card>
+        <Empty />
+      </Card>
+    )
 
   // Prepare gauge data: adoption rate vs remaining
   const gaugeData = [
@@ -48,9 +61,9 @@ export default function SystemAdoptionRateChart() {
 
   return (
     <MetricCard
-      title="System Adoption Rate"
-      description="Percentage of employees using the platform"
-      info="Higher adoption indicates better platform integration"
+      title={t("dashboard.metrics.adoption_rate_chart", language)}
+      description={t("dashboard.metrics.adoption_rate_desc", language)}
+      info={t("dashboard.metrics.adoption_higher", language)}
       animate="delay-1"
     >
       <Row gutter={[16, 16]}>
@@ -73,7 +86,10 @@ export default function SystemAdoptionRateChart() {
                 animationEasing="ease-in-out"
               >
                 {gaugeData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  <Cell
+                    key={`cell-${index}`}
+                    fill={COLORS[index % COLORS.length]}
+                  />
                 ))}
               </Pie>
             </PieChart>
@@ -82,14 +98,14 @@ export default function SystemAdoptionRateChart() {
         <Col xs={24} lg={12}>
           <div className="flex flex-col justify-center h-full gap-6">
             <Statistic
-              title="Adoption Rate"
+              title={t("dashboard.metrics.adoption_rate", language)}
               value={data.adoptionRate}
               suffix="%"
               prefix={<ArrowUpOutlined className="text-green-500" />}
               valueStyle={{ color: "#1890ff", fontSize: "2.5rem" }}
             />
             <Statistic
-              title="Active Users"
+              title={t("dashboard.metrics.active_users", language)}
               value={data.activeUsers}
               suffix={`/ ${data.totalUsers}`}
               valueStyle={{ fontSize: "1.5rem" }}

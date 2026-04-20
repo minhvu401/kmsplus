@@ -7,12 +7,24 @@
 
 import React, { useEffect, useState } from "react"
 import { Card, Spin, Empty } from "antd"
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts"
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from "recharts"
 import MetricCard from "./MetricCard"
 import { getTopCategoriesMetrics } from "@/action/metrics/metricsActions"
+import useLanguageStore from "@/store/useLanguageStore"
+import { t } from "@/lib/i18n"
 import type { TopCategoryData } from "@/service/metrics.service"
 
 export default function TopCategoriesChart() {
+  const { language } = useLanguageStore()
   const [data, setData] = useState<TopCategoryData[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -34,13 +46,18 @@ export default function TopCategoriesChart() {
   }, [])
 
   if (loading) return <Card loading />
-  if (error) return <Card><Empty description={`Error: ${error}`} /></Card>
+  if (error)
+    return (
+      <Card>
+        <Empty description={`Error: ${error}`} />
+      </Card>
+    )
 
   return (
     <MetricCard
-      title="Top Performing Categories"
-      description="Most popular knowledge domains and course categories"
-      info="Based on enrollments and course views"
+      title={t("dashboard.metrics.top_categories", language)}
+      description={t("dashboard.metrics.top_categories_desc", language)}
+      info={t("dashboard.metrics.based_enrollments", language)}
       animate="delay-1"
     >
       <ResponsiveContainer width="100%" height={300}>
@@ -51,12 +68,17 @@ export default function TopCategoriesChart() {
         >
           <CartesianGrid strokeDasharray="3 3" stroke="#e6f4ff" />
           <XAxis type="number" stroke="#8c8c8c" />
-          <YAxis dataKey="category" type="category" width={140} stroke="#8c8c8c" />
-          <Tooltip 
-            contentStyle={{ 
-              backgroundColor: "#f6f8fc", 
+          <YAxis
+            dataKey="category"
+            type="category"
+            width={140}
+            stroke="#8c8c8c"
+          />
+          <Tooltip
+            contentStyle={{
+              backgroundColor: "#f6f8fc",
               border: "1px solid #d9e8ff",
-              borderRadius: "8px"
+              borderRadius: "8px",
             }}
             formatter={(value) => `${value} enrollments`}
             cursor={{ fill: "rgba(24, 144, 255, 0.1)" }}
@@ -66,7 +88,7 @@ export default function TopCategoriesChart() {
             dataKey="value"
             fill="#1890ff"
             radius={[0, 8, 8, 0]}
-            name="Enrollments/Views"
+            name={t("dashboard.metrics.enrollment_views", language)}
             isAnimationActive={true}
             animationDuration={800}
             animationEasing="ease-in-out"

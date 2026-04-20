@@ -65,7 +65,7 @@ export default function PersonalHistoryPage() {
         }
       } catch (error) {
         console.error("Failed to fetch history", error)
-        message.error("Không thể tải dữ liệu học tập")
+        message.error(t("error.loading_failed", language))
       } finally {
         setLoading(false)
       }
@@ -85,12 +85,13 @@ export default function PersonalHistoryPage() {
     )
     const avgScore =
       totalEnrolled > 0 ? Math.round(totalProgress / totalEnrolled) : 0
+    const finalAvgScore = isNaN(avgScore) ? 0 : avgScore
 
     return [
       {
         title: t("history.total_courses", language),
         value: totalEnrolled,
-        sub: "Truy cập trọn đời",
+        sub: t("history.stat_lifelong_access", language),
         icon: <BookOpen className="text-blue-600" size={24} />,
         bg: "bg-blue-50",
         text: "text-blue-600",
@@ -98,15 +99,15 @@ export default function PersonalHistoryPage() {
       {
         title: t("history.filter_completed", language),
         value: completedCourses,
-        sub: `${totalEnrolled > 0 ? Math.round((completedCourses / totalEnrolled) * 100) : 0}% tỷ lệ hoàn thành`,
+        sub: `${totalEnrolled > 0 ? Math.round((completedCourses / totalEnrolled) * 100) : 0}% ${t("history.stat_completion_rate", language).toLowerCase()}`,
         icon: <CheckCircle className="text-blue-600" size={24} />,
         bg: "bg-blue-50",
         text: "text-blue-600",
       },
       {
         title: t("history.avg_progress", language),
-        value: `${avgScore}%`,
-        sub: "Tiếp tục học nhé!",
+        value: `${finalAvgScore}%`,
+        sub: t("history.stat_continue_learning", language),
         icon: <TrendingUp className="text-purple-600" size={24} />,
         bg: "bg-purple-50",
         text: "text-purple-600",
@@ -153,7 +154,7 @@ export default function PersonalHistoryPage() {
             </Link>
             {/* Giả lập category vì SQL chưa join bảng categories, bạn có thể update SQL sau */}
             <span className="text-xs text-gray-400 font-medium bg-gray-100 px-2 py-0.5 rounded-full">
-              Khóa học tổng quan
+              {t("history.category_general", language)}
             </span>
           </div>
         </div>
@@ -198,7 +199,7 @@ export default function PersonalHistoryPage() {
               color="error"
               className="bg-red-50 text-red-600 rounded-full border-0 font-semibold px-3 py-1"
             >
-              🚨 Bắt buộc học
+              {t("history.status_required", language)}
             </Tag>
           )
         }
@@ -217,7 +218,9 @@ export default function PersonalHistoryPage() {
                 isCompleted ? "bg-blue-600" : "bg-yellow-600"
               }`}
             ></span>
-            {isCompleted ? "Hoàn thành" : "Đang học"}
+            {isCompleted
+              ? t("history.status_completed", language)
+              : t("history.status_in_progress", language)}
           </Tag>
         )
       },
@@ -236,7 +239,8 @@ export default function PersonalHistoryPage() {
                 danger
                 className="bg-red-500 flex items-center gap-2 border-none shadow-md"
               >
-                Bắt Đầu Ngay <PlayCircle size={16} />
+                {t("history.action_start_now", language)}{" "}
+                <PlayCircle size={16} />
               </Button>
             </Link>
           )
@@ -246,9 +250,11 @@ export default function PersonalHistoryPage() {
             <Button
               icon={<Award size={16} />}
               className="text-gray-600 border-gray-300 hover:!text-blue-600 hover:!border-blue-600 flex items-center gap-2"
-              onClick={() => message.info("Tính năng chứng chỉ sắp ra mắt!")}
+              onClick={() =>
+                message.info(t("history.msg_certificate_coming", language))
+              }
             >
-              Chứng chỉ
+              {t("history.action_certificate", language)}
             </Button>
           )
         }
@@ -258,7 +264,7 @@ export default function PersonalHistoryPage() {
               type="primary"
               className="bg-blue-600 hover:!bg-blue-700 border-none shadow-md flex items-center gap-2"
             >
-              Tiếp tục <PlayCircle size={16} />
+              {t("history.action_continue", language)} <PlayCircle size={16} />
             </Button>
           </Link>
         )
@@ -273,20 +279,18 @@ export default function PersonalHistoryPage() {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
             <h1 className="text-2xl font-bold text-gray-900 mb-1">
-              Learning History
+              {t("history.page_title", language)}
             </h1>
             <p className="text-gray-500">
-              Theo dõi tiến độ, xem các khóa học đã tham gia và truy cập chứng
-              chỉ khi hoàn thành.
+              {t("history.page_subtitle", language)}
             </p>
           </div>
           <Button
             type="primary"
             icon={<Download size={18} />}
-            // ✅ Đổi màu nền và hover cho nút Export Report
             className="bg-blue-600 hover:!bg-blue-700 h-10 px-5 border-none shadow-sm font-medium"
           >
-            Xuất báo cáo
+            {t("history.export_report", language)}
           </Button>
         </div>
 
@@ -351,7 +355,10 @@ export default function PersonalHistoryPage() {
                   value: "completed",
                   label: t("history.filter_completed", language),
                 },
-                { value: "in_progress", label: "Đang học" },
+                {
+                  value: "in_progress",
+                  label: t("history.filter_in_progress", language),
+                },
                 {
                   value: "assigned",
                   label: t("history.filter_assigned", language),
@@ -364,7 +371,7 @@ export default function PersonalHistoryPage() {
           <div className="flex items-center gap-3 w-full md:w-auto">
             <div className="relative">
               <Input
-                placeholder="Tìm kiếm khóa học..."
+                placeholder={t("history.search_placeholder", language)}
                 value={searchText}
                 onChange={(e) => setSearchText(e.target.value)}
                 prefix={<Search size={16} className="text-gray-400" />}
@@ -387,10 +394,15 @@ export default function PersonalHistoryPage() {
               showSizeChanger: false,
               total: filteredData.length,
               showTotal: (total, range) =>
-                `Hiển thị ${range[0]}-${range[1]} trong tổng ${total} khóa học`,
+                t("history.pagination_show_total", language)
+                  .replace("{{start}}", String(range[0]))
+                  .replace("{{end}}", String(range[1]))
+                  .replace("{{total}}", String(total)),
             }}
             locale={{
-              emptyText: <Empty description="Bạn chưa tham gia khóa học nào" />,
+              emptyText: (
+                <Empty description={t("history.empty_state", language)} />
+              ),
             }}
             className="custom-history-table"
           />

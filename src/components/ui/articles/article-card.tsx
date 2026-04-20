@@ -4,6 +4,8 @@ import React from "react"
 import { Avatar } from "antd"
 import { useRouter } from "next/navigation"
 import { MessageOutlined, ClockCircleOutlined } from "@ant-design/icons"
+import useLanguageStore, { type Language } from "@/store/useLanguageStore"
+import { t } from "@/lib/i18n"
 
 interface ArticleCardProps {
   id: string | number
@@ -33,6 +35,8 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({
   category,
 }) => {
   const router = useRouter()
+  const { language: rawLanguage } = useLanguageStore()
+  const language = rawLanguage as Language
 
   const handleCardClick = () => {
     router.push(`/articles/${id}`)
@@ -66,20 +70,27 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({
       <div className="p-5">
         {/* Author Section */}
         <div className="flex items-center gap-3 mb-3">
-            <div className="flex-shrink-0">
-              {authorAvatar ? (
-                <Avatar src={authorAvatar} size={32} />
-              ) : (
-                <Avatar size={32} style={{ background: 'linear-gradient(135deg,#60a5fa,#1e40af)', color: '#fff', fontWeight: 700 }}>
-                  {authorName
-                    .split(" ")
-                    .map((n) => n[0])
-                    .join("")
-                    .toUpperCase()
-                    .slice(0, 2)}
-                </Avatar>
-              )}
-            </div>
+          <div className="flex-shrink-0">
+            {authorAvatar ? (
+              <Avatar src={authorAvatar} size={32} />
+            ) : (
+              <Avatar
+                size={32}
+                style={{
+                  background: "linear-gradient(135deg,#60a5fa,#1e40af)",
+                  color: "#fff",
+                  fontWeight: 700,
+                }}
+              >
+                {authorName
+                  .split(" ")
+                  .map((n) => n[0])
+                  .join("")
+                  .toUpperCase()
+                  .slice(0, 2)}
+              </Avatar>
+            )}
+          </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-gray-900 truncate">
               {authorName}
@@ -126,7 +137,9 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({
             <div className="flex items-center gap-1.5">
               <ClockCircleOutlined className="text-gray-400 text-xs" />
               <span className="font-semibold text-gray-700">{readingTime}</span>
-              <span className="text-gray-500 text-xs">phút</span>
+              <span className="text-gray-500 text-xs">
+                {t("article.reading_time_unit", language)}
+              </span>
             </div>
           </div>
           <div className="flex items-center gap-1.5">

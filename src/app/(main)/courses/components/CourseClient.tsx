@@ -5,6 +5,8 @@ import type { Course } from "@/service/course.service"
 import React, { useState, useEffect } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { message } from "antd"
+import useLanguageStore, { type Language } from "@/store/useLanguageStore"
+import { t } from "@/lib/i18n"
 import { CourseSearchHero } from "@/components/ui/courses/course-search-hero"
 import { CourseSection } from "@/components/ui/courses/course-section"
 import { TrendingCourses } from "@/components/ui/courses/trending-courses"
@@ -46,6 +48,8 @@ export default function CourseClient({
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const [messageApi, contextHolder] = message.useMessage()
+  const { language: rawLanguage } = useLanguageStore()
+  const language = rawLanguage as Language
   const handledFlashRef = React.useRef<string | null>(null)
 
   // State for each course section
@@ -55,8 +59,9 @@ export default function CourseClient({
   const [popularByCategory, setPopularByCategory] = useState<Course[]>([])
   const [relevantCourses, setRelevantCourses] = useState<Course[]>([])
   const [newCourses, setNewCourses] = useState<Course[]>([])
-  const [relevantDepartmentName, setRelevantDepartmentName] =
-    useState<string>("Phòng ban của bạn")
+  const [relevantDepartmentName, setRelevantDepartmentName] = useState<string>(
+    t("course.relevant_department", language)
+  )
 
   // Loading states for each section
   const [loadingTrending, setLoadingTrending] = useState(false)
@@ -166,16 +171,22 @@ export default function CourseClient({
         )
         setRelevantDepartmentName(
           relevantResult.status === "fulfilled"
-            ? (relevantResult.value?.departmentName ?? "Phòng ban của bạn")
-            : "Phòng ban của bạn"
+            ? (relevantResult.value?.departmentName ??
+                t("course.relevant_department", language))
+            : t("course.relevant_department", language)
         )
         setNewCourses(
-          newResult.status === "fulfilled" ? (newResult.value?.courses ?? []) : []
+          newResult.status === "fulfilled"
+            ? (newResult.value?.courses ?? [])
+            : []
         )
 
         if (resumeResult.status === "rejected") {
           if (!isAbortError(resumeResult.reason)) {
-            console.error("Failed to fetch resume courses:", resumeResult.reason)
+            console.error(
+              "Failed to fetch resume courses:",
+              resumeResult.reason
+            )
           }
         }
         if (assignedResult.status === "rejected") {
@@ -245,7 +256,7 @@ export default function CourseClient({
     if (handledFlashRef.current === flash) return
 
     handledFlashRef.current = flash
-    messageApi.error("You do not have permission to access course management.")
+    messageApi.error(t("course.management_access_denied", language))
 
     const params = new URLSearchParams(searchParams.toString())
     params.delete("flash")
@@ -276,6 +287,7 @@ export default function CourseClient({
         {/* Filter Widget - White Card (Compact) */}
         <div
           style={{
+            width: "fit-content",
             backgroundColor: "white",
             borderRadius: "0.5rem",
             boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
@@ -290,8 +302,8 @@ export default function CourseClient({
         <FadeInOnScroll threshold={0.2} triggerOnce={true}>
           {resumeCourses.length > 0 && (
             <CourseSection
-              title="Tiếp tục học"
-              subtitle="Xem lại các khóa học bạn đang theo học"
+              title={t("course.continue_learning", language)}
+              subtitle={t("course.continue_learning_desc", language)}
               courses={resumeCourses}
               columns={4}
             />
@@ -302,8 +314,8 @@ export default function CourseClient({
         <FadeInOnScroll threshold={0.2} triggerOnce={true}>
           {assignedCourses.length > 0 && (
             <CourseSection
-              title="Khóa học được giao"
-              subtitle="Các khóa học riêng tư được giao cho bạn"
+              title={t("course.assigned_courses", language)}
+              subtitle={t("course.assigned_courses_desc", language)}
               courses={assignedCourses}
               columns={4}
             />
@@ -314,9 +326,9 @@ export default function CourseClient({
         <FadeInOnScroll threshold={0.2} triggerOnce={true}>
           <CTAPromo
             type="qa"
-            title="Có câu hỏi?"
-            description="Hỏi đáp trực tiếp từ cộng đồng và các chuyên gia. Giải quyết vấn đề và học hỏi từ những người khác."
-            buttonText="Khám phá Q&A"
+            title={t("course.cta_questions", language)}
+            description={t("course.cta_questions_desc", language)}
+            buttonText={t("course.cta_questions_button", language)}
             href="/questions"
           />
         </FadeInOnScroll>
@@ -325,9 +337,9 @@ export default function CourseClient({
         <FadeInOnScroll threshold={0.2} triggerOnce={true}>
           <CTAPromo
             type="articles"
-            title="Đọc bài viết chuyên sâu"
-            description="Tìm hiểu thêm thông qua các bài viết, hướng dẫn và kinh nghiệm từ đội KMS-Plus và các chuyên gia."
-            buttonText="Khám phá Bài viết"
+            title={t("course.cta_articles", language)}
+            description={t("course.cta_articles_desc", language)}
+            buttonText={t("course.cta_articles_button", language)}
             href="/articles"
           />
         </FadeInOnScroll>
@@ -357,8 +369,8 @@ export default function CourseClient({
         <FadeInOnScroll threshold={0.2} triggerOnce={true}>
           {newCourses.length > 0 && (
             <CourseSection
-              title="Mới nhất từ KMS Plus"
-              subtitle="Các khóa học mới được thêm gần đây"
+              title={t("course.latest_courses", language)}
+              subtitle={t("course.latest_courses_desc", language)}
               courses={newCourses}
               columns={4}
               isLoading={loadingNew}
@@ -370,8 +382,8 @@ export default function CourseClient({
         <FadeInOnScroll threshold={0.2} triggerOnce={true}>
           {
             <CourseSection
-              title="Tất cả khóa học"
-              subtitle="Khám phá các khóa học có sẵn"
+              title={t("course.all_courses", language)}
+              subtitle={t("course.all_courses_desc", language)}
               courses={initialCourses}
               columns={4}
             />
@@ -391,7 +403,7 @@ export default function CourseClient({
                   color: "#111827",
                 }}
               >
-                Không tìm thấy khóa học
+                {t("course.no_courses_found", language)}
               </h3>
               <p
                 style={{
@@ -400,7 +412,7 @@ export default function CourseClient({
                   marginBottom: "24px",
                 }}
               >
-                Hãy thử tìm kiếm với các từ khóa khác
+                {t("course.no_courses_desc", language)}
               </p>
             </div>
           )}
@@ -416,7 +428,7 @@ export default function CourseClient({
               color: "#991b1b",
             }}
           >
-            <strong>Lỗi:</strong> {fetchError}
+            <strong>{t("course.error_label", language)}</strong> {fetchError}
           </div>
         )}
       </div>
