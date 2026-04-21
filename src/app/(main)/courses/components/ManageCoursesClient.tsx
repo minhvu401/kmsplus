@@ -326,7 +326,7 @@ export default function ManageCoursesClient({
       return
     }
 
-    const hide = messageApi.loading("Loading course details...", 0)
+    const hide = messageApi.loading(language === "vi" ? "Đang tải thông tin khóa học..." : "Loading course details...", 0)
 
     try {
       // 1. Gọi API lấy thông tin chi tiết (bao gồm curriculum)
