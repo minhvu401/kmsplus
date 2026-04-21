@@ -19,6 +19,7 @@ export const rolePermissionsMap: Record<Role, Permission[]> = {
     Permission.VIEW_QUESTION_LIST,
     Permission.SEARCH_QUESTION,
     Permission.READ_QUESTION,
+    Permission.CREATE_QUESTION,
     Permission.CREATE_ANSWER,
     Permission.EDIT_ANSWER,
     Permission.DELETE_ANSWER,
