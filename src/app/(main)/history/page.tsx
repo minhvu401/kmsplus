@@ -285,13 +285,6 @@ export default function PersonalHistoryPage() {
               {t("history.page_subtitle", language)}
             </p>
           </div>
-          <Button
-            type="primary"
-            icon={<Download size={18} />}
-            className="bg-blue-600 hover:!bg-blue-700 h-10 px-5 border-none shadow-sm font-medium"
-          >
-            {t("history.export_report", language)}
-          </Button>
         </div>
 
         {/* STATS CARDS */}

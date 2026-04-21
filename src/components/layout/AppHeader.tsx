@@ -354,7 +354,7 @@ export default function AppHeader({ collapsed }: HeaderProps) {
       >
         <Space size="middle">
           {/* <WarningOutlined style={{ fontSize: "18px", color: "#f5222d" }} /> */}
-          <MessageOutlined style={{ fontSize: "18px" }} />
+          {/* <MessageOutlined style={{ fontSize: "18px" }} /> */}
           <Dropdown
             trigger={["hover"]}
             placement="bottomRight"

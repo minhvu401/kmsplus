@@ -1138,7 +1138,6 @@ export const en = {
   "history.page_title": "Learning History",
   "history.page_subtitle":
     "Track your progress, view enrolled courses, and access certificates upon completion.",
-  "history.export_report": "Export Report",
   "history.stat_lifelong_access": "Lifelong Access",
   "history.stat_completion_rate": "Completion Rate",
   "history.stat_continue_learning": "Keep Learning!",
