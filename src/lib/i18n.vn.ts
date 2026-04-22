@@ -1160,7 +1160,6 @@ export const vi = {
   "history.page_title": "Lịch Sử Học Tập",
   "history.page_subtitle":
     "Theo dõi tiến độ, xem các khóa học đã tham gia và truy cập chứng chỉ khi hoàn thành.",
-  "history.export_report": "Xuất báo cáo",
   "history.stat_lifelong_access": "Truy cập trọn đời",
   "history.stat_completion_rate": "Tỷ lệ hoàn thành",
   "history.stat_continue_learning": "Tiếp tục học nhé!",

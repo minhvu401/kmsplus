@@ -2057,7 +2057,7 @@ export default function ArticleManagement() {
       </Modal>
 
       <Modal
-        title="Edit Article"
+        title={t("article.edit.title", language)}
         open={isEditModalOpen}
         centered
         onCancel={() => {
@@ -2084,7 +2084,7 @@ export default function ArticleManagement() {
         }}
         getContainer={() => document.body}
       >
-        <Spin spinning={loadingEditData} tip="Loading article...">
+        <Spin spinning={loadingEditData} tip={t("article.edit.loading", language)}>
           <Form
             form={editForm}
             layout="vertical"
@@ -2095,7 +2095,7 @@ export default function ArticleManagement() {
             <Form.Item
               label={
                 <Text strong className="text-base">
-                  Title <span className="text-red-500">*</span>
+                  {t("article.edit.label_title", language)} <span className="text-red-500">*</span>
                 </Text>
               }
               name="title"
@@ -2107,11 +2107,13 @@ export default function ArticleManagement() {
                       .replace(/<[^>]*>/g, "")
                       .trim()
                     if (!textContent) {
-                      return Promise.reject("Please enter a title")
+                      return Promise.reject(
+                        t("article.edit.error_title_required", language)
+                      )
                     }
                     if (textContent.length > 150) {
                       return Promise.reject(
-                        "Title must be less than 150 characters"
+                        t("article.edit.error_title_length", language)
                       )
                     }
                     return Promise.resolve()
@@ -2156,7 +2158,7 @@ export default function ArticleManagement() {
             <Form.Item
               label={
                 <Text strong className="text-base">
-                  Thumbnail Image
+                  {t("article.form_thumbnail_label", language)}
                 </Text>
               }
               name="editThumbnail"
@@ -2169,11 +2171,13 @@ export default function ArticleManagement() {
                     className="w-40 h-30 object-cover rounded-lg border"
                   />
                 )}
-                <ImgCrop
-                  aspect={THUMBNAIL_ASPECT_RATIO}
-                  quality={1}
-                  modalTitle="Crop thumbnail image"
-                >
+                  <ImgCrop
+                    aspect={THUMBNAIL_ASPECT_RATIO}
+                    quality={1}
+                    modalTitle={
+                      language === "vi" ? "Cắt ảnh thumbnail" : "Crop thumbnail image"
+                    }
+                  >
                   <Upload
                     maxCount={1}
                     accept="image/*"
@@ -2195,7 +2199,7 @@ export default function ArticleManagement() {
                       loading={uploadingEditThumbnail}
                       disabled={uploadingEditThumbnail}
                     >
-                      Click to Upload Thumbnail
+                      {t("article.form_thumbnail_upload_text", language)}
                     </Button>
                   </Upload>
                 </ImgCrop>
@@ -2207,7 +2211,7 @@ export default function ArticleManagement() {
             <Form.Item
               label={
                 <Text strong className="text-base">
-                  Content <span className="text-red-500">*</span>
+                  {t("article.edit.label_content", language)} <span className="text-red-500">*</span>
                 </Text>
               }
               name="content"
@@ -2219,11 +2223,13 @@ export default function ArticleManagement() {
                       .replace(/<[^>]*>/g, "")
                       .trim()
                     if (!textContent) {
-                      return Promise.reject("Please enter content")
+                      return Promise.reject(
+                        t("article.edit.error_content_required", language)
+                      )
                     }
                     if (textContent.length > 5000) {
                       return Promise.reject(
-                        "Content must be less than 5000 characters"
+                        t("article.edit.error_content_length", language)
                       )
                     }
                     return Promise.resolve()
@@ -2245,7 +2251,7 @@ export default function ArticleManagement() {
                 <QuillEditor
                   value={editContentValue}
                   onChange={handleEditEditorChange}
-                  placeholder="Write your content here..."
+                  placeholder={t("article.edit.content_placeholder", language)}
                   height={400}
                 />
               )}
@@ -2262,11 +2268,11 @@ export default function ArticleManagement() {
             <Form.Item
               label={
                 <Text strong className="text-base">
-                  Category <span className="text-red-500">*</span>
+                  {t("article.edit.label_category", language)} <span className="text-red-500">*</span>
                 </Text>
               }
               name="categoryId"
-              rules={[{ required: true, message: "Please select a category" }]}
+              rules={[{ required: true, message: t("article.edit.error_category_required", language) }]}
             >
               <Select
                 size="large"
@@ -2322,16 +2328,16 @@ export default function ArticleManagement() {
                 },
               ]}
             >
-              <Select
-                mode="tags"
-                maxCount={MAX_TAGS}
-                options={tags.map((tag) => ({
-                  label: tag.name,
-                  value: tag.name,
-                }))}
-                size="large"
-                loading={loadingTags}
-                placeholder="Thêm hoặc chọn thẻ (tối đa 5)"
+                <Select
+                  mode="tags"
+                  maxCount={MAX_TAGS}
+                  options={tags.map((tag) => ({
+                    label: tag.name,
+                    value: tag.name,
+                  }))}
+                  size="large"
+                  loading={loadingTags}
+                  placeholder={t("article.edit.placeholder_tags", language)}
                 value={editSelectedTags}
                 onChange={(values) => {
                   if (values.length <= MAX_TAGS) {
@@ -2384,22 +2390,22 @@ export default function ArticleManagement() {
                   }}
                   disabled={editingArticle}
                 >
-                  Cancel
+                  {t("common.cancel", language)}
                 </Button>
                 {editOriginalStatus === "draft" && (
-                  <Button
-                    type="primary"
-                    htmlType="submit"
-                    size="large"
-                    icon={<SendOutlined />}
-                    onClick={() => {
-                      setEditSubmitStatus("pending")
-                      editSubmitStatusRef.current = "pending"
-                    }}
-                    loading={editingArticle}
-                  >
-                    Submit for Review
-                  </Button>
+                    <Button
+                      type="primary"
+                      htmlType="submit"
+                      size="large"
+                      icon={<SendOutlined />}
+                      onClick={() => {
+                        setEditSubmitStatus("pending")
+                        editSubmitStatusRef.current = "pending"
+                      }}
+                      loading={editingArticle}
+                    >
+                      {t("article.form_btn_submit_approval", language)}
+                    </Button>
                 )}
                 <Button
                   type="primary"
@@ -2421,7 +2427,7 @@ export default function ArticleManagement() {
                   }}
                   loading={editingArticle}
                 >
-                  Update
+                  {t("common.save", language)}
                 </Button>
               </Flex>
             </Form.Item>
@@ -2431,7 +2437,7 @@ export default function ArticleManagement() {
 
       {/* Reject Modal */}
       <Modal
-        title="Reject Article"
+        title={t("article_detail.reject_modal_title", language)}
         open={isRejectModalOpen}
         onCancel={() => {
           setIsRejectModalOpen(false)
@@ -2448,7 +2454,7 @@ export default function ArticleManagement() {
             }}
             disabled={isRejectingArticle}
           >
-            Cancel
+            {t("common.cancel", language)}
           </Button>,
           <Button
             key="reject"
@@ -2457,7 +2463,7 @@ export default function ArticleManagement() {
             loading={isRejectingArticle}
             onClick={handleRejectSubmit}
           >
-            Reject Article
+            {t("article.btn_reject", language)}
           </Button>,
         ]}
         width={600}
@@ -2465,7 +2471,7 @@ export default function ArticleManagement() {
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Reason for Rejection
+              {t("article_detail.rejection_reason", language)}
             </label>
             <textarea
               value={rejectReason}
@@ -2474,7 +2480,7 @@ export default function ArticleManagement() {
                   setRejectReason(e.target.value)
                 }
               }}
-              placeholder="Enter reason for rejection (optional)"
+              placeholder={t("article_detail.reject_reason_placeholder", language)}
               className={`w-full px-3 py-2 border rounded-md focus:outline-none ${
                 rejectReason.length === 500
                   ? "border-red-500 focus:border-red-500"
@@ -2486,7 +2492,9 @@ export default function ArticleManagement() {
             />
             <Flex justify="space-between" align="center" className="mt-2">
               <Text type="secondary" className="text-xs">
-                The reason will be sent to the article author
+                {language === "vi"
+                  ? "Lý do sẽ được gửi tới tác giả bài viết"
+                  : "The reason will be sent to the article author"}
               </Text>
               <Text type="secondary" className="text-sm">
                 {rejectReason.length}/500
@@ -2526,7 +2534,11 @@ export default function ArticleManagement() {
 
       {/* Delete Confirmation Modal */}
       <Modal
-        title={deleteConfirmIsDeleted ? "Restore Article" : "Archive Article"}
+        title={
+          deleteConfirmIsDeleted
+            ? t("article.grid_restore_article", language)
+            : t("article.grid_delete_article", language)
+        }
         open={isDeleteConfirmOpen}
         onCancel={() => {
           setIsDeleteConfirmOpen(false)
@@ -2543,7 +2555,7 @@ export default function ArticleManagement() {
             }}
             disabled={deletingId !== null}
           >
-            Cancel
+            {t("common.cancel", language)}
           </Button>,
           <Button
             key="confirm"
@@ -2577,7 +2589,11 @@ export default function ArticleManagement() {
         <div className="space-y-4">
           <p className="text-base">
             {deleteConfirmIsDeleted
-              ? "Are you sure you want to restore this article?"
+              ? language === "vi"
+                ? "Bạn có chắc chắn muốn khôi phục bài viết này không?"
+                : "Are you sure you want to restore this article?"
+              : language === "vi"
+              ? "Bạn có chắc chắn muốn lưu trữ bài viết này? Hành động này sẽ đánh dấu bài viết là đã lưu trữ và loại khỏi các chế độ xem hoạt động."
               : "Are you sure you want to archive this article? This action marks it as archived and excludes it from active views."}
           </p>
         </div>
@@ -2585,7 +2601,7 @@ export default function ArticleManagement() {
 
       {/* Approve Confirmation Modal */}
       <Modal
-        title="Approve Article"
+        title={t("article_detail.approve_modal_title", language)}
         open={isApproveConfirmOpen}
         onCancel={() => {
           setIsApproveConfirmOpen(false)
@@ -2600,7 +2616,7 @@ export default function ArticleManagement() {
             }}
             disabled={isApprovingArticle}
           >
-            Cancel
+            {t("common.cancel", language)}
           </Button>,
           <Button
             key="approve"
@@ -2608,15 +2624,13 @@ export default function ArticleManagement() {
             loading={isApprovingArticle}
             onClick={handleApproveConfirm}
           >
-            Approve Article
+            {t("article.btn_approve", language)}
           </Button>,
         ]}
         width={600}
       >
         <div className="space-y-4">
-          <p className="text-base">
-            Are you sure you want to approve this article?
-          </p>
+          <p className="text-base">{t("article_detail.approve_modal_desc", language)}</p>
         </div>
       </Modal>
     </div>
