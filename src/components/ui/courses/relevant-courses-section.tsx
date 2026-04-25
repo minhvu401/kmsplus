@@ -15,6 +15,7 @@ interface RelevantCoursesProps {
     { status: "not-enrolled" | "in-progress" | "completed"; progress: number }
   >
   dueDateMap?: Map<number, string>
+  instructorMap?: Map<number, { name: string; avatar?: string }>
 }
 
 export const RelevantCoursesSection: React.FC<RelevantCoursesProps> = ({
@@ -23,6 +24,7 @@ export const RelevantCoursesSection: React.FC<RelevantCoursesProps> = ({
   isLoading = false,
   enrollmentMap = new Map(),
   dueDateMap = new Map(),
+  instructorMap = new Map(),
 }) => {
   if (isLoading) {
     return (
@@ -107,6 +109,7 @@ export const RelevantCoursesSection: React.FC<RelevantCoursesProps> = ({
           <CourseCard
             key={course.id}
             course={course}
+            instructor={instructorMap.get(course.creator_id)}
             enrollmentStatus={
               enrollmentMap.get(course.id)?.status || "not-enrolled"
             }

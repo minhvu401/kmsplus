@@ -6,6 +6,8 @@ import { Button, message, Tooltip } from "antd"
 import { CheckCircleFilled, CheckOutlined } from "@ant-design/icons"
 import { updateProgress } from "@/action/progress/progressAction"
 import { useRouter } from "next/navigation"
+import { t } from "@/lib/i18n"
+import useLanguageStore from "@/store/useLanguageStore"
 
 interface CompleteButtonProps {
   courseId: number
@@ -25,6 +27,7 @@ export default function CompleteButton({
   const [isCompleted, setIsCompleted] = useState(initialCompleted)
   const [loading, setLoading] = useState(false)
   const router = useRouter()
+  const { language } = useLanguageStore()
 
   const handleComplete = async () => {
     // Nếu đã hoàn thành rồi thì không làm gì (hoặc có thể làm chức năng undo nếu muốn)
@@ -37,9 +40,11 @@ export default function CompleteButton({
       if (res.success && "progressPercentage" in res) {
         // 1. Cập nhật UI ngay lập tức để user thấy thay đổi
         setIsCompleted(true)
-        message.success(
-          `Great job! Course progress: ${res.progressPercentage}%`
+        const msg = t("learning.complete_success", language).replace(
+          "{0}",
+          String(res.progressPercentage)
         )
+        message.success(msg)
 
         // 2. Gọi callback để LearningClient cập nhật state ngay lập tức
         if (onCompleted) {
@@ -49,11 +54,11 @@ export default function CompleteButton({
           router.refresh()
         }
       } else {
-        message.error(res.error || "Failed to update progress")
+        message.error(res.error || t("learning.update_failed", language))
       }
     } catch (error) {
       console.error(error)
-      message.error("Something went wrong")
+      message.error(t("learning.something_wrong", language))
     } finally {
       setLoading(false)
     }
@@ -74,9 +79,9 @@ export default function CompleteButton({
       <Button
         className={`${commonClasses} bg-green-50 text-green-600 border-green-200 hover:!bg-green-100 hover:!text-green-700 hover:!border-green-300`}
         icon={<CheckCircleFilled />}
-      >
-        Completed
-      </Button>
+        >
+          {t("learning.completed_label", language)}
+        </Button>
     )
   }
 
@@ -89,7 +94,7 @@ export default function CompleteButton({
       className={`${commonClasses} bg-blue-600 hover:!bg-blue-700 border-none`}
       icon={<CheckOutlined />}
     >
-      Mark as Complete
+      {t("learning.mark_complete", language)}
     </Button>
   )
 }

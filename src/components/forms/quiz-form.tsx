@@ -106,6 +106,14 @@ export default function QuizForm({
       language === "vi" ? "Đang tự động nộp bài" : "Auto-submitting quiz",
     question: language === "vi" ? "Câu" : "Question",
     of: language === "vi" ? "trên" : "of",
+    copyBlocked:
+      language === "vi"
+        ? "Không thể sao chép/nối nội dung bài kiểm tra."
+        : "Copy/paste is disabled for this quiz.",
+    mustSelectOne:
+      language === "vi"
+        ? "Bạn phải giữ ít nhất một đáp án cho câu hỏi này."
+        : "You must keep at least one answer selected for this question.",
   }
 
   const [answers, setAnswers] =
@@ -128,6 +136,38 @@ export default function QuizForm({
       duration: 2,
     })
   }
+
+  // Prevent copy/paste/cut and right-click copying of quiz content
+  useEffect(() => {
+    const blockHandler = (e: Event) => {
+      e.preventDefault()
+      e.stopPropagation()
+      message.warning(t.copyBlocked, 2)
+    }
+
+    const keyHandler = (e: KeyboardEvent) => {
+      const key = e.key.toLowerCase()
+      if ((e.ctrlKey || e.metaKey) && (key === "c" || key === "v" || key === "x")) {
+        e.preventDefault()
+        e.stopPropagation()
+        message.warning(t.copyBlocked, 2)
+      }
+    }
+
+    document.addEventListener("copy", blockHandler)
+    document.addEventListener("cut", blockHandler)
+    document.addEventListener("paste", blockHandler)
+    document.addEventListener("contextmenu", blockHandler)
+    document.addEventListener("keydown", keyHandler)
+
+    return () => {
+      document.removeEventListener("copy", blockHandler)
+      document.removeEventListener("cut", blockHandler)
+      document.removeEventListener("paste", blockHandler)
+      document.removeEventListener("contextmenu", blockHandler)
+      document.removeEventListener("keydown", keyHandler)
+    }
+  }, [])
 
   const isExpiryError = (error: unknown) => {
     const errorMessage =
@@ -175,10 +215,14 @@ export default function QuizForm({
     }))
 
     startTransition(() => {
+      // If user deselects all options for a multiple-choice question,
+      // send `null` to the server to indicate cleared answer.
+      const valueToSend = Array.isArray(value) && value.length === 0 ? null : value
+
       void saveAttemptAnswer({
         attemptId,
         questionId,
-        selectedAnswer: value,
+        selectedAnswer: valueToSend,
       })
         .catch(async (error) => {
           if (!isExpiryError(error)) {
@@ -308,12 +352,12 @@ export default function QuizForm({
                 </Space>
                 <Title
                   level={2}
-                  style={{ color: "white", margin: 0, fontSize: 28 }}
+                  style={{ color: "white", margin: 0, fontSize: 28, userSelect: "none" }}
                 >
                   {t.title}
                 </Title>
                 <Paragraph
-                  style={{ color: "rgba(255,255,255,0.85)", margin: 0 }}
+                  style={{ color: "rgba(255,255,255,0.85)", margin: 0, userSelect: "none" }}
                 >
                   {t.subtitle}
                 </Paragraph>
@@ -364,6 +408,7 @@ export default function QuizForm({
               onChange={handleAnswerChange}
               labelQuestion={t.question}
               labelOf={t.of}
+              mustSelectOne={t.mustSelectOne}
             />
           ))}
 
@@ -465,6 +510,7 @@ function QuestionCard({
   onChange,
   labelQuestion,
   labelOf,
+  mustSelectOne,
 }: {
   index: number
   total: number
@@ -473,6 +519,7 @@ function QuestionCard({
   onChange: (id: number, value: number | number[]) => void
   labelQuestion: string
   labelOf: string
+  mustSelectOne: string
 }) {
   return (
     <Card
@@ -515,7 +562,7 @@ function QuestionCard({
           </Tag>
         </div>
 
-        <Paragraph style={{ fontSize: 16, fontWeight: 500, marginBottom: 18 }}>
+        <Paragraph style={{ fontSize: 16, fontWeight: 500, marginBottom: 18, userSelect: "none" }}>
           {question.question_text}
         </Paragraph>
 
@@ -530,6 +577,7 @@ function QuestionCard({
             question={question}
             value={Array.isArray(value) ? value : []}
             onChange={(v) => onChange(question.id, v)}
+            mustSelectOne={mustSelectOne}
           />
         )}
       </div>
@@ -606,6 +654,7 @@ function SingleChoice({
               backgroundColor: bgColor,
               borderRadius: 8,
               padding: "12px 16px",
+              userSelect: "none",
               display: "flex",
               alignItems: "center",
               cursor: "pointer",
@@ -630,10 +679,12 @@ function MultipleChoice({
   question,
   value = [],
   onChange,
+  mustSelectOne,
 }: {
   question: any
   value?: number[]
   onChange: (v: number[]) => void
+  mustSelectOne: string
 }) {
   const options = parseOptions(question.options)
   const selected = new Set(value)
@@ -686,16 +737,27 @@ function MultipleChoice({
             tabIndex={0}
             onClick={() => {
               const next = new Set(selected)
-              if (next.has(option.id)) next.delete(option.id)
-              else next.add(option.id)
+              if (next.has(option.id)) {
+                // Prevent deselecting the last remaining choice
+                if (next.size === 1) {
+                  message.warning(mustSelectOne)
+                  return
+                }
+                next.delete(option.id)
+              } else next.add(option.id)
               onChange(Array.from(next))
             }}
             onKeyDown={(e) => {
               if (e.key === "Enter" || e.key === " ") {
                 e.preventDefault()
                 const next = new Set(selected)
-                if (next.has(option.id)) next.delete(option.id)
-                else next.add(option.id)
+                if (next.has(option.id)) {
+                  if (next.size === 1) {
+                    message.warning(mustSelectOne)
+                    return
+                  }
+                  next.delete(option.id)
+                } else next.add(option.id)
                 onChange(Array.from(next))
               }
             }}
@@ -704,6 +766,7 @@ function MultipleChoice({
               backgroundColor: bgColor,
               borderRadius: 8,
               padding: "12px 16px",
+              userSelect: "none",
               display: "flex",
               alignItems: "center",
               cursor: "pointer",

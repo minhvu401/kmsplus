@@ -27,6 +27,7 @@ import FailedBanner from "@/components/ui/reviews/failed-banner"
 import QuizDetails from "@/components/ui/quizzes/quiz-details"
 import AttemptHistory from "@/components/ui/quizzes/attempt-history"
 import useLanguageStore from "@/store/useLanguageStore"
+import { t } from "@/lib/i18n"
 
 const { Header, Sider, Content } = Layout
 
@@ -59,17 +60,7 @@ export default function LearningClient({
   const [messageApi, contextHolder] = message.useMessage()
   const { language } = useLanguageStore()
 
-  const L = {
-    learningMode: language === "vi" ? "Chế độ học" : "Learning Mode",
-    progress: language === "vi" ? "Tiến độ" : "Progress",
-    previousLesson: language === "vi" ? "Bài trước" : "Previous Lesson",
-    nextLesson: language === "vi" ? "Bài sau" : "Next Lesson",
-      resetSuccess:
-        language === "vi" ? 'Đã đặt lại tiến độ khóa học.' : 'Course progress has been reset.',
-    quizNotAvailable: language === "vi" ? "Chi tiết bài kiểm tra không có sẵn." : "Quiz details are not available.",
-    courseContent: language === "vi" ? "Nội dung khóa học" : "Course Content",
-    loadingContent: language === "vi" ? "Đang tải nội dung..." : "Loading content...",
-  }
+
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -77,7 +68,7 @@ export default function LearningClient({
       const flag = sessionStorage.getItem('kms_reset_success')
       if (flag) {
         sessionStorage.removeItem('kms_reset_success')
-        messageApi.success(L.resetSuccess)
+        messageApi.success(t("learning.reset_success", language))
       }
     } catch (e) {
       // ignore
@@ -305,7 +296,7 @@ export default function LearningClient({
   }
 
   if (!activeItem)
-    return <div className="p-10 text-center">Khóa học chưa có nội dung.</div>
+    return <div className="p-10 text-center">{t("learning.no_content", language)}</div>
 
   // --- RENDER GIAO DIỆN ---
   return (
@@ -321,13 +312,13 @@ export default function LearningClient({
             <span className="font-bold text-gray-800 text-lg leading-tight truncate max-w-[200px] md:max-w-md">
               {course.title}
             </span>
-            <span className="text-xs text-gray-500">Learning Mode</span>
+            <span className="text-xs text-gray-500">{t("learning.mode", language)}</span>
           </div>
         </div>
         <div className="flex items-center gap-4">
           <div className="hidden md:block text-right">
             <div className="text-xs text-gray-400 font-bold uppercase">
-              Progress
+              {t("learning.progress", language)}
             </div>
             {/* Use real-time progress from database instead of calculating */}
             <div className="text-sm font-bold text-green-600">
@@ -360,7 +351,7 @@ export default function LearningClient({
               <div className="h-96 flex flex-col items-center justify-center gap-4">
                 <Spin size="large" />
                 <div className="text-gray-500 font-medium">
-                  {L.loadingContent}
+                  {t("learning.loading_content", language)}
                 </div>
               </div>
             ) : activeItem.type === "quiz" ? (
@@ -375,7 +366,7 @@ export default function LearningClient({
                       />
                     ) : (
                       <div className="text-center text-gray-500 py-10">
-                        {L.quizNotAvailable}
+                        {t("learning.quiz_not_available", language)}
                       </div>
                     )}
                   </div>
@@ -415,7 +406,7 @@ export default function LearningClient({
                     disabled={isFirstLesson}
                     style={{ visibility: isFirstLesson ? "hidden" : "visible" }}
                   >
-                    {L.previousLesson}
+                    {t("learning.previous", language)}
                   </Button>
 
                   <div className="flex-1" />
@@ -428,7 +419,7 @@ export default function LearningClient({
                     disabled={isLastLesson}
                     style={{ visibility: isLastLesson ? "hidden" : "visible" }}
                   >
-                    {L.nextLesson} <RightOutlined />
+                    {t("learning.next", language)} <RightOutlined />
                   </Button>
                 </div>
               </div>
@@ -458,12 +449,12 @@ export default function LearningClient({
                         {lessonContent?.title || activeItem?.title}
                       </h1>
                       <div className="text-gray-500 text-sm flex gap-2">
-                        {activeItem.type === "lesson" ? "📚 Lesson" : "📝 Quiz"}
+                        {activeItem.type === "lesson" ? `📚 ${t("learning.lesson", language)}` : `📝 ${t("learning.quiz", language)}`}
                         <span>•</span>
                         {lessonContent?.duration_minutes ||
                           activeItem?.duration_minutes ||
                           5}{" "}
-                        min read
+                        {t("learning.min", language)}
                       </div>
                     </div>
                   </div>
@@ -514,12 +505,11 @@ export default function LearningClient({
                             />
                           </svg>
                           <span className="text-sm font-medium text-gray-700">
-                            PDF Document
+                            {t("learning.pdf_document", language)}
                           </span>
                         </div>
                         <p className="text-sm text-gray-600 mb-4">
-                          Xem tài liệu PDF bên dưới. Bạn có thể tải xuống bằng
-                          nút ở góc trên bên phải.
+                          {t("learning.view_pdf_desc", language)}
                         </p>
                       </div>
                     )}
@@ -537,7 +527,7 @@ export default function LearningClient({
                     disabled={isFirstLesson}
                     style={{ visibility: isFirstLesson ? "hidden" : "visible" }}
                   >
-                    Previous Lesson
+                    {t("learning.previous", language)}
                   </Button>
 
                   {/* Nút Mark as Complete (Ở giữa) */}
@@ -560,7 +550,7 @@ export default function LearningClient({
                     disabled={isLastLesson}
                     style={{ visibility: isLastLesson ? "hidden" : "visible" }}
                   >
-                    Next Lesson <RightOutlined />
+                    {t("learning.next", language)} <RightOutlined />
                   </Button>
                 </div>
               </div>
@@ -580,7 +570,7 @@ export default function LearningClient({
         >
           <div className="sticky top-0 z-10 bg-white p-4 border-b flex justify-between items-center shadow-sm">
             {!collapsed && (
-              <span className="font-bold text-gray-700">{L.courseContent}</span>
+              <span className="font-bold text-gray-700">{t("learning.course_content", language)}</span>
             )}
             <Button
               type="text"
@@ -637,16 +627,16 @@ export default function LearningClient({
 
                               {item.type === "lesson" ? (
                                 <>
-                                  <span>Lesson | {getLessonTypeLabel(item.lesson_type)}</span>
+                                  <span>{`${t("learning.lesson", language)} | ${getLessonTypeLabel(item.lesson_type)}`}</span>
                                   {item.duration_minutes ? (
-                                    <span> • {item.duration_minutes} min</span>
+                                    <span> • {item.duration_minutes} {t("learning.min", language)}</span>
                                   ) : null}
                                 </>
                               ) : (
                                 <>
-                                  <span>Quiz</span>
+                                  <span>{t("learning.quiz", language)}</span>
                                   {item.question_count ? (
-                                    <span> • {item.question_count} questions</span>
+                                    <span> • {item.question_count} {t("learning.questions", language)}</span>
                                   ) : null}
                                 </>
                               )}

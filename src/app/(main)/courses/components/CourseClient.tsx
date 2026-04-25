@@ -305,6 +305,15 @@ export default function CourseClient({
               title={t("course.continue_learning", language)}
               subtitle={t("course.continue_learning_desc", language)}
               courses={resumeCourses}
+              instructorMap={new Map(
+                resumeCourses.map((c) => [
+                  c.creator_id,
+                  {
+                    name: (c as any).creator_name || (c as any).creator_full_name || "",
+                    avatar: (c as any).creator_avatar_url || undefined,
+                  },
+                ])
+              )}
               columns={4}
             />
           )}
@@ -317,6 +326,15 @@ export default function CourseClient({
               title={t("course.assigned_courses", language)}
               subtitle={t("course.assigned_courses_desc", language)}
               courses={assignedCourses}
+              instructorMap={new Map(
+                assignedCourses.map((c) => [
+                  c.creator_id,
+                  {
+                    name: (c as any).creator_name || (c as any).creator_full_name || "",
+                    avatar: (c as any).creator_avatar_url || undefined,
+                  },
+                ])
+              )}
               columns={4}
             />
           )}
@@ -350,6 +368,15 @@ export default function CourseClient({
             <TrendingCourses
               courses={trendingCourses}
               isLoading={loadingTrending}
+              instructorMap={new Map(
+                trendingCourses.map((c) => [
+                  c.creator_id,
+                  {
+                    name: (c as any).creator_name || (c as any).creator_full_name || "",
+                    avatar: (c as any).creator_avatar_url || undefined,
+                  },
+                ])
+              )}
             />
           )}
         </FadeInOnScroll>
@@ -361,6 +388,15 @@ export default function CourseClient({
               courses={relevantCourses}
               departmentName={relevantDepartmentName}
               isLoading={loadingRelevant}
+              instructorMap={new Map(
+                relevantCourses.map((c) => [
+                  c.creator_id,
+                  {
+                    name: (c as any).creator_name || (c as any).creator_full_name || "",
+                    avatar: (c as any).creator_avatar_url || undefined,
+                  },
+                ])
+              )}
             />
           )}
         </FadeInOnScroll>
@@ -372,6 +408,15 @@ export default function CourseClient({
               title={t("course.latest_courses", language)}
               subtitle={t("course.latest_courses_desc", language)}
               courses={newCourses}
+              instructorMap={new Map(
+                newCourses.map((c) => [
+                  c.creator_id,
+                  {
+                    name: (c as any).creator_name || (c as any).creator_full_name || "",
+                    avatar: (c as any).creator_avatar_url || undefined,
+                  },
+                ])
+              )}
               columns={4}
               isLoading={loadingNew}
             />
@@ -385,6 +430,15 @@ export default function CourseClient({
               title={t("course.all_courses", language)}
               subtitle={t("course.all_courses_desc", language)}
               courses={initialCourses}
+              instructorMap={new Map(
+                initialCourses.map((c) => [
+                  c.creator_id,
+                  {
+                    name: (c as any).creator_name || (c as any).creator_full_name || "",
+                    avatar: (c as any).creator_avatar_url || undefined,
+                  },
+                ])
+              )}
               columns={4}
             />
           }

@@ -12,12 +12,14 @@ interface TrendingCoursesProps {
   courses: Course[]
   isLoading?: boolean
   onViewAll?: () => void
+  instructorMap?: Map<number, { name: string; avatar?: string }>
 }
 
 export const TrendingCourses: React.FC<TrendingCoursesProps> = ({
   courses,
   isLoading = false,
   onViewAll,
+  instructorMap = new Map(),
 }) => {
   const { language: rawLanguage } = useLanguageStore()
   const language = rawLanguage as Language
@@ -110,6 +112,7 @@ export const TrendingCourses: React.FC<TrendingCoursesProps> = ({
             </div>
             <CourseCard
               course={course}
+              instructor={instructorMap.get(course.creator_id)}
               enrollmentStatus="not-enrolled"
               progress={0}
               skillTags={[]}

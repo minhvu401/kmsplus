@@ -943,7 +943,7 @@ export default function ArticleDetailPage() {
                     )}
 
                     {!loadingComments && comments.length === 0 && (
-                      <Empty description="No comments yet. Be the first to comment!" />
+                      <Empty description={t("article.comments_empty", language)} />
                     )}
                   </>
                 )}
@@ -958,7 +958,7 @@ export default function ArticleDetailPage() {
                 type="secondary"
                 className="block mb-3 text-xs uppercase tracking-wide"
               >
-                Authors
+                {t("article.table_author", language)}
               </Text>
               <div className="flex items-start space-x-4">
                 <Avatar
@@ -969,7 +969,7 @@ export default function ArticleDetailPage() {
                 />
                 <div>
                   <Title level={5} className="!mb-1">
-                    {article.author_name || "Nguyễn Văn A"}
+                    {article.author_name || t("article.unknown_author", language)}
                   </Title>
                   <Text type="secondary">
                     {article.department_name || "N/A"}

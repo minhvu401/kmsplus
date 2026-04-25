@@ -769,10 +769,13 @@ export async function getPublishedCoursesService({
       SELECT 
         c.*,
         MAX(cat.name) AS category_name,
+        MAX(u.full_name) AS creator_name,
+        MAX(u.avatar_url) AS creator_avatar_url,
         COALESCE(ROUND(AVG(f.rating) * 2) / 2, 0) AS average_rating,
         COALESCE(COUNT(f.id), 0)::int AS rating_count
       FROM courses c
       LEFT JOIN categories cat ON c.category_id = cat.id
+      LEFT JOIN users u ON c.creator_id = u.id
       LEFT JOIN feedback f ON f.course_id = c.id AND f.deleted_at IS NULL
       WHERE c.deleted_at IS NULL
         AND c.status = 'published'
@@ -825,11 +828,14 @@ export async function getUserEnrolledCoursesService(
       SELECT 
         c.*,
         MAX(cat.name) AS category_name,
+        MAX(u.full_name) AS creator_name,
+        MAX(u.avatar_url) AS creator_avatar_url,
         COALESCE(ROUND(AVG(f.rating) * 2) / 2, 0) AS average_rating,
         COALESCE(COUNT(f.id), 0)::int AS rating_count,
         MAX(e.enrolled_at) AS latest_enrolled_at
       FROM courses c
       LEFT JOIN categories cat ON c.category_id = cat.id
+      LEFT JOIN users u ON c.creator_id = u.id
       LEFT JOIN feedback f ON f.course_id = c.id AND f.deleted_at IS NULL
       INNER JOIN enrollments e ON e.course_id = c.id
       WHERE c.deleted_at IS NULL
@@ -861,11 +867,14 @@ export async function getAllUserEnrolledCoursesService(userId: number) {
       SELECT 
         c.*,
         MAX(cat.name) AS category_name,
+        MAX(u.full_name) AS creator_name,
+        MAX(u.avatar_url) AS creator_avatar_url,
         COALESCE(ROUND(AVG(f.rating) * 2) / 2, 0) AS average_rating,
         COALESCE(COUNT(f.id), 0)::int AS rating_count,
         MAX(e.enrolled_at) AS latest_enrolled_at
       FROM courses c
       LEFT JOIN categories cat ON c.category_id = cat.id
+      LEFT JOIN users u ON c.creator_id = u.id
       LEFT JOIN feedback f ON f.course_id = c.id AND f.deleted_at IS NULL
       INNER JOIN enrollments e ON e.course_id = c.id
       WHERE c.deleted_at IS NULL
@@ -894,10 +903,13 @@ export async function getNewestCoursesService(
       SELECT 
         c.*,
         MAX(cat.name) AS category_name,
+        MAX(u.full_name) AS creator_name,
+        MAX(u.avatar_url) AS creator_avatar_url,
         COALESCE(ROUND(AVG(f.rating) * 2) / 2, 0) AS average_rating,
         COALESCE(COUNT(f.id), 0)::int AS rating_count
       FROM courses c
       LEFT JOIN categories cat ON c.category_id = cat.id
+      LEFT JOIN users u ON c.creator_id = u.id
       LEFT JOIN feedback f ON f.course_id = c.id AND f.deleted_at IS NULL
       WHERE c.deleted_at IS NULL
         AND c.status = 'published'
@@ -928,11 +940,14 @@ export async function getTrendingCoursesService(
       SELECT 
         c.*,
         MAX(cat.name) AS category_name,
+        MAX(u.full_name) AS creator_name,
+        MAX(u.avatar_url) AS creator_avatar_url,
         COALESCE(ROUND(AVG(f.rating) * 2) / 2, 0) AS average_rating,
         COALESCE(COUNT(f.id), 0)::int AS rating_count,
         COUNT(DISTINCT e.id)::int AS recent_enrollment_count
       FROM courses c
       LEFT JOIN categories cat ON c.category_id = cat.id
+      LEFT JOIN users u ON c.creator_id = u.id
       LEFT JOIN feedback f ON f.course_id = c.id AND f.deleted_at IS NULL
       INNER JOIN enrollments e ON e.course_id = c.id
       WHERE c.deleted_at IS NULL
@@ -1022,10 +1037,13 @@ export async function getAssignedCoursesService(
       SELECT 
         c.*,
         MAX(cat.name) AS category_name,
+        MAX(u.full_name) AS creator_name,
+        MAX(u.avatar_url) AS creator_avatar_url,
         COALESCE(ROUND(AVG(f.rating) * 2) / 2, 0) AS average_rating,
         COALESCE(COUNT(f.id), 0)::int AS rating_count
       FROM courses c
       LEFT JOIN categories cat ON c.category_id = cat.id
+      LEFT JOIN users u ON c.creator_id = u.id
       LEFT JOIN feedback f ON f.course_id = c.id AND f.deleted_at IS NULL
       WHERE c.deleted_at IS NULL
         AND c.status = 'published'
@@ -1066,11 +1084,14 @@ export async function getPopularCoursesByCategoryService(
       SELECT 
         c.*,
         MAX(cat.name) AS category_name,
+        MAX(u.full_name) AS creator_name,
+        MAX(u.avatar_url) AS creator_avatar_url,
         COALESCE(ROUND(AVG(f.rating) * 2) / 2, 0) AS average_rating,
         COALESCE(COUNT(f.id), 0)::int AS rating_count,
         ROW_NUMBER() OVER (PARTITION BY c.category_id ORDER BY c.enrollment_count DESC, c.created_at DESC) as category_rank
       FROM courses c
       LEFT JOIN categories cat ON c.category_id = cat.id
+      LEFT JOIN users u ON c.creator_id = u.id
       LEFT JOIN feedback f ON f.course_id = c.id AND f.deleted_at IS NULL
       WHERE c.deleted_at IS NULL
         AND c.status = 'published'
