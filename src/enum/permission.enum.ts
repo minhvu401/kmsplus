@@ -260,60 +260,55 @@ export const PermissionConfig = {
     name: "review_course",
     label: "Đánh giá khóa học",
   },
-  [Permission.APPROVE_COURSE]: {
-    id: 302,
-    name: "approve_course",
-    label: "Phê duyệt khóa học",
-  },
-  [Permission.VIEW_COURSE_STATISTICS]: {
-    id: 303,
-    name: "view_course_statistics",
-    label: "Xem thống kê khóa học",
-  },
 
   // Quizzes
   [Permission.CREATE_QUIZ]: {
-    id: 304,
+    id: 302,
     name: "create_quiz",
     label: "Tạo bài kiểm tra",
   },
   [Permission.VIEW_QUIZ]: {
-    id: 305,
+    id: 303,
     name: "view_quiz",
     label: "Xem bài kiểm tra",
   },
   [Permission.UPDATE_QUIZ]: {
-    id: 306,
+    id: 304,
     name: "update_quiz",
     label: "Cập nhật bài kiểm tra",
   },
   [Permission.DELETE_QUIZ]: {
-    id: 307,
+    id: 305,
     name: "delete_quiz",
     label: "Xóa bài kiểm tra",
   },
   [Permission.CREATE_QUIZ_QUESTION]: {
-    id: 308,
+    id: 306,
     name: "create_quiz_question",
     label: "Thêm câu hỏi vào bài kiểm tra",
   },
   [Permission.EDIT_QUIZ_QUESTION]: {
-    id: 309,
+    id: 307,
     name: "edit_quiz_question",
     label: "Chỉnh sửa câu hỏi bài kiểm tra",
   },
   [Permission.DELETE_QUIZ_QUESTION]: {
-    id: 310,
+    id: 308,
     name: "delete_quiz_question",
     label: "Xóa câu hỏi bài kiểm tra",
   },
+  [Permission.VIEW_QUESTION_BANK]: {
+    id: 309,
+    name: "view_question_bank",
+    label: "Xem ngân hàng câu hỏi",
+  },
   [Permission.VIEW_QUIZ_QUESTION]: {
-    id: 311,
+    id: 310,
     name: "view_quiz_question",
     label: "Xem câu hỏi bài kiểm tra",
   },
   [Permission.VIEW_QUIZ_LIST]: {
-    id: 312,
+    id: 311,
     name: "view_quiz_list",
     label: "Xem danh sách bài kiểm tra",
   },
@@ -323,19 +318,14 @@ export const PermissionConfig = {
     label: "Tham gia bài kiểm tra",
   },
   [Permission.VIEW_QUIZ_RESULT]: {
-    id: 314,
+    id: 315,
     name: "view_quiz_result",
     label: "Xem kết quả bài kiểm tra",
   },
 
   // Enrollment & Progress
-  [Permission.VIEW_QUESTION_BANK]: {
-    id: 315,
-    name: "view_question_bank",
-    label: "Xem ngân hàng câu hỏi",
-  },
   [Permission.VIEW_PERSONAL_PROGRESS]: {
-    id: 316,
+    id: 314,
     name: "view_personal_progress",
     label: "Xem tiến độ cá nhân",
   },
@@ -374,104 +364,104 @@ export const PermissionConfig = {
 
   // Categories
   [Permission.CREATE_CATEGORY]: {
-    id: 323,
+    id: 326,
     name: "create_category",
     label: "Tạo danh mục",
   },
   [Permission.VIEW_CATEGORY_LIST]: {
-    id: 324,
+    id: 327,
     name: "view_category_list",
     label: "Xem danh sách danh mục",
   },
   [Permission.UPDATE_CATEGORY]: {
-    id: 325,
+    id: 328,
     name: "update_category",
     label: "Cập nhật danh mục",
   },
   [Permission.DELETE_CATEGORY]: {
-    id: 326,
+    id: 329,
     name: "delete_category",
     label: "Xóa danh mục",
   },
   [Permission.SEARCH_CATEGORY]: {
-    id: 327,
+    id: 330,
     name: "search_category",
     label: "Tìm kiếm danh mục",
   },
 
-  // Documents
-  [Permission.VIEW_DOCUMENT]: {
-    id: 328,
-    name: "view_document",
-    label: "Xem tài liệu",
-  },
-  [Permission.CREATE_DOCUMENT]: {
-    id: 329,
-    name: "create_document",
-    label: "Tạo tài liệu",
-  },
-  [Permission.UPDATE_DOCUMENT]: {
-    id: 330,
-    name: "update_document",
-    label: "Cập nhật tài liệu",
-  },
-  [Permission.DELETE_DOCUMENT]: {
-    id: 331,
-    name: "delete_document",
-    label: "Xóa tài liệu",
-  },
-
-  // System Administration
+  // System Administration (3)
   [Permission.MONITOR_ACTIVITY]: {
-    id: 332,
+    id: 323,
     name: "monitor_activity",
     label: "Giám sát hoạt động",
   },
   [Permission.VIEW_STATISTICS]: {
-    id: 333,
+    id: 324,
     name: "view_statistics",
     label: "Xem thống kê",
   },
   [Permission.EXPORT_DATA]: {
-    id: 334,
+    id: 325,
     name: "export_data",
     label: "Xuất dữ liệu",
   },
 
   // System Settings
   [Permission.LANGUAGE_SETTING]: {
-    id: 335,
+    id: 331,
     name: "language_setting",
     label: "Cài đặt ngôn ngữ",
   },
   [Permission.VIEW_ROLE_PERMISSION]: {
-    id: 336,
+    id: 332,
     name: "view_role_permission",
     label: "Xem quyền vai trò",
   },
   [Permission.EDIT_ROLE_PERMISSION]: {
-    id: 337,
+    id: 333,
     name: "edit_role_permission",
     label: "Chỉnh sửa quyền vai trò",
   },
   [Permission.MODERATE_CONTENT]: {
-    id: 338,
+    id: 334,
     name: "moderate_content",
     label: "Kiểm duyệt nội dung",
   },
-  [Permission.AI_EXPLANATION]: {
-    id: 339,
-    name: "ai_explanation",
-    label: "Giải thích AI",
-  },
   [Permission.AI_RECOMMENDATION]: {
-    id: 340,
+    id: 335,
     name: "ai_recommendation",
     label: "Gợi ý AI",
   },
+  [Permission.AI_EXPLANATION]: {
+    id: 336,
+    name: "ai_explanation",
+    label: "Giải thích AI",
+  },
   [Permission.MANAGE_SYSTEM]: {
-    id: 341,
+    id: 337,
     name: "manage_system",
     label: "Quản lý hệ thống",
+  },
+
+  // Documents (4)
+  [Permission.VIEW_DOCUMENT]: {
+    id: 343,
+    name: "view_document",
+    label: "Xem tài liệu",
+  },
+  [Permission.CREATE_DOCUMENT]: {
+    id: 344,
+    name: "create_document",
+    label: "Tạo tài liệu",
+  },
+  [Permission.UPDATE_DOCUMENT]: {
+    id: 345,
+    name: "update_document",
+    label: "Cập nhật tài liệu",
+  },
+  [Permission.DELETE_DOCUMENT]: {
+    id: 346,
+    name: "delete_document",
+    label: "Xóa tài liệu",
   },
 } as const
