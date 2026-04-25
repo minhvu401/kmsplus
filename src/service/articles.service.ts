@@ -141,6 +141,52 @@ async function createArticleStatusNotification(params: {
   }
 }
 
+/**
+ * Gửi notification cho admin khi article chờ duyệt
+ */
+async function notifyAdminsAboutPendingArticle(
+  articleId: number,
+  articleTitle: string,
+  authorName: string
+) {
+  try {
+    // Lấy tất cả admin users
+    const adminUsers = await sql`
+      SELECT DISTINCT u.id
+      FROM users u
+      JOIN user_roles ur ON u.id = ur.user_id
+      JOIN roles r ON ur.role_id = r.id
+      WHERE LOWER(r.name) LIKE '%admin%' OR LOWER(r.name) LIKE '%director%'
+    `
+
+    // Gửi notification cho từng admin
+    for (const admin of adminUsers) {
+      await sql`
+        INSERT INTO notifications (
+          user_id,
+          title,
+          content,
+          type,
+          redirect_url,
+          is_read,
+          created_at
+        )
+        VALUES (
+          ${admin.id},
+          ${"New article pending approval"},
+          ${`Article "${articleTitle}" từ ${authorName} đang chờ duyệt`},
+          ${"article_pending_approval"},
+          ${`/content-management/articles?status=pending`},
+          FALSE,
+          ${VIETNAM_NOW}
+        )
+      `
+    }
+  } catch (error: any) {
+    console.error("Error notifying admins about pending article:", error)
+  }
+}
+
 export async function createArticleAction(
   input: CreateArticleInput
 ): Promise<{ success: boolean; message: string; articleId?: string }> {
@@ -246,6 +292,19 @@ export async function createArticleAction(
           }
         }
       }
+    }
+
+    // Nếu article pending approval, gửi notification cho admin
+    if (normalizedStatus === "pending") {
+      const authorResult = await sql`
+        SELECT full_name FROM users WHERE id = ${author_id} LIMIT 1
+      `
+      const authorName = authorResult[0]?.full_name || "Unknown"
+      await notifyAdminsAboutPendingArticle(
+        Number(articleId),
+        title,
+        authorName
+      )
     }
 
     return {
@@ -664,6 +723,7 @@ export async function approveArticleAction(
     }
 
     const updatedArticle = result[0]
+    // Gửi notification chỉ cho author (người tạo bài)
     await createArticleStatusNotification({
       userId: Number(updatedArticle.author_id),
       articleId: Number(updatedArticle.id),
@@ -673,18 +733,6 @@ export async function approveArticleAction(
         updatedArticle.thumbnail_url || updatedArticle.image_url || null,
       type: "article_approved",
     })
-
-    if (actorUserId && actorUserId !== Number(updatedArticle.author_id)) {
-      await createArticleStatusNotification({
-        userId: actorUserId,
-        articleId: Number(updatedArticle.id),
-        articleTitle: updatedArticle.title || "Untitled article",
-        articleContent: updatedArticle.content || "",
-        thumbnailUrl:
-          updatedArticle.thumbnail_url || updatedArticle.image_url || null,
-        type: "article_approved",
-      })
-    }
 
     return { success: true, message: "Article approved successfully" }
   } catch (error: any) {
@@ -719,6 +767,7 @@ export async function rejectArticleAction(
     }
 
     const updatedArticle = result[0]
+    // Gửi notification chỉ cho author (người tạo bài)
     await createArticleStatusNotification({
       userId: Number(updatedArticle.author_id),
       articleId: Number(updatedArticle.id),
@@ -729,19 +778,6 @@ export async function rejectArticleAction(
       type: "article_rejected",
       reason,
     })
-
-    if (actorUserId && actorUserId !== Number(updatedArticle.author_id)) {
-      await createArticleStatusNotification({
-        userId: actorUserId,
-        articleId: Number(updatedArticle.id),
-        articleTitle: updatedArticle.title || "Untitled article",
-        articleContent: updatedArticle.content || "",
-        thumbnailUrl:
-          updatedArticle.thumbnail_url || updatedArticle.image_url || null,
-        type: "article_rejected",
-        reason,
-      })
-    }
 
     return { success: true, message: "Article rejected successfully" }
   } catch (error: any) {
@@ -824,6 +860,22 @@ export async function resubmitArticleAction(
           `
         }
       }
+    }
+
+    // Gửi notification cho admin khi article resubmit (pending)
+    const articleData = await sql`
+      SELECT a.author_id, a.title, u.full_name
+      FROM articles a
+      JOIN users u ON a.author_id = u.id
+      WHERE a.id = ${articleId}
+      LIMIT 1
+    `
+    if (articleData.length > 0) {
+      await notifyAdminsAboutPendingArticle(
+        articleId,
+        articleData[0].title,
+        articleData[0].full_name || "Unknown"
+      )
     }
 
     return { success: true, message: "Article resubmitted successfully" }
@@ -1002,6 +1054,24 @@ export async function updateArticleAction(
             VALUES (${id}, ${tagId})
           `
         }
+      }
+    }
+
+    // Gửi notification cho admin khi article được update thành pending
+    if (normalizedStatus === "pending") {
+      const articleData = await sql`
+        SELECT a.author_id, a.title, u.full_name
+        FROM articles a
+        JOIN users u ON a.author_id = u.id
+        WHERE a.id = ${id}
+        LIMIT 1
+      `
+      if (articleData.length > 0) {
+        await notifyAdminsAboutPendingArticle(
+          id,
+          articleData[0].title,
+          articleData[0].full_name || "Unknown"
+        )
       }
     }
 
