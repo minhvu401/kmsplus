@@ -122,6 +122,7 @@ export const CourseCard: React.FC<CourseCardProps> = React.memo(
     const difficultyLabel = getDifficultyLabel(course.duration_hours)
     const isResuming = enrollmentStatus === "in-progress"
     const normalizedRating = Number(rating ?? 0) || 0
+    const avatarSrc = (instructor && (instructor.avatar || (course as any).creator_avatar_url)) || undefined
 
     return (
       <div
@@ -470,14 +471,15 @@ export const CourseCard: React.FC<CourseCardProps> = React.memo(
               style={{
                 display: "flex",
                 alignItems: "center",
-                gap: "10px",
-                marginBottom: "12px",
-                paddingBottom: "12px",
+                gap: "5px",
+                marginBottom: "5px",
+                paddingBottom: "5px",
                 borderBottom: "1px solid #f3f4f6",
               }}
             >
               <Avatar
                 size={32}
+                src={avatarSrc}
                 style={{
                   backgroundColor: "#3366cc",
                   fontSize: "14px",
@@ -502,16 +504,13 @@ export const CourseCard: React.FC<CourseCardProps> = React.memo(
                 >
                   {instructor.name}
                 </p>
-                <p style={{ margin: 0, fontSize: "12px", color: "#9ca3af" }}>
-                  Instructor
-                </p>
               </div>
             </div>
           )}
 
           {/* Enrollment Count */}
           <div
-            style={{ marginBottom: "12px", fontSize: "13px", color: "#6b7280" }}
+            style={{ marginBottom: "5px", fontSize: "13px", color: "#6b7280" }}
           >
             {course.enrollment_count} {t("course.card_enrolled", language)}
           </div>

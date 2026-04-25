@@ -7,6 +7,8 @@ import React, { useState } from "react"
 import { Button, Modal, message } from "antd"
 import { CheckCircleFilled, PlayCircleOutlined } from "@ant-design/icons"
 import { enrollCourseAction } from "@/action/enrollment/enrollmentAction"
+import useLanguageStore from "@/store/useLanguageStore"
+import { t } from "@/lib/i18n"
 import { useRouter } from "next/navigation"
 
 interface EnrollButtonProps {
@@ -51,7 +53,7 @@ export default function EnrollButton({
         onClick={handleEnroll}
         className="bg-blue-600 h-12 text-lg font-bold shadow-md"
       >
-        Enroll Now
+        {t("course.enroll_now", useLanguageStore().language)}
       </Button>
 
       {/* SUCCESS MODAL (Giống hình image_bbaf44.png) */}
@@ -65,9 +67,9 @@ export default function EnrollButton({
         <div className="text-center py-6 space-y-4">
           <CheckCircleFilled className="text-green-500 text-6xl" />
           <div>
-            <h2 className="text-2xl font-bold m-0">Success!</h2>
+            <h2 className="text-2xl font-bold m-0">{t("course.enroll_success_header", useLanguageStore().language)}</h2>
             <p className="text-gray-500 mt-2 text-base">
-              You have successfully enrolled in <br />
+              {t("course.enroll_success_prefix", useLanguageStore().language)} <br />
               <span className="text-gray-900 font-bold">"{courseTitle}"</span>
             </p>
           </div>
@@ -81,14 +83,14 @@ export default function EnrollButton({
                 router.push(`/courses/${courseId}/learning`)
               }}
             >
-              Go to Learning →
+              {t("course.enroll_go_to_learning", useLanguageStore().language)}
             </Button>
             <Button
               type="text"
               className="text-gray-400"
               onClick={() => setIsSuccessModalOpen(false)}
             >
-              Later
+              {t("course.enroll_later", useLanguageStore().language)}
             </Button>
           </div>
         </div>
