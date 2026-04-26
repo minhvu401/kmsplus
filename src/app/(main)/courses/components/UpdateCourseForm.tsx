@@ -83,6 +83,7 @@ import {
 } from "@ant-design/icons"
 import CreateQuizModal from "@/app/(main)/quizzes/components/CreateQuizModal"
 import useLanguageStore from "@/store/useLanguageStore"
+import { t } from "@/lib/i18n"
 
 const { TextArea } = Input
 const { Dragger } = Upload
@@ -498,11 +499,45 @@ export default function UpdateCourseForm({
     initialData.thumbnail_url || null
   )
   const [cropModalVisible, setCropModalVisible] = useState(false)
+  const [invalidDueDates, setInvalidDueDates] = useState<Set<number>>(new Set())
   const [activeSectionId, setActiveSectionId] = useState<string | null>(null)
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   )
+
+  // Helper: Check if date is in the past (before today)
+  const isPastDate = (date: any) => {
+    if (!date) return false
+    const selectedDate = dayjs(date).startOf("day")
+    const today = dayjs().startOf("day")
+    return selectedDate.isBefore(today)
+  }
+
+  // Helper: Handle date change with validation
+  const handleDueDateChange = (index: number, d: any) => {
+    const r = [...(payload.assignment_rules || [])]
+
+    if (d && isPastDate(d)) {
+      // Past date selected - clear and mark as invalid
+      r[index].due_date = null
+      setInvalidDueDates((prev) => new Set([...prev, index]))
+    } else {
+      // Valid date or null - clear error if valid
+      r[index].due_date = d
+      setInvalidDueDates((prev) => {
+        const newSet = new Set(prev)
+        newSet.delete(index)
+        return newSet
+      })
+    }
+    update("assignment_rules", r)
+  }
+
+  // Helper: Disable dates before today in the calendar
+  const disablePastDates = (current: any) => {
+    return current && current.isBefore(dayjs().startOf("day"))
+  }
 
   useEffect(() => {
     if (payload.curriculum.length > 0 && !activeSectionId)
@@ -1013,14 +1048,16 @@ export default function UpdateCourseForm({
                     <div className="flex justify-between items-start mb-4">
                       <div>
                         <label className="block font-semibold text-blue-900 mb-1">
-                          {language === "vi"
-                            ? "2. Phân Công Bắt Buộc"
-                            : "2. Mandatory Assignment"}
+                          {t(
+                            "course.assignment.title",
+                            language === "vi" ? "vi" : "en"
+                          )}
                         </label>
                         <p className="text-xs text-blue-700">
-                          {language === "vi"
-                            ? "Buộc các nhóm cụ thể phải tham gia khóa học này."
-                            : "Require specific groups to take this course."}
+                          {t(
+                            "course.assignment.description",
+                            language === "vi" ? "vi" : "en"
+                          )}
                         </p>
                       </div>
                       <Button
@@ -1041,7 +1078,10 @@ export default function UpdateCourseForm({
                           ])
                         }}
                       >
-                        {language === "vi" ? "Thêm Quy Tắc" : "Add Rule"}
+                        {t(
+                          "course.assignment.btn_add",
+                          language === "vi" ? "vi" : "en"
+                        )}
                       </Button>
                     </div>
                     <div className="flex-1 overflow-y-auto space-y-3 pr-1 max-h-[300px] custom-scrollbar">
@@ -1050,9 +1090,10 @@ export default function UpdateCourseForm({
                         <div className="h-32 flex flex-col items-center justify-center border-2 border-dashed border-blue-200 rounded-lg text-blue-400">
                           <SafetyCertificateOutlined className="text-2xl mb-2" />
                           <span className="text-sm">
-                            {language === "vi"
-                              ? "Chưa có quy tắc bắt buộc nào được đặt."
-                              : "No mandatory rules have been set yet."}
+                            {t(
+                              "course.assignment.no_rules_set",
+                              language === "vi" ? "vi" : "en"
+                            )}
                           </span>
                         </div>
                       ) : (
@@ -1083,27 +1124,53 @@ export default function UpdateCourseForm({
                                       value: "all_employees",
                                       label:
                                         language === "vi"
-                                          ? "Tất Cả NV"
-                                          : "All Employees",
+                                          ? t(
+                                              "course.assignment.target_all_employees",
+                                              "vi"
+                                            )
+                                          : t(
+                                              "course.assignment.target_all_employees",
+                                              "en"
+                                            ),
                                     },
                                     {
                                       value: "department",
                                       label:
                                         language === "vi"
-                                          ? "Phòng Ban"
-                                          : "Department",
+                                          ? t(
+                                              "course.assignment.target_department",
+                                              "vi"
+                                            )
+                                          : t(
+                                              "course.assignment.target_department",
+                                              "en"
+                                            ),
                                     },
                                     {
                                       value: "role",
                                       label:
-                                        language === "vi" ? "Vai Trò" : "Role",
+                                        language === "vi"
+                                          ? t(
+                                              "course.assignment.target_role",
+                                              "vi"
+                                            )
+                                          : t(
+                                              "course.assignment.target_role",
+                                              "en"
+                                            ),
                                     },
                                     {
                                       value: "user",
                                       label:
                                         language === "vi"
-                                          ? "Người Dùng"
-                                          : "User",
+                                          ? t(
+                                              "course.assignment.target_user",
+                                              "vi"
+                                            )
+                                          : t(
+                                              "course.assignment.target_user",
+                                              "en"
+                                            ),
                                     },
                                   ]}
                                 />
@@ -1112,8 +1179,14 @@ export default function UpdateCourseForm({
                                     <Select
                                       placeholder={
                                         language === "vi"
-                                          ? "Chọn Phòng Ban..."
-                                          : "Select Department..."
+                                          ? t(
+                                              "course.assignment.select_department",
+                                              "vi"
+                                            )
+                                          : t(
+                                              "course.assignment.select_department",
+                                              "en"
+                                            )
                                       }
                                       className="w-full"
                                       value={rule.department_id}
@@ -1140,8 +1213,14 @@ export default function UpdateCourseForm({
                                     <Select
                                       placeholder={
                                         language === "vi"
-                                          ? "Chọn Vai Trò..."
-                                          : "Select Role..."
+                                          ? t(
+                                              "course.assignment.select_role",
+                                              "vi"
+                                            )
+                                          : t(
+                                              "course.assignment.select_role",
+                                              "en"
+                                            )
                                       }
                                       className="w-full"
                                       value={rule.role_id}
@@ -1157,15 +1236,27 @@ export default function UpdateCourseForm({
                                           value: 1,
                                           label:
                                             language === "vi"
-                                              ? "Quản Lý (Manager)"
-                                              : "Manager",
+                                              ? t(
+                                                  "course.assignment.role_manager",
+                                                  "vi"
+                                                )
+                                              : t(
+                                                  "course.assignment.role_manager",
+                                                  "en"
+                                                ),
                                         },
                                         {
                                           value: 2,
                                           label:
                                             language === "vi"
-                                              ? "Nhân Viên (Staff)"
-                                              : "Staff",
+                                              ? t(
+                                                  "course.assignment.role_staff",
+                                                  "vi"
+                                                )
+                                              : t(
+                                                  "course.assignment.role_staff",
+                                                  "en"
+                                                ),
                                         },
                                       ]}
                                     />
@@ -1174,10 +1265,16 @@ export default function UpdateCourseForm({
                                     <Select
                                       placeholder={
                                         language === "vi"
-                                          ? "Tìm người dùng..."
-                                          : "Search user..."
+                                          ? t(
+                                              "course.assignment.search_users",
+                                              "vi"
+                                            )
+                                          : t(
+                                              "course.assignment.search_users",
+                                              "en"
+                                            )
                                       }
-                                      className="w-full"
+                                      className="w-full truncate"
                                       value={rule.user_id}
                                       onChange={(val) => {
                                         const r = [
@@ -1188,7 +1285,7 @@ export default function UpdateCourseForm({
                                       }}
                                       options={users.map((u) => ({
                                         value: u.id,
-                                        label: `${u.name} (${u.email})`,
+                                        label: u.name,
                                       }))}
                                       showSearch
                                       filterOption={(input, option) =>
@@ -1203,94 +1300,155 @@ export default function UpdateCourseForm({
                                       disabled
                                       value={
                                         language === "vi"
-                                          ? "Toàn Công Ty"
-                                          : "Whole Company"
+                                          ? t(
+                                              "course.assignment.whole_company",
+                                              "vi"
+                                            )
+                                          : t(
+                                              "course.assignment.whole_company",
+                                              "en"
+                                            )
                                       }
                                       className="bg-gray-50 text-center"
                                     />
                                   )}
                                 </div>
                               </div>
-                              <div className="flex gap-2 items-center bg-gray-50 p-2 rounded border border-gray-200">
-                                <span className="text-xs font-semibold text-gray-500 w-16">
-                                  {language === "vi" ? "Hạn:" : "Due:"}
-                                </span>
-                                <Select
-                                  size="small"
-                                  value={rule.due_type}
-                                  className="w-24"
-                                  onChange={(val) => {
-                                    const r = [
-                                      ...(payload.assignment_rules || []),
-                                    ]
-                                    r[index].due_type = val
-                                    update("assignment_rules", r)
-                                  }}
-                                  options={[
-                                    {
-                                      value: "none",
-                                      label:
-                                        language === "vi" ? "Không" : "None",
-                                    },
-                                    {
-                                      value: "relative",
-                                      label:
-                                        language === "vi" ? "Ngày" : "Days",
-                                    },
-                                    {
-                                      value: "fixed",
-                                      label:
-                                        language === "vi" ? "Cố Định" : "Fixed",
-                                    },
-                                  ]}
-                                />
-                                <div className="flex-1 flex justify-end">
-                                  {rule.due_type === "relative" && (
-                                    <InputNumber
-                                      size="small"
-                                      min={1}
-                                      value={rule.due_days}
-                                      onChange={(v) => {
-                                        const r = [
-                                          ...(payload.assignment_rules || []),
-                                        ]
-                                        r[index].due_days = v
-                                        update("assignment_rules", r)
-                                      }}
-                                      addonAfter={
-                                        language === "vi" ? "ngày" : "days"
+                              <div className="flex flex-col gap-1 bg-gray-50 p-2 rounded border border-gray-200">
+                                <div className="flex gap-2 items-center">
+                                  <span className="text-xs font-semibold text-gray-500 w-16">
+                                    {t(
+                                      "course.assignment.due_label",
+                                      language === "vi" ? "vi" : "en"
+                                    )}
+                                  </span>
+                                  <Select
+                                    size="small"
+                                    value={rule.due_type}
+                                    className="w-24"
+                                    onChange={(val) => {
+                                      const r = [
+                                        ...(payload.assignment_rules || []),
+                                      ]
+                                      r[index].due_type = val
+                                      // Clear invalid date when switching due_type
+                                      if (val !== "fixed") {
+                                        setInvalidDueDates((prev) => {
+                                          const newSet = new Set(prev)
+                                          newSet.delete(index)
+                                          return newSet
+                                        })
                                       }
-                                      className="w-full"
-                                    />
-                                  )}
-                                  {rule.due_type === "fixed" && (
-                                    <DatePicker
-                                      size="small"
-                                      value={
-                                        rule.due_date
-                                          ? dayjs(rule.due_date)
-                                          : null
-                                      }
-                                      onChange={(d) => {
-                                        const r = [
-                                          ...(payload.assignment_rules || []),
-                                        ]
-                                        r[index].due_date = d
-                                        update("assignment_rules", r)
-                                      }}
-                                      format="DD/MM/YYYY"
-                                      className="w-full"
-                                    />
-                                  )}
-                                  {(rule.due_type === "none" ||
-                                    !rule.due_type) && (
-                                    <span className="text-xs text-gray-400 italic">
-                                      {language === "vi"
-                                        ? "Không giới hạn"
-                                        : "No deadline"}
+                                      update("assignment_rules", r)
+                                    }}
+                                    options={[
+                                      {
+                                        value: "none",
+                                        label: t(
+                                          "course.assignment.due_none",
+                                          language === "vi" ? "vi" : "en"
+                                        ),
+                                      },
+                                      {
+                                        value: "relative",
+                                        label:
+                                          language === "vi"
+                                            ? t(
+                                                "course.assignment.due_relative",
+                                                "vi"
+                                              )
+                                            : t(
+                                                "course.assignment.due_relative",
+                                                "en"
+                                              ),
+                                      },
+                                      {
+                                        value: "fixed",
+                                        label:
+                                          language === "vi"
+                                            ? t(
+                                                "course.assignment.due_fixed",
+                                                "vi"
+                                              )
+                                            : t(
+                                                "course.assignment.due_fixed",
+                                                "en"
+                                              ),
+                                      },
+                                    ]}
+                                  />
+                                  <div className="flex-1 flex justify-end">
+                                    {rule.due_type === "relative" && (
+                                      <InputNumber
+                                        size="small"
+                                        min={1}
+                                        value={rule.due_days}
+                                        onChange={(v) => {
+                                          const r = [
+                                            ...(payload.assignment_rules || []),
+                                          ]
+                                          r[index].due_days = v
+                                          update("assignment_rules", r)
+                                        }}
+                                        addonAfter={
+                                          language === "vi"
+                                            ? t(
+                                                "course.assignment.due_unit",
+                                                "vi"
+                                              )
+                                            : t(
+                                                "course.assignment.due_unit",
+                                                "en"
+                                              )
+                                        }
+                                        className="w-full"
+                                      />
+                                    )}
+                                    {rule.due_type === "fixed" && (
+                                      <DatePicker
+                                        size="small"
+                                        value={
+                                          rule.due_date
+                                            ? dayjs(rule.due_date)
+                                            : null
+                                        }
+                                        onChange={(d) =>
+                                          handleDueDateChange(index, d)
+                                        }
+                                        disabledDate={disablePastDates}
+                                        format="DD/MM/YYYY"
+                                        className={`w-full ${
+                                          invalidDueDates.has(index)
+                                            ? "!border-red-500"
+                                            : ""
+                                        }`}
+                                        status={
+                                          invalidDueDates.has(index)
+                                            ? "error"
+                                            : undefined
+                                        }
+                                      />
+                                    )}
+                                    {(rule.due_type === "none" ||
+                                      !rule.due_type) && (
+                                      <span className="text-xs text-gray-400 italic">
+                                        {t(
+                                          "course.assignment.due_no_deadline",
+                                          language === "vi" ? "vi" : "en"
+                                        )}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                {rule.due_type === "fixed" &&
+                                  invalidDueDates.has(index) && (
+                                    <span className="text-xs text-red-500 font-medium block mt-1">
+                                      {t(
+                                        "course.assignment.due_invalid",
+                                        language === "vi" ? "vi" : "en"
+                                      )}
                                     </span>
                                   )}
-                                </div>
                               </div>
                             </div>
                             <Button

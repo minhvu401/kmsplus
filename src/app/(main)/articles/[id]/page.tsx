@@ -897,7 +897,6 @@ export default function ArticleDetailPage() {
                           }}
                         >
                           {t("article_detail.send", language)}
-                          Send
                         </Button>
                       </div>
                     </div>

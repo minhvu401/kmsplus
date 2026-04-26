@@ -462,6 +462,37 @@ body {
   display: none !important;
 }
 
+/* ===== Select Component Text Truncation ===== */
+.ant-select {
+  max-width: 100% !important;
+}
+
+.ant-select-selector {
+  max-width: 100% !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+.ant-select-selection-item {
+  max-width: 100% !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.ant-select-selection-item-content {
+  max-width: 100% !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.ant-select-selection-placeholder {
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
 .collapsed-menu .ant-menu-item-divider {
   display: none !important;
 }

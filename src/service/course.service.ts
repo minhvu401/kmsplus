@@ -601,7 +601,11 @@ export async function updateFullCourseAction(id: number, data: any) {
         }
 
         // Xóa sạch Curriculum cũ & Insert mới
+        // First delete quiz attempts that reference curriculum items
+        await tx`DELETE FROM quiz_attempts WHERE curriculum_item_id IN (SELECT id FROM curriculum_items WHERE section_id IN (SELECT id FROM sections WHERE course_id = ${id}))`
+        // Then delete curriculum items
         await tx`DELETE FROM curriculum_items WHERE section_id IN (SELECT id FROM sections WHERE course_id = ${id})`
+        // Finally delete sections
         await tx`DELETE FROM sections WHERE course_id = ${id}`
 
         if (data.curriculum && data.curriculum.length > 0) {
@@ -739,13 +743,15 @@ export async function getPublishedCoursesService({
         orderBy = `(SELECT COUNT(*) FROM enrollments e_recent WHERE e_recent.course_id = c.id AND e_recent.enrolled_at >= (CURRENT_TIMESTAMP - INTERVAL '7 days')) DESC, c.enrollment_count DESC, c.approved_at DESC NULLS LAST, c.created_at DESC`
         break
       case "popular":
-        orderBy = "c.enrollment_count DESC, c.approved_at DESC NULLS LAST, c.created_at DESC"
+        orderBy =
+          "c.enrollment_count DESC, c.approved_at DESC NULLS LAST, c.created_at DESC"
         break
       case "newest":
         orderBy = "c.approved_at DESC NULLS LAST, c.created_at DESC"
         break
       case "top-rated":
-        orderBy = "COALESCE(c.average_rating, 0) DESC, c.enrollment_count DESC, c.approved_at DESC NULLS LAST, c.created_at DESC"
+        orderBy =
+          "COALESCE(c.average_rating, 0) DESC, c.enrollment_count DESC, c.approved_at DESC NULLS LAST, c.created_at DESC"
         break
       default:
         orderBy = "c.approved_at DESC NULLS LAST, c.created_at DESC"
@@ -895,9 +901,7 @@ export async function getAllUserEnrolledCoursesService(userId: number) {
  * Get newest published courses
  * Used for "Mới nhất từ KMS Plus" (Newest) section
  */
-export async function getNewestCoursesService(
-  limit: number = 12
-) {
+export async function getNewestCoursesService(limit: number = 12) {
   try {
     const rows = await sql`
       SELECT 
@@ -932,9 +936,7 @@ export async function getNewestCoursesService(
  * Get trending courses based on recent enrollment activity
  * Used for "Xu hướng" (Trending) section
  */
-export async function getTrendingCoursesService(
-  limit: number = 12
-) {
+export async function getTrendingCoursesService(limit: number = 12) {
   try {
     const rows = await sql`
       SELECT 
