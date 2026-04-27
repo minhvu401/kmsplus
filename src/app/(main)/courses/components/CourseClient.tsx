@@ -382,7 +382,7 @@ export default function CourseClient({
         </FadeInOnScroll>
 
         {/* Relevant Courses Section */}
-        <FadeInOnScroll threshold={0.2} triggerOnce={true}>
+        {/* <FadeInOnScroll threshold={0.2} triggerOnce={true}>
           {relevantCourses.length > 0 && (
             <RelevantCoursesSection
               courses={relevantCourses}
@@ -399,7 +399,7 @@ export default function CourseClient({
               )}
             />
           )}
-        </FadeInOnScroll>
+        </FadeInOnScroll> */}
 
         {/* New Section */}
         <FadeInOnScroll threshold={0.2} triggerOnce={true}>
